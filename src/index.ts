@@ -1,3 +1,3 @@
 export function printHello(input: string): void {
-  console.log(`Hello ${input}`);
+  return console.log(`Hello ${input}`);
 }
