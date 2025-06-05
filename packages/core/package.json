@@ -38,6 +38,7 @@
 	"packageManager": "pnpm@10.6.5",
 	"devDependencies": {
 		"@total-typescript/tsconfig": "1.0.4",
+		"@types/json-schema": "^7.0.15",
 		"@utilize/eslint-config": "3.0.1",
 		"@utilize/prettier-config": "1.1.3",
 		"eslint": "^9.25.0",
@@ -46,5 +47,8 @@
 		"unbuild": "3.5.0",
 		"vitest": "3.2.2"
 	},
-	"prettier": "@utilize/prettier-config"
+	"prettier": "@utilize/prettier-config",
+	"dependencies": {
+		"@apidevtools/json-schema-ref-parser": "^13.0.1"
+	}
 }

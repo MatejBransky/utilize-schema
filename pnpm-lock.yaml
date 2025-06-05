@@ -13,10 +13,17 @@ importers:
         version: 2.29.4
 
   packages/core:
+    dependencies:
+      '@apidevtools/json-schema-ref-parser':
+        specifier: ^13.0.1
+        version: 13.0.1
     devDependencies:
       '@total-typescript/tsconfig':
         specifier: 1.0.4
         version: 1.0.4
+      '@types/json-schema':
+        specifier: ^7.0.15
+        version: 7.0.15
       '@utilize/eslint-config':
         specifier: 3.0.1
         version: 3.0.1(eslint@9.28.0(jiti@2.4.2))(prettier@3.5.3)(typescript@5.8.3)
@@ -83,6 +90,10 @@ importers:
         version: 6.3.5(jiti@2.4.2)
 
 packages:
+
+  '@apidevtools/json-schema-ref-parser@13.0.1':
+    resolution: {integrity: sha512-91uy6MGWqu7CjcV7tLPMuYh/Wj/RNPBXquSdEaCEpj2H/cFy0Yu+t1EdxExSyaryl1ykhDo30plq9tIm/HVZnw==}
+    engines: {node: '>= 16'}
 
   '@babel/code-frame@7.27.1':
     resolution: {integrity: sha512-cjQ7ZlQ0Mv3b47hABuTevyTuYN4i+loJKGeV9flcCgIK37cCXRh+L1bd3iBHlynerhQ7BhCkn2BPbQUL+rGqFg==}
@@ -2534,6 +2545,11 @@ packages:
     engines: {node: '>=10'}
 
 snapshots:
+
+  '@apidevtools/json-schema-ref-parser@13.0.1':
+    dependencies:
+      '@types/json-schema': 7.0.15
+      js-yaml: 4.1.0
 
   '@babel/code-frame@7.27.1':
     dependencies:
