@@ -1,6 +1,6 @@
 {
 	"name": "@utilize/json-schema-core",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"description": "Core utilities for working with JSON Schema, including normalization and parsing.",
 	"keywords": [
 		"normalizer",
