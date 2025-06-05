@@ -1,0 +1,39 @@
+{
+  "name": "@utilize/json-schema-core",
+  "version": "0.0.1",
+  "description": "Core utilities for working with JSON Schema, including normalization and parsing.",
+  "keywords": [
+    "normalizer",
+    "parser",
+    "ast"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "Matej Bransky",
+    "email": "matej.bransky@gmail.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:MatejBransky/utilize-schema.git",
+    "directory": "packages/core"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "prepublishOnly": "pnpm build",
+    "build": "unbuild",
+    "stub": "unbuild --stub",
+    "check:types": "tsc --noEmit"
+  },
+  "packageManager": "pnpm@10.6.5",
+  "devDependencies": {
+    "@total-typescript/tsconfig": "1.0.4",
+    "typescript": "~5.8.3",
+    "unbuild": "3.5.0"
+  }
+}
