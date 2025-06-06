@@ -1,4 +1,6 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect } from 'vitest';
+
+import { runTestCases, type TestCaseBase } from './test-utils';
 
 import {
 	Intersection,
@@ -14,14 +16,12 @@ interface VisitedSchema {
 	type?: JSONSchemaType;
 }
 
-type SubSchemaTestCase = {
-	state?: 'skip' | 'todo' | 'only';
-	title: string;
+type SubSchemaTestCase = TestCaseBase & {
 	expected: VisitedSchema[];
 } & (
-	| { schema: JSONSchema; linkedSchema?: undefined }
-	| { schema?: undefined; linkedSchema: () => LinkedJSONSchema }
-);
+		| { schema: JSONSchema; linkedSchema?: undefined }
+		| { schema?: undefined; linkedSchema: () => LinkedJSONSchema }
+	);
 
 describe('traverse() visits all subschemas', () => {
 	const testCases: SubSchemaTestCase[] = [
@@ -206,22 +206,19 @@ describe('traverse() visits all subschemas', () => {
 		},
 	];
 
-	testCases.forEach((testCase) => {
-		const testMethod = testCase.state ? test[testCase.state] : test;
-		testMethod(testCase.title, () => {
-			const visited: VisitedSchema[] = [];
-			const linkedSchema = testCase.linkedSchema
-				? testCase.linkedSchema()
-				: link(testCase.schema);
+	runTestCases(testCases, (testCase) => {
+		const visited: VisitedSchema[] = [];
+		const linkedSchema = testCase.linkedSchema
+			? testCase.linkedSchema()
+			: link(testCase.schema);
 
-			traverse({
-				schema: linkedSchema,
-				callback: (subschema, key) => {
-					visited.push({ key, type: subschema.type });
-				},
-			});
-
-			expect(visited).toEqual(testCase.expected);
+		traverse({
+			schema: linkedSchema,
+			callback: (subschema, key) => {
+				visited.push({ key, type: subschema.type });
+			},
 		});
+
+		expect(visited).toEqual(testCase.expected);
 	});
 });
