@@ -3,6 +3,8 @@
 	"version": "0.0.1",
 	"description": "Core utilities for working with JSON Schema.",
 	"keywords": [
+		"dereferencer",
+		"linker",
 		"normalizer"
 	],
 	"license": "MIT",
