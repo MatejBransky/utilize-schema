@@ -1,4 +1,8 @@
-import type { JSONSchema7, JSONSchema7Type } from 'json-schema';
+import type {
+	JSONSchema7,
+	JSONSchema7Type,
+	JSONSchema7TypeName,
+} from 'json-schema';
 
 type SchemaType =
 	| 'ALL_OF'
@@ -23,6 +27,7 @@ type SchemaType =
 
 export type JSONSchema = JSONSchema7;
 export type JSONSchemaType = JSONSchema7Type;
+export type JSONSchemaTypeName = JSONSchema7TypeName;
 
 export const Parent = Symbol('Parent');
 export const Types = Symbol('Types');

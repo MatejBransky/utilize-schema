@@ -1,44 +1,17 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect } from 'vitest';
 
 import { runTestCases, type TestCaseBase } from './test-utils';
 
 import { link, normalize, rules, type JSONSchema } from '../src';
 
-type NormalizerTestCase = TestCaseBase & {
+type RuleTestCase = TestCaseBase & {
+	fileName?: string;
 	input: JSONSchema;
 	output: JSONSchema;
 };
 
 describe('normalizer() rules', () => {
-	it('throws on boolean schemas (true/false)', () => {
-		expect(() =>
-			normalize({
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				rootSchema: true as any,
-				dereferencedPaths: new WeakMap(),
-				fileName: 'test.json',
-				rules,
-				options: {},
-			})
-		).toThrow(
-			'Boolean schemas (true/false) are not supported in this pipeline.'
-		);
-
-		expect(() =>
-			normalize({
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				rootSchema: false as any,
-				dereferencedPaths: new WeakMap(),
-				fileName: 'test.json',
-				rules,
-				options: {},
-			})
-		).toThrow(
-			'Boolean schemas (true/false) are not supported in this pipeline.'
-		);
-	});
-
-	const testCases: NormalizerTestCase[] = [
+	const testCases: RuleTestCase[] = [
 		{
 			title: 'normalize definitions to $defs',
 			input: {
@@ -54,6 +27,75 @@ describe('normalizer() rules', () => {
 				},
 			},
 		},
+		{
+			title: 'normalize null-only schemas',
+			input: {
+				$id: 'foo',
+				type: 'null',
+				enum: [null],
+			},
+			output: {
+				$id: 'foo',
+				type: 'null',
+			},
+		},
+		{
+			title: 'destructure unary types',
+			input: {
+				$id: 'foo',
+				type: ['string'],
+			},
+			output: {
+				$id: 'foo',
+				type: 'string',
+			},
+		},
+		{
+			title: 'add empty required property if none is defined',
+			input: {
+				$id: 'foo',
+				type: 'object',
+				properties: {
+					bar: { type: 'string' },
+				},
+			},
+			output: {
+				$id: 'foo',
+				type: 'object',
+				properties: {
+					bar: { type: 'string' },
+				},
+				required: [],
+			},
+		},
+		{
+			title: 'adds $id to top-level schema if missing',
+			fileName: 'custom.json',
+			input: {
+				type: 'object',
+				properties: {
+					foo: { type: 'string' },
+				},
+			},
+			output: {
+				$id: 'Custom',
+				type: 'object',
+				properties: {
+					foo: { type: 'string' },
+				},
+				required: [],
+			},
+		},
+		{
+			title: 'Normalize schema.minItems',
+			input: { $id: 'foo', type: 'array', items: { type: 'string' } },
+			output: {
+				$id: 'foo',
+				type: 'array',
+				items: { type: 'string' },
+				minItems: 0,
+			},
+		},
 	];
 
 	runTestCases(testCases, (testCase) => {
@@ -61,11 +103,50 @@ describe('normalizer() rules', () => {
 		const normalized = normalize({
 			rootSchema: linkedSchema,
 			dereferencedPaths: new WeakMap(),
-			fileName: 'test.json',
+			fileName: testCase.fileName ?? 'test.json',
 			rules,
 			options: {},
 		});
 
 		expect(normalized).toEqual(testCase.output);
+	});
+});
+
+interface ErrorTestCase extends TestCaseBase {
+	input: JSONSchema;
+	expectedError: string;
+}
+
+describe('normalizer() throws', () => {
+	const testCases: ErrorTestCase[] = [
+		{
+			title: 'throws on boolean schemas',
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			input: true as any,
+			expectedError:
+				'Boolean schemas (true/false) are not supported in this pipeline.',
+		},
+		{
+			title: 'throws if both definitions and $defs are present and not equal',
+			input: {
+				$id: 'foo',
+				definitions: { bar: { const: 'bar' } },
+				$defs: { baz: { const: 'baz' } },
+			},
+			expectedError:
+				'Schema must define either definitions or $defs, not both. Given id=foo in test.json',
+		},
+	];
+
+	runTestCases(testCases, (testCase) => {
+		expect(() =>
+			normalize({
+				rootSchema: link(testCase.input),
+				dereferencedPaths: new WeakMap(),
+				fileName: 'test.json',
+				rules,
+				options: {},
+			})
+		).toThrow(testCase.expectedError);
 	});
 });
