@@ -1,3 +1,3 @@
-export const hello = (input: string) => {
-	return `Hello, ${input}!`;
-};
+export * from './dereference';
+export * from './linker';
+export * from './types/JSONSchema';
