@@ -2,4 +2,5 @@ packages:
   - packages/*
   - playground/
 onlyBuiltDependencies:
-  - '@swc/core'
+  - "@swc/core"
+savePrefix: ""
