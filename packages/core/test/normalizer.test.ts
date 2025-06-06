@@ -1,4 +1,4 @@
-import { describe, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { runTestCases, type TestCaseBase } from './test-utils';
 
@@ -10,6 +10,34 @@ type NormalizerTestCase = TestCaseBase & {
 };
 
 describe('normalizer() rules', () => {
+	it('throws on boolean schemas (true/false)', () => {
+		expect(() =>
+			normalize({
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				rootSchema: true as any,
+				dereferencedPaths: new WeakMap(),
+				fileName: 'test.json',
+				rules,
+				options: {},
+			})
+		).toThrow(
+			'Boolean schemas (true/false) are not supported in this pipeline.'
+		);
+
+		expect(() =>
+			normalize({
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				rootSchema: false as any,
+				dereferencedPaths: new WeakMap(),
+				fileName: 'test.json',
+				rules,
+				options: {},
+			})
+		).toThrow(
+			'Boolean schemas (true/false) are not supported in this pipeline.'
+		);
+	});
+
 	const testCases: NormalizerTestCase[] = [
 		{
 			title: 'normalize definitions to $defs',
