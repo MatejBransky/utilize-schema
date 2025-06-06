@@ -1,0 +1,113 @@
+{
+  "name": "utilize-schema-workspace",
+  "version": "1.0.0",
+  "system_prompt": "You are an expert TypeScript monorepo assistant. Always consider the architectural notes in NOTES.md when answering questions about any part of the codebase.",
+  "vars": {
+    "core_root": "packages/core"
+  },
+  "groups": [
+    {
+      "name": "@utilize/json-schema-core – key modules and their tests",
+      "system_prompt": "You are working with the core package of a JSON Schema to Zod generator. Always consider the architectural notes in NOTES.md. Write code and code comments in English.",
+      "data": [
+        "notes_md",
+        "jsonschema_ts",
+        "ast_ts",
+        "dereference_ts",
+        "dereference_test_ts",
+        "linker_ts",
+        "linker_test_ts",
+        "normalizer_ts",
+        "normalizer_test_ts",
+        "rules_ts",
+        "traverse_ts",
+        "traverse_test_ts",
+        "utils_ts",
+        "utils_test_ts",
+        "test_utils_ts"
+      ]
+    }
+  ],
+  "data": {
+    "notes_md": {
+      "type": "file",
+      "path": "NOTES.md",
+      "description": "Architectural notes, motivation, and feature overview for the entire project. Central document for all packages."
+    },
+    "jsonschema_ts": {
+      "type": "file",
+      "path": "${core_root}/src/types/JSONSchema.ts",
+      "description": "Type definitions for JSON Schema used throughout the core pipeline."
+    },
+    "ast_ts": {
+      "type": "file",
+      "path": "${core_root}/src/types/AST.ts",
+      "description": "Type definitions for the Abstract Syntax Tree (AST) representation of schemas."
+    },
+    "dereference_ts": {
+      "type": "file",
+      "path": "${core_root}/src/dereference.ts",
+      "description": "Dereferencer module: resolves all $ref references in input schemas."
+    },
+    "dereference_test_ts": {
+      "type": "file",
+      "path": "${core_root}/test/dereference.test.ts",
+      "description": "Tests for dereferencer module."
+    },
+    "linker_ts": {
+      "type": "file",
+      "path": "${core_root}/src/linker.ts",
+      "description": "Linker module: enhances schema nodes with parent references and breadcrumbs."
+    },
+    "linker_test_ts": {
+      "type": "file",
+      "path": "${core_root}/test/linker.test.ts",
+      "description": "Tests for linker module."
+    },
+    "normalizer_ts": {
+      "type": "file",
+      "path": "${core_root}/src/normalizer.ts",
+      "description": "Normalizer module: ensures schema consistency and expands shorthand constructs."
+    },
+    "normalizer_test_ts": {
+      "type": "file",
+      "path": "${core_root}/test/normalizer.test.ts",
+      "description": "Tests for normalizer module."
+    },
+    "rules_ts": {
+      "type": "file",
+      "path": "${core_root}/src/rules.ts",
+      "description": "Rules module: contains validation or transformation rules for schema processing."
+    },
+    "traverse_ts": {
+      "type": "file",
+      "path": "${core_root}/src/traverse.ts",
+      "description": "Traverse module: utilities for traversing schema structures."
+    },
+    "traverse_test_ts": {
+      "type": "file",
+      "path": "${core_root}/test/traverse.test.ts",
+      "description": "Tests for traverse module."
+    },
+    "utils_ts": {
+      "type": "file",
+      "path": "${core_root}/src/utils.ts",
+      "description": "Utility functions used throughout the core pipeline."
+    },
+    "utils_test_ts": {
+      "type": "file",
+      "path": "${core_root}/test/utils.test.ts",
+      "description": "Tests for utility functions."
+    },
+    "test_utils_ts": {
+      "type": "file",
+      "path": "${core_root}/test/test-utils.ts",
+      "description": "Test utilities for the core package."
+    },
+    "core_package_json": {
+      "type": "file",
+      "path": "${core_root}/package.json",
+      "description": "Package configuration for the core library."
+    }
+  }
+}
