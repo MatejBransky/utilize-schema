@@ -49,6 +49,7 @@
 	},
 	"prettier": "@utilize/prettier-config",
 	"dependencies": {
-		"@apidevtools/json-schema-ref-parser": "^13.0.1"
+		"@apidevtools/json-schema-ref-parser": "^13.0.1",
+		"dequal": "2.0.3"
 	}
 }
