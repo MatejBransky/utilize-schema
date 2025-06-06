@@ -1,7 +1,10 @@
 import { expect, test } from 'vitest';
 
+import { ASTNode } from '@utilize/json-schema-core';
+
 import { generate } from '../src';
 
 test('generate', () => {
-	expect(generate()).toBeNull();
+	const node: ASTNode = {};
+	expect(generate(node)).toBeNull();
 });
