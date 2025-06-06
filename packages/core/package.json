@@ -27,7 +27,7 @@
 	"scripts": {
 		"prepublishOnly": "pnpm build",
 		"build": "unbuild",
-		"stub": "unbuild --stub",
+		"build:dev": "unbuild --stub",
 		"format": "pnpm check:format --write",
 		"check:format": "prettier --check ./{src,test}/**/*.ts",
 		"check:lint": "eslint .",

@@ -50,6 +50,10 @@ importers:
         version: 3.2.2(jiti@2.4.2)
 
   packages/zod:
+    dependencies:
+      '@utilize/json-schema-core':
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@total-typescript/tsconfig':
         specifier: 1.0.4

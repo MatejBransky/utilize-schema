@@ -28,6 +28,7 @@
 	"scripts": {
 		"prepublishOnly": "pnpm build",
 		"build": "unbuild",
+		"build:dev": "unbuild --stub",
 		"stub": "unbuild --stub",
 		"format": "pnpm check:format --write",
 		"check:format": "prettier --check ./{src,test}/**/*.ts",
@@ -37,6 +38,9 @@
 		"ci:test": "vitest run"
 	},
 	"packageManager": "pnpm@10.6.5",
+	"dependencies": {
+		"@utilize/json-schema-core": "workspace:*"
+	},
 	"devDependencies": {
 		"@total-typescript/tsconfig": "1.0.4",
 		"@utilize/eslint-config": "3.0.1",
