@@ -1,5 +1,11 @@
 # Notes
 
+> When I first set out to find a robust, open-source solution for generating Zod schemas from JSON Schema, I fully expected such a tool to already exist—one that would handle standalone schema generation, proper referencing, and offer a well-tested, well-documented, and thoughtfully architected codebase. Instead, I encountered a landscape of tools that often overlooked standalone schema generation for definitions, lacked support for multiple references to the same definition, and suffered from chaotic parsing, oversimplified handling of JSON Schema constructs, and insufficient documentation and tests.
+>
+> My search eventually led me to `bcherny/json-schema-to-typescript`, which stood out for its sophisticated architecture and strong separation of concerns. Inspired by this, I decided to attempt my own implementation of a JSON Schema to Zod generator, borrowing architectural ideas from that project. The motivation is clear: generating only TypeScript types is no longer sufficient. Runtime validation schemas, from which types can be inferred, provide both type safety and runtime guarantees, even for constructs that cannot be fully expressed in TypeScript alone.
+>
+> The purpose of this repository is to implement a JSON Schema to Zod generator, built on an architecture reminiscent of `bcherny/json-schema-to-typescript`, but tailored for Zod and runtime validation.
+
 <!--toc:start-->
 
 - [🧱 Core Pipeline (Agnostic to Code Generator)](#-core-pipeline-agnostic-to-code-generator)
