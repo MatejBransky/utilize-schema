@@ -3,6 +3,7 @@ import type {
 	JSONSchema7Type,
 	JSONSchema7TypeName,
 } from 'json-schema';
+import moize from 'moize';
 
 export const SchemaType = {
 	ALL_OF: 'ALL_OF',
@@ -107,3 +108,16 @@ export interface NormalizedJSONSchema
 	not?: NormalizedJSONSchema;
 	required: string[];
 }
+
+export function isCompound(schema: JSONSchema): boolean {
+	return Array.isArray(schema.type) || 'anyOf' in schema || 'oneOf' in schema;
+}
+
+export const getRootSchema = moize(
+	(schema: LinkedJSONSchema): LinkedJSONSchema => {
+		const parent = schema[Parent];
+		if (!parent) return schema;
+
+		return getRootSchema(parent);
+	}
+) as (schema: LinkedJSONSchema) => LinkedJSONSchema;

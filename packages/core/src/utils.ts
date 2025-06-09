@@ -1,4 +1,8 @@
-import { Parent, type LinkedJSONSchema } from './types/JSONSchema';
+import {
+	Parent,
+	type JSONSchema,
+	type LinkedJSONSchema,
+} from './types/JSONSchema';
 
 /**
  * Determines if a value is a plain object (i.e., created by {} or new Object()).
@@ -63,6 +67,28 @@ export function isSchemaLike(schema: any): schema is LinkedJSONSchema {
 	}
 
 	return true;
+}
+
+/**
+ * Checks if a given string is a safe JavaScript identifier.
+ *
+ * A safe identifier starts with a letter (a-z, case-insensitive), underscore (_), or dollar sign ($),
+ * followed by any number of letters, digits, underscores, or dollar signs.
+ *
+ * Examples of safe identifiers:
+ *   isSafeIdentifier("myVar")      // true
+ *   isSafeIdentifier("_private")   // true
+ *   isSafeIdentifier("$dollar")    // true
+ *   isSafeIdentifier("a1b2c3")     // true
+ *
+ * Examples of unsafe identifiers:
+ *   isSafeIdentifier("1stVar")     // false (starts with a digit)
+ *   isSafeIdentifier("my var")     // false (contains a space)
+ *   isSafeIdentifier("var!")       // false (contains '!')
+ *   isSafeIdentifier("")           // false (empty string)
+ */
+export function isSafeIdentifier(string: string) {
+	return /^[a-z_$][\w$]*$/i.test(string);
 }
 
 /**
@@ -138,4 +164,64 @@ function stripExtension(filename: string): string {
 		return filename.slice(0, lastDot);
 	}
 	return filename;
+}
+
+/**
+ * Removes the schema's `$id`, `name`, and `description` properties
+ * if they exist.
+ * Useful when parsing intersections.
+ *
+ * Mutates `schema`.
+ */
+export function maybeStripNameHints<S extends JSONSchema>(schema: S): S {
+	if ('$id' in schema) delete schema.$id;
+
+	if ('description' in schema) delete schema.description;
+
+	if ('name' in schema) delete schema.name;
+
+	return schema;
+}
+
+/**
+ * Returns the key of the first element predicate returns truthy
+ */
+export function findKey<T>(
+	obj: Record<string, T>,
+	predicate: (value: T, key: string) => boolean
+): string | undefined {
+	for (const key of Object.keys(obj)) {
+		if (predicate(obj[key]!, key)) {
+			return key;
+		}
+	}
+	return undefined;
+}
+
+export function assert(
+	condition: unknown,
+	message?: string
+): asserts condition {
+	if (!condition) {
+		throw new Error(message ?? 'Assertion failed');
+	}
+}
+
+export function generateName(from: string, usedNames: Set<string>) {
+	let name: string = toSafeString(from);
+	if (!name) name = 'NoName';
+
+	// increment counter until we find a free name
+	if (usedNames.has(name)) {
+		let counter = 1;
+		let nameWithCounter = `${name}${counter}`;
+		while (usedNames.has(nameWithCounter)) {
+			nameWithCounter = `${name}${counter}`;
+			counter++;
+		}
+		name = nameWithCounter;
+	}
+
+	usedNames.add(name);
+	return name;
 }
