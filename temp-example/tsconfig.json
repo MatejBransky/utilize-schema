@@ -1,0 +1,12 @@
+{
+  "extends": "@total-typescript/tsconfig/tsc/no-dom/app",
+  "compilerOptions": {
+    "allowJs": false,
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "outDir": ".",
+    "sourceMap": false,
+    "strictNullChecks": false
+  },
+  "files": ["./index.ts"]
+}

@@ -1,14 +1,14 @@
 {
   "name": "utilize-schema-workspace",
   "version": "1.0.0",
-  "system_prompt": "You are an expert TypeScript monorepo assistant. Always consider the architectural notes in NOTES.md when answering questions about any part of the codebase.",
+  "system_prompt": "You are an expert TypeScript monorepo assistant. Always consider the architectural notes in NOTES.md when answering questions about any part of the codebase. Write code and code comments in English.",
   "vars": {
     "core_root": "packages/core"
   },
   "groups": [
     {
-      "name": "@utilize/json-schema-core – key modules and their tests",
-      "system_prompt": "You are working with the core package of a JSON Schema to Zod generator. Always consider the architectural notes in NOTES.md. Write code and code comments in English.",
+      "name": "end-to-end",
+      "system_prompt": "You are working with the core package of a JSON Schema to Zod generator. Always consider the architectural notes in NOTES.md.",
       "data": [
         "notes_md",
         "jsonschema_ts",
@@ -24,7 +24,32 @@
         "traverse_test_ts",
         "utils_ts",
         "utils_test_ts",
-        "test_utils_ts"
+        "test_utils_ts",
+        "generator_ts",
+        "parser_ts"
+      ]
+    },
+    {
+      "name": "temp",
+      "description": "Cloned json-schema-to-typescript-lite implementation for reference and knowledge extraction.",
+      "data": [
+        "notes_md",
+
+        "temp_index_ts",
+        "temp_jsonschema_ts",
+        "temp_ast_ts",
+        "temp_resolver_ts",
+        "temp_linker_ts",
+        "temp_validator_ts",
+        "temp_normalizer_ts",
+        "temp_parser_ts",
+        "temp_optimizer_ts",
+        "temp_generator_ts",
+        "temp_typesofschema_ts",
+        "temp_utils_ts",
+        "temp_architecture_md",
+        "temp_readme_original_md",
+        "temp_readme_md"
       ]
     }
   ],
@@ -106,8 +131,98 @@
     },
     "core_package_json": {
       "type": "file",
-      "path": "${core_root}/package.json",
-      "description": "Package configuration for the core library."
+      "path": "${core_root}/package.json"
+    },
+    "generator_ts": {
+      "type": "file",
+      "path": "packages/zod/src/generator.ts",
+      "description": "Zod generator module: generates Zod schemas and TypeScript types from AST nodes."
+    },
+    "generator_test_ts": {
+      "type": "file",
+      "path": "packages/zod/test/generator.test.ts",
+      "description": "Tests for the Zod generator module."
+    },
+    "parser_ts": {
+      "type": "file",
+      "path": "${core_root}/src/parser.ts",
+      "description": "Parser module: parses JSON Schema into AST nodes."
+    },
+
+    "temp_index_ts": {
+      "type": "file",
+      "path": "packages/temp/src/index.ts",
+      "description": "Legacy entry point for json-schema-to-typescript-lite."
+    },
+    "temp_jsonschema_ts": {
+      "type": "file",
+      "path": "packages/temp/src/types/JSONSchema.ts",
+      "description": "Legacy JSONSchema type definitions."
+    },
+    "temp_ast_ts": {
+      "type": "file",
+      "path": "packages/temp/src/types/AST.ts",
+      "description": "Legacy AST type definitions."
+    },
+    "temp_resolver_ts": {
+      "type": "file",
+      "path": "packages/temp/src/resolver.ts",
+      "description": "Legacy resolver for $ref dereferencing."
+    },
+    "temp_linker_ts": {
+      "type": "file",
+      "path": "packages/temp/src/linker.ts",
+      "description": "Legacy linker for parent references."
+    },
+    "temp_validator_ts": {
+      "type": "file",
+      "path": "packages/temp/src/validator.ts",
+      "description": "Legacy schema validator."
+    },
+    "temp_normalizer_ts": {
+      "type": "file",
+      "path": "packages/temp/src/normalizer.ts",
+      "description": "Legacy schema normalizer."
+    },
+    "temp_parser_ts": {
+      "type": "file",
+      "path": "packages/temp/src/parser.ts",
+      "description": "Legacy parser from JSONSchema to AST."
+    },
+    "temp_optimizer_ts": {
+      "type": "file",
+      "path": "packages/temp/src/optimizer.ts",
+      "description": "Legacy AST optimizer."
+    },
+    "temp_generator_ts": {
+      "type": "file",
+      "path": "packages/temp/src/generator.ts",
+      "description": "Legacy TypeScript code generator."
+    },
+    "temp_typesofschema_ts": {
+      "type": "file",
+      "path": "packages/temp/src/typesOfSchema.ts",
+      "description": "Legacy schema type matcher."
+    },
+    "temp_utils_ts": {
+      "type": "file",
+      "path": "packages/temp/src/utils.ts",
+      "description": "Legacy utility functions."
+    },
+    "temp_architecture_md": {
+      "type": "file",
+      "path": "packages/temp/ARCHITECTURE.md",
+      "description": "Legacy architecture notes."
+    },
+    "temp_readme_original_md": {
+      "type": "file",
+      "path": "packages/temp/README.original.md",
+      "description": "Legacy original README."
+    },
+    "temp_readme_md": {
+      "type": "file",
+      "path": "packages/temp/README.md",
+      "description": "Legacy README for json-schema-to-typescript-lite."
     }
   }
 }

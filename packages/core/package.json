@@ -41,7 +41,7 @@
 		"@types/json-schema": "7.0.15",
 		"@utilize/eslint-config": "3.0.1",
 		"@utilize/prettier-config": "1.1.3",
-		"eslint": "9.25.0",
+		"eslint": "9.28.0",
 		"prettier": "3.5.3",
 		"typescript": "5.8.3",
 		"unbuild": "3.5.0",
@@ -49,7 +49,7 @@
 	},
 	"prettier": "@utilize/prettier-config",
 	"dependencies": {
-		"@apidevtools/json-schema-ref-parser": "^13.0.1",
+		"@apidevtools/json-schema-ref-parser": "^13.0.4",
 		"dequal": "2.0.3"
 	}
 }
