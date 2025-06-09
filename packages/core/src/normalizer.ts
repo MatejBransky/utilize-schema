@@ -8,14 +8,14 @@ import type {
 
 // FIXME: Update type once you know what `options` are needed
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Options = any;
+export type NormalizeOptions = any;
 
 type NormalizeArgs = {
 	rootSchema: LinkedJSONSchema;
 	dereferencedPaths: DereferencedPaths;
 	fileName: string;
 	rules: Map<string, Rule>;
-	options: Options;
+	options?: NormalizeOptions;
 };
 
 /**
