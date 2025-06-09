@@ -7,7 +7,7 @@ import type { JSONSchema } from './types/JSONSchema';
 
 export type DereferencedPaths = WeakMap<JSONSchema, string>;
 
-interface DereferenceOptions {
+export interface DereferenceOptions {
 	/** The current working directory where the schema is located. */
 	cwd: string;
 	/** Options for the $RefParser */
