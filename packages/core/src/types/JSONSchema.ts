@@ -4,26 +4,28 @@ import type {
 	JSONSchema7TypeName,
 } from 'json-schema';
 
-type SchemaType =
-	| 'ALL_OF'
-	| 'UNNAMED_SCHEMA'
-	| 'ANY'
-	| 'ANY_OF'
-	| 'BOOLEAN'
-	| 'NAMED_ENUM'
-	| 'NAMED_SCHEMA'
-	| 'NEVER'
-	| 'NULL'
-	| 'NUMBER'
-	| 'STRING'
-	| 'OBJECT'
-	| 'ONE_OF'
-	| 'TYPED_ARRAY'
-	| 'REFERENCE'
-	| 'UNION'
-	| 'UNNAMED_ENUM'
-	| 'UNTYPED_ARRAY'
-	| 'CUSTOM_TYPE';
+export const SchemaType = {
+	ALL_OF: 'ALL_OF',
+	UNNAMED_SCHEMA: 'UNNAMED_SCHEMA',
+	ANY: 'ANY',
+	ANY_OF: 'ANY_OF',
+	BOOLEAN: 'BOOLEAN',
+	NAMED_ENUM: 'NAMED_ENUM',
+	NAMED_SCHEMA: 'NAMED_SCHEMA',
+	// NEVER: 'NEVER',
+	NULL: 'NULL',
+	NUMBER: 'NUMBER',
+	INTEGER: 'INTEGER',
+	STRING: 'STRING',
+	OBJECT: 'OBJECT',
+	ONE_OF: 'ONE_OF',
+	TYPED_ARRAY: 'TYPED_ARRAY',
+	REFERENCE: 'REFERENCE',
+	UNION: 'UNION',
+	UNNAMED_ENUM: 'UNNAMED_ENUM',
+	UNTYPED_ARRAY: 'UNTYPED_ARRAY',
+} as const;
+export type SchemaType = (typeof SchemaType)[keyof typeof SchemaType];
 
 export type JSONSchema = JSONSchema7;
 export type JSONSchemaType = JSONSchema7Type;
