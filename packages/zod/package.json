@@ -39,7 +39,8 @@
 	},
 	"packageManager": "pnpm@10.6.5",
 	"dependencies": {
-		"@utilize/json-schema-core": "workspace:*"
+		"@utilize/json-schema-core": "workspace:*",
+		"zod": "3.26.0-canary.20250609T052512"
 	},
 	"devDependencies": {
 		"@total-typescript/tsconfig": "1.0.4",
