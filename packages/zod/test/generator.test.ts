@@ -1,22 +1,16 @@
+import { ASTKind, ASTNode } from '@utilize/json-schema-core';
 import { expect, test } from 'vitest';
-
-import { ASTNode } from '@utilize/json-schema-core';
-
-import { generate } from '../src';
 
 import { ts } from './test-utils';
 
-test('generate', () => {
-	const node: ASTNode = {};
-	expect(generate(node)).toBeNull();
-});
+import { generate } from '../src';
 
 // Skipped tests with example input/output for incremental implementation
 
 test.skip('generates Zod string schema with constraints', () => {
 	const node: ASTNode = {
-		kind: 'string',
-		runtime: { minLength: 3, maxLength: 10, pattern: '^[a-z]+$' },
+		kind: ASTKind.STRING,
+		params: { minLength: 3, maxLength: 10, pattern: '^[a-z]+$' },
 		description: 'lowercase string',
 	};
 	expect(generate(node)).toBe(
