@@ -85,9 +85,6 @@ importers:
       eslint:
         specifier: ^9.28.0
         version: 9.28.0(jiti@2.4.2)
-      json-schema-to-typescript-lite:
-        specifier: workspace:*
-        version: 'link:'
       lodash-es:
         specifier: ^4.17.21
         version: 4.17.21
@@ -189,7 +186,7 @@ importers:
       '@types/node':
         specifier: ^22.15.30
         version: 22.15.30
-      json-schema-to-typescript-lite:
+      '@utilize/json-schema-to-typescript-lite':
         specifier: workspace:*
         version: link:../packages/temp
       typescript:

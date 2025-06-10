@@ -1,5 +1,5 @@
 {
-  "name": "json-schema-to-typescript-lite",
+  "name": "@utilize/json-schema-to-typescript-lite",
   "type": "module",
   "version": "14.1.0",
   "description": "Lite version of json-schema-to-typescript",
@@ -60,7 +60,6 @@
     "@types/node": "^22.15.30",
     "bumpp": "^10.1.1",
     "eslint": "^9.28.0",
-    "json-schema-to-typescript-lite": "workspace:*",
     "lodash-es": "^4.17.21",
     "prettier": "3.5.3",
     "typescript": "^5.8.3",

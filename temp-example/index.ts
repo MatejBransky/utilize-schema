@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync } from "node:fs";
-import { compile } from "../packages/temp/dist";
+import { compile } from "@utilize/json-schema-to-typescript-lite";
 
 async function generate() {
   writeFileSync(
