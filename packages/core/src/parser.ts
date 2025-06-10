@@ -363,7 +363,7 @@ function createObject({
 	};
 }
 
-interface ParsePropertiesParams extends ParseParams {}
+type ParsePropertiesParams = ParseParams;
 
 function parseProperties({
 	schema,
