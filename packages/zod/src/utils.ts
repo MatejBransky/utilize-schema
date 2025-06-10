@@ -1,7 +1,7 @@
 import {
 	ASTKind,
-	ASTNode,
-	ASTNodeWithStandaloneName,
+	type ASTNode,
+	type ASTNodeWithStandaloneName,
 } from '@utilize/json-schema-core';
 
 export function collectSchemasInDependencyOrder(
@@ -42,21 +42,26 @@ export function traverseChildren(
 			for (const superType of ast.superTypes) {
 				visit(superType);
 			}
-			for (const { ast: paramAst } of ast.params) {
-				visit(paramAst);
+			for (const { ast: property } of ast.properties) {
+				visit(property);
 			}
 			break;
 		case ASTKind.ARRAY:
-			visit(ast.params);
+			visit(ast.items);
 			break;
 		case ASTKind.UNION:
 		case ASTKind.INTERSECTION:
-		case ASTKind.TUPLE:
-			for (const param of ast.params) visit(param);
-			if ('spreadParam' in ast && ast.spreadParam) visit(ast.spreadParam);
+			for (const node of ast.nodes) {
+				visit(node);
+			}
 			break;
-		case ASTKind.ENUM:
-			for (const { ast: literal } of ast.params) visit(literal);
+		case ASTKind.TUPLE:
+			for (const node of ast.items) {
+				visit(node);
+			}
+			if ('spreadParam' in ast && ast.spreadParam) {
+				visit(ast.spreadParam);
+			}
 			break;
 	}
 }

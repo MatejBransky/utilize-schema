@@ -1,4 +1,4 @@
-import { JSONSchema } from '@utilize/json-schema-core';
+import type { JSONSchema } from '@utilize/json-schema-core';
 import { describe, expect, test } from 'vitest';
 
 import { compile, ts } from '../test-utils';

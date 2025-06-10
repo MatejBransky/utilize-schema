@@ -1,7 +1,7 @@
 import {
 	ASTKind,
-	ASTNode,
-	ASTNodeWithStandaloneName,
+	type ASTNode,
+	type ASTNodeWithStandaloneName,
 	toSafeString,
 } from '@utilize/json-schema-core';
 import { logger } from '@utilize/json-schema-core/src/logger';
@@ -44,7 +44,7 @@ function generateNamedSchema(ast: ASTNodeWithStandaloneName) {
   `;
 }
 
-function generateZodSchema(ast: ASTNode) {
+function generateZodSchema(ast: ASTNode): string {
 	const astKind = ast.kind;
 
 	log.debug(
@@ -69,13 +69,13 @@ function generateZodSchema(ast: ASTNode) {
 			return ts`z.null()`;
 
 		case ASTKind.LITERAL:
-			return ts`z.literal(${JSON.stringify(ast.params)})`;
+			return ts`z.literal(${JSON.stringify(ast.value)})`;
 
 		case ASTKind.ARRAY:
-			return ts`z.array(${generateZodSchema(ast.params)})`;
+			return ts`z.array(${generateZodSchema(ast.items)})`;
 
 		case ASTKind.TUPLE: {
-			const items = ast.params.map(generateZodSchema);
+			const items = ast.items.map(generateZodSchema);
 			const spread = ast.spreadParam ? generateZodSchema(ast.spreadParam) : '';
 			return spread
 				? ts`z.tuple([${items.join(', ')}]).rest(${spread})`
@@ -83,22 +83,21 @@ function generateZodSchema(ast: ASTNode) {
 		}
 
 		case ASTKind.UNION:
-			return ts`z.union([${ast.params.map(generateZodSchema).join(', ')}])`;
+			return ts`z.union([${ast.nodes.map(generateZodSchema).join(', ')}])`;
 
 		case ASTKind.INTERSECTION:
-			return ast.params
+			return ast.nodes
 				.map(generateZodSchema)
 				.reduce((a, b) => `${a}.and(${b})`);
 
 		case ASTKind.ENUM: {
-			const literalNodes = ast.params;
-			return ts`z.enum([${literalNodes.map((literalNode) => JSON.stringify(literalNode.ast.params)).join(', ')}])`;
+			return ts`z.enum([${ast.values.map((value) => `"${value}"`).join(', ')}])`;
 		}
 
 		case ASTKind.OBJECT: {
-			const entries = ast.params.map(
-				({ keyName, ast: paramAst, isRequired }) =>
-					`${JSON.stringify(keyName)}: ${generateZodSchema(paramAst)}${isRequired ? '' : '.optional()'}`
+			const entries = ast.properties.map(
+				({ keyName, ast: propertyAst, isRequired }) =>
+					`${JSON.stringify(keyName)}: ${generateZodSchema(propertyAst)}${isRequired ? '' : '.optional()'}`
 			);
 			return ts`
         z.object({
@@ -112,7 +111,10 @@ function generateZodSchema(ast: ASTNode) {
 
 		case ASTKind.UNKNOWN:
 			return ts`z.unknown()`;
+
+		default:
+			throw new Error('Unsupported AST kind: ' + astKind);
 	}
 
-	astKind satisfies never;
+	// astKind satisfies never;
 }

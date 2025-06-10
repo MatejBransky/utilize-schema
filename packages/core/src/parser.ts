@@ -7,13 +7,12 @@ import {
 	type ASTMeta,
 	type ASTNode,
 	type ObjectNode,
-	type ObjectParam,
+	type ObjectProperty,
 } from './types/AST';
 import {
 	getRootSchema,
 	Parent,
 	SchemaType,
-	type JSONSchemaType,
 	type LinkedJSONSchema,
 	type NormalizedJSONSchema,
 } from './types/JSONSchema';
@@ -88,7 +87,12 @@ export function parse({
 		type: 'ALL_OF',
 	});
 
-	ast.params = types.map((type) => {
+	assert(
+		ast.kind === ASTKind.INTERSECTION,
+		'AST should be an intersection type'
+	);
+
+	ast.nodes = types.map((type) => {
 		// We hoist description (for comment) and id/title (for standaloneName)
 		// to the parent intersection type, so we remove it from the children.
 		return parseAsTypeWithCache({
@@ -179,18 +183,18 @@ function parseNonLiteral({
 				meta,
 				keyName,
 				standaloneName,
-				params:
+				nodes:
 					schema.allOf?.map((subschema) =>
 						parse({ ...otherParams, schema: subschema, keyName: undefined })
 					) ?? [],
 			};
 
 		case SchemaType.ANY_OF: {
-			const params = schema.anyOf?.map((subschema) =>
+			const nodes = schema.anyOf?.map((subschema) =>
 				parse({ ...otherParams, schema: subschema, keyName: undefined })
 			);
 
-			assert(params, 'Schema should have anyOf params');
+			assert(nodes, 'Schema should have anyOf nodes');
 
 			return {
 				kind: ASTKind.UNION,
@@ -198,7 +202,24 @@ function parseNonLiteral({
 				meta,
 				keyName,
 				standaloneName,
-				params,
+				nodes,
+			};
+		}
+
+		case SchemaType.ONE_OF: {
+			const nodes = schema.oneOf?.map((subschema) =>
+				parse({ ...otherParams, schema: subschema, keyName: undefined })
+			);
+
+			assert(nodes, 'Schema should have oneOf nodes');
+
+			return {
+				kind: ASTKind.UNION,
+				default: schema.default,
+				meta,
+				keyName,
+				standaloneName,
+				nodes,
 			};
 		}
 
@@ -211,34 +232,33 @@ function parseNonLiteral({
 				standaloneName,
 			};
 
+		case SchemaType.UNNAMED_ENUM:
 		case SchemaType.NAMED_ENUM: {
+			assert(schema.enum, 'Named enum should have enum values');
+
+			const values = Object.values(schema.enum).filter(
+				(value) =>
+					typeof value === 'string' ||
+					typeof value === 'number' ||
+					typeof value === 'boolean' ||
+					value === null
+			);
+
+			if (values.length !== Object.keys(schema.enum).length) {
+				throw new Error('Only primitive values are supported in enums');
+			}
+
 			return {
 				kind: ASTKind.ENUM,
 				default: schema.default,
 				meta,
 				keyName,
 				standaloneName,
-				params: Object.entries(schema.enum ?? {}).map(([key, value]) => ({
-					keyName: key,
-					ast: parseLiteral({ schema: value, keyName: undefined }),
-				})),
+				values,
 			};
 		}
 
-		case SchemaType.UNNAMED_ENUM: {
-			return {
-				kind: ASTKind.ENUM,
-				default: schema.default,
-				meta,
-				keyName,
-				standaloneName,
-				params: Object.entries(schema.enum ?? {}).map(([key, value]) => ({
-					keyName: key,
-					ast: parseLiteral({ schema: value, keyName: undefined }),
-				})),
-			};
-		}
-
+		case SchemaType.OBJECT:
 		case SchemaType.NAMED_SCHEMA: {
 			return createObject({
 				...otherParams,
@@ -268,12 +288,10 @@ function parseNonLiteral({
 				meta,
 				keyName,
 				standaloneName,
-				params: {
-					minLength: schema.minLength,
-					maxLength: schema.maxLength,
-					pattern: schema.pattern,
-					format: schema.format,
-				},
+				minLength: schema.minLength,
+				maxLength: schema.maxLength,
+				pattern: schema.pattern,
+				format: schema.format,
 			};
 		}
 
@@ -291,13 +309,43 @@ function parseNonLiteral({
 				meta,
 				keyName,
 				standaloneName,
-				params: {
-					minimum: schema.minimum,
-					maximum: schema.maximum,
-					exclusiveMinimum: schema.exclusiveMinimum,
-					exclusiveMaximum: schema.exclusiveMaximum,
-					multipleOf: schema.multipleOf,
-				},
+				minimum: schema.minimum,
+				maximum: schema.maximum,
+				exclusiveMinimum: schema.exclusiveMinimum,
+				exclusiveMaximum: schema.exclusiveMaximum,
+				multipleOf: schema.multipleOf,
+			};
+		}
+
+		case SchemaType.UNTYPED_ARRAY:
+		case SchemaType.TYPED_ARRAY: {
+			// TODO: handle typed arrays
+			throw new Error('Un/typed arrays are not supported yet.');
+		}
+
+		case SchemaType.REFERENCE: {
+			// TODO: handle references
+			throw new Error('References are not supported yet.');
+		}
+
+		case SchemaType.UNION: {
+			assert(
+				Array.isArray(schema.type),
+				'Union schema should have type as an array'
+			);
+			return {
+				kind: ASTKind.UNION,
+				default: schema.default,
+				meta,
+				keyName,
+				standaloneName,
+				nodes: schema.type.map((subtype) => {
+					return parse({
+						...otherParams,
+						schema: { ...schema, type: subtype },
+						keyName: undefined,
+					});
+				}),
 			};
 		}
 
@@ -310,25 +358,16 @@ function parseNonLiteral({
 			};
 		}
 
-		// TODO: remove once we handle all schema types
-		default:
-			throw new Error('Unsupported schema type: ' + schemaType);
+		case SchemaType.ANY:
+			return {
+				kind: ASTKind.ANY,
+				meta,
+				keyName,
+				standaloneName,
+			};
 	}
 
-	// schemaType satisfies never;
-}
-
-interface ParseLiteralParams {
-	schema: JSONSchemaType;
-	keyName?: string;
-}
-
-function parseLiteral({ schema, keyName }: ParseLiteralParams): ASTNode {
-	return {
-		kind: ASTKind.LITERAL,
-		keyName,
-		params: schema,
-	};
+	schemaType satisfies never;
 }
 
 interface CreateObjectParams extends ParseParams {
@@ -358,7 +397,7 @@ function createObject({
 		meta,
 		keyName,
 		standaloneName,
-		params: parseProperties({ ...otherParams, schema }),
+		properties: parseProperties({ ...otherParams, schema }),
 		superTypes: [],
 	};
 }
@@ -368,14 +407,13 @@ type ParsePropertiesParams = ParseParams;
 function parseProperties({
 	schema,
 	...otherParams
-}: ParsePropertiesParams): ObjectParam[] {
-	let asts: ObjectParam[] = Object.entries(schema.properties ?? {}).map(
+}: ParsePropertiesParams): ObjectProperty[] {
+	let asts: ObjectProperty[] = Object.entries(schema.properties ?? {}).map(
 		([key, subschema]) => {
 			return {
 				ast: parse({ ...otherParams, schema: subschema, keyName: key }),
 				isPatternProperty: false,
 				isRequired: schema.required?.includes(key) ?? false,
-				isUnreachableDefinition: false,
 				keyName: key,
 			};
 		}
@@ -407,22 +445,6 @@ function parseProperties({
 		);
 	}
 
-	// TODO: decide about generating TS code for unused definitions.
-	// if (options.unreachableDefinitions) {
-	//   asts = asts.concat(
-	//     map(schema.$defs, (value, key: string) => {
-	//       const ast = parse(value, options, key, processed, usedNames);
-	//       return {
-	//         ast,
-	//         isPatternProperty: false,
-	//         isRequired: includes(schema.required || [], key),
-	//         isUnreachableDefinition: true,
-	//         keyName: key,
-	//       };
-	//     }),
-	//   );
-	// }
-
 	switch (schema.additionalProperties) {
 		case true:
 			if (singlePatternProperty) {
@@ -433,28 +455,11 @@ function parseProperties({
 				ast: UNKNOWN_ADDITIONAL_PROPERTIES,
 				isPatternProperty: false,
 				isRequired: true,
-				isUnreachableDefinition: false,
 				keyName: '[k: string]',
 			});
 
 		default:
 			return asts;
-
-		// TODO: verify validity for zod generator
-		// pass "true" as the last param because in TS, properties
-		// defined via index signatures are already optional
-		// default:
-		// 	return asts.concat({
-		// 		ast: parse({
-		// 			...otherParams,
-		// 			schema: schema.additionalProperties,
-		// 			keyName: '[k: string]',
-		// 		}),
-		// 		isPatternProperty: false,
-		// 		isRequired: true,
-		// 		isUnreachableDefinition: false,
-		// 		keyName: '[k: string]',
-		// 	});
 	}
 }
 

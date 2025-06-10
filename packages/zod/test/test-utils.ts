@@ -1,7 +1,7 @@
 import {
 	dereference,
-	DereferenceOptions,
-	JSONSchema,
+	type DereferenceOptions,
+	type JSONSchema,
 	link,
 	normalize,
 	parse,

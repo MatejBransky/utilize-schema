@@ -26,7 +26,11 @@
         "utils_test_ts",
         "test_utils_ts",
         "generator_ts",
-        "parser_ts"
+        "generator_test_ts",
+        "parser_ts",
+        "zod_test_ts",
+        "test_utils_ts_zod",
+        "simple_test_ts"
       ]
     },
     {
@@ -223,6 +227,21 @@
       "type": "file",
       "path": "packages/temp/README.md",
       "description": "Legacy README for json-schema-to-typescript-lite."
+    },
+    "simple_test_ts": {
+      "type": "file",
+      "path": "packages/zod/test/e2e/simple.test.ts",
+      "description": "End-to-end tests for simple JSON Schema to Zod conversions."
+    },
+    "test_utils_ts_zod": {
+      "type": "file",
+      "path": "packages/zod/test/test-utils.ts",
+      "description": "Test utilities for the Zod package."
+    },
+    "zod_test_ts": {
+      "type": "file",
+      "path": "packages/zod/test/e2e/zod.test.ts",
+      "description": "Tests for Zod to JSON Schema conversion."
     }
   }
 }
