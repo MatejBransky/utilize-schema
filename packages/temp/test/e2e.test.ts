@@ -1,16 +1,18 @@
-/* eslint-disable ts/no-require-imports */
+/* eslint-disable @typescript-eslint/no-require-imports */
+import type { FileInfo } from '@apidevtools/json-schema-ref-parser';
+import find from 'lodash-es/find';
+import merge from 'lodash-es/merge';
+import { expect, it } from 'vitest';
 
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { FileInfo } from '@apidevtools/json-schema-ref-parser';
-import { expect, it } from 'vitest';
-import find from 'lodash-es/find';
-import merge from 'lodash-es/merge';
+
+import { getWithCache } from './http';
+
 import type { JSONSchema, Options } from '../src';
 import { compile } from '../src';
 import { stripExtension } from '../src/utils';
-import { getWithCache } from './http';
 
 const dir = fileURLToPath(new URL('e2e', import.meta.url));
 

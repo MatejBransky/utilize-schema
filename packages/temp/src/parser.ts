@@ -1,5 +1,11 @@
 import type { JSONSchema4Type, JSONSchema4TypeName } from 'json-schema';
-import type { Options } from './';
+import findKey from 'lodash-es/findKey';
+import includes from 'lodash-es/includes';
+import isPlainObject from 'lodash-es/isPlainObject';
+import map from 'lodash-es/map';
+import memoize from 'lodash-es/memoize';
+import omit from 'lodash-es/omit';
+
 import type {
 	AST,
 	TInterface,
@@ -8,27 +14,23 @@ import type {
 	TNamedInterface,
 	TTuple,
 } from './types/AST';
-import type {
-	JSONSchemaWithDefinitions,
-	JSONSchema as LinkedJSONSchema,
-	SchemaSchema,
-	SchemaType,
-} from './types/JSONSchema';
-import findKey from 'lodash-es/findKey';
-import includes from 'lodash-es/includes';
-import isPlainObject from 'lodash-es/isPlainObject';
-import map from 'lodash-es/map';
-import memoize from 'lodash-es/memoize';
-import omit from 'lodash-es/omit';
 import {
 	T_ANY,
 	T_ANY_ADDITIONAL_PROPERTIES,
 	T_UNKNOWN,
 	T_UNKNOWN_ADDITIONAL_PROPERTIES,
 } from './types/AST';
+import type {
+	JSONSchemaWithDefinitions,
+	JSONSchema as LinkedJSONSchema,
+	SchemaSchema,
+	SchemaType,
+} from './types/JSONSchema';
 import { getRootSchema, isBoolean, isPrimitive } from './types/JSONSchema';
 import { typesOfSchema } from './typesOfSchema';
 import { generateName, maybeStripDefault, maybeStripNameHints } from './utils';
+
+import type { Options } from './';
 
 export type Processed = Map<LinkedJSONSchema, Map<SchemaType, AST>>;
 

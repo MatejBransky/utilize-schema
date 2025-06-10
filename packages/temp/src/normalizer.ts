@@ -1,4 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
+
+import type { DereferencedPaths } from './resolver';
 import type {
 	JSONSchemaTypeName,
 	LinkedJSONSchema,
@@ -13,7 +15,7 @@ import {
 	normalizeIdentifier,
 	traverse,
 } from './utils';
-import type { DereferencedPaths } from './resolver';
+
 import type { Options } from './';
 
 type Rule = (

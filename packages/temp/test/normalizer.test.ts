@@ -1,7 +1,9 @@
+import { expect, it } from 'vitest';
+
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { expect, it } from 'vitest';
+
 import type { JSONSchema, Options } from '../src';
 import { DEFAULT_OPTIONS } from '../src';
 import { link } from '../src/linker';

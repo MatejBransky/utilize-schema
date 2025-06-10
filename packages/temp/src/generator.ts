@@ -1,5 +1,6 @@
 import memoize from 'lodash-es/memoize';
 import omit from 'lodash-es/omit';
+
 import type {
 	AST,
 	ASTWithStandaloneName,
@@ -12,6 +13,7 @@ import type {
 } from './types/AST';
 import { T_ANY, T_UNKNOWN, hasComment, hasStandaloneName } from './types/AST';
 import { toSafeIdentifier } from './utils';
+
 import { DEFAULT_OPTIONS } from './index';
 import type { Options } from './index';
 

@@ -1,8 +1,10 @@
-import { basename, dirname, extname, normalize, posix, sep } from 'node:path';
 import deburr from 'lodash-es/deburr';
 import isPlainObject from 'lodash-es/isPlainObject';
 import trim from 'lodash-es/trim';
 import upperFirst from 'lodash-es/upperFirst';
+
+import { basename, dirname, extname, normalize, posix, sep } from 'node:path';
+
 import type { JSONSchema, LinkedJSONSchema } from './types/JSONSchema';
 import { Parent } from './types/JSONSchema';
 

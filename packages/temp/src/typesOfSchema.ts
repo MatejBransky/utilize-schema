@@ -1,4 +1,5 @@
 import isPlainObject from 'lodash-es/isPlainObject';
+
 import type { JSONSchema, SchemaType } from './types/JSONSchema';
 import { isCompound } from './types/JSONSchema';
 

@@ -38,7 +38,7 @@
 	],
 	"scripts": {
 		"build": "unbuild",
-		"format": "prettier . --write",
+		"format": "prettier . --write && eslint --fix .",
 		"check:format": "prettier . --check",
 		"check:lint": "eslint .",
 		"check:types": "tsc --noEmit",
