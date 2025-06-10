@@ -19,7 +19,7 @@
     "preinstall": "npx only-allow pnpm",
     "build": "pnpm run --recursive --parallel --aggregate-output --reporter-hide-prefix --if-present build",
     "build:dev": "pnpm run --recursive --parallel --aggregate-output --reporter-hide-prefix --if-present build:dev",
-    "check:format": "pnpm run --recursive --parallel --aggregate-output --reporter-hide-prefix --if-present check:format",
+    "check:format": "pnpm run --recursive --parallel --aggregate-output --if-present check:format",
     "check:lint": "pnpm run --recursive --parallel --aggregate-output --reporter-hide-prefix --if-present check:lint",
     "check:types": "pnpm run --recursive --parallel --aggregate-output --reporter-hide-prefix --if-present check:types",
     "format": "pnpm run --recursive --parallel --aggregate-output --if-present format",
