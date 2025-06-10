@@ -1,5 +1,5 @@
 {
-  "name": "json-schema-to-typescript-example",
+  "name": "temp-example",
   "version": "1.0.0",
   "description": "",
   "author": "Boris Cherny <boris@performancejs.com> (http://performancejs.com/)",
@@ -15,7 +15,7 @@
   "main": "index.js",
   "typings": "index.d.ts",
   "scripts": {
-    "build": "npm run clean && tsc && node index.js",
+    "run": "npm run clean && tsc && node index.js",
     "clean": "rm -f index.js index.d.ts person.d.ts"
   },
   "dependencies": {
