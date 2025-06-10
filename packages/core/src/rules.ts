@@ -97,6 +97,11 @@ rules.set('Add empty `required` property if none is defined', ({ schema }) => {
 rules.set(
 	'Add an $id to anything that needs it',
 	({ schema, fileName, dereferencedPaths }) => {
+		if ('const' in schema && !schema[Parent]) {
+			schema.$id = toSafeString(justName(fileName));
+			return;
+		}
+
 		if (!isSchemaLike(schema)) {
 			return;
 		}

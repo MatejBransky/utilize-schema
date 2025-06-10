@@ -70,16 +70,33 @@ describe('Simple schemas', () => {
 					name: { type: 'string' },
 					age: { type: 'number' },
 				},
-				required: ['name', 'age'],
+				required: ['name'],
 			},
 			expected: ts`
         import { z } from 'zod';
 
         export const SimpleObjectSchema = z.object({
           name: z.string(),
-          age: z.number(),
+          age: z.number().optional(),
         });
         export type SimpleObjectSchema = z.infer<typeof SimpleObjectSchema>;
+      `,
+		},
+		{
+			name: 'ObjectWithAdditionalProperties',
+			schema: {
+				type: 'object',
+				properties: { foo: { type: 'string' } },
+				additionalProperties: { type: 'number' },
+				required: ['foo'],
+			},
+			expected: ts`
+        import { z } from 'zod';
+
+        export const ObjectWithAdditionalProperties = z.object({
+          foo: z.string(),
+        }).catchall(z.number());
+        export type ObjectWithAdditionalProperties = z.infer<typeof ObjectWithAdditionalProperties>;
       `,
 		},
 		{
@@ -108,6 +125,59 @@ describe('Simple schemas', () => {
           status: z.enum(['active', 'inactive']),
         });
         export type NestedEnumSchema = z.infer<typeof NestedEnumSchema>;
+      `,
+		},
+		{
+			state: 'todo',
+			name: 'ArrayOfStrings',
+			schema: {
+				type: 'array',
+				items: { type: 'string' },
+				minItems: 1,
+				maxItems: 3,
+			},
+			expected: ts`
+        import { z } from 'zod';
+
+        export const ArrayOfStrings = z.array(z.string()).min(1).max(3);
+        export type ArrayOfStrings = z.infer<typeof ArrayOfStrings>;
+      `,
+		},
+		{
+			state: 'todo',
+			name: 'TupleOfStringAndNumber',
+			schema: {
+				type: 'array',
+				items: [{ type: 'string' }, { type: 'number' }],
+				minItems: 2,
+				maxItems: 2,
+			},
+			expected: ts`
+        import { z } from 'zod';
+
+        export const TupleOfStringAndNumber = z.tuple([z.string(), z.number()]);
+        export type TupleOfStringAndNumber = z.infer<typeof TupleOfStringAndNumber>;
+      `,
+		},
+		{
+			name: 'EnumOfNumbersAndBooleans',
+			schema: { enum: [1, 2, true, false] },
+			expected: ts`
+        import { z } from 'zod';
+
+        export const EnumOfNumbersAndBooleans = z.enum([1, 2, true, false]);
+        export type EnumOfNumbersAndBooleans = z.infer<typeof EnumOfNumbersAndBooleans>;
+      `,
+		},
+		{
+			state: 'only',
+			name: 'LiteralNull',
+			schema: { const: null },
+			expected: ts`
+        import { z } from 'zod';
+
+        export const LiteralNull = z.literal(null);
+        export type LiteralNull = z.infer<typeof LiteralNull>;
       `,
 		},
 	];

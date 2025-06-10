@@ -22,6 +22,7 @@ export const ASTKind = {
 	NULL: 'NULL',
 	ANY: 'ANY',
 	UNKNOWN: 'UNKNOWN',
+	NEVER: 'NEVER',
 } as const;
 export type ASTKind = (typeof ASTKind)[keyof typeof ASTKind];
 
@@ -39,7 +40,8 @@ export type ASTNode =
 	| LiteralNode
 	| NullNode
 	| AnyNode
-	| UnknownNode;
+	| UnknownNode
+	| NeverNode;
 
 export type ASTNodeWithKeyName = ASTNode & { keyName: string };
 export type ASTNodeWithStandaloneName = ASTNode & { standaloneName: string };
@@ -147,6 +149,10 @@ export interface UnknownNode extends BaseASTNode {
 	kind: 'UNKNOWN';
 }
 
+export interface NeverNode extends BaseASTNode {
+	kind: 'NEVER';
+}
+
 export const ANY_NODE: AnyNode = {
 	kind: 'ANY',
 };
@@ -165,3 +171,5 @@ export const UNKNOWN_ADDITIONAL_PROPERTIES: UnknownNode & ASTNodeWithKeyName = {
 	kind: 'UNKNOWN',
 	keyName: '[k: string]',
 };
+
+export const ADDITIONAL_PROPERTY_KEY_NAME = '[k: string]';

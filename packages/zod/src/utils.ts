@@ -10,7 +10,9 @@ export function collectSchemasInDependencyOrder(
 	order: ASTNodeWithStandaloneName[] = [],
 	stack = new Set<ASTNode>()
 ): ASTNodeWithStandaloneName[] {
-	if (stack.has(root)) return order;
+	if (stack.has(root)) {
+		return order;
+	}
 	stack.add(root);
 
 	const visit = (child: ASTNode) => {

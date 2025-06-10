@@ -20,12 +20,21 @@ import {
  * isPlainObject(class MyClass {}); // false
  */
 export function isPlainObject(value: unknown) {
-	if (typeof value !== 'object' || value === null) return false;
+	if (typeof value === 'object' && value && 'const' in value) {
+		return false;
+	}
+	if (typeof value !== 'object' || value === null) {
+		return false;
+	}
 
-	if (Object.prototype.toString.call(value) !== '[object Object]') return false;
+	if (Object.prototype.toString.call(value) !== '[object Object]') {
+		return false;
+	}
 
 	const proto = Object.getPrototypeOf(value);
-	if (proto === null) return true;
+	if (proto === null) {
+		return true;
+	}
 
 	const Ctor =
 		Object.prototype.hasOwnProperty.call(proto, 'constructor') &&

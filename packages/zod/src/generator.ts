@@ -1,4 +1,5 @@
 import {
+	ADDITIONAL_PROPERTY_KEY_NAME,
 	ASTKind,
 	type ASTNode,
 	type ASTNodeWithStandaloneName,
@@ -91,18 +92,28 @@ function generateZodSchema(ast: ASTNode): string {
 				.reduce((a, b) => `${a}.and(${b})`);
 
 		case ASTKind.ENUM: {
-			return ts`z.enum([${ast.values.map((value) => `"${value}"`).join(', ')}])`;
+			return ts`z.enum([${ast.values.map((value) => (typeof value === 'string' ? `"${value}"` : value)).join(', ')}])`;
 		}
 
 		case ASTKind.OBJECT: {
-			const entries = ast.properties.map(
-				({ keyName, ast: propertyAst, isRequired }) =>
-					`${JSON.stringify(keyName)}: ${generateZodSchema(propertyAst)}${isRequired ? '' : '.optional()'}`
+			const entries = ast.properties
+				.filter(({ keyName }) => keyName !== ADDITIONAL_PROPERTY_KEY_NAME)
+				.map(
+					({ keyName, ast: propertyAst, isRequired }) =>
+						`${JSON.stringify(keyName)}: ${generateZodSchema(propertyAst)}${isRequired ? '' : '.optional()'}`
+				);
+
+			const catchallProp = ast.properties.find(
+				(p) => p.keyName === ADDITIONAL_PROPERTY_KEY_NAME
 			);
+			const catchall = catchallProp
+				? `.catchall(${generateZodSchema(catchallProp.ast)})`
+				: '';
+
 			return ts`
         z.object({
           ${entries.join(`,${NEWLINE}`)}
-        })
+        })${catchall}
       `;
 		}
 

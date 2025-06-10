@@ -5,6 +5,8 @@ import type {
 } from 'json-schema';
 import moize from 'moize';
 
+import { isPlainObject } from '../utils';
+
 export const SchemaType = {
 	ALL_OF: 'ALL_OF',
 	UNNAMED_SCHEMA: 'UNNAMED_SCHEMA',
@@ -25,6 +27,7 @@ export const SchemaType = {
 	UNION: 'UNION',
 	UNNAMED_ENUM: 'UNNAMED_ENUM',
 	UNTYPED_ARRAY: 'UNTYPED_ARRAY',
+	CONST: 'CONST',
 } as const;
 export type SchemaType = (typeof SchemaType)[keyof typeof SchemaType];
 
@@ -121,3 +124,15 @@ export const getRootSchema = moize(
 		return getRootSchema(parent);
 	}
 ) as (schema: LinkedJSONSchema) => LinkedJSONSchema;
+
+export function isBoolean(
+	schema: LinkedJSONSchema | JSONSchemaType
+): schema is boolean {
+	return schema === true || schema === false;
+}
+
+export function isPrimitive(
+	schema: LinkedJSONSchema | JSONSchemaType
+): schema is JSONSchemaType {
+	return !isPlainObject(schema);
+}

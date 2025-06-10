@@ -2,15 +2,19 @@ import moize from 'moize';
 
 import { logger } from './logger';
 import {
+	ADDITIONAL_PROPERTY_KEY_NAME,
 	ASTKind,
 	UNKNOWN_ADDITIONAL_PROPERTIES,
 	type ASTMeta,
 	type ASTNode,
+	type LiteralNode,
 	type ObjectNode,
 	type ObjectProperty,
 } from './types/AST';
 import {
 	getRootSchema,
+	isBoolean,
+	isPrimitive,
 	Parent,
 	SchemaType,
 	type LinkedJSONSchema,
@@ -49,9 +53,25 @@ export function parse({
 	usedNames = new Set(),
 }: ParseParams): ASTNode {
 	const otherParams = { keyName, options, processed, usedNames };
-	// TODO: handle primitive schemas (boolean, number, string)
+	if (isPrimitive(schema)) {
+		if (isBoolean(schema)) return parseBooleanSchema({ schema, keyName });
+
+		const definitions = getDefinitionsMemoized({
+			schema: getRootSchema(schema),
+		});
+		const keyNameFromDefinition = findKey(definitions, (_) => _ === schema);
+
+		return parseLiteral({
+			...otherParams,
+			schema,
+			keyName,
+			keyNameFromDefinition,
+		});
+	}
 
 	const types = typesOfSchema(schema);
+
+	log.debug('Schema types:', types, schema);
 
 	if (types.length === 1) {
 		const ast = parseAsTypeWithCache({
@@ -365,9 +385,94 @@ function parseNonLiteral({
 				keyName,
 				standaloneName,
 			};
+
+		case SchemaType.CONST: {
+			assert(schema.const, 'Const schema should have a const value');
+			return {
+				kind: ASTKind.LITERAL,
+				default: schema.default,
+				meta,
+				keyName,
+				standaloneName,
+				value: schema.const,
+			};
+		}
 	}
 
 	schemaType satisfies never;
+}
+
+function parseBooleanSchema({ schema, keyName }: ParseParams): ASTNode {
+	if (schema) {
+		return {
+			kind: ASTKind.UNKNOWN,
+			keyName,
+		};
+	}
+
+	return {
+		keyName,
+		kind: ASTKind.NEVER,
+	};
+}
+
+interface ParseLiteralParams extends ParseParams {
+	usedNames: UsedNames;
+	keyNameFromDefinition: string | undefined;
+}
+
+function parseLiteral({
+	schema,
+	keyName,
+	...otherParams
+}: ParseLiteralParams): LiteralNode {
+	const commonProps = {
+		kind: ASTKind.LITERAL,
+		meta: {
+			provenance: schema.$ref,
+			title: schema.title,
+			description: schema.description,
+		},
+		keyName,
+		standaloneName: computeStandaloneName({
+			...otherParams,
+			schema,
+			keyName,
+		}),
+	} satisfies Omit<LiteralNode, 'value'>;
+
+	if ('const' in schema) {
+		assert(
+			schema.const !== undefined,
+			'Literal schema should have a const value'
+		);
+
+		return {
+			...commonProps,
+			value: schema.const,
+		};
+	}
+	assert(
+		schema.type === 'null' || schema.type === 'string',
+		'Literal schema should be of type null or string'
+	);
+
+	const defaultValue = schema.default ?? undefined;
+	assert(
+		schema.type !== 'null' || defaultValue === null,
+		'Default value for null literal should be null'
+	);
+	assert(
+		schema.type !== 'string' || typeof defaultValue === 'string',
+		'Default value for string literal should be a string'
+	);
+	assert(defaultValue !== undefined, 'Schema type should be defined');
+
+	return {
+		...commonProps,
+		default: defaultValue,
+		value: schema.type === 'null' ? null : defaultValue,
+	};
 }
 
 interface CreateObjectParams extends ParseParams {
@@ -458,8 +563,23 @@ function parseProperties({
 				keyName: '[k: string]',
 			});
 
-		default:
+		case undefined:
+		case false:
 			return asts;
+
+		// pass "true" as the last param because in TS, properties
+		// defined via index signatures are already optional
+		default:
+			return asts.concat({
+				ast: parse({
+					...otherParams,
+					schema: schema.additionalProperties,
+					keyName: ADDITIONAL_PROPERTY_KEY_NAME,
+				}),
+				isPatternProperty: false,
+				isRequired: true,
+				keyName: ADDITIONAL_PROPERTY_KEY_NAME,
+			});
 	}
 }
 
