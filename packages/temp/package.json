@@ -65,5 +65,6 @@
     "typescript": "^5.8.3",
     "unbuild": "^3.5.0",
     "vitest": "^3.2.2"
-  }
+  },
+  "prettier": "@utilize/prettier-config"
 }

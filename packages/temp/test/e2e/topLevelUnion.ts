@@ -1,4 +1,4 @@
 export const input = {
-  type: ["number", "string"],
-  additionalProperties: false,
+	type: ['number', 'string'],
+	additionalProperties: false,
 };
