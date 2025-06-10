@@ -1,12 +1,12 @@
 {
-  "id": "http://dummy.com/api/base2",
-  "title": "Base2",
-  "type": "object",
-  "properties": {
-    "age": {
-      "type": "integer"
-    }
-  },
-  "required": ["age"],
-  "additionalProperties": false
+	"id": "http://dummy.com/api/base2",
+	"title": "Base2",
+	"type": "object",
+	"properties": {
+		"age": {
+			"type": "integer"
+		}
+	},
+	"required": ["age"],
+	"additionalProperties": false
 }

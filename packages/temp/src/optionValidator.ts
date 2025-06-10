@@ -1,6 +1,8 @@
-import type { Options } from '.'
+import type { Options } from '.';
 
 export function validateOptions({ maxItems }: Partial<Options>): void {
-  if (maxItems !== undefined && maxItems < -1)
-    throw new RangeError(`Expected options.maxItems to be >= -1, but was given ${maxItems}.`)
+	if (maxItems !== undefined && maxItems < -1)
+		throw new RangeError(
+			`Expected options.maxItems to be >= -1, but was given ${maxItems}.`
+		);
 }

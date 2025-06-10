@@ -1,28 +1,26 @@
 {
-  "name": "Add empty `required` property if none is defined",
-  "in": {
-    "$id": "foo",
-    "type": [
-      "object"
-    ],
-    "properties": {
-      "a": {
-        "type": "integer",
-        "$id": "a"
-      }
-    },
-    "additionalProperties": true
-  },
-  "out": {
-    "$id": "foo",
-    "type": "object",
-    "properties": {
-      "a": {
-        "type": "integer",
-        "$id": "a"
-      }
-    },
-    "additionalProperties": true,
-    "required": []
-  }
+	"name": "Add empty `required` property if none is defined",
+	"in": {
+		"$id": "foo",
+		"type": ["object"],
+		"properties": {
+			"a": {
+				"type": "integer",
+				"$id": "a"
+			}
+		},
+		"additionalProperties": true
+	},
+	"out": {
+		"$id": "foo",
+		"type": "object",
+		"properties": {
+			"a": {
+				"type": "integer",
+				"$id": "a"
+			}
+		},
+		"additionalProperties": true,
+		"required": []
+	}
 }

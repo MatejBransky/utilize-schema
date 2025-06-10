@@ -1,18 +1,15 @@
 {
-  "type": "object",
-  "title": "Shape",
-  "description": "A Shape",
-  "additionalProperties": false,
-  "properties": {
-    "type": {
-      "type": "string"
-    },
-    "id": {
-      "type": "string"
-    }
-  },
-  "required": [
-    "type",
-    "id"
-  ]
+	"type": "object",
+	"title": "Shape",
+	"description": "A Shape",
+	"additionalProperties": false,
+	"properties": {
+		"type": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		}
+	},
+	"required": ["type", "id"]
 }

@@ -1,9 +1,9 @@
-import utilizeConfig from "@utilize/eslint-config/node";
+import utilizeConfig from '@utilize/eslint-config/node';
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
-  ...utilizeConfig,
-  {
-    ignores: ["dist", "test/__fixtures__/**"],
-  },
+	...utilizeConfig,
+	{
+		ignores: ['dist', 'test/__fixtures__/**'],
+	},
 ];
