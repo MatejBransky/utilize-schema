@@ -43,7 +43,7 @@ describe('isPlainObject', () => {
 		{ title: 'regular expression', input: /regex/, expected: false },
 		{ title: 'Date object', input: new Date(), expected: false },
 		{ title: 'some object', input: { a: 1, b: 2 }, expected: true },
-		{ title: 'const', input: { const: 'value' }, expected: false },
+		{ title: 'const', input: { const: 'value' }, expected: true },
 	];
 
 	testCases.forEach(({ title, input, expected }) => {
