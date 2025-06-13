@@ -70,13 +70,33 @@ export class Logger {
 	}
 
 	withNamespace(namespace: string) {
-		return {
+		const accumulatedLogs = new Map<unknown, unknown[]>();
+		const logMethods = {
 			debug: (...args: unknown[]) =>
 				this.log(namespace, LogLevel.DEBUG, ...args),
 			info: (...args: unknown[]) => this.log(namespace, LogLevel.INFO, ...args),
 			warn: (...args: unknown[]) => this.log(namespace, LogLevel.WARN, ...args),
 			error: (...args: unknown[]) =>
 				this.log(namespace, LogLevel.ERROR, ...args),
+		};
+		return {
+			...logMethods,
+			/**
+			 * Accumulates a log message under the given context key.
+			 * Messages are stored until flush() is called.
+			 */
+			accumulate: (key: unknown, ...logs: unknown[]) => {
+				if (!accumulatedLogs.has(key)) {
+					accumulatedLogs.set(key, []);
+				}
+				logs.push('\n');
+				accumulatedLogs.get(key)?.push(...logs);
+			},
+			flush: (key: unknown) => {
+				const output = accumulatedLogs.get(key);
+				accumulatedLogs.delete(key);
+				return output;
+			},
 		};
 	}
 
