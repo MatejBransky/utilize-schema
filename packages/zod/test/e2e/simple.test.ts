@@ -256,6 +256,19 @@ describe('Simple schemas', () => {
         export type MyString = z.infer<typeof MyString>;
       `,
 		},
+		{
+			name: 'WithDefault',
+			schema: {
+				type: 'string',
+				default: 'default value',
+			},
+			expected: ts`
+        import { z } from 'zod';
+
+        export const WithDefault = z.string().default('default value');
+        export type WithDefault = z.infer<typeof WithDefault>;
+      `,
+		},
 	];
 
 	testCases.forEach((testCase) => {

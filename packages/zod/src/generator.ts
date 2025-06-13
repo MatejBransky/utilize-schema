@@ -141,6 +141,10 @@ function generateZodSchema(ast: ASTNode): string {
 			throw new Error('Unsupported AST kind: ' + astKind);
 	}
 
+	if ('default' in ast && ast.default !== undefined) {
+		expression = `${expression}.default(${JSON.stringify(ast.default)})`;
+	}
+
 	if (ast.meta?.title || ast.meta?.description) {
 		const { title, description } = ast.meta;
 		expression = ts`${expression}.meta(${JSON.stringify({ title, description })})`;
