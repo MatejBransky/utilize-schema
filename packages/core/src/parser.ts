@@ -30,6 +30,14 @@ import {
 } from './utils';
 
 const log = logger.withNamespace('parser');
+const BLOCK_START = 'Parsing:';
+const BLOCK_END = '---\n';
+const printLogs = (schema: LinkedJSONSchema) => {
+	const logs = log.flush(schema);
+	if (logs) {
+		log.debug(BLOCK_START, ...logs, BLOCK_END);
+	}
+};
 
 export type ParserOptions = unknown;
 
@@ -53,25 +61,41 @@ export function parse({
 	usedNames = new Set(),
 }: ParseParams): ASTNode {
 	const otherParams = { keyName, options, processed, usedNames };
+
+	log.accumulate(schema, 'schema:', JSON.stringify(schema, null, 2));
+	log.accumulate(schema, { keyName, usedNames });
+
 	if (isPrimitive(schema)) {
-		if (isBoolean(schema)) return parseBooleanSchema({ schema, keyName });
+		if (isBoolean(schema)) {
+			const ast = parseBooleanSchema({ schema, keyName });
+
+			log.accumulate(schema, 'AST (boolean):', ast);
+			printLogs(schema);
+
+			return ast;
+		}
 
 		const definitions = getDefinitionsMemoized({
 			schema: getRootSchema(schema),
 		});
 		const keyNameFromDefinition = findKey(definitions, (_) => _ === schema);
 
-		return parseLiteral({
+		const ast = parseLiteral({
 			...otherParams,
 			schema,
 			keyName,
 			keyNameFromDefinition,
 		});
+
+		log.accumulate(schema, 'AST (literal):', ast);
+		printLogs(schema);
+
+		return ast;
 	}
 
 	const types = typesOfSchema(schema);
 
-	log.debug('Schema types:', types, schema);
+	log.accumulate(schema, 'Schema types:', types);
 
 	if (types.length === 1) {
 		const ast = parseAsTypeWithCache({
@@ -80,16 +104,9 @@ export function parse({
 			schema,
 		});
 
-		log.debug(
-			'Types:',
-			types,
-			'\nInput:',
-			schema,
-			'\nOutput:',
-			ast,
-			'\nOther params:',
-			otherParams
-		);
+		log.accumulate(schema, 'AST (one type):', ast);
+		printLogs(schema);
+
 		return ast;
 	}
 
@@ -122,16 +139,9 @@ export function parse({
 		});
 	});
 
-	log.debug(
-		'Types:',
-		types,
-		'\nInput:',
-		schema,
-		'\nOutput:',
-		ast,
-		'\nOther params:',
-		otherParams
-	);
+	log.accumulate(schema, ['AST (multiple types):', ast]);
+	printLogs(schema);
+
 	return ast;
 }
 
@@ -191,9 +201,6 @@ function parseNonLiteral({
 		title: schema.title,
 		description: schema.description,
 	};
-	log.debug('otherParams:', otherParams);
-	log.debug('standaloneName:', standaloneName);
-	log.debug('keyNameFromDefinition:', keyNameFromDefinition);
 
 	switch (schemaType) {
 		case SchemaType.ALL_OF:
@@ -252,8 +259,7 @@ function parseNonLiteral({
 				standaloneName,
 			};
 
-		case SchemaType.UNNAMED_ENUM:
-		case SchemaType.NAMED_ENUM: {
+		case SchemaType.UNNAMED_ENUM: {
 			assert(schema.enum, 'Named enum should have enum values');
 
 			const values = Object.values(schema.enum).filter(
@@ -387,7 +393,10 @@ function parseNonLiteral({
 			};
 
 		case SchemaType.CONST: {
-			assert(schema.const, 'Const schema should have a const value');
+			assert(
+				schema.const !== undefined,
+				'Const schema should have a const value'
+			);
 			return {
 				kind: ASTKind.LITERAL,
 				default: schema.default,
@@ -622,8 +631,6 @@ function getDefinitions({
 					cur as keyof typeof schema
 				] as LinkedJSONSchema;
 
-				assert(subschema, 'Schema should not have undefined properties');
-
 				return {
 					...prev,
 					...getDefinitions({
@@ -655,16 +662,30 @@ interface StandaloneNameParams extends ParseParams {
 }
 
 /**
- * Compute a schema name using a series of fallbacks
+ * Computes a unique standalone name for a schema node, used for generating named exports.
+ *
+ * Standalone names are assigned only to:
+ *   - Root schemas (where schema[Parent] === null)
+ *   - Schemas that are present in $defs (i.e., have a keyNameFromDefinition)
+ *
+ * Inline subschemas (such as union members, object properties, etc.) do not receive a standalone name,
+ * and will be emitted inline in the generated code.
+ *
+ * The name is determined by the following priority:
+ *   1. schema.title
+ *   2. schema.$id
+ *   3. keyNameFromDefinition (the key under which the schema appears in $defs)
+ *
+ * If a name is found, it is made unique using the usedNames set.
  */
 function computeStandaloneName({
 	schema,
 	keyNameFromDefinition,
 	usedNames,
 }: StandaloneNameParams): string | undefined {
-	// if (options.customName) {
-	// 	return options.customName(schema, keyNameFromDefinition);
-	// }
+	if (schema[Parent] !== null && keyNameFromDefinition === undefined) {
+		return undefined;
+	}
 
 	const name = schema.title || schema.$id || keyNameFromDefinition;
 	if (name) {

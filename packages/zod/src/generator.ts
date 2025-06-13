@@ -81,7 +81,7 @@ function generateZodSchema(ast: ASTNode): string {
 		case ASTKind.INTERSECTION:
 			return ast.nodes
 				.map(generateZodSchema)
-				.reduce((a, b) => `${a}.and(${b})`);
+				.reduce((a, b) => `${a}.extend(${b})`);
 
 		case ASTKind.ENUM: {
 			return ts`z.enum([${ast.values.map((value) => (typeof value === 'string' ? `"${value}"` : value)).join(', ')}])`;

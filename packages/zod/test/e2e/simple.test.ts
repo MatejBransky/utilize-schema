@@ -179,6 +179,45 @@ describe('Simple schemas', () => {
         export type LiteralNull = z.infer<typeof LiteralNull>;
       `,
 		},
+		{
+			name: 'UnionOfStringAndNumber',
+			schema: { type: ['string', 'number'] },
+			expected: ts`
+        import { z } from 'zod';
+
+        export const UnionOfStringAndNumber = z.union([z.string(), z.number()]);
+        export type UnionOfStringAndNumber = z.infer<typeof UnionOfStringAndNumber>;
+      `,
+		},
+		{
+			name: 'IntersectionOfObjects',
+			schema: {
+				allOf: [
+					{
+						type: 'object',
+						properties: { a: { type: 'string' } },
+						required: ['a'],
+					},
+					{
+						type: 'object',
+						properties: { b: { type: 'number' } },
+						required: ['b'],
+					},
+				],
+			},
+			expected: ts`
+        import { z } from 'zod';
+
+        export const IntersectionOfObjects = z.object({ 
+          a: z.string(),
+        }).extend(
+          z.object({ 
+            b: z.number()
+          })
+        );
+        export type IntersectionOfObjects = z.infer<typeof IntersectionOfObjects>;
+      `,
+		},
 	];
 
 	testCases.forEach((testCase) => {
