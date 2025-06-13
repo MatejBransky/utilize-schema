@@ -131,9 +131,4 @@ export class Logger {
 }
 
 export const logger = new Logger();
-logger.setGlobalLevels([
-	LogLevel.DEBUG,
-	LogLevel.INFO,
-	LogLevel.WARN,
-	LogLevel.ERROR,
-]);
+logger.setGlobalLevels([LogLevel.INFO, LogLevel.WARN, LogLevel.ERROR]);
