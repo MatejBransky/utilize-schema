@@ -117,6 +117,8 @@ export interface IntersectionNode extends BaseASTNode {
 export interface ArrayNode extends BaseASTNode {
 	kind: 'ARRAY';
 	items: ASTNode;
+	minItems?: number;
+	maxItems?: number;
 }
 
 export interface UnionNode extends BaseASTNode {

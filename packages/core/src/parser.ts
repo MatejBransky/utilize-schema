@@ -5,6 +5,7 @@ import {
 	ADDITIONAL_PROPERTY_KEY_NAME,
 	ASTKind,
 	UNKNOWN_ADDITIONAL_PROPERTIES,
+	UNKNOWN_NODE,
 	type ASTMeta,
 	type ASTNode,
 	type LiteralNode,
@@ -343,10 +344,60 @@ function parseNonLiteral({
 			};
 		}
 
-		case SchemaType.UNTYPED_ARRAY:
+		case SchemaType.UNTYPED_ARRAY: {
+			// No items specified, treat as array of any
+			return {
+				kind: ASTKind.ARRAY,
+				default: schema.default,
+				meta,
+				keyName,
+				standaloneName,
+				items: UNKNOWN_NODE,
+				minItems: schema.minItems,
+				maxItems: schema.maxItems,
+			};
+		}
+
 		case SchemaType.TYPED_ARRAY: {
-			// TODO: handle typed arrays
-			throw new Error('Un/typed arrays are not supported yet.');
+			if (Array.isArray(schema.items)) {
+				// Tuple
+				return {
+					kind: ASTKind.TUPLE,
+					default: schema.default,
+					meta,
+					keyName,
+					standaloneName,
+					items: schema.items.map((item, idx) =>
+						parse({ ...otherParams, schema: item, keyName: idx.toString() })
+					),
+					minItems: schema.minItems ?? schema.items.length,
+					maxItems: schema.maxItems,
+					spreadParam:
+						schema.additionalItems === true
+							? UNKNOWN_NODE
+							: schema.additionalItems
+								? parse({ ...otherParams, schema: schema.additionalItems })
+								: undefined,
+				};
+			} else {
+				// Homogeneous array
+				return {
+					kind: ASTKind.ARRAY,
+					default: schema.default,
+					meta,
+					keyName,
+					standaloneName,
+					items: schema.items
+						? parse({
+								...otherParams,
+								schema: schema.items,
+								keyName: undefined,
+							})
+						: UNKNOWN_NODE,
+					minItems: schema.minItems,
+					maxItems: schema.maxItems,
+				};
+			}
 		}
 
 		case SchemaType.REFERENCE: {

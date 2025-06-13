@@ -64,14 +64,22 @@ function generateZodSchema(ast: ASTNode): string {
 		case ASTKind.LITERAL:
 			return ts`z.literal(${JSON.stringify(ast.value)})`;
 
-		case ASTKind.ARRAY:
-			return ts`z.array(${generateZodSchema(ast.items)})`;
+		case ASTKind.ARRAY: {
+			let expression = ts`z.array(${generateZodSchema(ast.items)})`;
+			if (ast.minItems !== undefined && ast.minItems > 0) {
+				expression = ts`${expression}.min(${ast.minItems})`;
+			}
+			if (ast.maxItems !== undefined) {
+				expression = ts`${expression}.max(${ast.maxItems})`;
+			}
+			return expression;
+		}
 
 		case ASTKind.TUPLE: {
 			const items = ast.items.map(generateZodSchema);
 			const spread = ast.spreadParam ? generateZodSchema(ast.spreadParam) : '';
 			return spread
-				? ts`z.tuple([${items.join(', ')}]).rest(${spread})`
+				? ts`z.tuple([${items.join(', ')}], ${spread})`
 				: ts`z.tuple([${items.join(', ')}])`;
 		}
 

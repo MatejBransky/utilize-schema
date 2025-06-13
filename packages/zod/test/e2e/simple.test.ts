@@ -128,7 +128,6 @@ describe('Simple schemas', () => {
       `,
 		},
 		{
-			state: 'todo',
 			name: 'ArrayOfStrings',
 			schema: {
 				type: 'array',
@@ -144,7 +143,6 @@ describe('Simple schemas', () => {
       `,
 		},
 		{
-			state: 'todo',
 			name: 'TupleOfStringAndNumber',
 			schema: {
 				type: 'array',
@@ -216,6 +214,32 @@ describe('Simple schemas', () => {
           })
         );
         export type IntersectionOfObjects = z.infer<typeof IntersectionOfObjects>;
+      `,
+		},
+		{
+			name: 'TupleWithSpread',
+			schema: {
+				type: 'array',
+				items: [{ type: 'number' }, { type: 'boolean' }],
+				additionalItems: { type: 'string' },
+			},
+			expected: ts`
+        import { z } from 'zod';
+
+        export const TupleWithSpread = z.tuple([z.number(), z.boolean()], z.string());
+        export type TupleWithSpread = z.infer<typeof TupleWithSpread>;
+      `,
+		},
+		{
+			name: 'UntypedArray',
+			schema: {
+				type: 'array',
+			},
+			expected: ts`
+        import { z } from 'zod';
+
+        export const UntypedArray = z.array(z.unknown());
+        export type UntypedArray = z.infer<typeof UntypedArray>;
       `,
 		},
 	];
