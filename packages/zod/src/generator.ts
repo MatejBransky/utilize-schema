@@ -6,6 +6,7 @@ import {
 	toSafeString,
 } from '@utilize/json-schema-core';
 
+import { formatToZodMethod } from './string';
 import { collectSchemasInDependencyOrder } from './utils';
 
 const NEWLINE = '\n';
@@ -49,6 +50,28 @@ function generateZodSchema(ast: ASTNode): string {
 	switch (astKind) {
 		case ASTKind.STRING:
 			expression = ts`z.string()`;
+
+			if (ast.minLength !== undefined) {
+				expression += `.min(${ast.minLength})`;
+			}
+
+			if (ast.maxLength !== undefined) {
+				expression += `.max(${ast.maxLength})`;
+			}
+
+			if (ast.pattern) {
+				expression += `.regex(${new RegExp(ast.pattern)})`;
+			}
+
+			if (ast.format) {
+				const zodMethod = formatToZodMethod[ast.format];
+				if (zodMethod) {
+					expression += zodMethod;
+				} else {
+					console.warn?.(`Unsupported string format: ${ast.format}`);
+				}
+			}
+
 			break;
 
 		case ASTKind.NUMBER:
