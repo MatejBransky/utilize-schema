@@ -13,7 +13,7 @@ export const SchemaType = {
 	ANY: 'ANY',
 	ANY_OF: 'ANY_OF',
 	BOOLEAN: 'BOOLEAN',
-	NAMED_ENUM: 'NAMED_ENUM',
+	// NAMED_ENUM: 'NAMED_ENUM',
 	NAMED_SCHEMA: 'NAMED_SCHEMA',
 	// NEVER: 'NEVER',
 	NULL: 'NULL',

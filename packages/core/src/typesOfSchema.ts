@@ -32,9 +32,6 @@ const matchers: Record<SchemaType, (schema: JSONSchema) => boolean> = {
 	CONST(schema) {
 		return 'const' in schema;
 	},
-	NAMED_ENUM(schema) {
-		return 'enum' in schema;
-	},
 	NAMED_SCHEMA(schema) {
 		// 8.2.1. The presence of "$id" in a subschema indicates that the subschema constitutes a distinct schema resource within a single schema document.
 		return (

@@ -170,7 +170,6 @@ describe('Simple schemas', () => {
       `,
 		},
 		{
-			state: 'only',
 			name: 'LiteralNull',
 			schema: { const: null },
 			expected: ts`
