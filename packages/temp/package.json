@@ -41,8 +41,6 @@
 		"format": "prettier . --write && eslint --fix .",
 		"check:format": "prettier . --check",
 		"check:lint": "eslint .",
-		"check:types": "tsc --noEmit",
-		"typecheck": "tsc --noEmit",
 		"test": "vitest",
 		"release": "bumpp && pnpm publish",
 		"prepublishOnly": "npm run build"
