@@ -5,11 +5,8 @@ import {
 	type ASTNodeWithStandaloneName,
 	toSafeString,
 } from '@utilize/json-schema-core';
-import { logger } from '@utilize/json-schema-core/src/logger';
 
 import { collectSchemasInDependencyOrder } from './utils';
-
-const log = logger.withNamespace('zod-generator');
 
 const NEWLINE = '\n';
 const ts = String.raw;
@@ -47,11 +44,6 @@ function generateNamedSchema(ast: ASTNodeWithStandaloneName) {
 
 function generateZodSchema(ast: ASTNode): string {
 	const astKind = ast.kind;
-
-	log.debug(
-		`Generating Zod schema for AST kind: ${astKind}`,
-		JSON.stringify(ast, null, 2)
-	);
 
 	switch (astKind) {
 		case ASTKind.STRING:
