@@ -242,6 +242,20 @@ describe('Simple schemas', () => {
         export type UntypedArray = z.infer<typeof UntypedArray>;
       `,
 		},
+		{
+			name: 'WithMeta',
+			schema: {
+				type: 'string',
+				title: 'MyString',
+				description: 'A simple string schema',
+			},
+			expected: ts`
+        import { z } from 'zod';
+
+        export const MyString = z.string().meta({ title: 'MyString', description: 'A simple string schema' });
+        export type MyString = z.infer<typeof MyString>;
+      `,
+		},
 	];
 
 	testCases.forEach((testCase) => {

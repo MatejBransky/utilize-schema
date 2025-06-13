@@ -44,55 +44,66 @@ function generateNamedSchema(ast: ASTNodeWithStandaloneName) {
 
 function generateZodSchema(ast: ASTNode): string {
 	const astKind = ast.kind;
+	let expression: string;
 
 	switch (astKind) {
 		case ASTKind.STRING:
-			return ts`z.string()`;
+			expression = ts`z.string()`;
+			break;
 
 		case ASTKind.NUMBER:
-			return ts`z.number()`;
+			expression = ts`z.number()`;
+			break;
 
 		case ASTKind.INTEGER:
-			return ts`z.int()`;
+			expression = ts`z.int()`;
+			break;
 
 		case ASTKind.BOOLEAN:
-			return ts`z.boolean()`;
+			expression = ts`z.boolean()`;
+			break;
 
 		case ASTKind.NULL:
-			return ts`z.null()`;
+			expression = ts`z.null()`;
+			break;
 
 		case ASTKind.LITERAL:
-			return ts`z.literal(${JSON.stringify(ast.value)})`;
+			expression = ts`z.literal(${JSON.stringify(ast.value)})`;
+			break;
 
 		case ASTKind.ARRAY: {
-			let expression = ts`z.array(${generateZodSchema(ast.items)})`;
+			expression = ts`z.array(${generateZodSchema(ast.items)})`;
 			if (ast.minItems !== undefined && ast.minItems > 0) {
 				expression = ts`${expression}.min(${ast.minItems})`;
 			}
 			if (ast.maxItems !== undefined) {
 				expression = ts`${expression}.max(${ast.maxItems})`;
 			}
-			return expression;
+			break;
 		}
 
 		case ASTKind.TUPLE: {
 			const items = ast.items.map(generateZodSchema);
 			const spread = ast.spreadParam ? generateZodSchema(ast.spreadParam) : '';
-			return spread
+			expression = spread
 				? ts`z.tuple([${items.join(', ')}], ${spread})`
 				: ts`z.tuple([${items.join(', ')}])`;
+			break;
 		}
 
 		case ASTKind.UNION:
-			return ts`z.union([${ast.nodes.map(generateZodSchema).join(', ')}])`;
+			expression = ts`z.union([${ast.nodes.map(generateZodSchema).join(', ')}])`;
+			break;
 
 		case ASTKind.INTERSECTION:
-			return ast.nodes
+			expression = ast.nodes
 				.map(generateZodSchema)
 				.reduce((a, b) => `${a}.extend(${b})`);
+			break;
 
 		case ASTKind.ENUM: {
-			return ts`z.enum([${ast.values.map((value) => (typeof value === 'string' ? `"${value}"` : value)).join(', ')}])`;
+			expression = ts`z.enum([${ast.values.map((value) => (typeof value === 'string' ? `"${value}"` : value)).join(', ')}])`;
+			break;
 		}
 
 		case ASTKind.OBJECT: {
@@ -110,22 +121,30 @@ function generateZodSchema(ast: ASTNode): string {
 				? `.catchall(${generateZodSchema(catchallProp.ast)})`
 				: '';
 
-			return ts`
+			expression = ts`
         z.object({
           ${entries.join(`,${NEWLINE}`)}
         })${catchall}
       `;
+			break;
 		}
 
 		case ASTKind.ANY:
-			return ts`z.any()`;
+			expression = ts`z.any()`;
+			break;
 
 		case ASTKind.UNKNOWN:
-			return ts`z.unknown()`;
+			expression = ts`z.unknown()`;
+			break;
 
 		default:
 			throw new Error('Unsupported AST kind: ' + astKind);
 	}
 
-	// astKind satisfies never;
+	if (ast.meta?.title || ast.meta?.description) {
+		const { title, description } = ast.meta;
+		expression = ts`${expression}.meta(${JSON.stringify({ title, description })})`;
+	}
+
+	return expression;
 }
