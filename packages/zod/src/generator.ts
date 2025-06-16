@@ -75,11 +75,11 @@ function generateZodSchema(ast: ASTNode): string {
 			break;
 
 		case ASTKind.NUMBER:
-			expression = ts`z.number()`;
+			expression = applyNumberConstraints(ts`z.number()`, ast);
 			break;
 
 		case ASTKind.INTEGER:
-			expression = ts`z.int()`;
+			expression = applyNumberConstraints(ts`z.int()`, ast);
 			break;
 
 		case ASTKind.BOOLEAN:
@@ -174,4 +174,32 @@ function generateZodSchema(ast: ASTNode): string {
 	}
 
 	return expression;
+}
+
+function applyNumberConstraints(
+	base: string,
+	ast: {
+		minimum?: number;
+		maximum?: number;
+		exclusiveMinimum?: number;
+		exclusiveMaximum?: number;
+		multipleOf?: number;
+	}
+): string {
+	if (ast.minimum !== undefined) {
+		base += `.min(${ast.minimum})`;
+	}
+	if (ast.maximum !== undefined) {
+		base += `.max(${ast.maximum})`;
+	}
+	if (ast.exclusiveMinimum !== undefined) {
+		base += `.gt(${ast.exclusiveMinimum})`;
+	}
+	if (ast.exclusiveMaximum !== undefined) {
+		base += `.lt(${ast.exclusiveMaximum})`;
+	}
+	if (ast.multipleOf !== undefined) {
+		base += `.multipleOf(${ast.multipleOf})`;
+	}
+	return base;
 }

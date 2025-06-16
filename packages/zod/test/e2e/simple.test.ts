@@ -269,6 +269,21 @@ describe('Simple schemas', () => {
         export type WithDefault = z.infer<typeof WithDefault>;
       `,
 		},
+		{
+			name: 'NumberWithConstraints',
+			schema: {
+				type: 'number',
+				minimum: 0,
+				maximum: 100,
+				multipleOf: 5,
+			},
+			expected: ts`
+        import { z } from 'zod';
+
+        export const NumberWithConstraints = z.number().min(0).max(100).multipleOf(5);
+        export type NumberWithConstraints = z.infer<typeof NumberWithConstraints>;
+      `,
+		},
 	];
 
 	testCases.forEach((testCase) => {
