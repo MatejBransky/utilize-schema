@@ -37,16 +37,6 @@ export type Rule = (params: RuleParams) => void;
 
 export const rules = new Map<string, Rule>();
 
-// Boolean schemas (true/false) are not currently supported.
-// No investigation has been done yet to estimate the required effort for full support.
-rules.set('Unsupported boolean schemas', ({ schema }) => {
-	if (typeof schema === 'boolean') {
-		throw new Error(
-			'Boolean schemas (true/false) are not supported in this pipeline.'
-		);
-	}
-});
-
 rules.set('Transform definitions to $defs', ({ schema, fileName }) => {
 	if (
 		schema.definitions &&

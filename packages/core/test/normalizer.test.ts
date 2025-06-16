@@ -120,13 +120,6 @@ interface ErrorTestCase extends TestCaseBase {
 describe('normalizer() throws', () => {
 	const testCases: ErrorTestCase[] = [
 		{
-			title: 'throws on boolean schemas',
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			input: true as any,
-			expectedError:
-				'Boolean schemas (true/false) are not supported in this pipeline.',
-		},
-		{
 			title: 'throws if both definitions and $defs are present and not equal',
 			input: {
 				$id: 'foo',
