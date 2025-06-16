@@ -401,8 +401,13 @@ function parseNonLiteral({
 		}
 
 		case SchemaType.REFERENCE: {
-			// TODO: handle references
-			throw new Error('References are not supported yet.');
+			throw new Error(
+				`Refs should have been resolved by the resolver! ${JSON.stringify(
+					schema,
+					null,
+					2
+				)}`
+			);
 		}
 
 		case SchemaType.UNION: {
