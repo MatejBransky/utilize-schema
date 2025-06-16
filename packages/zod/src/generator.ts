@@ -119,9 +119,12 @@ function generateZodSchema(ast: ASTNode): string {
 			break;
 
 		case ASTKind.INTERSECTION:
-			expression = ast.nodes
-				.map(resolveZodSchema)
-				.reduce((a, b) => `${a}.extend(${b})`);
+			expression = ast.nodes.map(resolveZodSchema).reduce(
+				(a, b) => ts`z.intersection(
+          ${a},
+          ${b},
+        )`
+			);
 			break;
 
 		case ASTKind.ENUM: {

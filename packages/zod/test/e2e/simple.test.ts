@@ -206,12 +206,13 @@ describe('Simple schemas', () => {
 			expected: ts`
         import { z } from 'zod';
 
-        export const IntersectionOfObjects = z.object({ 
-          a: z.string(),
-        }).extend(
+        export const IntersectionOfObjects = z.intersection(
           z.object({ 
-            b: z.number()
-          })
+            a: z.string() 
+          }),
+          z.object({ 
+            b: z.number() 
+          }),
         );
         export type IntersectionOfObjects = z.infer<typeof IntersectionOfObjects>;
       `,
@@ -285,7 +286,6 @@ describe('Simple schemas', () => {
       `,
 		},
 		{
-			state: 'only',
 			name: 'WithDefs',
 			schema: {
 				$defs: {
