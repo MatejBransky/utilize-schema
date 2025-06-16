@@ -284,6 +284,42 @@ describe('Simple schemas', () => {
         export type NumberWithConstraints = z.infer<typeof NumberWithConstraints>;
       `,
 		},
+		{
+			state: 'only',
+			name: 'WithDefs',
+			schema: {
+				$defs: {
+					MyString: { type: 'string', minLength: 3 },
+					MyNumber: { type: 'number', minimum: 0 },
+					Other: { type: 'string' },
+				},
+				type: 'object',
+				properties: {
+					str: { $ref: '#/$defs/MyString' },
+					num: { $ref: '#/$defs/MyNumber' },
+				},
+				additionalProperties: { $ref: '#/$defs/Other' },
+				required: ['str'],
+			},
+			expected: ts`
+        import { z } from 'zod';
+
+        export const MyString = z.string().min(3);
+        export type MyString = z.infer<typeof MyString>;
+
+        export const MyNumber = z.number().min(0);
+        export type MyNumber = z.infer<typeof MyNumber>;
+
+        export const Other = z.string();
+        export type Other = z.infer<typeof Other>;
+
+        export const WithDefs = z.object({
+          str: MyString,
+          num: MyNumber.optional(),
+        }).catchall(Other);
+        export type WithDefs = z.infer<typeof WithDefs>;
+      `,
+		},
 	];
 
 	testCases.forEach((testCase) => {

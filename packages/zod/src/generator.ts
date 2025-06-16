@@ -95,7 +95,7 @@ function generateZodSchema(ast: ASTNode): string {
 			break;
 
 		case ASTKind.ARRAY: {
-			expression = ts`z.array(${generateZodSchema(ast.items)})`;
+			expression = ts`z.array(${resolveZodSchema(ast.items)})`;
 			if (ast.minItems !== undefined && ast.minItems > 0) {
 				expression = ts`${expression}.min(${ast.minItems})`;
 			}
@@ -106,8 +106,8 @@ function generateZodSchema(ast: ASTNode): string {
 		}
 
 		case ASTKind.TUPLE: {
-			const items = ast.items.map(generateZodSchema);
-			const spread = ast.spreadParam ? generateZodSchema(ast.spreadParam) : '';
+			const items = ast.items.map(resolveZodSchema);
+			const spread = ast.spreadParam ? resolveZodSchema(ast.spreadParam) : '';
 			expression = spread
 				? ts`z.tuple([${items.join(', ')}], ${spread})`
 				: ts`z.tuple([${items.join(', ')}])`;
@@ -115,12 +115,12 @@ function generateZodSchema(ast: ASTNode): string {
 		}
 
 		case ASTKind.UNION:
-			expression = ts`z.union([${ast.nodes.map(generateZodSchema).join(', ')}])`;
+			expression = ts`z.union([${ast.nodes.map(resolveZodSchema).join(', ')}])`;
 			break;
 
 		case ASTKind.INTERSECTION:
 			expression = ast.nodes
-				.map(generateZodSchema)
+				.map(resolveZodSchema)
 				.reduce((a, b) => `${a}.extend(${b})`);
 			break;
 
@@ -134,14 +134,14 @@ function generateZodSchema(ast: ASTNode): string {
 				.filter(({ keyName }) => keyName !== ADDITIONAL_PROPERTY_KEY_NAME)
 				.map(
 					({ keyName, ast: propertyAst, isRequired }) =>
-						`${JSON.stringify(keyName)}: ${generateZodSchema(propertyAst)}${isRequired ? '' : '.optional()'}`
+						`${JSON.stringify(keyName)}: ${resolveZodSchema(propertyAst)}${isRequired ? '' : '.optional()'}`
 				);
 
 			const catchallProp = ast.properties.find(
 				(p) => p.keyName === ADDITIONAL_PROPERTY_KEY_NAME
 			);
 			const catchall = catchallProp
-				? `.catchall(${generateZodSchema(catchallProp.ast)})`
+				? `.catchall(${resolveZodSchema(catchallProp.ast)})`
 				: '';
 
 			expression = ts`
@@ -202,4 +202,11 @@ function applyNumberConstraints(
 		base += `.multipleOf(${ast.multipleOf})`;
 	}
 	return base;
+}
+
+function resolveZodSchema(ast: ASTNode): string {
+	if (ast.standaloneName) {
+		return ast.standaloneName;
+	}
+	return generateZodSchema(ast);
 }
