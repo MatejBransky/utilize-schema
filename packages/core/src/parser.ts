@@ -1,6 +1,6 @@
 import moize from 'moize';
 
-import { logger } from './logger';
+import { logger, safeStringify } from './logger';
 import {
 	ADDITIONAL_PROPERTY_KEY_NAME,
 	ASTKind,
@@ -63,7 +63,7 @@ export function parse({
 }: ParseParams): ASTNode {
 	const otherParams = { keyName, options, processed, usedNames };
 
-	log.accumulate(schema, 'schema:', JSON.stringify(schema, null, 2));
+	log.accumulate(schema, 'schema:', safeStringify(schema));
 	log.accumulate(schema, { keyName, usedNames });
 
 	if (isPrimitive(schema)) {
@@ -402,10 +402,8 @@ function parseNonLiteral({
 
 		case SchemaType.REFERENCE: {
 			throw new Error(
-				`Refs should have been resolved by the resolver! ${JSON.stringify(
-					schema,
-					null,
-					2
+				`Refs should have been resolved by the resolver! ${safeStringify(
+					schema
 				)}`
 			);
 		}
