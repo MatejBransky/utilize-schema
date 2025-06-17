@@ -30,7 +30,14 @@
         "parser_ts",
         "zod_test_ts",
         "test_utils_ts_zod",
-        "simple_test_ts"
+        "array_test_ts",
+        "combination_test_ts",
+        "meta_test_ts",
+        "number_test_ts",
+        "object_test_ts",
+        "reference_test_ts",
+        "string_test_ts",
+        "type_test_ts"
       ]
     },
     {
@@ -228,11 +235,6 @@
       "path": "packages/temp/README.md",
       "description": "Legacy README for json-schema-to-typescript-lite."
     },
-    "simple_test_ts": {
-      "type": "file",
-      "path": "packages/zod/test/e2e/simple.test.ts",
-      "description": "End-to-end tests for simple JSON Schema to Zod conversions."
-    },
     "test_utils_ts_zod": {
       "type": "file",
       "path": "packages/zod/test/test-utils.ts",
@@ -242,6 +244,46 @@
       "type": "file",
       "path": "packages/zod/test/e2e/zod.test.ts",
       "description": "Tests for Zod to JSON Schema conversion."
+    },
+    "array_test_ts": {
+      "type": "file",
+      "path": "packages/zod/test/e2e/array.test.ts",
+      "description": "end-to-end tests for array json schema to zod conversions."
+    },
+    "combination_test_ts": {
+      "type": "file",
+      "path": "packages/zod/test/e2e/combination.test.ts",
+      "description": "end-to-end tests for schema combination (allof, anyof, oneof) conversions."
+    },
+    "meta_test_ts": {
+      "type": "file",
+      "path": "packages/zod/test/e2e/meta.test.ts",
+      "description": "end-to-end tests for meta schema properties (title, description, default)."
+    },
+    "number_test_ts": {
+      "type": "file",
+      "path": "packages/zod/test/e2e/number.test.ts",
+      "description": "end-to-end tests for number json schema to zod conversions."
+    },
+    "object_test_ts": {
+      "type": "file",
+      "path": "packages/zod/test/e2e/object.test.ts",
+      "description": "end-to-end tests for object json schema to zod conversions."
+    },
+    "reference_test_ts": {
+      "type": "file",
+      "path": "packages/zod/test/e2e/reference.test.ts",
+      "description": "end-to-end tests for $ref and $defs handling."
+    },
+    "string_test_ts": {
+      "type": "file",
+      "path": "packages/zod/test/e2e/string.test.ts",
+      "description": "end-to-end tests for string json schema to zod conversions."
+    },
+    "type_test_ts": {
+      "type": "file",
+      "path": "packages/zod/test/e2e/type.test.ts",
+      "description": "end-to-end tests for type keyword and related conversions."
     }
   }
 }
