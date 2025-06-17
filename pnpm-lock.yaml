@@ -110,9 +110,15 @@ importers:
         specifier: 3.26.0-canary.20250609T052512
         version: 3.26.0-canary.20250609T052512
     devDependencies:
+      '@apidevtools/json-schema-ref-parser':
+        specifier: ^13.0.4
+        version: 13.0.4
       '@total-typescript/tsconfig':
         specifier: 1.0.4
         version: 1.0.4
+      '@types/lodash':
+        specifier: ^4.17.17
+        version: 4.17.17
       '@utilize/eslint-config':
         specifier: 3.0.1
         version: 3.0.1(eslint@9.28.0(jiti@2.4.2))(prettier@3.5.3)(typescript@5.8.3)
@@ -122,6 +128,9 @@ importers:
       eslint:
         specifier: ^9.28.0
         version: 9.28.0(jiti@2.4.2)
+      lodash:
+        specifier: 4.17.21
+        version: 4.17.21
       prettier:
         specifier: 3.5.3
         version: 3.5.3
@@ -1858,6 +1867,9 @@ packages:
 
   lodash.uniq@4.5.0:
     resolution: {integrity: sha512-xfBaXQd9ryd9dlSDvnvI0lvxfLJlYAZzXomUYzLKtUeOQvOP5piqAWuGtrhWeqaXK9hhoM/iyJc5AV+XfsX3HQ==}
+
+  lodash@4.17.21:
+    resolution: {integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==}
 
   loose-envify@1.4.0:
     resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
@@ -4628,6 +4640,8 @@ snapshots:
   lodash.startcase@4.4.0: {}
 
   lodash.uniq@4.5.0: {}
+
+  lodash@4.17.21: {}
 
   loose-envify@1.4.0:
     dependencies:

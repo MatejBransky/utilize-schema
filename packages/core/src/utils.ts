@@ -147,7 +147,7 @@ export function justName(filename = ''): string {
 /**
  * Avoid appending "js" to top-level unnamed schemas
  */
-function stripExtension(filename: string): string {
+export function stripExtension(filename: string): string {
 	const lastDot = filename.lastIndexOf('.');
 	if (lastDot > 0) {
 		return filename.slice(0, lastDot);

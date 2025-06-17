@@ -43,10 +43,13 @@
 		"zod": "3.26.0-canary.20250609T052512"
 	},
 	"devDependencies": {
+		"@apidevtools/json-schema-ref-parser": "^13.0.4",
 		"@total-typescript/tsconfig": "1.0.4",
+		"@types/lodash": "^4.17.17",
 		"@utilize/eslint-config": "3.0.1",
 		"@utilize/prettier-config": "1.1.3",
 		"eslint": "^9.28.0",
+		"lodash": "4.17.21",
 		"prettier": "3.5.3",
 		"typescript": "~5.8.3",
 		"unbuild": "3.5.0",
