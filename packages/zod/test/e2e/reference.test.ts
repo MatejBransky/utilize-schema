@@ -45,4 +45,27 @@ describe('reference', () => {
       export type Unknown = z.infer<typeof Unknown>;
     `);
 	});
+
+	test.todo('cyclic reference', async () => {
+		await expect(
+			compile({
+				type: 'object',
+				properties: {
+					value: { type: 'string' },
+					next: { $ref: '#' },
+				},
+				required: ['value'],
+			})
+		).toMatchCode(ts`
+      import { z } from 'zod';
+
+      export const CyclicSchema = z.object({
+        value: z.string(),
+        get next() {
+          return CyclicSchema.optional();
+        },
+      });
+      export type CyclicSchema = z.infer<typeof CyclicSchema>;
+    `);
+	});
 });
