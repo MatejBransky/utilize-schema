@@ -17,6 +17,7 @@ export const ASTKind = {
 	OBJECT: 'OBJECT',
 	ARRAY: 'ARRAY',
 	UNION: 'UNION',
+	DISCRIMINATED_UNION: 'DISCRIMINATED_UNION',
 	TUPLE: 'TUPLE',
 	LITERAL: 'LITERAL',
 	NULL: 'NULL',
@@ -36,6 +37,7 @@ export type ASTNode =
 	| ObjectNode
 	| ArrayNode
 	| UnionNode
+	| DiscriminatedUnionNode
 	| TupleNode
 	| LiteralNode
 	| NullNode
@@ -126,6 +128,12 @@ export interface UnionNode extends BaseASTNode {
 	nodes: ASTNode[];
 }
 
+export interface DiscriminatedUnionNode extends BaseASTNode {
+	kind: 'DISCRIMINATED_UNION';
+	discriminator: string;
+	nodes: ASTNode[];
+}
+
 export interface TupleNode extends BaseASTNode {
 	kind: 'TUPLE';
 	items: ASTNode[];
@@ -174,4 +182,18 @@ export const UNKNOWN_ADDITIONAL_PROPERTIES: UnknownNode & ASTNodeWithKeyName = {
 	keyName: '[k: string]',
 };
 
+export const NO_ADDITIONAL_PROPERTIES: NeverNode & ASTNodeWithKeyName = {
+	kind: 'NEVER',
+	keyName: '',
+};
+
 export const ADDITIONAL_PROPERTY_KEY_NAME = '[k: string]';
+
+export function isASTNode(node: unknown): node is ASTNode {
+	return (
+		typeof node === 'object' &&
+		node !== null &&
+		'kind' in node &&
+		Object.values(ASTKind).includes((node as BaseASTNode).kind)
+	);
+}

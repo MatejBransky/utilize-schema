@@ -1,6 +1,7 @@
 import { dequal } from 'dequal';
 
 import type { DereferencedPaths } from './dereference';
+import { safeStringify } from './logger';
 import {
 	Parent,
 	type JSONSchemaTypeName,
@@ -50,6 +51,41 @@ rules.set('Transform definitions to $defs', ({ schema, fileName }) => {
 	if (schema.definitions) {
 		schema.$defs = schema.definitions;
 		delete schema.definitions;
+	}
+});
+
+rules.set('Validate discriminator', ({ schema }) => {
+	if (schema.discriminator && !schema.oneOf) {
+		throw ReferenceError(
+			`Discriminator is defined but oneOf is not present in schema: ${safeStringify(schema)}`
+		);
+	}
+
+	if (schema.discriminator && schema.oneOf) {
+		if (typeof schema.discriminator !== 'string') {
+			throw TypeError(
+				`Discriminator must be a string, got ${typeof schema.discriminator}`
+			);
+		}
+
+		for (const oneOfSchema of schema.oneOf) {
+			if (
+				!oneOfSchema.properties ||
+				!Object.prototype.hasOwnProperty.call(
+					oneOfSchema.properties,
+					schema.discriminator
+				)
+			) {
+				throw ReferenceError(
+					`Discriminator property "${schema.discriminator}" not found in properties`
+				);
+			}
+			if (!oneOfSchema.required?.includes(schema.discriminator)) {
+				throw ReferenceError(
+					`Discriminator property "${schema.discriminator}" must be required in oneOf schema`
+				);
+			}
+		}
 	}
 });
 

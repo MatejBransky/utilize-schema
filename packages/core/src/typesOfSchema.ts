@@ -10,7 +10,9 @@ const matchers: Record<SchemaType, (schema: JSONSchema) => boolean> = {
 		return 'allOf' in schema;
 	},
 	ANY(schema) {
-		if (Object.keys(schema).length === 0) {
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const { $id, title, description, ...coreSchema } = schema;
+		if (Object.keys(coreSchema).length === 0) {
 			// The empty schema {} validates any value
 			// @see https://json-schema.org/draft-07/json-schema-core.html#rfc.section.4.3.1
 			return true;
@@ -36,7 +38,8 @@ const matchers: Record<SchemaType, (schema: JSONSchema) => boolean> = {
 		// 8.2.1. The presence of "$id" in a subschema indicates that the subschema constitutes a distinct schema resource within a single schema document.
 		return (
 			'$id' in schema &&
-			('patternProperties' in schema || 'properties' in schema)
+			('patternProperties' in schema || 'properties' in schema) &&
+			schema.type === 'object'
 		);
 	},
 	NULL(schema) {
@@ -46,8 +49,6 @@ const matchers: Record<SchemaType, (schema: JSONSchema) => boolean> = {
 		if ('enum' in schema) return false;
 
 		if (schema.type === 'integer') return true;
-
-		if (!isCompound(schema) && typeof schema.default === 'number') return true;
 
 		return false;
 	},

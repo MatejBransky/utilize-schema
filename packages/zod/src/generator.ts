@@ -12,6 +12,10 @@ import { collectSchemasInDependencyOrder } from './utils';
 const NEWLINE = '\n';
 const ts = String.raw;
 
+export interface GenerateOptions {
+	importZod?: boolean;
+}
+
 /**
  * Generates Zod schemas and corresponding TypeScript types from an AST representation
  * derived from JSON Schema Draft 7 definitions.
@@ -25,12 +29,17 @@ const ts = String.raw;
  * @param node - The AST node representing the normalized JSON Schema structure.
  * @returns The generated Zod schema and inferred TypeScript type.
  */
-export function generate(ast: ASTNode) {
-	const zodImport = ts`import { z } from 'zod';${NEWLINE}`;
+export function generate(ast: ASTNode, options?: GenerateOptions): string {
+	const chunks = [];
+	if (options?.importZod ?? true) {
+		const zodImport = ts`import { z } from 'zod/v4';${NEWLINE}`;
+		chunks.push(zodImport);
+	}
 	const ordered = collectSchemasInDependencyOrder(ast);
 	const body = ordered.map(generateNamedSchema).join(NEWLINE + NEWLINE);
+	chunks.push(body);
 
-	return [zodImport, body].filter(Boolean).join('\n\n');
+	return chunks.filter(Boolean).join('\n\n');
 }
 
 function generateNamedSchema(ast: ASTNodeWithStandaloneName) {
@@ -118,23 +127,33 @@ function generateZodSchema(ast: ASTNode): string {
 			expression = ts`z.union([${ast.nodes.map(resolveZodSchema).join(', ')}])`;
 			break;
 
+		case ASTKind.DISCRIMINATED_UNION:
+			expression = ts`z.discriminatedUnion(${JSON.stringify(ast.discriminator)}, [${ast.nodes.map(resolveZodSchema).join(', ')}])`;
+			break;
+
 		case ASTKind.INTERSECTION:
-			expression = ast.nodes.map(resolveZodSchema).reduce(
-				(a, b) => ts`z.intersection(
-          ${a},
-          ${b},
-        )`
-			);
+			expression = ts`z.intersection(${ast.nodes.map(resolveZodSchema).join(', ')})`;
 			break;
 
 		case ASTKind.ENUM: {
-			expression = ts`z.enum([${ast.values.map((value) => (typeof value === 'string' ? `"${value}"` : value)).join(', ')}])`;
+			const stringValues = ast.values.filter(
+				(value) => typeof value === 'string'
+			);
+			if (stringValues.length === ast.values.length) {
+				expression = ts`z.enum([${stringValues.map((value) => JSON.stringify(value)).join(', ')}])`;
+			} else {
+				expression = ts`z.literal([${ast.values.map((value) => JSON.stringify(value)).join(', ')}])`;
+			}
 			break;
 		}
 
 		case ASTKind.OBJECT: {
 			const entries = ast.properties
-				.filter(({ keyName }) => keyName !== ADDITIONAL_PROPERTY_KEY_NAME)
+				.filter(
+					({ ast, keyName }) =>
+						keyName !== ADDITIONAL_PROPERTY_KEY_NAME &&
+						!(ast.kind === ASTKind.NEVER)
+				)
 				.map(
 					({ keyName, ast: propertyAst, isRequired }) =>
 						`${JSON.stringify(keyName)}: ${resolveZodSchema(propertyAst)}${isRequired ? '' : '.optional()'}`
@@ -147,11 +166,23 @@ function generateZodSchema(ast: ASTNode): string {
 				? `.catchall(${resolveZodSchema(catchallProp.ast)})`
 				: '';
 
-			expression = ts`
-        z.object({
-          ${entries.join(`,${NEWLINE}`)}
-        })${catchall}
-      `;
+			const strictObject = ast.properties.some(
+				(prop) => prop.ast.kind === ASTKind.NEVER && prop.keyName === ''
+			);
+
+			if (strictObject) {
+				expression = ts`
+          z.strictObject({
+            ${entries.join(`,${NEWLINE}`)}
+          })${catchall}
+        `;
+			} else {
+				expression = ts`
+          z.object({
+            ${entries.join(`,${NEWLINE}`)}
+          })${catchall}
+        `;
+			}
 			break;
 		}
 

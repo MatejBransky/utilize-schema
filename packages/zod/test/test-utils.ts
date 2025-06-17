@@ -4,8 +4,11 @@ import {
 	type JSONSchema,
 	link,
 	normalize,
+	type NormalizeOptions,
+	optimize,
 	parse,
 	rules,
+	safeStringify,
 } from '@utilize/json-schema-core';
 import prettierConfig from '@utilize/prettier-config/prettier.json';
 import {
@@ -13,7 +16,7 @@ import {
 	type Options as PrettierOptions,
 } from 'prettier';
 
-import { generate } from '../src';
+import { generate, type GenerateOptions } from '../src';
 
 export function format(code: string) {
 	return prettierFormat(code, {
@@ -30,24 +33,38 @@ export const ts = (strings: TemplateStringsArray, ...values: unknown[]) => {
 	return format(rawString);
 };
 
-interface CompileOptions {
-	fileName: string;
-	deref: DereferenceOptions;
+export interface CompileOptions {
+	normalize?: NormalizeOptions;
+	dereference?: DereferenceOptions;
+	generate?: GenerateOptions;
 }
 
 export async function compile(
 	schema: JSONSchema,
-	options: CompileOptions
+	options?: CompileOptions
 ): Promise<string> {
-	const deref = await dereference(schema, options.deref); // resolved JSONSchema refs
+	console.log('Compiling JSON Schema to Zod...', safeStringify(schema));
+	const deref = await dereference(
+		schema,
+		options?.dereference ?? { cwd: process.cwd(), $refOptions: {} }
+	); // resolved JSONSchema refs
+	console.log('Dereferenced JSON Schema:', safeStringify(deref));
 	const linked = link(deref.dereferencedSchema as JSONSchema); // parent link in every schema node
+	console.log('Linked JSON Schema:', safeStringify(linked));
 	const normalized = normalize({
 		rootSchema: linked,
 		dereferencedPaths: deref.dereferencedPaths,
-		fileName: options.fileName,
+		fileName: options?.normalize.fileName ?? 'unknown',
 		rules,
 	}); // unified JSON Schema various functions
+	console.log('Normalized JSON Schema:', safeStringify(normalized));
 	const ast = parse({ schema: normalized }); // NormalizedJSONSchema → ASTNode
-	const generated = generate(ast); // ASTNode → TS (Zod) code
+	console.log('AST:', safeStringify(ast));
+	const optimizedAst = optimize(ast); // deduplicate, prefer named nodes, optimize structure
+	console.log('Optimized AST:', safeStringify(optimizedAst));
+
+	const generated = generate(optimizedAst, {
+		importZod: options?.generate?.importZod ?? false,
+	}); // ASTNode → TS (Zod) code
 	return format(generated);
 }

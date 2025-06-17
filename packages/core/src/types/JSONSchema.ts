@@ -31,7 +31,9 @@ export const SchemaType = {
 } as const;
 export type SchemaType = (typeof SchemaType)[keyof typeof SchemaType];
 
-export type JSONSchema = JSONSchema7;
+export interface JSONSchema extends JSONSchema7 {
+	discriminator?: string;
+}
 export type JSONSchemaType = JSONSchema7Type;
 export type JSONSchemaTypeName = JSONSchema7TypeName;
 

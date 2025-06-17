@@ -4,6 +4,7 @@ import { logger, safeStringify } from './logger';
 import {
 	ADDITIONAL_PROPERTY_KEY_NAME,
 	ASTKind,
+	NO_ADDITIONAL_PROPERTIES,
 	UNKNOWN_ADDITIONAL_PROPERTIES,
 	UNKNOWN_NODE,
 	type ASTMeta,
@@ -54,6 +55,8 @@ interface ParseParams {
 	usedNames?: UsedNames;
 }
 
+let callId = 0;
+
 export function parse({
 	schema,
 	keyName,
@@ -61,8 +64,10 @@ export function parse({
 	processed = new Map(),
 	usedNames = new Set(),
 }: ParseParams): ASTNode {
+	callId++;
 	const otherParams = { keyName, options, processed, usedNames };
 
+	log.accumulate(schema, `Call #${callId}`);
 	log.accumulate(schema, 'schema:', safeStringify(schema));
 	log.accumulate(schema, { keyName, usedNames });
 
@@ -70,7 +75,7 @@ export function parse({
 		if (isBoolean(schema)) {
 			const ast = parseBooleanSchema({ schema, keyName });
 
-			log.accumulate(schema, 'AST (boolean):', ast);
+			log.accumulate(schema, 'AST (boolean):', safeStringify(ast));
 			printLogs(schema);
 
 			return ast;
@@ -105,7 +110,7 @@ export function parse({
 			schema,
 		});
 
-		log.accumulate(schema, 'AST (one type):', ast);
+		log.accumulate(schema, 'AST (one type):', safeStringify(ast));
 		printLogs(schema);
 
 		return ast;
@@ -116,7 +121,7 @@ export function parse({
 	const ast = parseAsTypeWithCache({
 		...otherParams,
 		schema: {
-			[Parent]: schema[Parent] ?? null,
+			[Parent]: null,
 			$id: schema.$id,
 			allOf: [],
 			description: schema.description,
@@ -140,7 +145,7 @@ export function parse({
 		});
 	});
 
-	log.accumulate(schema, ['AST (multiple types):', ast]);
+	log.accumulate(schema, 'AST (multiple types):', safeStringify(ast));
 	printLogs(schema);
 
 	return ast;
@@ -150,6 +155,7 @@ interface ParseWithTypeParams extends ParseParams {
 	type: SchemaType;
 	schema: LinkedJSONSchema;
 	usedNames: UsedNames;
+	processed: Processed;
 }
 
 function parseAsTypeWithCache({
@@ -177,7 +183,10 @@ function parseAsTypeWithCache({
 
 	// Update the AST in place. This updates the `processed` cache, as well
 	// as any nodes that directly reference the node.
-	return Object.assign(ast, parseNonLiteral({ ...otherParams, type, schema }));
+	return Object.assign(
+		ast,
+		parseNonLiteral({ ...otherParams, type, schema, processed })
+	);
 }
 
 const getDefinitionsMemoized = moize(getDefinitions);
@@ -241,6 +250,18 @@ function parseNonLiteral({
 
 			assert(nodes, 'Schema should have oneOf nodes');
 
+			if (schema.discriminator) {
+				return {
+					kind: ASTKind.DISCRIMINATED_UNION,
+					discriminator: schema.discriminator,
+					default: schema.default,
+					meta,
+					keyName,
+					standaloneName,
+					nodes,
+				};
+			}
+
 			return {
 				kind: ASTKind.UNION,
 				default: schema.default,
@@ -262,7 +283,6 @@ function parseNonLiteral({
 
 		case SchemaType.UNNAMED_ENUM: {
 			assert(schema.enum, 'Named enum should have enum values');
-
 			const values = Object.values(schema.enum).filter(
 				(value) =>
 					typeof value === 'string' ||
@@ -622,13 +642,20 @@ function parseProperties({
 			return asts.concat({
 				ast: UNKNOWN_ADDITIONAL_PROPERTIES,
 				isPatternProperty: false,
-				isRequired: true,
+				isRequired: false,
 				keyName: '[k: string]',
 			});
 
 		case undefined:
-		case false:
 			return asts;
+
+		case false:
+			return asts.concat({
+				ast: NO_ADDITIONAL_PROPERTIES,
+				isPatternProperty: false,
+				isRequired: false,
+				keyName: '',
+			});
 
 		// pass "true" as the last param because in TS, properties
 		// defined via index signatures are already optional
@@ -640,7 +667,7 @@ function parseProperties({
 					keyName: ADDITIONAL_PROPERTY_KEY_NAME,
 				}),
 				isPatternProperty: false,
-				isRequired: true,
+				isRequired: false,
 				keyName: ADDITIONAL_PROPERTY_KEY_NAME,
 			});
 	}
