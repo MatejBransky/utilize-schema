@@ -180,4 +180,43 @@ describe('Zod to JSON Schema', () => {
 			}
 		`);
 	});
+
+	test('Zod intersection', () => {
+		expect(
+			toJSONSchema(
+				z.union([
+					z.object({
+						a: z.string(),
+						b: z.number(),
+					}),
+					z.boolean(),
+				])
+			)
+		).toMatchInlineSnapshot(`
+			{
+			  "$schema": "http://json-schema.org/draft-07/schema#",
+			  "anyOf": [
+			    {
+			      "additionalProperties": false,
+			      "properties": {
+			        "a": {
+			          "type": "string",
+			        },
+			        "b": {
+			          "type": "number",
+			        },
+			      },
+			      "required": [
+			        "a",
+			        "b",
+			      ],
+			      "type": "object",
+			    },
+			    {
+			      "type": "boolean",
+			    },
+			  ],
+			}
+		`);
+	});
 });
