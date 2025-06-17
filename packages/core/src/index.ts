@@ -2,6 +2,7 @@ export * from './dereference';
 export * from './linker';
 export * from './logger';
 export * from './normalizer';
+export * from './optimizer';
 export * from './parser';
 export * from './rules';
 export * from './types/AST';
