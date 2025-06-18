@@ -1,6 +1,6 @@
 import moize from 'moize';
 
-import { logger, safeStringify } from './logger';
+import { logger, LogLevel, safeStringify } from './logger';
 import {
 	ADDITIONAL_PROPERTY_KEY_NAME,
 	ASTKind,
@@ -32,6 +32,12 @@ import {
 } from './utils';
 
 const log = logger.withNamespace('parser');
+logger.setNamespaceLevels('parser', [
+	// LogLevel.DEBUG,
+	LogLevel.INFO,
+	LogLevel.WARN,
+	LogLevel.ERROR,
+]);
 
 const BLOCK_START = 'Parsing:';
 const BLOCK_END = '---\n';

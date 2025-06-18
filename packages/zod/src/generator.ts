@@ -3,11 +3,21 @@ import {
 	ASTKind,
 	type ASTNode,
 	type ASTNodeWithStandaloneName,
+	logger,
+	LogLevel,
 	toSafeString,
 } from '@utilize/json-schema-core';
 
 import { formatToZodMethod } from './string';
 import { collectSchemasInDependencyOrder } from './utils';
+
+const log = logger.withNamespace('zod-generator');
+logger.setNamespaceLevels('zod-generator', [
+	// LogLevel.DEBUG,
+	LogLevel.INFO,
+	LogLevel.WARN,
+	LogLevel.ERROR,
+]);
 
 const NEWLINE = '\n';
 const ts = String.raw;
@@ -30,12 +40,20 @@ export interface GenerateOptions {
  * @returns The generated Zod schema and inferred TypeScript type.
  */
 export function generate(ast: ASTNode, options?: GenerateOptions): string {
+	log.debug('Generating Zod schema from AST:', ast);
+
 	const chunks = [];
+
 	if (options?.importZod ?? true) {
 		const zodImport = ts`import { z } from 'zod/v4';${NEWLINE}`;
 		chunks.push(zodImport);
 	}
+
 	const ordered = collectSchemasInDependencyOrder(ast);
+	log.debug(
+		'Ordered ASTs for Zod generation:',
+		ordered.map((n) => n.standaloneName)
+	);
 
 	const body = ordered.map(generateNamedSchema).join(NEWLINE + NEWLINE);
 
