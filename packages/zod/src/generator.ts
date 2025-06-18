@@ -36,7 +36,9 @@ export function generate(ast: ASTNode, options?: GenerateOptions): string {
 		chunks.push(zodImport);
 	}
 	const ordered = collectSchemasInDependencyOrder(ast);
+
 	const body = ordered.map(generateNamedSchema).join(NEWLINE + NEWLINE);
+
 	chunks.push(body);
 
 	return chunks.filter(Boolean).join('\n\n');
@@ -131,9 +133,16 @@ function generateZodSchema(ast: ASTNode): string {
 			expression = ts`z.discriminatedUnion(${JSON.stringify(ast.discriminator)}, [${ast.nodes.map(resolveZodSchema).join(', ')}])`;
 			break;
 
-		case ASTKind.INTERSECTION:
+		case ASTKind.INTERSECTION: {
+			if (ast.nodes.length > 2) {
+				throw new Error(
+					'Zod does not support intersections with more than two members. Please refactor your schema.'
+				);
+			}
+
 			expression = ts`z.intersection(${ast.nodes.map(resolveZodSchema).join(', ')})`;
 			break;
+		}
 
 		case ASTKind.ENUM: {
 			const stringValues = ast.values.filter(
@@ -192,6 +201,10 @@ function generateZodSchema(ast: ASTNode): string {
 
 		case ASTKind.UNKNOWN:
 			expression = ts`z.unknown()`;
+			break;
+
+		case ASTKind.NEVER:
+			expression = ts`z.never()`;
 			break;
 
 		default:

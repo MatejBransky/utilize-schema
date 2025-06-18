@@ -134,6 +134,7 @@ export function parse({
 		ast.kind === ASTKind.INTERSECTION,
 		'AST should be an intersection type'
 	);
+	// );
 
 	ast.nodes = types.map((type) => {
 		// We hoist description (for comment) and id/title (for standaloneName)
@@ -213,18 +214,30 @@ function parseNonLiteral({
 	};
 
 	switch (schemaType) {
-		case SchemaType.ALL_OF:
+		case SchemaType.ALL_OF: {
+			const nodes =
+				schema.allOf?.map((subschema) =>
+					parse({ ...otherParams, schema: subschema, keyName: undefined })
+				) ?? [];
+
+			if (nodes.length === 0) {
+				return {
+					kind: ASTKind.NEVER,
+					standaloneName,
+					meta,
+					keyName,
+				};
+			}
+
 			return {
 				kind: ASTKind.INTERSECTION,
 				default: schema.default,
 				meta,
 				keyName,
 				standaloneName,
-				nodes:
-					schema.allOf?.map((subschema) =>
-						parse({ ...otherParams, schema: subschema, keyName: undefined })
-					) ?? [],
+				nodes,
 			};
+		}
 
 		case SchemaType.ANY_OF: {
 			const nodes = schema.anyOf?.map((subschema) =>
