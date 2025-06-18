@@ -108,9 +108,7 @@ export function optimize(ast: ASTNode, seen = new WeakSet()): ASTNode {
 	}
 }
 
-// Replace JSON.stringify({ ...n, ... }) with a cycle-safe structural hash
-
-function structuralHash(
+export function structuralHash(
 	node: ASTNode,
 	seen = new WeakMap<ASTNode, string>(),
 	path: string[] = []
@@ -150,6 +148,15 @@ function structuralHash(
 			if (isASTNode(v)) {
 				return `${k}:${structuralHash(v, seen, path.concat(k))}`;
 			}
+			if (Array.isArray(v)) {
+				return `${k}:[${v
+					.map((item, i) =>
+						typeof item === 'object' && item !== null
+							? structuralHash(item, seen, path.concat(k, String(i)))
+							: String(item)
+					)
+					.join(',')}]`;
+			}
 			return `${k}:${String(v)}`;
 		})
 		.join('|');
@@ -162,6 +169,7 @@ function deduplicate(nodes: ASTNode[]): ASTNode[] {
 	const seen = new Set<string>();
 	return nodes.filter((n) => {
 		const key = structuralHash(n);
+
 		if (seen.has(key)) return false;
 		seen.add(key);
 		return true;
