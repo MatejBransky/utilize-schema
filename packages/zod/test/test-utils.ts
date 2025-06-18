@@ -3,6 +3,8 @@ import {
 	type DereferenceOptions,
 	type JSONSchema,
 	link,
+	logger,
+	LogLevel,
 	normalize,
 	type NormalizeOptions,
 	optimize,
@@ -17,6 +19,14 @@ import {
 } from 'prettier';
 
 import { generate, type GenerateOptions } from '../src';
+
+const log = logger.withNamespace('test-utils');
+logger.setNamespaceLevels('test-utils', [
+	LogLevel.DEBUG,
+	LogLevel.INFO,
+	LogLevel.WARN,
+	LogLevel.ERROR,
+]);
 
 export function format(code: string) {
 	return prettierFormat(code, {
@@ -43,25 +53,30 @@ export async function compile(
 	schema: JSONSchema,
 	options?: CompileOptions
 ): Promise<string> {
-	console.log('Compiling JSON Schema to Zod...', safeStringify(schema));
+	log.debug('Compiling JSON Schema to Zod...', safeStringify(schema));
+
 	const deref = await dereference(
 		schema,
 		options?.dereference ?? { cwd: process.cwd(), $refOptions: {} }
 	); // resolved JSONSchema refs
-	console.log('Dereferenced JSON Schema:', safeStringify(deref));
+	log.debug('Dereferenced JSON Schema:', safeStringify(deref));
+
 	const linked = link(deref.dereferencedSchema as JSONSchema); // parent link in every schema node
-	console.log('Linked JSON Schema:', safeStringify(linked));
+	log.debug('Linked JSON Schema:', safeStringify(linked));
+
 	const normalized = normalize({
 		rootSchema: linked,
 		dereferencedPaths: deref.dereferencedPaths,
 		fileName: options?.normalize.fileName ?? 'unknown',
 		rules,
 	}); // unified JSON Schema various functions
-	console.log('Normalized JSON Schema:', safeStringify(normalized));
+	log.debug('Normalized JSON Schema:', safeStringify(normalized));
+
 	const ast = parse({ schema: normalized }); // NormalizedJSONSchema → ASTNode
-	console.log('AST:', safeStringify(ast));
+	log.debug('AST:', safeStringify(ast));
+
 	const optimizedAst = optimize(ast); // deduplicate, prefer named nodes, optimize structure
-	console.log('Optimized AST:', safeStringify(optimizedAst));
+	log.debug('Optimized AST:', safeStringify(optimizedAst));
 
 	const generated = generate(optimizedAst, {
 		importZod: options?.generate?.importZod ?? false,
