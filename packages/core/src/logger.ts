@@ -131,7 +131,12 @@ export class Logger {
 }
 
 export const logger = new Logger();
-logger.setGlobalLevels([LogLevel.INFO, LogLevel.WARN, LogLevel.ERROR]);
+logger.setGlobalLevels([
+	// LogLevel.DEBUG,
+	LogLevel.INFO,
+	LogLevel.WARN,
+	LogLevel.ERROR,
+]);
 
 export function safeStringify(obj: unknown): string {
 	const cache = new Set();
