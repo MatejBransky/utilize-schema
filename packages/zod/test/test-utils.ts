@@ -67,7 +67,7 @@ export async function compile(
 	const normalized = normalize({
 		rootSchema: linked,
 		dereferencedPaths: deref.dereferencedPaths,
-		fileName: options?.normalize.fileName ?? 'unknown',
+		fileName: options?.normalize?.fileName ?? 'unknown',
 		rules,
 	}); // unified JSON Schema various functions
 	log.debug('Normalized JSON Schema:', safeStringify(normalized));

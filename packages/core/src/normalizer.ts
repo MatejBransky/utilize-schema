@@ -6,16 +6,11 @@ import type {
 	NormalizedJSONSchema,
 } from './types/JSONSchema';
 
-// FIXME: Update type once you know what `options` are needed
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type NormalizeOptions = any;
-
-type NormalizeArgs = {
+export type NormalizeOptions = {
 	rootSchema: LinkedJSONSchema;
 	dereferencedPaths: DereferencedPaths;
 	fileName: string;
 	rules: Map<string, Rule>;
-	options?: NormalizeOptions;
 };
 
 /**
@@ -26,13 +21,12 @@ export function normalize({
 	dereferencedPaths,
 	fileName,
 	rules,
-	options,
-}: NormalizeArgs): NormalizedJSONSchema {
+}: NormalizeOptions): NormalizedJSONSchema {
 	rules.forEach((rule) =>
 		traverse({
 			schema: rootSchema,
 			callback: (schema, key) =>
-				rule({ schema, fileName, options, key, dereferencedPaths }),
+				rule({ schema, fileName, key, dereferencedPaths }),
 		})
 	);
 	return rootSchema as NormalizedJSONSchema;

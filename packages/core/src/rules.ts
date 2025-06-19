@@ -22,14 +22,9 @@ function isArrayType(schema: LinkedJSONSchema) {
 	return schema.items !== undefined || hasType(schema, 'array');
 }
 
-// FIXME: Update type once you know what `options` are needed
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type RuleOptions = any;
-
 type RuleParams = {
 	schema: LinkedJSONSchema;
 	fileName: string;
-	options: RuleOptions;
 	key: string | null;
 	dereferencedPaths: DereferencedPaths;
 };
