@@ -142,4 +142,22 @@ describe('type', () => {
       export type Unknown = z.infer<typeof Unknown>;
     `);
 	});
+
+	test("property with default value doesn't have optional part", async () => {
+		const result = await compile({
+			type: 'object',
+			properties: {
+				stringValue: { type: 'string', default: 'test' },
+				booleanValue: { type: 'boolean', default: false },
+			},
+		});
+
+		expect(result).toMatchCode(ts`
+      export const Unknown = z.object({
+        stringValue: z.string().default('test'),
+        booleanValue: z.boolean().default(false)
+      })
+      export type Unknown = z.infer<typeof Unknown>
+    `);
+	});
 });

@@ -13,7 +13,7 @@ import { collectSchemasInDependencyOrder } from './utils';
 
 const log = logger.withNamespace('zod-generator');
 logger.setNamespaceLevels('zod-generator', [
-	// LogLevel.DEBUG,
+	LogLevel.DEBUG,
 	LogLevel.INFO,
 	LogLevel.WARN,
 	LogLevel.ERROR,
@@ -188,7 +188,9 @@ function generateZodSchema(ast: ASTNode): string {
 				)
 				.map(({ keyName, ast: propertyAst, isRequired }) => {
 					const optionalPart =
-						(propertyAst.default ?? isRequired) ? '' : '.optional()';
+						propertyAst.default !== undefined || isRequired
+							? ''
+							: '.optional()';
 
 					if (propertyAst.kind === ASTKind.REFERENCE && propertyAst.circular) {
 						return ts`get ${keyName} () {
