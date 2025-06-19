@@ -3,9 +3,13 @@ import {
 	$RefParser,
 } from '@apidevtools/json-schema-ref-parser';
 
-import type { JSONSchema } from './types/JSONSchema';
+import { Linked, type JSONSchema } from './types/JSONSchema';
+import { justName, toSafeString } from './utils';
 
-export type DereferencedPaths = WeakMap<JSONSchema, string>;
+export type DereferenceTrace = WeakMap<
+	JSONSchema,
+	{ path: string; referencingSchema: JSONSchema; referencedSchema?: JSONSchema }
+>;
 
 export interface DereferenceOptions {
 	/** The current working directory where the schema is located. */
@@ -27,13 +31,40 @@ export async function dereference(
 	{ cwd, $refOptions }: DereferenceOptions
 ) {
 	const parser = new $RefParser();
-	const dereferencedPaths: DereferencedPaths = new WeakMap();
+	const dereferencedPaths: DereferenceTrace = new WeakMap();
 	const dereferencedSchema = await parser.dereference(cwd, schema, {
 		...$refOptions,
 		dereference: {
 			...$refOptions.dereference,
 			onDereference($ref: string, schema: JSONSchema) {
-				dereferencedPaths.set(schema, $ref);
+				const referencedSchema = parser.$refs.exists($ref, {})
+					? (parser.$refs.get($ref) as JSONSchema)
+					: undefined;
+
+				if (referencedSchema) {
+					if (Object.prototype.hasOwnProperty.call(referencedSchema, Linked)) {
+						referencedSchema[Linked]?.add(schema);
+						if (!referencedSchema.$id) {
+							referencedSchema.$id = toSafeString(justName($ref));
+						}
+					} else {
+						Object.defineProperty(referencedSchema, Linked, {
+							enumerable: false,
+							value: new Set<JSONSchema>(),
+							writable: false,
+						});
+					}
+				} else {
+					if (!schema.$id) {
+						schema.$id = toSafeString(justName($ref));
+					}
+				}
+
+				dereferencedPaths.set(schema, {
+					path: $ref,
+					referencingSchema: schema,
+					referencedSchema,
+				});
 			},
 		},
 	});

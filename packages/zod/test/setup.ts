@@ -10,9 +10,11 @@ expect.extend({
 			pass,
 			message: pass
 				? () => `Expected code to match`
-				: () =>
-						'Expected code does not match\n' +
-						this.utils.printDiffOrStringify(actualCode, expectedCode),
+				: () => `Received: 
+${this.utils.printReceived(actualCode)}
+
+Diff:
+${this.utils.printDiffOrStringify(actualCode, expectedCode)}`,
 		};
 	},
 });

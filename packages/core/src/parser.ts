@@ -12,12 +12,14 @@ import {
 	type LiteralNode,
 	type ObjectNode,
 	type ObjectProperty,
+	type ReferenceNode,
 } from './types/AST';
 import {
 	getRootSchema,
 	isBoolean,
 	isPrimitive,
 	Parent,
+	Reference,
 	SchemaType,
 	type LinkedJSONSchema,
 	type NormalizedJSONSchema,
@@ -33,7 +35,7 @@ import {
 
 const log = logger.withNamespace('parser');
 logger.setNamespaceLevels('parser', [
-	LogLevel.DEBUG,
+	// LogLevel.DEBUG,
 	LogLevel.INFO,
 	LogLevel.WARN,
 	LogLevel.ERROR,
@@ -97,8 +99,6 @@ export function parse({
 	log.accumulate(schema, 'schema:', safeStringify(schema));
 	log.accumulate(schema, { keyName, usedNames });
 
-	log.accumulate(schema, 'Stack:', safeStringify(Array.from(stack.keys())));
-
 	if (stack.has(schema)) {
 		const reference = stack.get(schema);
 		assert(reference, 'Referenced schema should exist in stack');
@@ -106,6 +106,7 @@ export function parse({
 			kind: ASTKind.REFERENCE,
 			reference,
 			circular: true,
+			default: schema.default,
 		};
 	}
 
@@ -162,6 +163,22 @@ export function parse({
 	const types = typesOfSchema(schema);
 
 	log.accumulate(schema, 'Schema types:', types);
+
+	if (types.includes(SchemaType.REFERENCE)) {
+		const ast = parseAsTypeWithCache({
+			...otherParams,
+			type: SchemaType.REFERENCE,
+			schema,
+		});
+
+		log.accumulate(schema, 'AST (reference type):', safeStringify(ast));
+		log.accumulate(schema, 'Reference schema:', safeStringify(ast.reference));
+		printLogs(schema);
+
+		nextStackSet(schema, ast);
+
+		return ast;
+	}
 
 	if (types.length === 1) {
 		const ast = parseAsTypeWithCache({
@@ -503,11 +520,31 @@ function parseNonLiteral({
 		}
 
 		case SchemaType.REFERENCE: {
-			throw new Error(
-				`Refs should have been resolved by the resolver! ${safeStringify(
-					schema
-				)}`
-			);
+			const reference = schema[Reference];
+			// TODO: remove logging
+			// console.log(
+			// 	'Parsing reference schema:',
+			// 	safeStringify(schema),
+			// 	safeStringify(schema[Reference])
+			// );
+
+			assert(reference, 'Reference schema should have a reference');
+			reference.$ref = undefined;
+			// TODO: remove logging
+			// console.log('\n\n****Reference schema:', reference, '\n\n');
+			const refAst = parse({
+				schema: reference,
+				...otherParams,
+				stack: new Map(),
+			}) as ReferenceNode;
+			// TODO: remove logging
+			// console.log('\n****AST reference:', safeStringify(refAst.reference));
+			return {
+				kind: ASTKind.REFERENCE,
+				reference: refAst,
+				circular: false,
+				default: schema.default,
+			};
 		}
 
 		case SchemaType.UNION: {
@@ -847,10 +884,9 @@ function computeStandaloneName({
 	keyNameFromDefinition,
 	usedNames,
 }: StandaloneNameParams): string | undefined {
-	if (schema[Parent] !== null && keyNameFromDefinition === undefined) {
+	if (schema.$ref && schema[Reference]) {
 		return undefined;
 	}
-
 	const name = schema.title || schema.$id || keyNameFromDefinition;
 	if (name) {
 		return generateName(name, usedNames);
