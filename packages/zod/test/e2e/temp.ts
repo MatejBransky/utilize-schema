@@ -1,49 +1,6 @@
-// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+import { z } from 'zod/v4';
 
-exports[`All.input.ts 1`] = `
-"export const All = z.object({
-	allOf: z.intersection(z.boolean(), z.number()).optional(),
-	anyOf: z.union([z.boolean(), z.number(), z.string()]).optional(),
-	oneOf: z.union([z.boolean(), z.number(), z.string()]).optional(),
-	array: z.array(z.string()).min(2).max(3).optional(),
-	tuple: z.tuple([z.boolean(), z.number(), z.string()]).optional(),
-	const: z.literal('xbox').optional(),
-	enum: z.enum(['ps4', 'ps5']).optional(),
-	ifThenElse: z.object({}).optional(),
-	null: z.null().optional(),
-	multiple: z.union([z.array(z.unknown()), z.boolean()]).optional(),
-	objAdditionalTrue: z
-		.object({
-			x: z.string().optional(),
-		})
-		.catchall(z.unknown())
-		.optional(),
-	objAdditionalFalse: z
-		.strictObject({
-			x: z.string().optional(),
-		})
-		.optional(),
-	objAdditionalNumber: z
-		.object({
-			x: z.string().optional(),
-		})
-		.catchall(z.number())
-		.optional(),
-	objAdditionalOnly: z.object({}).catchall(z.number()).optional(),
-	patternProps: z
-		.strictObject({
-			z: z.string().optional(),
-			'^x': z.string().optional(),
-			'^y': z.number().optional(),
-		})
-		.optional(),
-});
-export type All = z.infer<typeof All>;
-"
-`;
-
-exports[`Step.input.ts 1`] = `
-"export const CatalogItemReaderStep = z.object({});
+export const CatalogItemReaderStep = z.object({});
 export type CatalogItemReaderStep = z.infer<typeof CatalogItemReaderStep>;
 
 export const ConditionStep = z.object({
@@ -138,6 +95,7 @@ export type GroupByExpressionConfiguration = z.infer<
 >;
 
 export const GroupByConfiguration = z.object({
+	// TODO: schema with default should not be optional
 	asExpression: z.boolean().default(false).optional(),
 	configuration: GroupByBasicConfiguration.optional(),
 	expressionConfiguration: GroupByExpressionConfiguration.optional(),
@@ -303,5 +261,3 @@ export const Step = z.union([
 	UnionStreamStep,
 ]);
 export type Step = z.infer<typeof Step>;
-"
-`;

@@ -1,9 +1,11 @@
 import { dequal } from 'dequal';
 
-import type { DereferencedPaths } from './dereference';
+import type { DereferenceTrace } from './dereference';
 import { safeStringify } from './logger';
 import {
+	Linked,
 	Parent,
+	Reference,
 	type JSONSchemaTypeName,
 	type LinkedJSONSchema,
 } from './types/JSONSchema';
@@ -26,7 +28,7 @@ type RuleParams = {
 	schema: LinkedJSONSchema;
 	fileName: string;
 	key: string | null;
-	dereferencedPaths: DereferencedPaths;
+	dereferenceTrace: DereferenceTrace;
 };
 
 export type Rule = (params: RuleParams) => void;
@@ -107,6 +109,31 @@ rules.set('Add empty `required` property if none is defined', ({ schema }) => {
 	}
 });
 
+rules.set('Handle references', ({ schema, dereferenceTrace, key }) => {
+	const dereferencedTrace = dereferenceTrace.get(schema);
+	// TODO: remove logging
+	// console.log('***rule debug', {
+	// 	key,
+	// 	schema,
+	// 	dereferencedTrace,
+	// 	linked:
+	// 		dereferencedTrace?.referencedSchema &&
+	// 		dereferencedTrace.referencedSchema[Linked],
+	// });
+
+	if (
+		dereferencedTrace?.referencedSchema &&
+		dereferencedTrace.referencedSchema[Linked]
+	) {
+		schema.$ref = dereferencedTrace?.path;
+		Object.defineProperty(schema, Reference, {
+			enumerable: false,
+			value: dereferencedTrace.referencedSchema,
+			writable: false,
+		});
+	}
+});
+
 /**
  * Adds a `$id` property to schemas that require it but do not already have one.
  *
@@ -117,7 +144,7 @@ rules.set('Add empty `required` property if none is defined', ({ schema }) => {
  */
 rules.set(
 	'Add an $id to anything that needs it',
-	({ schema, fileName, dereferencedPaths }) => {
+	({ schema, fileName, dereferenceTrace }) => {
 		if (!isSchemaLike(schema)) {
 			return;
 		}
@@ -135,13 +162,13 @@ rules.set(
 
 		// We'll infer from $id and title downstream
 		// TODO: Normalize upstream
-		const dereferencedName = dereferencedPaths.get(schema);
+		const dereferencedName = dereferenceTrace.get(schema)?.path;
 		if (!schema.$id && !schema.title && dereferencedName) {
 			schema.$id = toSafeString(justName(dereferencedName));
 		}
 
 		if (dereferencedName) {
-			dereferencedPaths.delete(schema);
+			dereferenceTrace.delete(schema);
 		}
 	}
 );

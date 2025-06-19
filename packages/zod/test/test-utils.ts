@@ -44,7 +44,7 @@ export const ts = (strings: TemplateStringsArray, ...values: unknown[]) => {
 };
 
 export interface CompileOptions {
-	normalize?: NormalizeOptions;
+	fileName: string;
 	dereference?: DereferenceOptions;
 	generate?: GenerateOptions;
 }
@@ -66,8 +66,8 @@ export async function compile(
 
 	const normalized = normalize({
 		rootSchema: linked,
-		dereferencedPaths: deref.dereferencedPaths,
-		fileName: options?.normalize?.fileName ?? 'unknown',
+		dereferenceTrace: deref.dereferencedPaths,
+		fileName: options?.fileName ?? 'unknown',
 		rules,
 	}); // unified JSON Schema various functions
 	log.debug('Normalized JSON Schema:', safeStringify(normalized));

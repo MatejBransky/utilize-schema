@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "type": "object",
+  "properties": {
+    "columnMappings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ColumnMapping"
+      }
+    }
+  },
+
+  "definitions": {
+    "ColumnMapping": {
+      "type": "object",
+      "properties": {
+        "destination": {
+          "type": "string"
+        },
+        "in_a": {
+          "type": "string"
+        },
+        "in_b": {
+          "type": "string"
+        }
+      }
+    }
+  },
+
+  "examples": [
+    {
+      "columnMappings": [
+        {
+          "destination": "foobar",
+          "in_a": "bongo",
+          "in_b": "booga"
+        }
+      ]
+    }
+  ]
+}

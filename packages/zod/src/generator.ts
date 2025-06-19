@@ -174,6 +174,11 @@ function generateZodSchema(ast: ASTNode): string {
 			break;
 		}
 
+		case ASTKind.REFERENCE: {
+			expression = ts`${ast.reference.standaloneName}`;
+			break;
+		}
+
 		case ASTKind.OBJECT: {
 			const entries = ast.properties
 				.filter(
