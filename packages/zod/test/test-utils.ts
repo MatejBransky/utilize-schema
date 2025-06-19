@@ -18,11 +18,13 @@ import {
 	type Options as PrettierOptions,
 } from 'prettier';
 
+import { fileURLToPath } from 'node:url';
+
 import { generate, type GenerateOptions } from '../src';
 
 const log = logger.withNamespace('test-utils');
 logger.setNamespaceLevels('test-utils', [
-	LogLevel.DEBUG,
+	// LogLevel.DEBUG,
 	LogLevel.INFO,
 	LogLevel.WARN,
 	LogLevel.ERROR,
@@ -57,7 +59,10 @@ export async function compile(
 
 	const deref = await dereference(
 		schema,
-		options?.dereference ?? { cwd: process.cwd(), $refOptions: {} }
+		options?.dereference ?? {
+			cwd: fileURLToPath(new URL(import.meta.url)),
+			$refOptions: {},
+		}
 	); // resolved JSONSchema refs
 	log.debug('Dereferenced JSON Schema:', safeStringify(deref));
 
@@ -66,13 +71,13 @@ export async function compile(
 
 	const normalized = normalize({
 		rootSchema: linked,
-		dereferencedPaths: deref.dereferencedPaths,
-		fileName: options?.normalize.fileName ?? 'unknown',
+		dereferenceTrace: deref.dereferenceTrace,
+		fileName: options?.normalize?.fileName ?? 'unknown',
 		rules,
 	}); // unified JSON Schema various functions
 	log.debug('Normalized JSON Schema:', safeStringify(normalized));
 
-	const ast = parse({ schema: normalized }); // NormalizedJSONSchema → ASTNode
+	const ast = parse({ schema: normalized, usedRefSchemas: new Map() }); // NormalizedJSONSchema → ASTNode
 	log.debug('AST:', safeStringify(ast));
 
 	const optimizedAst = optimize(ast); // deduplicate, prefer named nodes, optimize structure

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "type": "object",
+  "properties": {
+    "expressionAttributes": {
+      "type": "array",
+      "items": {
+        "$ref": "./ExpressionAttribute.json"
+      }
+    }
+  },
+
+  "examples": [
+    {
+      "name": "exampleName",
+      "type": "STRING",
+      "expression": "exampleExpression",
+      "expressionAiPrompt": "examplePrompt"
+    }
+  ]
+}

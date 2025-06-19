@@ -4,7 +4,7 @@ exports[`All.input.ts 1`] = `
 "import { z } from 'zod/v4';
 
 export const All = z.object({
-	allOf: z.intersection(z.boolean(), z.number(), z.string()).optional(),
+	allOf: z.intersection(z.boolean(), z.number()).optional(),
 	anyOf: z.union([z.boolean(), z.number(), z.string()]).optional(),
 	oneOf: z.union([z.boolean(), z.number(), z.string()]).optional(),
 	array: z.array(z.string()).min(2).max(3).optional(),
@@ -21,7 +21,7 @@ export const All = z.object({
 		.catchall(z.unknown())
 		.optional(),
 	objAdditionalFalse: z
-		.object({
+		.strictObject({
 			x: z.string().optional(),
 		})
 		.optional(),
@@ -33,7 +33,7 @@ export const All = z.object({
 		.optional(),
 	objAdditionalOnly: z.object({}).catchall(z.number()).optional(),
 	patternProps: z
-		.object({
+		.strictObject({
 			z: z.string().optional(),
 			'^x': z.string().optional(),
 			'^y': z.number().optional(),
@@ -47,232 +47,10 @@ export type All = z.infer<typeof All>;
 exports[`JSONSchemaDraft7.input.ts 1`] = `
 "import { z } from 'zod/v4';
 
-export const NonNegativeInteger = z.int().min(0);
-export type NonNegativeInteger = z.infer<typeof NonNegativeInteger>;
-
-export const NonNegativeIntegerDefault0 = z.intersection(
-	NonNegativeInteger,
-	z.number().default(0)
-);
-export type NonNegativeIntegerDefault0 = z.infer<
-	typeof NonNegativeIntegerDefault0
->;
-
-export const NonNegativeIntegerDefault0 = z.intersection(
-	NonNegativeInteger,
-	z.number().default(0)
-);
-export type NonNegativeIntegerDefault0 = z.infer<
-	typeof NonNegativeIntegerDefault0
->;
-
-export const SchemaArray = z.array(CoreSchemaMetaSchema).min(1);
-export type SchemaArray = z.infer<typeof SchemaArray>;
-
-export const StringArray = z.array(z.string()).default([]);
-export type StringArray = z.infer<typeof StringArray>;
-
-export const SimpleTypes = z.enum([
-	'array',
-	'boolean',
-	'integer',
-	'null',
-	'number',
-	'object',
-	'string',
-]);
-export type SimpleTypes = z.infer<typeof SimpleTypes>;
-
 export const CoreSchemaMetaSchema1 = z
-	.intersection(
-		z.boolean().default(true).meta({ title: 'Core schema meta-schema' }),
-		z
-			.object({
-				$id: z.string().optional(),
-				$schema: z.string().url().optional(),
-				$ref: z.string().optional(),
-				$comment: z.string().optional(),
-				title: z.string().optional(),
-				description: z.string().optional(),
-				default: z.unknown().optional(),
-				readOnly: z.boolean().default(false).optional(),
-				writeOnly: z.boolean().default(false).optional(),
-				examples: z.array(z.unknown()).optional(),
-				multipleOf: z.number().gt(0).optional(),
-				maximum: z.number().optional(),
-				exclusiveMaximum: z.number().optional(),
-				minimum: z.number().optional(),
-				exclusiveMinimum: z.number().optional(),
-				maxLength: NonNegativeInteger.optional(),
-				minLength: NonNegativeIntegerDefault0.optional(),
-				pattern: z.string().optional(),
-				additionalItems: CoreSchemaMetaSchema.optional(),
-				items: z
-					.union([CoreSchemaMetaSchema, SchemaArray])
-					.default(true)
-					.optional(),
-				maxItems: NonNegativeInteger.optional(),
-				minItems: NonNegativeIntegerDefault0.optional(),
-				uniqueItems: z.boolean().default(false).optional(),
-				contains: CoreSchemaMetaSchema.optional(),
-				maxProperties: NonNegativeInteger.optional(),
-				minProperties: NonNegativeIntegerDefault0.optional(),
-				required: StringArray.optional(),
-				additionalProperties: CoreSchemaMetaSchema.optional(),
-				definitions: z
-					.object({})
-					.catchall(CoreSchemaMetaSchema)
-					.default({})
-					.optional(),
-				properties: z
-					.object({})
-					.catchall(CoreSchemaMetaSchema)
-					.default({})
-					.optional(),
-				patternProperties: z
-					.object({})
-					.catchall(CoreSchemaMetaSchema)
-					.default({})
-					.optional(),
-				dependencies: z
-					.object({})
-					.catchall(z.union([CoreSchemaMetaSchema, StringArray]))
-					.optional(),
-				propertyNames: CoreSchemaMetaSchema.optional(),
-				const: z.unknown().optional(),
-				enum: z.array(z.unknown()).min(1).optional(),
-				type: z.union([SimpleTypes, z.array(SimpleTypes).min(1)]).optional(),
-				format: z.string().optional(),
-				contentMediaType: z.string().optional(),
-				contentEncoding: z.string().optional(),
-				if: CoreSchemaMetaSchema.optional(),
-				then: CoreSchemaMetaSchema.optional(),
-				else: CoreSchemaMetaSchema.optional(),
-				allOf: SchemaArray.optional(),
-				anyOf: SchemaArray.optional(),
-				oneOf: SchemaArray.optional(),
-				not: CoreSchemaMetaSchema.optional(),
-			})
-			.default(true)
-			.meta({ title: 'Core schema meta-schema' })
-	)
-	.meta({ title: 'Core schema meta-schema' });
-export type CoreSchemaMetaSchema1 = z.infer<typeof CoreSchemaMetaSchema1>;
-
-export const CoreSchemaMetaSchema = z
-	.union([
-		CoreSchemaMetaSchema1,
-		z.boolean().default(true).meta({ title: 'Core schema meta-schema' }),
-	])
+	.boolean()
 	.default(true)
 	.meta({ title: 'Core schema meta-schema' });
-export type CoreSchemaMetaSchema = z.infer<typeof CoreSchemaMetaSchema>;
-
-export const SchemaArray = z.array(CoreSchemaMetaSchema).min(1);
-export type SchemaArray = z.infer<typeof SchemaArray>;
-
-export const StringArray = z.array(z.string()).default([]);
-export type StringArray = z.infer<typeof StringArray>;
-
-export const CoreSchemaMetaSchema1 = z
-	.intersection(
-		z.boolean().default(true).meta({ title: 'Core schema meta-schema' }),
-		z
-			.object({
-				$id: z.string().optional(),
-				$schema: z.string().url().optional(),
-				$ref: z.string().optional(),
-				$comment: z.string().optional(),
-				title: z.string().optional(),
-				description: z.string().optional(),
-				default: z.unknown().optional(),
-				readOnly: z.boolean().default(false).optional(),
-				writeOnly: z.boolean().default(false).optional(),
-				examples: z.array(z.unknown()).optional(),
-				multipleOf: z.number().gt(0).optional(),
-				maximum: z.number().optional(),
-				exclusiveMaximum: z.number().optional(),
-				minimum: z.number().optional(),
-				exclusiveMinimum: z.number().optional(),
-				maxLength: NonNegativeInteger.optional(),
-				minLength: NonNegativeIntegerDefault0.optional(),
-				pattern: z.string().optional(),
-				additionalItems: CoreSchemaMetaSchema.optional(),
-				items: z
-					.union([
-						CoreSchemaMetaSchema1,
-						z
-							.boolean()
-							.default(true)
-							.meta({ title: 'Core schema meta-schema' }),
-						SchemaArray,
-					])
-					.default(true)
-					.optional(),
-				maxItems: NonNegativeInteger.optional(),
-				minItems: NonNegativeIntegerDefault0.optional(),
-				uniqueItems: z.boolean().default(false).optional(),
-				contains: CoreSchemaMetaSchema.optional(),
-				maxProperties: NonNegativeInteger.optional(),
-				minProperties: NonNegativeIntegerDefault0.optional(),
-				required: StringArray.optional(),
-				additionalProperties: CoreSchemaMetaSchema.optional(),
-				definitions: z
-					.object({})
-					.catchall(CoreSchemaMetaSchema)
-					.default({})
-					.optional(),
-				properties: z
-					.object({})
-					.catchall(CoreSchemaMetaSchema)
-					.default({})
-					.optional(),
-				patternProperties: z
-					.object({})
-					.catchall(CoreSchemaMetaSchema)
-					.default({})
-					.optional(),
-				dependencies: z
-					.object({})
-					.catchall(
-						z.union([
-							CoreSchemaMetaSchema1,
-							z
-								.boolean()
-								.default(true)
-								.meta({ title: 'Core schema meta-schema' }),
-							StringArray,
-						])
-					)
-					.optional(),
-				propertyNames: CoreSchemaMetaSchema.optional(),
-				const: z.unknown().optional(),
-				enum: z.array(z.unknown()).min(1).optional(),
-				type: z.union([SimpleTypes, z.array(SimpleTypes).min(1)]).optional(),
-				format: z.string().optional(),
-				contentMediaType: z.string().optional(),
-				contentEncoding: z.string().optional(),
-				if: CoreSchemaMetaSchema.optional(),
-				then: CoreSchemaMetaSchema.optional(),
-				else: CoreSchemaMetaSchema.optional(),
-				allOf: SchemaArray.optional(),
-				anyOf: SchemaArray.optional(),
-				oneOf: SchemaArray.optional(),
-				not: CoreSchemaMetaSchema.optional(),
-			})
-			.default(true)
-			.meta({ title: 'Core schema meta-schema' })
-	)
-	.meta({ title: 'Core schema meta-schema' });
 export type CoreSchemaMetaSchema1 = z.infer<typeof CoreSchemaMetaSchema1>;
-
-export const CoreSchemaMetaSchema = z
-	.union([
-		CoreSchemaMetaSchema1,
-		z.boolean().default(true).meta({ title: 'Core schema meta-schema' }),
-	])
-	.default(true)
-	.meta({ title: 'Core schema meta-schema' });
-export type CoreSchemaMetaSchema = z.infer<typeof CoreSchemaMetaSchema>;
 "
 `;

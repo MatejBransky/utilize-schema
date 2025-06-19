@@ -17,5 +17,5 @@ test('dereference()', async () => {
 		type: 'string',
 		enum: ['a', 'b', 'c'],
 	});
-	expect(result.dereferencedPaths).toMatchInlineSnapshot(`WeakMap {}`);
+	expect(result.dereferenceTrace).toMatchInlineSnapshot(`WeakMap {}`);
 });

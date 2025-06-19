@@ -24,6 +24,7 @@ export const ASTKind = {
 	ANY: 'ANY',
 	UNKNOWN: 'UNKNOWN',
 	NEVER: 'NEVER',
+	REFERENCE: 'REFERENCE',
 } as const;
 export type ASTKind = (typeof ASTKind)[keyof typeof ASTKind];
 
@@ -43,7 +44,8 @@ export type ASTNode =
 	| NullNode
 	| AnyNode
 	| UnknownNode
-	| NeverNode;
+	| NeverNode
+	| ReferenceNode;
 
 export type ASTNodeWithKeyName = ASTNode & { keyName: string };
 export type ASTNodeWithStandaloneName = ASTNode & { standaloneName: string };
@@ -161,6 +163,12 @@ export interface UnknownNode extends BaseASTNode {
 
 export interface NeverNode extends BaseASTNode {
 	kind: 'NEVER';
+}
+
+export interface ReferenceNode extends BaseASTNode {
+	kind: 'REFERENCE';
+	refName: string; // Name of the referenced schema
+	reference: ASTNode;
 }
 
 export const ANY_NODE: AnyNode = {

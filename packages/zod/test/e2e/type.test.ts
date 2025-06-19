@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
+import { fileURLToPath } from 'node:url';
+
 import { compile, ts } from '../test-utils';
 
 describe('type', () => {
@@ -85,6 +87,110 @@ describe('type', () => {
 			})
 		).toMatchCode(ts`
       export const Unknown = z.enum(['option1', 'option2', 'option3'])
+      export type Unknown = z.infer<typeof Unknown>;
+    `);
+	});
+
+	test.only('enum (z.enum)', async () => {
+		const cwd = __dirname + '/';
+		// const cwd = fileURLToPath(new URL(import.meta.url));
+		const result = await compile(
+			{
+				type: 'object',
+				properties: {
+					name: { type: 'string' },
+					dataType: { $ref: './definitions/DataType.json' },
+					dataType2: {
+						$ref: './definitions/DataType.json',
+					},
+					category: { $ref: '#/definitions/Category' },
+					// TODO: relative paths are not supported yet
+					// https://github.com/APIDevTools/json-schema-ref-parser/pull/261/files
+					info: { $ref: './definitions/Info.json' },
+				},
+				definitions: {
+					Category: { type: 'string' },
+				},
+			},
+			{
+				dereference: {
+					cwd,
+					$refOptions: {},
+				},
+			}
+		);
+
+		expect(result).toMatchInlineSnapshot(`
+			"export const DataType = z
+				.enum([
+					'BOOLEAN',
+					'DATE',
+					'DATETIME',
+					'FLOAT',
+					'INTEGER',
+					'LONG',
+					'STRING',
+					'UNKNOWN',
+				])
+				.meta({ title: 'DataType' });
+			export type DataType = z.infer<typeof DataType>;
+
+			export const Category = z.string();
+			export type Category = z.infer<typeof Category>;
+
+			export const OriginalDataType = z.enum([
+				'UNKNOWN',
+				'STRING',
+				'NUMBER',
+				'BOOLEAN',
+				'DATE',
+				'DATETIME',
+				'ARRAY',
+				'OBJECT',
+			]);
+			export type OriginalDataType = z.infer<typeof OriginalDataType>;
+
+			export const Info = z.object({
+				local: z.boolean().optional(),
+				originalDataType: OriginalDataType.optional(),
+			});
+			export type Info = z.infer<typeof Info>;
+
+			export const Unknown = z.object({
+				name: z.string().optional(),
+				dataType: DataType.default('STRING'),
+				dataType2: DataType.optional(),
+				category: Category.optional(),
+				info: Info.optional(),
+			});
+			export type Unknown = z.infer<typeof Unknown>;
+			"
+		`);
+
+		expect(result).toMatchCode(ts`
+      export const DataType = z
+        .enum([
+          'BOOLEAN',
+          'DATE',
+          'DATETIME',
+          'FLOAT',
+          'INTEGER',
+          'LONG',
+          'STRING',
+          'UNKNOWN',
+        ])
+        .meta({ title: 'DataType' });
+      export type DataType = z.infer<typeof DataType>;
+
+      export const Category = z.string();
+			export type Category = z.infer<typeof Category>;
+
+      export const Unknown = z.object({
+        name: z.string().optional(),
+        dataType: DataType.default('STRING'),
+        dataType2: DataType.optional(),
+        category: Category.optional(),
+      });
       export type Unknown = z.infer<typeof Unknown>;
     `);
 	});

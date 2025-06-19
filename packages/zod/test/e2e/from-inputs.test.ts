@@ -1,8 +1,8 @@
 import type { FileInfo } from '@apidevtools/json-schema-ref-parser';
 import type { JSONSchema } from '@utilize/json-schema-core';
 import { stripExtension } from '@utilize/json-schema-core';
-import { expect, it } from 'vitest';
 import merge from 'lodash/merge';
+import { expect, it } from 'vitest';
 
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -58,17 +58,20 @@ const httpWithCacheResolver = {
 function runOne(exports: TestCase, name: string) {
 	// log('blue', 'Running test', name)
 
-	const options: CompileOptions = merge(
+	const options = merge<CompileOptions, CompileOptions>(
 		{
-			fileName: stripExtension(name),
-			deref: {
-				cwd: process.cwd(),
+			normalize: {
+				fileName: stripExtension(name),
+			},
+			generate: { importZod: true },
+			dereference: {
+				cwd: join(fileURLToPath(new URL(import.meta.url)), 'inputs'),
 				$refOptions: {
 					resolve: { http: httpWithCacheResolver },
 				},
 			},
 		},
-		exports.options
+		exports.options ?? {}
 	);
 
 	it(name, async () => {

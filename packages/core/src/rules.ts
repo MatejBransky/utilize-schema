@@ -1,6 +1,7 @@
+import type { JSONSchema } from '@apidevtools/json-schema-ref-parser';
 import { dequal } from 'dequal';
 
-import type { DereferencedPaths } from './dereference';
+import type { DereferenceTrace } from './dereference';
 import { safeStringify } from './logger';
 import {
 	Parent,
@@ -31,7 +32,8 @@ type RuleParams = {
 	fileName: string;
 	options: RuleOptions;
 	key: string | null;
-	dereferencedPaths: DereferencedPaths;
+	dereferenceTrace: DereferenceTrace;
+	visitedRefSchemas: Set<JSONSchema>;
 };
 
 export type Rule = (params: RuleParams) => void;
@@ -122,7 +124,7 @@ rules.set('Add empty `required` property if none is defined', ({ schema }) => {
  */
 rules.set(
 	'Add an $id to anything that needs it',
-	({ schema, fileName, dereferencedPaths }) => {
+	({ schema, fileName, dereferenceTrace, visitedRefSchemas }) => {
 		if (!isSchemaLike(schema)) {
 			return;
 		}
@@ -140,13 +142,19 @@ rules.set(
 
 		// We'll infer from $id and title downstream
 		// TODO: Normalize upstream
-		const dereferencedName = dereferencedPaths.get(schema);
-		if (!schema.$id && !schema.title && dereferencedName) {
-			schema.$id = toSafeString(justName(dereferencedName));
+		const trace = dereferenceTrace.get(schema);
+		if (
+			!schema.$id &&
+			!schema.title &&
+			trace &&
+			!visitedRefSchemas.has(schema)
+		) {
+			schema.$id = toSafeString(justName(trace.ref));
+			visitedRefSchemas.add(trace.refSchema);
 		}
 
-		if (dereferencedName) {
-			dereferencedPaths.delete(schema);
+		if (trace) {
+			dereferenceTrace.delete(schema);
 		}
 	}
 );

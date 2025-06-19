@@ -1,7 +1,8 @@
-import type { DereferencedPaths } from './dereference';
+import type { DereferenceTrace } from './dereference';
 import type { Rule } from './rules';
 import { traverse } from './traverse';
 import type {
+	JSONSchema,
 	LinkedJSONSchema,
 	NormalizedJSONSchema,
 } from './types/JSONSchema';
@@ -12,7 +13,7 @@ export type NormalizeOptions = any;
 
 type NormalizeArgs = {
 	rootSchema: LinkedJSONSchema;
-	dereferencedPaths: DereferencedPaths;
+	dereferenceTrace: DereferenceTrace;
 	fileName: string;
 	rules: Map<string, Rule>;
 	options?: NormalizeOptions;
@@ -23,16 +24,24 @@ type NormalizeArgs = {
  */
 export function normalize({
 	rootSchema,
-	dereferencedPaths,
+	dereferenceTrace,
 	fileName,
 	rules,
 	options,
 }: NormalizeArgs): NormalizedJSONSchema {
+	const visitedRefSchemas = new Set<JSONSchema>();
 	rules.forEach((rule) =>
 		traverse({
 			schema: rootSchema,
 			callback: (schema, key) =>
-				rule({ schema, fileName, options, key, dereferencedPaths }),
+				rule({
+					schema,
+					fileName,
+					options,
+					key,
+					dereferenceTrace,
+					visitedRefSchemas,
+				}),
 		})
 	);
 	return rootSchema as NormalizedJSONSchema;

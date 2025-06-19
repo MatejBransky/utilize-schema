@@ -5,7 +5,7 @@ import {
 	type ASTNodeWithStandaloneName,
 	logger,
 	LogLevel,
-	toSafeString,
+	safeStringify,
 } from '@utilize/json-schema-core';
 
 import { formatToZodMethod } from './string';
@@ -63,7 +63,7 @@ export function generate(ast: ASTNode, options?: GenerateOptions): string {
 }
 
 function generateNamedSchema(ast: ASTNodeWithStandaloneName) {
-	const name = toSafeString(ast.standaloneName);
+	const name = ast.standaloneName;
 	const schemaStr = generateZodSchema(ast);
 
 	return ts`
@@ -183,7 +183,7 @@ function generateZodSchema(ast: ASTNode): string {
 				)
 				.map(
 					({ keyName, ast: propertyAst, isRequired }) =>
-						`${JSON.stringify(keyName)}: ${resolveZodSchema(propertyAst)}${isRequired ? '' : '.optional()'}`
+						`${JSON.stringify(keyName)}: ${resolveZodSchema(propertyAst)}${(propertyAst.default ?? isRequired) ? '' : '.optional()'}`
 				);
 
 			const catchallProp = ast.properties.find(
@@ -225,7 +225,18 @@ function generateZodSchema(ast: ASTNode): string {
 			expression = ts`z.never()`;
 			break;
 
+		case ASTKind.REFERENCE: {
+			log.info(
+				'Resolving reference:',
+				safeStringify(ast),
+				safeStringify(ast.reference)
+			);
+			expression = ts`${ast.refName}`;
+			break;
+		}
+
 		default:
+			log.warn('Unsupported AST kind:', ast);
 			throw new Error('Unsupported AST kind: ' + astKind);
 	}
 

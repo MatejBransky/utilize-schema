@@ -80,6 +80,38 @@ describe('schema combinations', () => {
     `);
 	});
 
+	describe('oneOf', () => {
+		test('oneOf with $defs', async () => {
+			const result = await compile({
+				$defs: {
+					A: { type: 'object', properties: { field1: { type: 'string' } } },
+					B: { type: 'object', properties: { field2: { type: 'number' } } },
+				},
+				oneOf: [{ $ref: '#/$defs/A' }, { $ref: '#/$defs/B' }],
+			});
+
+			console.log(result);
+
+			expect(result).toMatchCode(ts`
+        export const A = z.object({
+          field1: z.string().optional()
+        });
+        export type A = z.infer<typeof A>;
+
+        export const B = z.object({
+          field2: z.number().optional(),
+        });
+        export type B = z.infer<typeof B>;
+
+        export const Unknown = z.union([
+          A,
+          B
+        ])
+        export type Unknown = z.infer<typeof Unknown>;
+      `);
+		});
+	});
+
 	// Inspired by this document:
 	// https://datatracker.ietf.org/doc/html/draft-json-schema-language-00#section-5.3.7
 	test('oneOf (exclusive OR)', async () => {
@@ -114,27 +146,7 @@ describe('schema combinations', () => {
     `);
 	});
 
-	test.todo('issue', async () => {
-		const result = await compile({
-			type: 'object',
-			properties: {
-				field: { $ref: '#' },
-			},
-		});
-
-		console.log('*result:', result);
-
-		expect(result).toMatchCode(ts`
-      export const Unknown = z.object({
-        get field() {
-          return Unknown.optional()
-        }
-      });
-      export type Unknown = z.infer<typeof Unknown>;
-    `);
-	});
-
-	test.todo('temp', async () => {
+	test.todo('complex cyclic', async () => {
 		const result = await compile({
 			$id: 'http://json-schema.org/draft-07/schema#',
 			title: 'Core schema meta-schema',

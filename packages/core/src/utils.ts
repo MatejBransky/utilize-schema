@@ -1,3 +1,5 @@
+import moize from 'moize';
+
 import {
 	Parent,
 	type JSONSchema,
@@ -213,4 +215,71 @@ export function generateName(from: string, usedNames: Set<string>) {
 
 	usedNames.add(name);
 	return name;
+}
+
+export const getDefinitionsMemoized = moize(getDefinitions);
+
+interface GetDefinitionsParams<S extends JSONSchema> {
+	schema: S;
+	isSchema?: boolean;
+	processed?: Set<S>;
+}
+
+interface Definitions<S extends JSONSchema> {
+	[k: string]: S;
+}
+
+export function getDefinitions<S extends JSONSchema, N extends S>({
+	schema,
+	isSchema = true,
+	processed = new Set<S>(),
+}: GetDefinitionsParams<S>): Definitions<S> {
+	if (processed.has(schema)) {
+		return {};
+	}
+
+	processed.add(schema);
+
+	if (Array.isArray(schema)) {
+		return schema.reduce(
+			(prev, cur) => ({
+				...prev,
+				...getDefinitions({ schema: cur, isSchema: false, processed }),
+			}),
+			{}
+		);
+	}
+
+	if (isPlainObject(schema)) {
+		return {
+			...(isSchema && (schema.$defs ?? schema.definitions ?? {})),
+			...Object.keys(schema).reduce<Definitions<S>>((prev, cur) => {
+				const subschema = schema[cur as keyof typeof schema] as S;
+
+				return {
+					...prev,
+					...getDefinitions<S, N>({
+						schema: subschema,
+						isSchema: false,
+						processed,
+					}),
+				};
+			}, {}),
+		} as unknown as Definitions<S>;
+	}
+
+	return {};
+}
+
+export function omitFields<T extends object, U extends object>(
+	obj: T,
+	fieldsToOmit: U
+): Partial<T> {
+	const result: Partial<T> = {};
+	for (const key in obj) {
+		if (!(key in fieldsToOmit)) {
+			result[key] = obj[key];
+		}
+	}
+	return result;
 }

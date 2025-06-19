@@ -1,4 +1,4 @@
-import moize from 'moize';
+import type { JSONSchema } from '@apidevtools/json-schema-ref-parser';
 
 import { logger, LogLevel, safeStringify } from './logger';
 import {
@@ -12,28 +12,29 @@ import {
 	type LiteralNode,
 	type ObjectNode,
 	type ObjectProperty,
+	type ReferenceNode,
 } from './types/AST';
 import {
 	getRootSchema,
 	isBoolean,
 	isPrimitive,
 	Parent,
+	Reference,
 	SchemaType,
 	type LinkedJSONSchema,
-	type NormalizedJSONSchema,
 } from './types/JSONSchema';
 import { typesOfSchema } from './typesOfSchema';
 import {
 	assert,
 	findKey,
 	generateName,
-	isPlainObject,
+	getDefinitionsMemoized,
 	maybeStripNameHints,
 } from './utils';
 
 const log = logger.withNamespace('parser');
 logger.setNamespaceLevels('parser', [
-	// LogLevel.DEBUG,
+	LogLevel.DEBUG,
 	LogLevel.INFO,
 	LogLevel.WARN,
 	LogLevel.ERROR,
@@ -54,8 +55,9 @@ type Processed = Map<LinkedJSONSchema, Map<SchemaType, ASTNode>>;
 
 type UsedNames = Set<string>;
 
-interface ParseParams {
+interface CommonParseParams {
 	schema: LinkedJSONSchema;
+	usedRefSchemas: Map<JSONSchema, { name: string; ref: string; ast: ASTNode }>;
 	options?: ParserOptions;
 	keyName?: string;
 	processed?: Processed;
@@ -70,17 +72,94 @@ export function parse({
 	options,
 	processed = new Map(),
 	usedNames = new Set(),
-}: ParseParams): ASTNode {
+	usedRefSchemas,
+}: CommonParseParams): ASTNode {
 	callId++;
-	const otherParams = { keyName, options, processed, usedNames };
+	const otherParams = {
+		keyName,
+		options,
+		processed,
+		usedNames,
+		usedRefSchemas,
+	};
 
 	log.accumulate(schema, `Call #${callId}`);
 	log.accumulate(schema, 'schema:', safeStringify(schema));
 	log.accumulate(schema, { keyName, usedNames });
 
+	if (schema[Reference]) {
+		const reference = schema[Reference];
+		const usedReference = usedRefSchemas.get(reference.schema);
+		let refName = usedReference?.name;
+		let refAst = usedReference?.ast;
+
+		log.accumulate(schema, 'Reference found:', {
+			refSchema: safeStringify(reference.schema),
+			refRefSchema: safeStringify(
+				reference.schema[Reference]?.schema[Reference]
+			),
+			usedReference,
+		});
+
+		if (!usedReference) {
+			const definitions = getDefinitionsMemoized({
+				schema: getRootSchema(schema),
+			});
+			const keyNameFromDefinition = findKey(
+				definitions,
+				(_) => _ === reference.schema
+			);
+
+			refName = keyNameFromDefinition;
+
+			assert(
+				keyNameFromDefinition,
+				'Reference schema should have a definition key'
+			);
+
+			refAst = parse({
+				schema: reference.schema,
+				...otherParams,
+				keyName: undefined,
+			});
+
+			usedRefSchemas.set(reference.schema, {
+				name: keyNameFromDefinition,
+				ref: reference.ref,
+				ast: refAst,
+			});
+		}
+
+		log.accumulate(schema, 'Reference:', safeStringify(reference));
+
+		assert(refName, 'Reference name should be defined');
+		assert(refAst, 'Reference AST should be defined');
+
+		const ast: ReferenceNode = {
+			kind: ASTKind.REFERENCE,
+			refName,
+			reference: refAst,
+			default:
+				schema.default !== reference.schema.default
+					? schema.default
+					: undefined,
+			meta: {
+				provenance: reference.ref,
+				title: schema.title,
+				description: schema.description,
+			},
+		};
+
+		log.accumulate(schema, 'AST (reference):', safeStringify(ast));
+		const logs = log.flush(schema) ?? [];
+		log.debug(BLOCK_START, ...logs, BLOCK_END);
+
+		return ast;
+	}
+
 	if (isPrimitive(schema)) {
 		if (isBoolean(schema)) {
-			const ast = parseBooleanSchema({ schema, keyName });
+			const ast = parseBooleanSchema({ schema, keyName, usedRefSchemas });
 
 			log.accumulate(schema, 'AST (boolean):', safeStringify(ast));
 			printLogs(schema);
@@ -130,11 +209,11 @@ export function parse({
 		schema: {
 			[Parent]: null,
 			$id: schema.$id,
-			allOf: [],
+			anyOf: [],
 			description: schema.description,
 			title: schema.title,
 		},
-		type: 'ALL_OF',
+		type: SchemaType.ANY_OF,
 	});
 
 	// FIXME: This doesn't work for JSONSchemaDraft7.input.ts
@@ -159,7 +238,7 @@ export function parse({
 	return ast;
 }
 
-interface ParseWithTypeParams extends ParseParams {
+interface ParseWithTypeParams extends CommonParseParams {
 	type: SchemaType;
 	schema: LinkedJSONSchema;
 	usedNames: UsedNames;
@@ -196,8 +275,6 @@ function parseAsTypeWithCache({
 		parseNonLiteral({ ...otherParams, type, schema, processed })
 	);
 }
-
-const getDefinitionsMemoized = moize(getDefinitions);
 
 function parseNonLiteral({
 	type: schemaType,
@@ -248,7 +325,11 @@ function parseNonLiteral({
 
 		case SchemaType.ANY_OF: {
 			const nodes = schema.anyOf?.map((subschema) =>
-				parse({ ...otherParams, schema: subschema, keyName: undefined })
+				parse({
+					...otherParams,
+					schema: subschema,
+					keyName: undefined,
+				})
 			);
 
 			assert(nodes, 'Schema should have anyOf nodes');
@@ -265,7 +346,11 @@ function parseNonLiteral({
 
 		case SchemaType.ONE_OF: {
 			const nodes = schema.oneOf?.map((subschema) =>
-				parse({ ...otherParams, schema: subschema, keyName: undefined })
+				parse({
+					...otherParams,
+					schema: subschema,
+					keyName: undefined,
+				})
 			);
 
 			assert(nodes, 'Schema should have oneOf nodes');
@@ -331,6 +416,7 @@ function parseNonLiteral({
 				...otherParams,
 				schema,
 				keyName,
+				standaloneName,
 			});
 		}
 
@@ -338,8 +424,7 @@ function parseNonLiteral({
 			return createObject({
 				...otherParams,
 				schema,
-				keyName: undefined,
-				keyNameFromDefinition: keyNameFromDefinition ?? undefined,
+				standaloneName,
 			});
 		}
 
@@ -462,7 +547,7 @@ function parseNonLiteral({
 				nodes: schema.type.map((subtype) => {
 					return parse({
 						...otherParams,
-						schema: { ...schema, type: subtype },
+						schema: maybeStripNameHints({ ...schema, type: subtype }),
 						keyName: undefined,
 					});
 				}),
@@ -505,7 +590,7 @@ function parseNonLiteral({
 	schemaType satisfies never;
 }
 
-function parseBooleanSchema({ schema, keyName }: ParseParams): ASTNode {
+function parseBooleanSchema({ schema, keyName }: CommonParseParams): ASTNode {
 	if (schema) {
 		return {
 			kind: ASTKind.UNKNOWN,
@@ -519,7 +604,7 @@ function parseBooleanSchema({ schema, keyName }: ParseParams): ASTNode {
 	};
 }
 
-interface ParseLiteralParams extends ParseParams {
+interface ParseLiteralParams extends CommonParseParams {
 	usedNames: UsedNames;
 	keyNameFromDefinition: string | undefined;
 }
@@ -578,22 +663,17 @@ function parseLiteral({
 	};
 }
 
-interface CreateObjectParams extends ParseParams {
+interface CreateObjectParams extends CommonParseParams {
 	keyName?: string;
-	keyNameFromDefinition?: string;
+	standaloneName?: string;
 }
 
 function createObject({
 	schema,
+	standaloneName,
 	keyName,
-	keyNameFromDefinition,
 	...otherParams
 }: CreateObjectParams): ObjectNode {
-	const standaloneName = computeStandaloneName({
-		schema,
-		keyNameFromDefinition,
-		usedNames: new Set(),
-	});
 	const meta: ASTMeta = {
 		provenance: schema.$ref,
 		title: schema.title,
@@ -610,7 +690,7 @@ function createObject({
 	};
 }
 
-type ParsePropertiesParams = ParseParams;
+type ParsePropertiesParams = CommonParseParams;
 
 function parseProperties({
 	schema,
@@ -693,81 +773,13 @@ function parseProperties({
 	}
 }
 
-interface GetDefinitionsParams {
-	schema: LinkedJSONSchema;
-	isSchema?: boolean;
-	processed?: Set<LinkedJSONSchema>;
-}
-
-interface Definitions {
-	[k: string]: LinkedJSONSchema;
-}
-
-function getDefinitions({
-	schema,
-	isSchema = true,
-	processed = new Set<LinkedJSONSchema>(),
-}: GetDefinitionsParams): Definitions {
-	if (processed.has(schema)) {
-		return {};
-	}
-
-	processed.add(schema);
-
-	if (Array.isArray(schema)) {
-		return schema.reduce(
-			(prev, cur) => ({
-				...prev,
-				...getDefinitions({ schema: cur, isSchema: false, processed }),
-			}),
-			{}
-		);
-	}
-
-	if (isPlainObject(schema)) {
-		return {
-			...(isSchema && hasDefinitions(schema) ? schema.$defs : {}),
-			...Object.keys(schema).reduce<Definitions>((prev, cur) => {
-				const subschema = schema[
-					cur as keyof typeof schema
-				] as LinkedJSONSchema;
-
-				return {
-					...prev,
-					...getDefinitions({
-						schema: subschema,
-						isSchema: false,
-						processed,
-					}),
-				};
-			}, {}),
-		};
-	}
-
-	return {};
-}
-
-/**
- * TODO: Reduce rate of false positives
- */
-function hasDefinitions(
-	schema: LinkedJSONSchema
-): schema is NormalizedJSONSchema {
-	return '$defs' in schema;
-}
-
-interface StandaloneNameParams extends ParseParams {
+interface StandaloneNameParams extends CommonParseParams {
 	schema: LinkedJSONSchema;
 	keyNameFromDefinition: string | undefined;
 	usedNames: UsedNames;
 }
-
 /**
  * Computes a unique standalone name for a schema node, used for generating named exports.
- *
- * Standalone names are assigned only to:
- *   - Root schemas (where schema[Parent] === null)
- *   - Schemas that are present in $defs (i.e., have a keyNameFromDefinition)
  *
  * Inline subschemas (such as union members, object properties, etc.) do not receive a standalone name,
  * and will be emitted inline in the generated code.
@@ -784,7 +796,7 @@ function computeStandaloneName({
 	keyNameFromDefinition,
 	usedNames,
 }: StandaloneNameParams): string | undefined {
-	if (schema[Parent] !== null && keyNameFromDefinition === undefined) {
+	if (schema[Parent] !== null && schema[Reference]) {
 		return undefined;
 	}
 
