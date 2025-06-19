@@ -33,7 +33,7 @@ import {
 
 const log = logger.withNamespace('parser');
 logger.setNamespaceLevels('parser', [
-	// LogLevel.DEBUG,
+	LogLevel.DEBUG,
 	LogLevel.INFO,
 	LogLevel.WARN,
 	LogLevel.ERROR,

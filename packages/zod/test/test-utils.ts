@@ -22,7 +22,7 @@ import { generate, type GenerateOptions } from '../src';
 
 const log = logger.withNamespace('test-utils');
 logger.setNamespaceLevels('test-utils', [
-	LogLevel.DEBUG,
+	// LogLevel.DEBUG,
 	LogLevel.INFO,
 	LogLevel.WARN,
 	LogLevel.ERROR,
