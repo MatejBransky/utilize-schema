@@ -62,21 +62,21 @@ export async function compile(
 	log.debug('Dereferenced JSON Schema:', safeStringify(deref));
 
 	const linked = link(deref.dereferencedSchema as JSONSchema); // parent link in every schema node
-	log.debug('Linked JSON Schema:', safeStringify(linked));
+	log.info('Linked JSON Schema:', safeStringify(linked));
 
 	const normalized = normalize({
 		rootSchema: linked,
-		dereferencedPaths: deref.dereferencedPaths,
+		dereferenceTrace: deref.dereferencedPaths,
 		fileName: options?.normalize?.fileName ?? 'unknown',
 		rules,
 	}); // unified JSON Schema various functions
-	log.debug('Normalized JSON Schema:', safeStringify(normalized));
+	log.info('Normalized JSON Schema:', safeStringify(normalized));
 
 	const ast = parse({ schema: normalized, stack: new Map() }); // NormalizedJSONSchema → ASTNode
-	log.debug('AST:', safeStringify(ast));
+	log.info('AST:', safeStringify(ast));
 
 	const optimizedAst = optimize(ast); // deduplicate, prefer named nodes, optimize structure
-	log.debug('Optimized AST:', safeStringify(optimizedAst));
+	log.info('Optimized AST:', safeStringify(optimizedAst));
 
 	const generated = generate(optimizedAst, {
 		importZod: options?.generate?.importZod ?? false,

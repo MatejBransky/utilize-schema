@@ -102,10 +102,9 @@ describe('normalizer() rules', () => {
 		const linkedSchema = link(testCase.input);
 		const normalized = normalize({
 			rootSchema: linkedSchema,
-			dereferencedPaths: new WeakMap(),
+			dereferenceTrace: new WeakMap(),
 			fileName: testCase.fileName ?? 'test.json',
 			rules,
-			options: {},
 		});
 
 		expect(normalized).toEqual(testCase.output);
@@ -135,10 +134,9 @@ describe('normalizer() throws', () => {
 		expect(() =>
 			normalize({
 				rootSchema: link(testCase.input),
-				dereferencedPaths: new WeakMap(),
+				dereferenceTrace: new WeakMap(),
 				fileName: 'test.json',
 				rules,
-				options: {},
 			})
 		).toThrow(testCase.expectedError);
 	});

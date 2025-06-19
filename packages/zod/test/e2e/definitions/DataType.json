@@ -1,0 +1,27 @@
+{
+	"$schema_": "https://json-schema.org/draft-07/schema",
+	"title": "DataType",
+	"enum": [
+		"BOOLEAN",
+		"DATE",
+		"DATETIME",
+		"FLOAT",
+		"INTEGER",
+		"LONG",
+		"STRING",
+		"UNKNOWN"
+	],
+	"enumDescriptions": {
+		"BOOLEAN": "Boolean data type",
+		"DATE": "Date data type",
+		"DATETIME": "Date with time data type",
+		"FLOAT": "Floating point number data type",
+		"INTEGER": "Integer number data type",
+		"LONG": "Long number data type",
+		"STRING": "String data type",
+		"UNKNOWN": "For BE purpose when a new data type comes from MMM, FE should not show this type"
+	},
+	"$defs": {
+		"Meta": { "type": "string" }
+	}
+}

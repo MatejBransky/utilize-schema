@@ -6,6 +6,9 @@ import {
 import { isPlainObject } from './utils';
 
 const matchers: Record<SchemaType, (schema: JSONSchema) => boolean> = {
+	REFERENCE(schema) {
+		return '$ref' in schema && schema.$ref !== undefined;
+	},
 	ALL_OF(schema) {
 		return 'allOf' in schema;
 	},
@@ -75,9 +78,6 @@ const matchers: Record<SchemaType, (schema: JSONSchema) => boolean> = {
 	},
 	ONE_OF(schema) {
 		return 'oneOf' in schema;
-	},
-	REFERENCE(schema) {
-		return '$ref' in schema;
 	},
 	STRING(schema) {
 		if ('enum' in schema) return false;
