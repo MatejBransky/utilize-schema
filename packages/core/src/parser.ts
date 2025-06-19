@@ -50,7 +50,25 @@ const printLogs = (schema: LinkedJSONSchema) => {
 
 export type ParserOptions = unknown;
 
+/**
+ * Global cache of all processed schema nodes (by reference and type).
+ * Ensures that each unique schema/type pair is parsed only once,
+ * prevents infinite recursion, and enables sharing of AST nodes
+ * for repeated references (e.g. $defs, $ref).
+ */
 type Processed = Map<LinkedJSONSchema, Map<SchemaType, ASTNode>>;
+
+/**
+ * Local stack (or map) of parent schema nodes for the current parse call chain.
+ * Used to detect circular references within the current traversal path.
+ * If the current schema is already present in this stack, a circular reference is detected,
+ * and the AST node can record a reference to the ancestor node.
+ *
+ * This is necessary because the global 'processed' cache cannot distinguish
+ * between a true cycle (in the current call stack) and a legitimate re-use
+ * of a schema node elsewhere in the tree.
+ */
+type Stack = Map<LinkedJSONSchema, ASTNode>;
 
 type UsedNames = Set<string>;
 
@@ -59,6 +77,7 @@ interface ParseParams {
 	options?: ParserOptions;
 	keyName?: string;
 	processed?: Processed;
+	stack: Stack;
 	usedNames?: UsedNames;
 }
 
@@ -69,19 +88,51 @@ export function parse({
 	keyName,
 	options,
 	processed = new Map(),
+	stack,
 	usedNames = new Set(),
 }: ParseParams): ASTNode {
 	callId++;
-	const otherParams = { keyName, options, processed, usedNames };
 
 	log.accumulate(schema, `Call #${callId}`);
 	log.accumulate(schema, 'schema:', safeStringify(schema));
 	log.accumulate(schema, { keyName, usedNames });
 
+	log.accumulate(schema, 'Stack:', safeStringify(Array.from(stack.keys())));
+
+	if (stack.has(schema)) {
+		const reference = stack.get(schema);
+		assert(reference, 'Referenced schema should exist in stack');
+		return {
+			kind: ASTKind.REFERENCE,
+			reference,
+			circular: true,
+		};
+	}
+
+	// Create a new stack for this recursion branch to ensure that each branch
+	// of the traversal has its own isolated parent chain. This prevents
+	// cross-contamination between sibling branches, which could otherwise
+	// cause false-positive cycle detection or incorrect reference propagation.
+	// By copying the stack, we guarantee that only the current traversal path
+	// is considered when detecting cycles.
+	const nextStack = new Map(stack);
+	const nextStackSet = (_schema: LinkedJSONSchema, node: ASTNode) => {
+		nextStack.set(_schema, node);
+	};
+
+	const otherParams = {
+		keyName,
+		options,
+		processed,
+		usedNames,
+		stack: nextStack,
+	} satisfies Omit<ParseParams, 'schema'>;
+
 	if (isPrimitive(schema)) {
 		if (isBoolean(schema)) {
-			const ast = parseBooleanSchema({ schema, keyName });
+			const ast = parseBooleanSchema({ schema, keyName, stack: nextStack });
 
+			nextStackSet(schema, ast);
 			log.accumulate(schema, 'AST (boolean):', safeStringify(ast));
 			printLogs(schema);
 
@@ -103,6 +154,8 @@ export function parse({
 		log.accumulate(schema, 'AST (literal):', ast);
 		printLogs(schema);
 
+		nextStackSet(schema, ast);
+
 		return ast;
 	}
 
@@ -120,6 +173,8 @@ export function parse({
 		log.accumulate(schema, 'AST (one type):', safeStringify(ast));
 		printLogs(schema);
 
+		nextStackSet(schema, ast);
+
 		return ast;
 	}
 
@@ -136,6 +191,8 @@ export function parse({
 		},
 		type: 'ALL_OF',
 	});
+
+	nextStackSet(schema, ast);
 
 	// FIXME: This doesn't work for JSONSchemaDraft7.input.ts
 	// assert(
@@ -170,6 +227,7 @@ function parseAsTypeWithCache({
 	type,
 	schema,
 	processed = new Map(),
+	stack,
 	...otherParams
 }: ParseWithTypeParams): ASTNode {
 	// If we've seen this node before, return it.
@@ -189,11 +247,15 @@ function parseAsTypeWithCache({
 	const ast = {} as ASTNode;
 	cachedTypeMap.set(type, ast);
 
+	if (!stack.has(schema)) {
+		stack.set(schema, ast);
+	}
+
 	// Update the AST in place. This updates the `processed` cache, as well
 	// as any nodes that directly reference the node.
 	return Object.assign(
 		ast,
-		parseNonLiteral({ ...otherParams, type, schema, processed })
+		parseNonLiteral({ ...otherParams, stack, type, schema, processed })
 	);
 }
 
@@ -593,6 +655,7 @@ function createObject({
 		schema,
 		keyNameFromDefinition,
 		usedNames: new Set(),
+		stack: otherParams.stack,
 	});
 	const meta: ASTMeta = {
 		provenance: schema.$ref,

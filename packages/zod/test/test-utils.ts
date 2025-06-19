@@ -72,7 +72,7 @@ export async function compile(
 	}); // unified JSON Schema various functions
 	log.debug('Normalized JSON Schema:', safeStringify(normalized));
 
-	const ast = parse({ schema: normalized }); // NormalizedJSONSchema → ASTNode
+	const ast = parse({ schema: normalized, stack: new Map() }); // NormalizedJSONSchema → ASTNode
 	log.debug('AST:', safeStringify(ast));
 
 	const optimizedAst = optimize(ast); // deduplicate, prefer named nodes, optimize structure

@@ -181,10 +181,18 @@ function generateZodSchema(ast: ASTNode): string {
 						keyName !== ADDITIONAL_PROPERTY_KEY_NAME &&
 						!(ast.kind === ASTKind.NEVER)
 				)
-				.map(
-					({ keyName, ast: propertyAst, isRequired }) =>
-						`${JSON.stringify(keyName)}: ${resolveZodSchema(propertyAst)}${isRequired ? '' : '.optional()'}`
-				);
+				.map(({ keyName, ast: propertyAst, isRequired }) => {
+					const optionalPart =
+						(propertyAst.default ?? isRequired) ? '' : '.optional()';
+
+					if (propertyAst.kind === ASTKind.REFERENCE && propertyAst.circular) {
+						return ts`get ${keyName} () {
+              return ${propertyAst.reference.standaloneName}${optionalPart};
+            }`;
+					}
+
+					return `${JSON.stringify(keyName)}: ${resolveZodSchema(propertyAst)}${optionalPart}`;
+				});
 
 			const catchallProp = ast.properties.find(
 				(p) => p.keyName === ADDITIONAL_PROPERTY_KEY_NAME

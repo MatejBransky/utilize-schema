@@ -46,26 +46,24 @@ describe('reference', () => {
     `);
 	});
 
-	test.todo('cyclic reference', async () => {
-		await expect(
-			compile({
-				type: 'object',
-				properties: {
-					value: { type: 'string' },
-					next: { $ref: '#' },
-				},
-				required: ['value'],
-			})
-		).toMatchCode(ts`
-      import { z } from 'zod';
+	test('cyclic reference', async () => {
+		const result = await compile({
+			type: 'object',
+			properties: {
+				value: { type: 'string' },
+				next: { $ref: '#' },
+			},
+			required: ['value'],
+		});
 
-      export const CyclicSchema = z.object({
+		expect(result).toMatchCode(ts`
+      export const Unknown = z.object({
         value: z.string(),
         get next() {
-          return CyclicSchema.optional();
+          return Unknown.optional();
         },
       });
-      export type CyclicSchema = z.infer<typeof CyclicSchema>;
+      export type Unknown = z.infer<typeof Unknown>;
     `);
 	});
 });
