@@ -129,16 +129,17 @@ describe('type', () => {
 	test('multiple types', async () => {
 		await expect(
 			compile({
-				type: ['object', 'string'],
+				type: ['object', 'boolean'],
 				properties: { field: { type: 'string' } },
+				default: true,
 			})
 		).toMatchCode(ts`
       export const Unknown = z.union([
         z.object({
           field: z.string().optional(),
         }),
-        z.string(),
-      ])
+        z.boolean(),
+      ]).default(true)
       export type Unknown = z.infer<typeof Unknown>;
     `);
 	});

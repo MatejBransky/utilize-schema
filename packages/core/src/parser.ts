@@ -206,19 +206,16 @@ export function parse({
 		schema: {
 			[Parent]: null,
 			$id: schema.$id,
-			allOf: [],
+			anyOf: [],
 			description: schema.description,
 			title: schema.title,
 		},
-		type: 'ALL_OF',
+		type: SchemaType.ANY_OF,
 	});
 
 	nextStackSet(schema, ast);
 
-	assert(
-		ast.kind === ASTKind.INTERSECTION,
-		'AST should be an intersection type'
-	);
+	assert(ast.kind === ASTKind.UNION, 'AST should be an union type');
 
 	ast.nodes = types.map((type) => {
 		// We hoist description (for comment) and id/title (for standaloneName)
@@ -559,7 +556,12 @@ function parseNonLiteral({
 				nodes: schema.type.map((subtype) => {
 					return parse({
 						...otherParams,
-						schema: { ...maybeStripNameHints(schema), type: subtype },
+						schema: {
+							...maybeStripNameHints(schema),
+							title: undefined,
+							type: subtype,
+							default: undefined,
+						},
 						keyName: undefined,
 					});
 				}),

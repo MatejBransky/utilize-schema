@@ -1,4 +1,4 @@
-export const exclude = true;
+// export const exclude = true;
 export const input = {
 	$schema: 'http://json-schema.org/draft-07/schema#',
 	$id: 'http://json-schema.org/draft-07/schema#',

@@ -27,6 +27,8 @@ const matchers: Record<SchemaType, (schema: JSONSchema) => boolean> = {
 
 		if (schema.type === 'boolean') return true;
 
+		if (schema.type && !schema.type.includes('boolean')) return false;
+
 		if (!isCompound(schema) && typeof schema.default === 'boolean') return true;
 
 		return false;

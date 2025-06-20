@@ -1,16 +1,23 @@
 import { assert, expect, test } from 'vitest';
 
-import {
-	dereference,
-	normalize,
-	Reference,
-	rules,
-	safeStringify,
-	type JSONSchema,
-} from '../src';
+import { dereference, normalize, rules, type JSONSchema } from '../src';
 import { link } from '../src/linker';
 import { parse } from '../src/parser';
 import { ASTKind } from '../src/types/AST';
+
+async function parseFromSchema(
+	schema: JSONSchema,
+	fileName: string = 'test-schema'
+) {
+	const dereferencedSchema = await dereference(schema, { cwd: process.cwd() });
+	const linkedSchema = link(dereferencedSchema);
+	const normalizedSchema = normalize({
+		rootSchema: linkedSchema,
+		fileName,
+		rules,
+	});
+	return parse({ schema: normalizedSchema, stack: new Map() });
+}
 
 test('parses $ref wrapper as REFERENCE AST node and preserves default', async () => {
 	// Root schema with $ref and default
@@ -29,28 +36,18 @@ test('parses $ref wrapper as REFERENCE AST node and preserves default', async ()
 		},
 	};
 
-	const dereferencedSchema = await dereference(input, { cwd: process.cwd() });
-	// Link schema (sets Parent and Reference)
-	const linkedSchema = link(dereferencedSchema);
-
-	// Parse AST for the property 'foo'
-	const fooSchema = linkedSchema.properties?.foo;
-
-	assert(fooSchema, 'fooSchema should not be undefined');
-
-	const ast = parse({ schema: fooSchema, stack: new Map() });
-
+	const ast = await parseFromSchema(input, 'RefWrapper');
+	assert(ast.kind === ASTKind.OBJECT, 'AST node should be of kind OBJECT');
+	const fooAst = ast.properties.find((p) => p.keyName === 'foo')?.ast;
+	assert(fooAst, 'Foo property should exist in the AST');
 	// AST node should be of kind REFERENCE
-	assert(ast.kind === ASTKind.REFERENCE);
-
+	assert(fooAst.kind === ASTKind.REFERENCE);
 	// Should preserve default from the wrapper
-	expect(ast.default).toBe('baz');
-
+	expect(fooAst.default).toBe('baz');
 	// Reference should point to the referenced AST node
-	expect(ast.reference.kind).toBe(ASTKind.STRING);
-
-	// Referenced AST node should not have default (unless defined in $defs)
-	expect(ast.reference.default).toBeUndefined();
+	expect(fooAst.reference.kind).toBe(ASTKind.STRING);
+	// Referenced fooAst node should not have default (unless defined in $defs)
+	expect(fooAst.reference.default).toBeUndefined();
 });
 
 test('parses cyclic $ref as REFERENCE AST node with circular=true', async () => {
@@ -64,15 +61,7 @@ test('parses cyclic $ref as REFERENCE AST node with circular=true', async () => 
 		required: ['value'],
 	};
 
-	const dereferencedSchema = await dereference(input, { cwd: process.cwd() });
-	const linkedSchema = link(dereferencedSchema);
-	const normalizedSchema = normalize({
-		rootSchema: linkedSchema,
-		fileName: 'Cyclic',
-		rules,
-	});
-
-	const ast = parse({ schema: normalizedSchema, stack: new Map() });
+	const ast = await parseFromSchema(input, 'Cyclic');
 
 	// AST node should be of kind REFERENCE and circular=true
 	assert(ast.kind === ASTKind.OBJECT, 'AST node should be of kind REFERENCE');
@@ -85,4 +74,28 @@ test('parses cyclic $ref as REFERENCE AST node with circular=true', async () => 
 	);
 	expect(nextProp.ast.circular).toBe(true);
 	expect(nextProp.ast.reference).toBe(ast);
+});
+
+test('keep title only in the union and not in its nodes', async () => {
+	const input: JSONSchema = {
+		type: ['object', 'boolean'],
+		title: 'UnionTitle',
+		properties: {
+			foo: { type: 'string' },
+			bar: { type: 'number' },
+		},
+	};
+
+	const ast = await parseFromSchema(input, 'UnionTitle');
+	assert(ast.kind === ASTKind.UNION, 'AST node should be of kind UNION');
+	expect(ast.meta?.title).toBe('UnionTitle');
+	expect(
+		ast.nodes.map((n) => ({
+			title: n.meta?.title,
+			standaloneName: n.standaloneName,
+		}))
+	).toEqual([
+		{ title: undefined, standaloneName: undefined },
+		{ title: undefined, standaloneName: undefined },
+	]);
 });
