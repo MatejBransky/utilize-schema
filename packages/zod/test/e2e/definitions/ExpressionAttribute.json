@@ -1,0 +1,19 @@
+{
+	"$schema": "https://json-schema.org/draft-07/schema",
+	"type": "object",
+	"properties": {
+		"name": {
+			"type": "string"
+		},
+		"type": {
+			"$ref": "./definitions/DataType.json",
+			"default": "STRING"
+		},
+		"expression": {
+			"type": "string"
+		},
+		"expressionAiPrompt": {
+			"type": "string"
+		}
+	}
+}

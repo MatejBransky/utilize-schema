@@ -114,27 +114,7 @@ describe('schema combinations', () => {
     `);
 	});
 
-	test.todo('issue', async () => {
-		const result = await compile({
-			type: 'object',
-			properties: {
-				field: { $ref: '#' },
-			},
-		});
-
-		console.log('*result:', result);
-
-		expect(result).toMatchCode(ts`
-      export const Unknown = z.object({
-        get field() {
-          return Unknown.optional()
-        }
-      });
-      export type Unknown = z.infer<typeof Unknown>;
-    `);
-	});
-
-	test.todo('temp', async () => {
+	test.todo('issue with duplicates', async () => {
 		const result = await compile({
 			$id: 'http://json-schema.org/draft-07/schema#',
 			title: 'Core schema meta-schema',

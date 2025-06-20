@@ -174,6 +174,11 @@ function generateZodSchema(ast: ASTNode): string {
 			break;
 		}
 
+		case ASTKind.REFERENCE: {
+			expression = ts`${ast.reference.standaloneName}`;
+			break;
+		}
+
 		case ASTKind.OBJECT: {
 			const entries = ast.properties
 				.filter(
@@ -183,7 +188,9 @@ function generateZodSchema(ast: ASTNode): string {
 				)
 				.map(({ keyName, ast: propertyAst, isRequired }) => {
 					const optionalPart =
-						(propertyAst.default ?? isRequired) ? '' : '.optional()';
+						propertyAst.default !== undefined || isRequired
+							? ''
+							: '.optional()';
 
 					if (propertyAst.kind === ASTKind.REFERENCE && propertyAst.circular) {
 						return ts`get ${keyName} () {

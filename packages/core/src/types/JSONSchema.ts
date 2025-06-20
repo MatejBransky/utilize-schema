@@ -31,8 +31,19 @@ export const SchemaType = {
 } as const;
 export type SchemaType = (typeof SchemaType)[keyof typeof SchemaType];
 
+export const Reference = Symbol('Reference');
+
 export interface JSONSchema extends JSONSchema7 {
+	/**
+	 * A reference to the schema this schema is based on.
+	 */
+	[Reference]?: JSONSchema;
+
 	discriminator?: string;
+
+	properties?: {
+		[k: string]: JSONSchema;
+	};
 }
 export type JSONSchemaType = JSONSchema7Type;
 export type JSONSchemaTypeName = JSONSchema7TypeName;
@@ -42,6 +53,8 @@ export const Types = Symbol('Types');
 export const Intersection = Symbol('Intersection');
 
 export interface LinkedJSONSchema extends JSONSchema {
+	[Reference]?: LinkedJSONSchema;
+
 	/**
 	 * A reference to this schema's parent node, for convenience.
 	 * `null` when this is the root schema.
@@ -85,6 +98,7 @@ export interface NormalizedJSONSchema
 	 */
 	[Intersection]?: NormalizedJSONSchema;
 	[Parent]: NormalizedJSONSchema | null;
+	[Reference]?: NormalizedJSONSchema;
 	/**
 	 * Set of all schema types (SchemaType) that
 	 * this schema represents, precomputed for efficiency

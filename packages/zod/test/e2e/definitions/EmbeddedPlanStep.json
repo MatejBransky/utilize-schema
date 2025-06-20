@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "type": "object",
+  "properties": {
+    "inputMappings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/InputMapping"
+      }
+    },
+    "outputMappings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/OutputMapping"
+      }
+    }
+  },
+  "definitions": {
+    "InputMapping": {
+      "type": "object",
+      "properties": {
+        "inputName": {
+          "type": "string"
+        },
+        "attributeMapping": {
+          "type": "array",
+          "items": {
+            "$ref": "./AttributeMapping.json"
+          }
+        }
+      }
+    },
+    "OutputMapping": {
+      "type": "object",
+      "properties": {
+        "outputName": {
+          "type": "string"
+        },
+        "attributeMapping": {
+          "type": "array",
+          "items": {
+            "$ref": "./AttributeMapping.json"
+          }
+        }
+      }
+    }
+  }
+}

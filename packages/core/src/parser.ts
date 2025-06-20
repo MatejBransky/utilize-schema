@@ -12,12 +12,14 @@ import {
 	type LiteralNode,
 	type ObjectNode,
 	type ObjectProperty,
+	type ReferenceNode,
 } from './types/AST';
 import {
 	getRootSchema,
 	isBoolean,
 	isPrimitive,
 	Parent,
+	Reference,
 	SchemaType,
 	type LinkedJSONSchema,
 	type NormalizedJSONSchema,
@@ -33,7 +35,7 @@ import {
 
 const log = logger.withNamespace('parser');
 logger.setNamespaceLevels('parser', [
-	LogLevel.DEBUG,
+	// LogLevel.DEBUG,
 	LogLevel.INFO,
 	LogLevel.WARN,
 	LogLevel.ERROR,
@@ -97,17 +99,22 @@ export function parse({
 	log.accumulate(schema, 'schema:', safeStringify(schema));
 	log.accumulate(schema, { keyName, usedNames });
 
-	log.accumulate(schema, 'Stack:', safeStringify(Array.from(stack.keys())));
-
-	if (stack.has(schema)) {
-		const reference = stack.get(schema);
-		assert(reference, 'Referenced schema should exist in stack');
-		return {
-			kind: ASTKind.REFERENCE,
-			reference,
-			circular: true,
-		};
-	}
+	// if (stack.has(schema)) {
+	// 	const reference = stack.get(schema);
+	// 	assert(reference, 'Referenced schema should exist in stack');
+	//
+	// 	const ast = {
+	// 		kind: ASTKind.REFERENCE,
+	// 		reference,
+	// 		circular: true,
+	// 		default: schema.default,
+	// 	};
+	//
+	// 	log.accumulate(schema, 'AST (circular reference):', safeStringify(ast));
+	// 	printLogs(schema);
+	//
+	// 	return ast;
+	// }
 
 	// Create a new stack for this recursion branch to ensure that each branch
 	// of the traversal has its own isolated parent chain. This prevents
@@ -163,6 +170,20 @@ export function parse({
 
 	log.accumulate(schema, 'Schema types:', types);
 
+	if (types.includes(SchemaType.REFERENCE)) {
+		const ast = parseAsTypeWithCache({
+			...otherParams,
+			type: SchemaType.REFERENCE,
+			schema,
+		});
+
+		printLogs(schema);
+
+		nextStackSet(schema, ast);
+
+		return ast;
+	}
+
 	if (types.length === 1) {
 		const ast = parseAsTypeWithCache({
 			...otherParams,
@@ -194,11 +215,10 @@ export function parse({
 
 	nextStackSet(schema, ast);
 
-	// FIXME: This doesn't work for JSONSchemaDraft7.input.ts
-	// assert(
-	// 	ast.kind === ASTKind.INTERSECTION,
-	// 	'AST should be an intersection type'
-	// );
+	assert(
+		ast.kind === ASTKind.INTERSECTION,
+		'AST should be an intersection type'
+	);
 
 	ast.nodes = types.map((type) => {
 		// We hoist description (for comment) and id/title (for standaloneName)
@@ -393,6 +413,7 @@ function parseNonLiteral({
 				...otherParams,
 				schema,
 				keyName,
+				standaloneName,
 			});
 		}
 
@@ -401,7 +422,7 @@ function parseNonLiteral({
 				...otherParams,
 				schema,
 				keyName: undefined,
-				keyNameFromDefinition: keyNameFromDefinition ?? undefined,
+				standaloneName,
 			});
 		}
 
@@ -503,11 +524,25 @@ function parseNonLiteral({
 		}
 
 		case SchemaType.REFERENCE: {
-			throw new Error(
-				`Refs should have been resolved by the resolver! ${safeStringify(
-					schema
-				)}`
-			);
+			const reference = schema[Reference];
+
+			assert(reference, 'Reference schema should have a reference');
+
+			const circular = otherParams.stack.has(reference);
+
+			const refAst = circular
+				? otherParams.stack.get(reference)!
+				: (parse({
+						schema: reference,
+						...otherParams,
+					}) as ReferenceNode);
+
+			return {
+				kind: ASTKind.REFERENCE,
+				reference: refAst,
+				circular,
+				default: schema.default,
+			};
 		}
 
 		case SchemaType.UNION: {
@@ -524,7 +559,7 @@ function parseNonLiteral({
 				nodes: schema.type.map((subtype) => {
 					return parse({
 						...otherParams,
-						schema: { ...schema, type: subtype },
+						schema: { ...maybeStripNameHints(schema), type: subtype },
 						keyName: undefined,
 					});
 				}),
@@ -642,21 +677,15 @@ function parseLiteral({
 
 interface CreateObjectParams extends ParseParams {
 	keyName?: string;
-	keyNameFromDefinition?: string;
+	standaloneName?: string;
 }
 
 function createObject({
 	schema,
 	keyName,
-	keyNameFromDefinition,
+	standaloneName,
 	...otherParams
 }: CreateObjectParams): ObjectNode {
-	const standaloneName = computeStandaloneName({
-		schema,
-		keyNameFromDefinition,
-		usedNames: new Set(),
-		stack: otherParams.stack,
-	});
 	const meta: ASTMeta = {
 		provenance: schema.$ref,
 		title: schema.title,
@@ -847,10 +876,9 @@ function computeStandaloneName({
 	keyNameFromDefinition,
 	usedNames,
 }: StandaloneNameParams): string | undefined {
-	if (schema[Parent] !== null && keyNameFromDefinition === undefined) {
+	if (schema.$ref) {
 		return undefined;
 	}
-
 	const name = schema.title || schema.$id || keyNameFromDefinition;
 	if (name) {
 		return generateName(name, usedNames);

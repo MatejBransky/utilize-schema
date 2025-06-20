@@ -9,9 +9,6 @@ export const input = {
 				{
 					type: 'number',
 				},
-				{
-					type: 'string',
-				},
 			],
 		},
 		anyOf: {

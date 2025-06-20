@@ -70,9 +70,7 @@ describe('string constraints', () => {
 			test(testCase.name, async () => {
 				expect(
 					compile(testCase.schema, {
-						normalize: {
-							fileName: `Format ${testCase.name}.json`,
-						},
+						fileName: `Format ${testCase.name}.json`,
 					})
 				).toMatchCode(testCase.expected);
 			});

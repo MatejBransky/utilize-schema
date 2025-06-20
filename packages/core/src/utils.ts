@@ -214,3 +214,16 @@ export function generateName(from: string, usedNames: Set<string>) {
 	usedNames.add(name);
 	return name;
 }
+
+export function omitFields<T extends object, U extends object>(
+	obj: T,
+	fieldsToOmit: U
+): Partial<T> {
+	const result: Partial<T> = {};
+	for (const key in obj) {
+		if (!(key in fieldsToOmit)) {
+			result[key] = obj[key];
+		}
+	}
+	return result;
+}

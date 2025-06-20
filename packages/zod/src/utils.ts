@@ -40,6 +40,11 @@ export function traverseChildren(
 	visit: (child: ASTNode) => void
 ) {
 	switch (ast.kind) {
+		case ASTKind.REFERENCE:
+			if (!ast.circular) {
+				visit(ast.reference);
+			}
+			break;
 		case ASTKind.OBJECT:
 			for (const superType of ast.superTypes) {
 				visit(superType);

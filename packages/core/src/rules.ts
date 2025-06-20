@@ -1,6 +1,5 @@
 import { dequal } from 'dequal';
 
-import type { DereferencedPaths } from './dereference';
 import { safeStringify } from './logger';
 import {
 	Parent,
@@ -26,7 +25,6 @@ type RuleParams = {
 	schema: LinkedJSONSchema;
 	fileName: string;
 	key: string | null;
-	dereferencedPaths: DereferencedPaths;
 };
 
 export type Rule = (params: RuleParams) => void;
@@ -115,36 +113,22 @@ rules.set('Add empty `required` property if none is defined', ({ schema }) => {
  * - This normalization ensures that all relevant schemas have a unique identifier,
  *   which is important for referencing, code generation, and schema reuse.
  */
-rules.set(
-	'Add an $id to anything that needs it',
-	({ schema, fileName, dereferencedPaths }) => {
-		if (!isSchemaLike(schema)) {
-			return;
-		}
-
-		// Top-level schema
-		if (!schema.$id && !schema[Parent]) {
-			schema.$id = toSafeString(justName(fileName));
-			return;
-		}
-
-		// Sub-schemas with references
-		if (!isArrayType(schema) && !isObjectType(schema)) {
-			return;
-		}
-
-		// We'll infer from $id and title downstream
-		// TODO: Normalize upstream
-		const dereferencedName = dereferencedPaths.get(schema);
-		if (!schema.$id && !schema.title && dereferencedName) {
-			schema.$id = toSafeString(justName(dereferencedName));
-		}
-
-		if (dereferencedName) {
-			dereferencedPaths.delete(schema);
-		}
+rules.set('Add an $id to anything that needs it', ({ schema, fileName }) => {
+	if (!isSchemaLike(schema)) {
+		return;
 	}
-);
+
+	// Top-level schema
+	if (!schema.$id && !schema[Parent]) {
+		schema.$id = toSafeString(justName(fileName));
+		return;
+	}
+
+	// Sub-schemas with references
+	if (!isArrayType(schema) && !isObjectType(schema)) {
+		return;
+	}
+});
 
 /**
  * Ensures that every array-type schema has an explicit `minItems` property.

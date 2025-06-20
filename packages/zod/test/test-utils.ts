@@ -6,7 +6,6 @@ import {
 	logger,
 	LogLevel,
 	normalize,
-	type NormalizeOptions,
 	optimize,
 	parse,
 	rules,
@@ -44,7 +43,7 @@ export const ts = (strings: TemplateStringsArray, ...values: unknown[]) => {
 };
 
 export interface CompileOptions {
-	normalize?: NormalizeOptions;
+	fileName: string;
 	dereference?: DereferenceOptions;
 	generate?: GenerateOptions;
 }
@@ -55,19 +54,18 @@ export async function compile(
 ): Promise<string> {
 	log.debug('Compiling JSON Schema to Zod...', safeStringify(schema));
 
-	const deref = await dereference(
+	const dereferencedSchema = await dereference(
 		schema,
 		options?.dereference ?? { cwd: process.cwd(), $refOptions: {} }
 	); // resolved JSONSchema refs
-	log.debug('Dereferenced JSON Schema:', safeStringify(deref));
+	log.debug('Dereferenced JSON Schema:', safeStringify(dereferencedSchema));
 
-	const linked = link(deref.dereferencedSchema as JSONSchema); // parent link in every schema node
+	const linked = link(dereferencedSchema); // parent link in every schema node
 	log.debug('Linked JSON Schema:', safeStringify(linked));
 
 	const normalized = normalize({
 		rootSchema: linked,
-		dereferencedPaths: deref.dereferencedPaths,
-		fileName: options?.normalize?.fileName ?? 'unknown',
+		fileName: options?.fileName ?? 'unknown',
 		rules,
 	}); // unified JSON Schema various functions
 	log.debug('Normalized JSON Schema:', safeStringify(normalized));

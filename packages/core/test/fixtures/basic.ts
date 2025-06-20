@@ -1,4 +1,6 @@
-export const input = {
+import type { JSONSchema } from '../../src';
+
+export const input: JSONSchema = {
 	title: 'Example Schema',
 	type: 'object',
 	properties: {
@@ -6,7 +8,7 @@ export const input = {
 			type: 'string',
 		},
 		lastName: {
-			id: 'lastName',
+			$id: 'lastName',
 			type: 'string',
 		},
 		age: {
@@ -24,6 +26,12 @@ export const input = {
 		likesDogs: {
 			type: 'boolean',
 		},
+		gender: { $ref: '#/definitions/Gender' },
 	},
 	required: ['firstName', 'lastName'],
+	definitions: {
+		Gender: {
+			enum: ['man', 'woman'],
+		},
+	},
 };

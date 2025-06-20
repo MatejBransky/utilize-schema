@@ -1,17 +1,17 @@
 import {
-	type ParserOptions as $RefOptions,
 	$RefParser,
+	type ParserOptions as $RefOptions,
 } from '@apidevtools/json-schema-ref-parser';
+import type { JSONSchemaObject } from '@apidevtools/json-schema-ref-parser/dist/lib/types';
 
-import type { JSONSchema } from './types/JSONSchema';
-
-export type DereferencedPaths = WeakMap<JSONSchema, string>;
+import { Reference, type JSONSchema } from './types/JSONSchema';
+import { justName, omitFields, toSafeString } from './utils';
 
 export interface DereferenceOptions {
 	/** The current working directory where the schema is located. */
 	cwd: string;
 	/** Options for the $RefParser */
-	$refOptions: $RefOptions;
+	$refOptions?: $RefOptions;
 }
 
 /**
@@ -27,15 +27,52 @@ export async function dereference(
 	{ cwd, $refOptions }: DereferenceOptions
 ) {
 	const parser = new $RefParser();
-	const dereferencedPaths: DereferencedPaths = new WeakMap();
-	const dereferencedSchema = await parser.dereference(cwd, schema, {
+	const dereferencedSchema = (await parser.dereference(cwd, schema, {
 		...$refOptions,
 		dereference: {
-			...$refOptions.dereference,
-			onDereference($ref: string, schema: JSONSchema) {
-				dereferencedPaths.set(schema, $ref);
+			...$refOptions?.dereference,
+			onDereference(
+				$ref: string,
+				schema: JSONSchemaObject,
+				parent?: JSONSchemaObject,
+				parentPropName?: string
+			) {
+				const referencedSchema = parser.$refs.exists($ref, {})
+					? (parser.$refs.get($ref) as JSONSchemaObject)
+					: undefined;
+
+				if (referencedSchema) {
+					if (referencedSchema === schema) {
+						schema = { $ref };
+					} else {
+						schema = omitFields(schema, referencedSchema) as JSONSchemaObject;
+						schema.$ref = $ref;
+					}
+
+					if (parent && parentPropName) {
+						parent[parentPropName] = schema;
+					}
+
+					if (!referencedSchema.$id) {
+						referencedSchema.$id = toSafeString(justName($ref));
+					}
+
+					Object.defineProperty(schema, Reference, {
+						enumerable: false,
+						value: referencedSchema,
+						writable: false,
+					});
+				} else {
+					/**
+					 * If the referenced schema does not exist, we still want to
+					 * set the $id for the schema being dereferenced as we want to preserve standalone schema for it.
+					 */
+					if (!schema.$id) {
+						schema.$id = toSafeString(justName($ref));
+					}
+				}
 			},
 		},
-	});
-	return { dereferencedPaths, dereferencedSchema };
+	})) as JSONSchema;
+	return dereferencedSchema;
 }
