@@ -1,28 +1,30 @@
+/* eslint-disable */
+import { assert } from 'vitest';
 import { z } from 'zod/v4';
 
-export const NonNegativeInteger = z.int().min(0);
-export type NonNegativeInteger = z.infer<typeof NonNegativeInteger>;
+const CoreSchemaMetaSchemaBase = z.object({
+	foo: z.string(),
+});
 
-export const NonNegativeIntegerDefault0 = z.intersection(
-	NonNegativeInteger,
-	z.number().default(0)
-);
-export type NonNegativeIntegerDefault0 = z.infer<
-	typeof NonNegativeIntegerDefault0
->;
+const CoreSchemaMetaSchemaItems = CoreSchemaMetaSchemaBase.extend({
+	get items(): z.ZodUnion<
+		[typeof CoreSchemaMetaSchema, z.ZodArray<typeof CoreSchemaMetaSchema>]
+	> {
+		return z.union([
+			CoreSchemaMetaSchema,
+			z.array(CoreSchemaMetaSchema).min(1),
+		]);
+	},
+});
 
-export const SchemaArray = z.array(CoreSchemaMetaSchema).min(1);
-export type SchemaArray = z.infer<typeof SchemaArray>;
+export const CoreSchemaMetaSchema = z.union([
+	CoreSchemaMetaSchemaItems,
+	z.boolean(),
+]);
 
-export const CoreSchemaMetaSchema = z
-	.union([
-		z.object({
-			$id: z.string().optional(),
-			maxLength: NonNegativeInteger.optional(),
-			minLength: NonNegativeIntegerDefault0.optional(),
-			items: z.union([CoreSchemaMetaSchema, SchemaArray]).default(true),
-		}),
-		z.boolean(),
-	])
-	.meta({ title: 'Core schema meta-schema' });
-export type CoreSchemaMetaSchema = z.infer<typeof CoreSchemaMetaSchema>;
+const d = CoreSchemaMetaSchema.parse({});
+assert(typeof d !== 'boolean');
+const items = d.items;
+assert(typeof items !== 'boolean');
+assert(!Array.isArray(items));
+items;
