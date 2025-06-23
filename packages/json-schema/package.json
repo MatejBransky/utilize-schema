@@ -1,12 +1,12 @@
 {
-	"name": "@utilize/zod",
+	"name": "@utilize/json-schema",
 	"version": "0.0.1",
-	"description": "Zod utilities for working with JSON Schema.",
+	"description": "Utilities for working with JSON Schema.",
 	"keywords": [
-		"parser",
-		"optimizer",
-		"ast",
-		"generator"
+		"linker",
+		"normalizer",
+    "parser",
+    "optimizer"
 	],
 	"license": "MIT",
 	"author": {
@@ -16,7 +16,7 @@
 	"repository": {
 		"type": "git",
 		"url": "git@github.com:MatejBransky/utilize-schema.git",
-		"directory": "packages/core"
+		"directory": "packages/json-schema"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -29,7 +29,6 @@
 		"prepublishOnly": "pnpm build",
 		"build": "unbuild",
 		"build:dev": "unbuild --stub",
-		"stub": "unbuild --stub",
 		"format": "prettier . --write && eslint --fix .",
 		"check:format": "prettier . --check",
 		"check:lint": "eslint .",
@@ -37,23 +36,22 @@
 		"test": "vitest",
 		"ci:test": "vitest run"
 	},
-	"packageManager": "pnpm@10.6.5",
-	"dependencies": {
-		"@utilize/json-schema": "workspace:*",
-		"zod": "3.26.0-canary.20250609T052512"
-	},
+	"packageManager": "pnpm@10.11.1+sha512.e519b9f7639869dc8d5c3c5dfef73b3f091094b0a006d7317353c72b124e80e1afd429732e28705ad6bfa1ee879c1fce46c128ccebd3192101f43dd67c667912",
 	"devDependencies": {
-		"@apidevtools/json-schema-ref-parser": "^13.0.4",
 		"@total-typescript/tsconfig": "1.0.4",
-		"@types/lodash": "^4.17.17",
+		"@types/json-schema": "7.0.15",
 		"@utilize/eslint-config": "3.0.1",
 		"@utilize/prettier-config": "1.1.3",
-		"eslint": "^9.28.0",
-		"lodash": "4.17.21",
+		"eslint": "9.28.0",
 		"prettier": "3.5.3",
-		"typescript": "~5.8.3",
+		"typescript": "5.8.3",
 		"unbuild": "3.5.0",
 		"vitest": "3.2.2"
 	},
-	"prettier": "@utilize/prettier-config"
+	"prettier": "@utilize/prettier-config",
+	"dependencies": {
+		"@apidevtools/json-schema-ref-parser": "^13.0.4",
+		"dequal": "2.0.3",
+		"moize": "6.1.6"
+	}
 }

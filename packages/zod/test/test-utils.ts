@@ -1,31 +1,11 @@
-import {
-	dereference,
-	type DereferenceOptions,
-	type JSONSchema,
-	link,
-	logger,
-	LogLevel,
-	normalize,
-	optimize,
-	parse,
-	rules,
-	safeStringify,
-} from '@utilize/json-schema-core';
+import { type JSONSchema, Meta, parse } from '@utilize/json-schema';
 import prettierConfig from '@utilize/prettier-config/prettier.json';
 import {
 	format as prettierFormat,
 	type Options as PrettierOptions,
 } from 'prettier';
 
-import { generate, type GenerateOptions } from '../src';
-
-const log = logger.withNamespace('test-utils');
-logger.setNamespaceLevels('test-utils', [
-	// LogLevel.DEBUG,
-	LogLevel.INFO,
-	LogLevel.WARN,
-	LogLevel.ERROR,
-]);
+import { generate } from '../src/generator';
 
 export function format(code: string) {
 	return prettierFormat(code, {
@@ -42,42 +22,32 @@ export const ts = (strings: TemplateStringsArray, ...values: unknown[]) => {
 	return format(rawString);
 };
 
-export interface CompileOptions {
-	fileName: string;
-	dereference?: DereferenceOptions;
-	generate?: GenerateOptions;
+export function withMeta<T extends JSONSchema>(
+	obj: T,
+	meta: Partial<Meta> = {}
+) {
+	Object.defineProperty(obj, Meta, {
+		enumerable: false,
+		value: { ...meta },
+		writable: true,
+		configurable: true,
+	});
+	return obj as T & { [Meta]: Meta };
 }
 
-export async function compile(
-	schema: JSONSchema,
-	options?: CompileOptions
-): Promise<string> {
-	log.debug('Compiling JSON Schema to Zod...', safeStringify(schema));
+export interface CompileOptions {
+	importZod?: boolean;
+	cwd?: string;
+	fileName?: string;
+}
 
-	const dereferencedSchema = await dereference(
-		schema,
-		options?.dereference ?? { cwd: process.cwd(), $refOptions: {} }
-	); // resolved JSONSchema refs
-	log.debug('Dereferenced JSON Schema:', safeStringify(dereferencedSchema));
-
-	const linked = link(dereferencedSchema); // parent link in every schema node
-	log.debug('Linked JSON Schema:', safeStringify(linked));
-
-	const normalized = normalize({
-		rootSchema: linked,
-		fileName: options?.fileName ?? 'unknown',
-		rules,
-	}); // unified JSON Schema various functions
-	log.debug('Normalized JSON Schema:', safeStringify(normalized));
-
-	const ast = parse({ schema: normalized, stack: new Map() }); // NormalizedJSONSchema → ASTNode
-	log.debug('AST:', safeStringify(ast));
-
-	const optimizedAst = optimize(ast); // deduplicate, prefer named nodes, optimize structure
-	log.debug('Optimized AST:', safeStringify(optimizedAst));
-
-	const generated = generate(optimizedAst, {
-		importZod: options?.generate?.importZod ?? false,
-	}); // ASTNode → TS (Zod) code
-	return format(generated);
+export async function compile(schema: JSONSchema, options?: CompileOptions) {
+	const parsed = await parse(schema, {
+		cwd: options?.cwd ?? __dirname + '/',
+		fileName: options?.fileName ?? 'Root.json',
+	});
+	const code = generate(parsed.root, {
+		importZod: options?.importZod ?? false,
+	});
+	return format(code);
 }

@@ -1,78 +1,15 @@
-import {
-	ASTKind,
-	type ASTNode,
-	type ASTNodeWithStandaloneName,
-} from '@utilize/json-schema-core';
+import { isPlainObject, type ParsedJSONSchema } from '@utilize/json-schema';
 
-export function collectSchemasInDependencyOrder(
-	root: ASTNode,
-	visited = new Set<ASTNodeWithStandaloneName>(),
-	order: ASTNodeWithStandaloneName[] = [],
-	stack = new Set<ASTNode>()
-): ASTNodeWithStandaloneName[] {
-	if (stack.has(root)) {
-		return order;
-	}
-	stack.add(root);
+export const ts = String.raw;
 
-	const visit = (child: ASTNode) => {
-		if (hasStandaloneName(child)) {
-			collectSchemasInDependencyOrder(child, visited, order, stack);
-		} else {
-			traverseChildren(child, (nested) =>
-				collectSchemasInDependencyOrder(nested, visited, order, stack)
-			);
-		}
-	};
+export const NEWLINE = '\n';
 
-	traverseChildren(root, visit);
-
-	if (hasStandaloneName(root) && !visited.has(root)) {
-		visited.add(root);
-		order.push(root);
+export function isSchemaObject<S extends ParsedJSONSchema = ParsedJSONSchema>(
+	schema: unknown
+): schema is S {
+	if (isPlainObject(schema)) {
+		return true;
 	}
 
-	return order;
-}
-
-export function traverseChildren(
-	ast: ASTNode,
-	visit: (child: ASTNode) => void
-) {
-	switch (ast.kind) {
-		case ASTKind.REFERENCE:
-			if (!ast.circular) {
-				visit(ast.reference);
-			}
-			break;
-		case ASTKind.OBJECT:
-			for (const superType of ast.superTypes) {
-				visit(superType);
-			}
-			for (const { ast: property } of ast.properties) {
-				visit(property);
-			}
-			break;
-		case ASTKind.ARRAY:
-			visit(ast.items);
-			break;
-		case ASTKind.UNION:
-		case ASTKind.INTERSECTION:
-			for (const node of ast.nodes) {
-				visit(node);
-			}
-			break;
-		case ASTKind.TUPLE:
-			for (const node of ast.items) {
-				visit(node);
-			}
-			if ('spreadParam' in ast && ast.spreadParam) {
-				visit(ast.spreadParam);
-			}
-			break;
-	}
-}
-
-function hasStandaloneName(ast: ASTNode): ast is ASTNodeWithStandaloneName {
-	return 'standaloneName' in ast && typeof ast.standaloneName === 'string';
+	return false;
 }
