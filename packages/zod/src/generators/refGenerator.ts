@@ -10,7 +10,10 @@ export const generator = createGenerator(
 		const metadata = schema[Meta];
 		const reference = metadata.reference;
 
-		assert(reference, 'Reference schema must have a reference');
+		assert(
+			reference,
+			`Reference schema at "${metadata.path.join('/')}" must have a reference "${schema.$ref}"`
+		);
 
 		if (!reference[Meta].resolvedName) {
 			reference[Meta].resolvedName = resolveName({
