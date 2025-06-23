@@ -1,10 +1,12 @@
 import { isPlainObject, type ParsedJSONSchema } from '@utilize/json-schema';
-import { isSchemaObject } from '../utils';
+
 import {
 	Type,
 	type MatchedJSONSchema,
 	type NonObjectJSONSchema,
 } from './types';
+
+import { isSchemaObject } from '../utils';
 
 export type Matcher = (schema: MatchedJSONSchema) => boolean;
 

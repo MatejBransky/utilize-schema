@@ -5,8 +5,8 @@
 	"keywords": [
 		"linker",
 		"normalizer",
-    "parser",
-    "optimizer"
+		"parser",
+		"optimizer"
 	],
 	"license": "MIT",
 	"author": {
