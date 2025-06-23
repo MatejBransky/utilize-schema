@@ -1,4 +1,3 @@
-import { type ParsedJSONSchema } from '@utilize/json-schema';
 import { describe, expect, it } from 'vitest';
 
 import { withMeta } from './test-utils';
@@ -8,14 +7,14 @@ import { collectStandaloneSchemas } from '../src/collectStandaloneSchemas';
 describe('collectStandaloneSchemas', () => {
 	it('includes root schema', () => {
 		const root = withMeta({ type: 'string' });
-		const result = collectStandaloneSchemas(root as ParsedJSONSchema);
+		const result = collectStandaloneSchemas(root);
 		expect(result).toContain(root);
 	});
 
 	it('collects schemas from $defs', () => {
 		const def = withMeta({ type: 'number' });
 		const root = withMeta({ $defs: { Foo: def } });
-		const result = collectStandaloneSchemas(root as ParsedJSONSchema);
+		const result = collectStandaloneSchemas(root);
 		expect(result).toContain(def);
 		expect(result).toContain(root);
 	});
@@ -23,7 +22,7 @@ describe('collectStandaloneSchemas', () => {
 	it('collects schemas from definitions', () => {
 		const def = withMeta({ type: 'boolean' });
 		const root = withMeta({ definitions: { Bar: def } });
-		const result = collectStandaloneSchemas(root as ParsedJSONSchema);
+		const result = collectStandaloneSchemas(root);
 		expect(result).toContain(def);
 		expect(result).toContain(root);
 	});
@@ -32,7 +31,7 @@ describe('collectStandaloneSchemas', () => {
 		const ref = withMeta({ type: 'string' });
 		const node = withMeta({ $ref: '#/foo' }, { reference: ref });
 		const root = withMeta({ properties: { foo: node } });
-		const result = collectStandaloneSchemas(root as ParsedJSONSchema);
+		const result = collectStandaloneSchemas(root);
 		expect(result).toContain(ref);
 		expect(result).toContain(root);
 	});
@@ -41,7 +40,7 @@ describe('collectStandaloneSchemas', () => {
 		const def = withMeta({ type: 'number' });
 		const node = withMeta({ $ref: '#/defs/Num' }, { reference: def });
 		const root = withMeta({ $defs: { Num: def }, properties: { foo: node } });
-		const result = collectStandaloneSchemas(root as ParsedJSONSchema);
+		const result = collectStandaloneSchemas(root);
 		// Should only contain one instance of def
 		expect(result.filter((s) => s === def).length).toBe(1);
 	});
@@ -51,7 +50,7 @@ describe('collectStandaloneSchemas', () => {
 		const mid = withMeta({ $defs: { Deep: deep } });
 		const ref = withMeta({ $ref: '#/mid' }, { reference: mid });
 		const root = withMeta({ $defs: { Mid: mid }, properties: { foo: ref } });
-		const result = collectStandaloneSchemas(root as ParsedJSONSchema);
+		const result = collectStandaloneSchemas(root);
 		expect(result).toContain(deep);
 		expect(result).toContain(mid);
 		expect(result).not.toContain(ref);
