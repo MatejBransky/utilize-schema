@@ -18,11 +18,11 @@ describe('reference', () => {
 				},
 			})
 		).toMatchCode(ts`
-      export const MyType = z.string();
-      export type MyType = z.infer<typeof MyType>;
-
       export const MyType2 = z.number();
       export type MyType2 = z.infer<typeof MyType2>;
+
+      export const MyType = z.string();
+      export type MyType = z.infer<typeof MyType>;
 
       export const MyType3 = z.boolean();
       export type MyType3 = z.infer<typeof MyType3>;
@@ -95,26 +95,6 @@ describe('reference', () => {
 		});
 
 		expect(result).toMatchCode(ts`
-      export const Category = z.string();
-      export type Category = z.infer<typeof Category>;
-
-      export const Meta = z.string();
-      export type Meta = z.infer<typeof Meta>;
-
-      export const DataType = z
-        .enum([
-          'BOOLEAN',
-          'DATE',
-          'DATETIME',
-          'FLOAT',
-          'INTEGER',
-          'LONG',
-          'STRING',
-          'UNKNOWN',
-        ])
-        .meta({ title: 'DataType' });
-      export type DataType = z.infer<typeof DataType>;
-
       export const OriginalDataType = z.enum([
         'UNKNOWN',
         'STRING',
@@ -128,17 +108,37 @@ describe('reference', () => {
       export type OriginalDataType = z.infer<typeof OriginalDataType>;
 
       export const Info = z.object({
-        local: z.boolean().optional(),
-        originalDataType: OriginalDataType.optional(),
+              local: z.boolean().optional(),
+              originalDataType: OriginalDataType.optional(),
       });
       export type Info = z.infer<typeof Info>;
 
+      export const Category = z.string();
+      export type Category = z.infer<typeof Category>;
+
+      export const Meta = z.string();
+      export type Meta = z.infer<typeof Meta>;
+
+      export const DataType = z
+              .enum([
+                      'BOOLEAN',
+                      'DATE',
+                      'DATETIME',
+                      'FLOAT',
+                      'INTEGER',
+                      'LONG',
+                      'STRING',
+                      'UNKNOWN',
+              ])
+              .meta({ title: 'DataType' });
+      export type DataType = z.infer<typeof DataType>;
+
       export const Root = z.object({
-        name: z.string().optional(),
-        dataType: DataType.default('STRING'),
-        dataType2: DataType.optional(),
-        category: Category.optional(),
-        info: Info.optional(),
+              name: z.string().optional(),
+              dataType: DataType.default('STRING'),
+              dataType2: DataType.optional(),
+              category: Category.optional(),
+              info: Info.optional(),
       });
       export type Root = z.infer<typeof Root>;
     `);

@@ -165,11 +165,11 @@ describe('schema combinations', () => {
 				typeof NonNegativeIntegerDefault0
 			>;
 
-			export const MaxLength = NonNegativeInteger;
-			export type MaxLength = z.infer<typeof MaxLength>;
-
 			export const MinLength = NonNegativeIntegerDefault0;
 			export type MinLength = z.infer<typeof MinLength>;
+
+			export const MaxLength = NonNegativeInteger;
+			export type MaxLength = z.infer<typeof MaxLength>;
 
 			export const Schema = z
 				.union([

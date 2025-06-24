@@ -77,6 +77,7 @@ export const SchemaKeys: Record<keyof SchemaKeysType<JSONSchema>, string> = {
 
 export type Meta = {
 	fileName: string;
+	filePath: string;
 	path: Path;
 	parent: ParsedJSONSchema | null;
 	reference?: ParsedJSONSchemaObject;

@@ -1,18 +1,12 @@
-import { type JSONSchema, Meta, parse } from '@utilize/json-schema';
-import prettierConfig from '@utilize/prettier-config/prettier.json';
 import {
-	format as prettierFormat,
-	type Options as PrettierOptions,
-} from 'prettier';
+	type JSONSchema,
+	Meta,
+	parse,
+	type ParsedJSONSchemaObject,
+} from '@utilize/json-schema';
 
 import { generate } from '../src/generator';
-
-export function format(code: string) {
-	return prettierFormat(code, {
-		...(prettierConfig as PrettierOptions),
-		parser: 'typescript',
-	});
-}
+import { format } from '../src/utils';
 
 /**
  * A tagged template literal function that formats TypeScript code.
@@ -22,17 +16,14 @@ export const ts = (strings: TemplateStringsArray, ...values: unknown[]) => {
 	return format(rawString);
 };
 
-export function withMeta<T extends JSONSchema>(
-	obj: T,
-	meta: Partial<Meta> = {}
-) {
+export function withMeta(obj: JSONSchema, meta: Partial<Meta> = {}) {
 	Object.defineProperty(obj, Meta, {
 		enumerable: false,
 		value: { ...meta },
 		writable: true,
 		configurable: true,
 	});
-	return obj as T & { [Meta]: Meta };
+	return obj as ParsedJSONSchemaObject;
 }
 
 export interface CompileOptions {

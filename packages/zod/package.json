@@ -39,7 +39,9 @@
 	},
 	"packageManager": "pnpm@10.6.5",
 	"dependencies": {
+		"@types/toposort": "2.0.7",
 		"@utilize/json-schema": "workspace:*",
+		"toposort": "2.0.2",
 		"zod": "3.26.0-canary.20250609T052512"
 	},
 	"devDependencies": {

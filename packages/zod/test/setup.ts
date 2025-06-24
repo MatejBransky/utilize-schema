@@ -10,7 +10,9 @@ expect.extend({
 			pass,
 			message: pass
 				? () => `Expected code to match`
-				: () => `Received: 
+				: () => `${this.testPath}
+Test: ${this.currentTestName}
+Received: 
 ${this.utils.printReceived(actualCode)}
 
 Diff:

@@ -1,9 +1,13 @@
-import { Meta, type ParsedJSONSchema } from '@utilize/json-schema';
+import {
+	Meta,
+	type ParsedJSONSchema,
+	type ParsedJSONSchemaObject,
+} from '@utilize/json-schema';
+import toposort from 'toposort';
 
 import { collectStandaloneSchemas } from './collectStandaloneSchemas';
 import { generateSchema } from './generators/generateSchema';
 import { resolveName } from './resolveName';
-import { sortSchemasByDependency } from './sorter';
 import { NEWLINE, ts } from './utils';
 
 export function generate(
@@ -16,18 +20,21 @@ export function generate(
 		return generateSchema(root, { usedNames });
 	}
 
-	const standaloneSchemas = collectStandaloneSchemas(root);
-	const sorted = sortSchemasByDependency(standaloneSchemas);
+	const { schemas: standaloneSchemas, edges } = collectStandaloneSchemas(root);
+	const sorted = (toposort(edges).filter(Boolean) as ParsedJSONSchemaObject[])
+		.filter((schema) => standaloneSchemas.includes(schema))
+		.reverse();
 
 	const code: string[] = [];
 	if (options?.importZod ?? true) {
-		code.push(ts`import { z } from 'zod';${NEWLINE}`);
+		code.push(ts`import { z } from 'zod/v4';${NEWLINE}`);
 	}
 
 	for (const schema of sorted) {
 		const name =
 			schema[Meta].resolvedName ?? resolveName({ schema, usedNames });
 		schema[Meta].resolvedName = name;
+
 		const zodExpression = generateSchema(schema, { usedNames });
 
 		code.push(ts`export const ${name} = ${zodExpression};`);

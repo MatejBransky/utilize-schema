@@ -2,7 +2,6 @@ import { $RefParser } from '@apidevtools/json-schema-ref-parser';
 
 import { link } from './linker';
 import { type JSONSchema, type ParsedJSONSchema } from './model';
-import { justName } from './utils';
 
 type SchemaPath = string;
 
@@ -19,7 +18,13 @@ export async function parse(
 	get: ($ref: string) => ParsedJSONSchema;
 	referencedSchemas: ParsedJSONSchema[];
 }> {
-	const { cwd, fileName: rootFileName } = options;
+	let cwd = options.cwd;
+	const rootFileName = options.fileName;
+
+	if (!cwd.endsWith('/')) {
+		cwd += '/';
+	}
+
 	const parser = new $RefParser();
 	const $refs = await parser.resolve(cwd, schema, {});
 
@@ -30,9 +35,10 @@ export async function parse(
 	entries.forEach(([filePath, schema]) => {
 		const rootSchema = $refs.get('#');
 		const isRootSchema = schema === rootSchema;
-		const prefixPath = isRootSchema ? '#' : filePath;
-		const fileName =
-			justName(isRootSchema ? rootFileName : filePath) ?? 'Unknown';
+		const prefixPath = isRootSchema ? '#' : filePath.replace(cwd, '');
+		const fileName = isRootSchema
+			? rootFileName
+			: (filePath.split(/[\\/]/).at(-1) ?? 'Unknown');
 		link({
 			schema,
 			parent: null,
@@ -43,7 +49,9 @@ export async function parse(
 			stack: new Set(),
 		});
 	});
-
+	console.log(
+		`Parsed ${entries.length} schemas from ${rootFileName} at ${cwd}`
+	);
 	const root = $refs.get('#') as unknown as ParsedJSONSchema;
 
 	return {

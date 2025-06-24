@@ -41,7 +41,7 @@ export function resolveName({
 }
 
 export function generateName(from: string, usedNames: Set<string>) {
-	let name: string = toSafeString(from);
+	let name: string = toSafeString(justName(from) ?? from);
 	if (!name) name = 'NoName';
 
 	// increment counter until we find a free name
@@ -109,4 +109,27 @@ const upperFirst = (input: string) => {
  */
 function deburr(str: string): string {
 	return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+/**
+ * Eg. `foo/bar/baz.json` => `baz`
+ */
+export function justName(filename = ''): string | undefined {
+	const parts = filename.split(/[\\/]/);
+	const lastPart = parts.at(-1);
+	if (!lastPart) {
+		return;
+	}
+	return stripExtension(lastPart);
+}
+
+/**
+ * Avoid appending "js" to top-level unnamed schemas
+ */
+export function stripExtension(filename: string): string {
+	const lastDot = filename.lastIndexOf('.');
+	if (lastDot > 0) {
+		return filename.slice(0, lastDot);
+	}
+	return filename;
 }

@@ -1,5 +1,7 @@
 import type { $Refs } from '@apidevtools/json-schema-ref-parser';
 
+import { join as pathJoin, dirname } from 'path';
+
 import {
 	Meta,
 	type JSONSchema,
@@ -37,6 +39,8 @@ export function link({
 	if (schema.$ref) {
 		if (filePath !== '#' && schema.$ref.startsWith('#')) {
 			pointer = filePath + '#' + schema.$ref.slice(1);
+		} else if (schema.$ref.startsWith('./')) {
+			pointer = pathJoin(dirname(filePath), schema.$ref);
 		} else {
 			pointer = schema.$ref;
 		}
@@ -62,6 +66,7 @@ export function link({
 	}
 
 	const meta: Meta = {
+		filePath,
 		fileName,
 		path,
 		parent: parent as ParsedJSONSchemaObject,

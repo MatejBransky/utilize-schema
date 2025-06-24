@@ -55,9 +55,9 @@ describe('string constraints', () => {
 		return {
 			schema: { type: 'string', format } satisfies JSONSchema,
 			expected: ts`
-      export const ${name} = z${zod};
-      export type ${name} = z.infer<typeof ${name}>;
-    `,
+        export const ${name} = z${zod};
+        export type ${name} = z.infer<typeof ${name}>;
+      `,
 			name: format,
 		};
 	});

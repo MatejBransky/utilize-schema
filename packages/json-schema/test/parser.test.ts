@@ -125,6 +125,7 @@ test('circular references', async () => {
 	expect(parsed.root.properties?.self?.[Meta]).toMatchInlineSnapshot(`
 		{
 		  "fileName": "Unknown",
+		  "filePath": "#",
 		  "isCircular": true,
 		  "parent": {
 		    "self": {
