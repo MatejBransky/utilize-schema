@@ -1,6 +1,6 @@
 {
 	"name": "@utilize/zod",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"description": "Zod utilities for working with JSON Schema.",
 	"keywords": [
 		"parser",
