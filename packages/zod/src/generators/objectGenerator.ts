@@ -1,41 +1,39 @@
-import { Meta, type ParsedJSONSchemaObject } from '@utilize/json-schema';
+import { Meta } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
 import { generateSchema } from './generateSchema';
 
 import { NEWLINE, ts } from '../utils';
 
-export const generator = createGenerator<
-	ParsedJSONSchemaObject & {
-		properties: Record<string, ParsedJSONSchemaObject>;
-	}
->(
+export const generator = createGenerator(
 	(schema) => schema.type === 'object',
 	(schema, context) => {
 		// TODO: handle patternProperties
 
-		const properties = Object.entries(schema.properties).map(([key, value]) => {
-			let optionalPart = '.optional()';
+		const properties = Object.entries(schema.properties ?? {}).map(
+			([key, value]) => {
+				let optionalPart = '.optional()';
 
-			if (value.default !== undefined) {
-				optionalPart = '';
-			}
+				if (value.default !== undefined) {
+					optionalPart = '';
+				}
 
-			if (schema.required?.includes(key)) {
-				optionalPart = '';
-			}
+				if (schema.required?.includes(key)) {
+					optionalPart = '';
+				}
 
-			if (value.$ref) {
-				const metadata = value[Meta];
-				if (metadata.isCircular) {
-					return ts`get ${key} () {
+				if (value.$ref) {
+					const metadata = value[Meta];
+					if (metadata.isCircular) {
+						return ts`get ${key} () {
             return ${generateSchema(value, context)}${optionalPart};
           }`;
+					}
 				}
-			}
 
-			return `${key}: ${generateSchema(value, context)}${optionalPart}`;
-		});
+				return `${key}: ${generateSchema(value, context)}${optionalPart}`;
+			}
+		);
 		const propertiesPart = properties.join(`,${NEWLINE}`);
 
 		const additionalProperties =
