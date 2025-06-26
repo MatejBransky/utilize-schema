@@ -10,13 +10,7 @@ export const generator = createGenerator<
 		properties: Record<string, ParsedJSONSchemaObject>;
 	}
 >(
-	(schema) => {
-		if (typeof schema === 'object' && 'type' in schema && schema.properties) {
-			return true;
-		}
-
-		return false;
-	},
+	(schema) => schema.type === 'object',
 	(schema, context) => {
 		// TODO: handle patternProperties
 
