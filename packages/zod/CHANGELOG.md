@@ -1,5 +1,11 @@
 # @utilize/zod
 
+## 0.2.1
+
+### Patch Changes
+
+- 5cc4f62: handled missing schema.properties in objectGenerator
+
 ## 0.2.0
 
 ### Minor Changes
