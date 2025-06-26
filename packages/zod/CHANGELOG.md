@@ -1,5 +1,11 @@
 # @utilize/zod
 
+## 0.2.2
+
+### Patch Changes
+
+- c31ca83: handled missing schema.properties in objectGenerator
+
 ## 0.2.1
 
 ### Patch Changes
