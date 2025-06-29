@@ -1,5 +1,13 @@
 # @utilize/zod
 
+## 0.2.3
+
+### Patch Changes
+
+- 8bc03cb: added README
+- Updated dependencies [8bc03cb]
+  - @utilize/json-schema@0.0.3
+
 ## 0.2.2
 
 ### Patch Changes
