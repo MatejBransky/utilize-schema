@@ -23,6 +23,7 @@
     "check:lint": "pnpm run --recursive --parallel --aggregate-output --reporter-hide-prefix --if-present check:lint",
     "check:types": "pnpm run --recursive --parallel --aggregate-output --reporter-hide-prefix --if-present check:types",
     "format": "pnpm run --recursive --parallel --aggregate-output --if-present format",
+    "test": "pnpm run --recursive --parallel --aggregate-output --reporter-hide-prefix --if-present test",
     "ci:test": "pnpm run --recursive --parallel --aggregate-output --reporter-hide-prefix --if-present ci:test",
     "ci:version": "pnpm changeset version",
     "ci:publish": "pnpm changeset publish",

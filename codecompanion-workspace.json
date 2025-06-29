@@ -1,289 +1,291 @@
 {
   "name": "utilize-schema-workspace",
   "version": "1.0.0",
-  "system_prompt": "You are an expert TypeScript monorepo assistant. Always consider the architectural notes in NOTES.md when answering questions about any part of the codebase. Write code and code comments in English.",
-  "vars": {
-    "core_root": "packages/core"
-  },
+  "system_prompt": "You are an expert TypeScript monorepo assistant. Write code and code comments in English.",
   "groups": [
     {
-      "name": "end-to-end",
-      "system_prompt": "You are working with the core package of a JSON Schema to Zod generator. Always consider the architectural notes in NOTES.md.",
+      "name": "core libraries & tests",
+      "system_prompt": "You are an expert on the core logic and tests of both @utilize/json-schema and @utilize/zod libraries. Be critical, realistic, and provide guidance for long-term maintainability. Code and comments must be in English.",
       "data": [
-        "notes_md",
-        "jsonschema_ts",
-        "ast_ts",
-        "dereference_ts",
-        "dereference_test_ts",
-        "linker_ts",
-        "linker_test_ts",
-        "normalizer_ts",
-        "normalizer_test_ts",
-        "rules_ts",
-        "traverse_ts",
-        "traverse_test_ts",
-        "utils_ts",
-        "utils_test_ts",
-        "test_utils_ts",
-        "generator_ts",
-        "generator_test_ts",
-        "parser_ts",
-        "zod_test_ts",
-        "test_utils_ts_zod",
-        "array_test_ts",
-        "combination_test_ts",
-        "meta_test_ts",
-        "number_test_ts",
-        "object_test_ts",
-        "reference_test_ts",
-        "string_test_ts",
-        "type_test_ts"
-      ]
-    },
-    {
-      "name": "temp",
-      "description": "Cloned json-schema-to-typescript-lite implementation for reference and knowledge extraction.",
-      "data": [
-        "notes_md",
-
-        "temp_index_ts",
-        "temp_jsonschema_ts",
-        "temp_ast_ts",
-        "temp_resolver_ts",
-        "temp_linker_ts",
-        "temp_validator_ts",
-        "temp_normalizer_ts",
-        "temp_parser_ts",
-        "temp_optimizer_ts",
-        "temp_generator_ts",
-        "temp_typesofschema_ts",
-        "temp_utils_ts",
-        "temp_architecture_md",
-        "temp_readme_original_md",
-        "temp_readme_md"
+        "json-schema-src-index",
+        "json-schema-src-linker",
+        "json-schema-src-model",
+        "json-schema-src-parser",
+        "json-schema-src-utils",
+        "json-schema-test-parser",
+        "zod-src-collectStandaloneSchemas",
+        "zod-src-compile",
+        "zod-src-generator",
+        "zod-src-index",
+        "zod-src-resolveName",
+        "zod-src-utils",
+        "zod-src-generators-allOfGenerator",
+        "zod-src-generators-anyGenerator",
+        "zod-src-generators-anyOfGenerator",
+        "zod-src-generators-arrayGenerator",
+        "zod-src-generators-booleanGenerator",
+        "zod-src-generators-createGenerator",
+        "zod-src-generators-enumGenerator",
+        "zod-src-generators-generateSchema",
+        "zod-src-generators-literalGenerator",
+        "zod-src-generators-multipleTypeGenerator",
+        "zod-src-generators-nullGenerator",
+        "zod-src-generators-numberGenerator",
+        "zod-src-generators-objectGenerator",
+        "zod-src-generators-oneOfGenerator",
+        "zod-src-generators-recordGenerator",
+        "zod-src-generators-refGenerator",
+        "zod-src-generators-selectGenerator",
+        "zod-src-generators-stringGenerator",
+        "zod-src-generators-tupleGenerator",
+        "zod-src-generators-types",
+        "zod-test-codegen",
+        "zod-test-collectStandaloneSchemas",
+        "zod-test-combination",
+        "zod-test-meta",
+        "zod-test-number",
+        "zod-test-object",
+        "zod-test-reference",
+        "zod-test-resolveName",
+        "zod-test-setup",
+        "zod-test-string",
+        "zod-test-test-utils",
+        "zod-test-type",
+        "zod-test-vitest-dts",
+        "zod-test-snapshots-Example-generated"
       ]
     }
   ],
   "data": {
-    "notes_md": {
+    "json-schema-src-index": {
       "type": "file",
-      "path": "NOTES.md",
-      "description": "Architectural notes, motivation, and feature overview for the entire project. Central document for all packages."
+      "path": "packages/json-schema/src/index.ts",
+      "description": "Entry point for @utilize/json-schema library. Exports main API."
     },
-    "jsonschema_ts": {
+    "json-schema-src-linker": {
       "type": "file",
-      "path": "${core_root}/src/types/JSONSchema.ts",
-      "description": "Type definitions for JSON Schema used throughout the core pipeline."
+      "path": "packages/json-schema/src/linker.ts",
+      "description": "Handles $ref resolution and linking for JSON Schema documents."
     },
-    "ast_ts": {
+    "json-schema-src-model": {
       "type": "file",
-      "path": "${core_root}/src/types/AST.ts",
-      "description": "Type definitions for the Abstract Syntax Tree (AST) representation of schemas."
+      "path": "packages/json-schema/src/model.ts",
+      "description": "Core data models and types for JSON Schema processing."
     },
-    "dereference_ts": {
+    "json-schema-src-parser": {
       "type": "file",
-      "path": "${core_root}/src/dereference.ts",
-      "description": "Dereferencer module: resolves all $ref references in input schemas."
+      "path": "packages/json-schema/src/parser.ts",
+      "description": "Parses JSON Schema files and prepares them for linking and validation."
     },
-    "dereference_test_ts": {
+    "json-schema-src-utils": {
       "type": "file",
-      "path": "${core_root}/test/dereference.test.ts",
-      "description": "Tests for dereferencer module."
+      "path": "packages/json-schema/src/utils.ts",
+      "description": "Utility functions for JSON Schema processing."
     },
-    "linker_ts": {
+    "json-schema-test-parser": {
       "type": "file",
-      "path": "${core_root}/src/linker.ts",
-      "description": "Linker module: enhances schema nodes with parent references and breadcrumbs."
+      "path": "packages/json-schema/test/parser.test.ts",
+      "description": "Tests for JSON Schema parser and related logic."
     },
-    "linker_test_ts": {
+    "zod-src-collectStandaloneSchemas": {
       "type": "file",
-      "path": "${core_root}/test/linker.test.ts",
-      "description": "Tests for linker module."
+      "path": "packages/zod/src/collectStandaloneSchemas.ts",
+      "description": "Collects standalone Zod schemas from JSON Schema input."
     },
-    "normalizer_ts": {
+    "zod-src-compile": {
       "type": "file",
-      "path": "${core_root}/src/normalizer.ts",
-      "description": "Normalizer module: ensures schema consistency and expands shorthand constructs."
+      "path": "packages/zod/src/compile.ts",
+      "description": "Compiles JSON Schema to Zod schema."
     },
-    "normalizer_test_ts": {
-      "type": "file",
-      "path": "${core_root}/test/normalizer.test.ts",
-      "description": "Tests for normalizer module."
-    },
-    "rules_ts": {
-      "type": "file",
-      "path": "${core_root}/src/rules.ts",
-      "description": "Rules module: contains validation or transformation rules for schema processing."
-    },
-    "traverse_ts": {
-      "type": "file",
-      "path": "${core_root}/src/traverse.ts",
-      "description": "Traverse module: utilities for traversing schema structures."
-    },
-    "traverse_test_ts": {
-      "type": "file",
-      "path": "${core_root}/test/traverse.test.ts",
-      "description": "Tests for traverse module."
-    },
-    "utils_ts": {
-      "type": "file",
-      "path": "${core_root}/src/utils.ts",
-      "description": "Utility functions used throughout the core pipeline."
-    },
-    "utils_test_ts": {
-      "type": "file",
-      "path": "${core_root}/test/utils.test.ts",
-      "description": "Tests for utility functions."
-    },
-    "test_utils_ts": {
-      "type": "file",
-      "path": "${core_root}/test/test-utils.ts",
-      "description": "Test utilities for the core package."
-    },
-    "core_package_json": {
-      "type": "file",
-      "path": "${core_root}/package.json"
-    },
-    "generator_ts": {
+    "zod-src-generator": {
       "type": "file",
       "path": "packages/zod/src/generator.ts",
-      "description": "Zod generator module: generates Zod schemas and TypeScript types from AST nodes."
+      "description": "Main generator logic for Zod schemas."
     },
-    "generator_test_ts": {
+    "zod-src-index": {
       "type": "file",
-      "path": "packages/zod/test/generator.test.ts",
-      "description": "Tests for the Zod generator module."
+      "path": "packages/zod/src/index.ts",
+      "description": "Entry point for @utilize/zod library. Exports main API."
     },
-    "parser_ts": {
+    "zod-src-resolveName": {
       "type": "file",
-      "path": "${core_root}/src/parser.ts",
-      "description": "Parser module: parses JSON Schema into AST nodes."
+      "path": "packages/zod/src/resolveName.ts",
+      "description": "Resolves names for generated Zod schemas and types."
     },
-
-    "temp_index_ts": {
+    "zod-src-utils": {
       "type": "file",
-      "path": "packages/temp/src/index.ts",
-      "description": "Legacy entry point for json-schema-to-typescript-lite."
+      "path": "packages/zod/src/utils.ts",
+      "description": "Utility functions for Zod schema generation."
     },
-    "temp_jsonschema_ts": {
+    "zod-src-generators-allOfGenerator": {
       "type": "file",
-      "path": "packages/temp/src/types/JSONSchema.ts",
-      "description": "Legacy JSONSchema type definitions."
+      "path": "packages/zod/src/generators/allOfGenerator.ts",
+      "description": "Handles 'allOf' keyword in JSON Schema to Zod conversion."
     },
-    "temp_ast_ts": {
+    "zod-src-generators-anyGenerator": {
       "type": "file",
-      "path": "packages/temp/src/types/AST.ts",
-      "description": "Legacy AST type definitions."
+      "path": "packages/zod/src/generators/anyGenerator.ts",
+      "description": "Handles 'any' type in JSON Schema to Zod conversion."
     },
-    "temp_resolver_ts": {
+    "zod-src-generators-anyOfGenerator": {
       "type": "file",
-      "path": "packages/temp/src/resolver.ts",
-      "description": "Legacy resolver for $ref dereferencing."
+      "path": "packages/zod/src/generators/anyOfGenerator.ts",
+      "description": "Handles 'anyOf' keyword in JSON Schema to Zod conversion."
     },
-    "temp_linker_ts": {
+    "zod-src-generators-arrayGenerator": {
       "type": "file",
-      "path": "packages/temp/src/linker.ts",
-      "description": "Legacy linker for parent references."
+      "path": "packages/zod/src/generators/arrayGenerator.ts",
+      "description": "Handles 'array' type in JSON Schema to Zod conversion."
     },
-    "temp_validator_ts": {
+    "zod-src-generators-booleanGenerator": {
       "type": "file",
-      "path": "packages/temp/src/validator.ts",
-      "description": "Legacy schema validator."
+      "path": "packages/zod/src/generators/booleanGenerator.ts",
+      "description": "Handles 'boolean' type in JSON Schema to Zod conversion."
     },
-    "temp_normalizer_ts": {
+    "zod-src-generators-createGenerator": {
       "type": "file",
-      "path": "packages/temp/src/normalizer.ts",
-      "description": "Legacy schema normalizer."
+      "path": "packages/zod/src/generators/createGenerator.ts",
+      "description": "Factory for creating Zod schema generators."
     },
-    "temp_parser_ts": {
+    "zod-src-generators-enumGenerator": {
       "type": "file",
-      "path": "packages/temp/src/parser.ts",
-      "description": "Legacy parser from JSONSchema to AST."
+      "path": "packages/zod/src/generators/enumGenerator.ts",
+      "description": "Handles 'enum' keyword in JSON Schema to Zod conversion."
     },
-    "temp_optimizer_ts": {
+    "zod-src-generators-generateSchema": {
       "type": "file",
-      "path": "packages/temp/src/optimizer.ts",
-      "description": "Legacy AST optimizer."
+      "path": "packages/zod/src/generators/generateSchema.ts",
+      "description": "Core logic for generating Zod schemas from JSON Schema."
     },
-    "temp_generator_ts": {
+    "zod-src-generators-literalGenerator": {
       "type": "file",
-      "path": "packages/temp/src/generator.ts",
-      "description": "Legacy TypeScript code generator."
+      "path": "packages/zod/src/generators/literalGenerator.ts",
+      "description": "Handles 'literal' values in JSON Schema to Zod conversion."
     },
-    "temp_typesofschema_ts": {
+    "zod-src-generators-multipleTypeGenerator": {
       "type": "file",
-      "path": "packages/temp/src/typesOfSchema.ts",
-      "description": "Legacy schema type matcher."
+      "path": "packages/zod/src/generators/multipleTypeGenerator.ts",
+      "description": "Handles multiple types in JSON Schema to Zod conversion."
     },
-    "temp_utils_ts": {
+    "zod-src-generators-nullGenerator": {
       "type": "file",
-      "path": "packages/temp/src/utils.ts",
-      "description": "Legacy utility functions."
+      "path": "packages/zod/src/generators/nullGenerator.ts",
+      "description": "Handles 'null' type in JSON Schema to Zod conversion."
     },
-    "temp_architecture_md": {
+    "zod-src-generators-numberGenerator": {
       "type": "file",
-      "path": "packages/temp/ARCHITECTURE.md",
-      "description": "Legacy architecture notes."
+      "path": "packages/zod/src/generators/numberGenerator.ts",
+      "description": "Handles 'number' type in JSON Schema to Zod conversion."
     },
-    "temp_readme_original_md": {
+    "zod-src-generators-objectGenerator": {
       "type": "file",
-      "path": "packages/temp/README.original.md",
-      "description": "Legacy original README."
+      "path": "packages/zod/src/generators/objectGenerator.ts",
+      "description": "Handles 'object' type in JSON Schema to Zod conversion."
     },
-    "temp_readme_md": {
+    "zod-src-generators-oneOfGenerator": {
       "type": "file",
-      "path": "packages/temp/README.md",
-      "description": "Legacy README for json-schema-to-typescript-lite."
+      "path": "packages/zod/src/generators/oneOfGenerator.ts",
+      "description": "Handles 'oneOf' keyword in JSON Schema to Zod conversion."
     },
-    "test_utils_ts_zod": {
+    "zod-src-generators-recordGenerator": {
+      "type": "file",
+      "path": "packages/zod/src/generators/recordGenerator.ts",
+      "description": "Handles 'record' type in JSON Schema to Zod conversion."
+    },
+    "zod-src-generators-refGenerator": {
+      "type": "file",
+      "path": "packages/zod/src/generators/refGenerator.ts",
+      "description": "Handles '$ref' references in JSON Schema to Zod conversion."
+    },
+    "zod-src-generators-selectGenerator": {
+      "type": "file",
+      "path": "packages/zod/src/generators/selectGenerator.ts",
+      "description": "Handles 'select' keyword in JSON Schema to Zod conversion."
+    },
+    "zod-src-generators-stringGenerator": {
+      "type": "file",
+      "path": "packages/zod/src/generators/stringGenerator.ts",
+      "description": "Handles 'string' type in JSON Schema to Zod conversion."
+    },
+    "zod-src-generators-tupleGenerator": {
+      "type": "file",
+      "path": "packages/zod/src/generators/tupleGenerator.ts",
+      "description": "Handles 'tuple' type in JSON Schema to Zod conversion."
+    },
+    "zod-src-generators-types": {
+      "type": "file",
+      "path": "packages/zod/src/generators/types.ts",
+      "description": "Type definitions for Zod generators."
+    },
+    "zod-test-codegen": {
+      "type": "file",
+      "path": "packages/zod/test/codegen.test.ts",
+      "description": "Tests for Zod code generation from JSON Schema."
+    },
+    "zod-test-collectStandaloneSchemas": {
+      "type": "file",
+      "path": "packages/zod/test/collectStandaloneSchemas.test.ts",
+      "description": "Tests for collecting standalone schemas."
+    },
+    "zod-test-combination": {
+      "type": "file",
+      "path": "packages/zod/test/combination.test.ts",
+      "description": "Tests for schema combinations (allOf, anyOf, oneOf, etc.)."
+    },
+    "zod-test-meta": {
+      "type": "file",
+      "path": "packages/zod/test/meta.test.ts",
+      "description": "Tests for meta schema features."
+    },
+    "zod-test-number": {
+      "type": "file",
+      "path": "packages/zod/test/number.test.ts",
+      "description": "Tests for number type handling."
+    },
+    "zod-test-object": {
+      "type": "file",
+      "path": "packages/zod/test/object.test.ts",
+      "description": "Tests for object type handling."
+    },
+    "zod-test-reference": {
+      "type": "file",
+      "path": "packages/zod/test/reference.test.ts",
+      "description": "Tests for $ref reference handling."
+    },
+    "zod-test-resolveName": {
+      "type": "file",
+      "path": "packages/zod/test/resolveName.test.ts",
+      "description": "Tests for name resolution logic."
+    },
+    "zod-test-setup": {
+      "type": "file",
+      "path": "packages/zod/test/setup.ts",
+      "description": "Test setup and configuration for Zod tests."
+    },
+    "zod-test-string": {
+      "type": "file",
+      "path": "packages/zod/test/string.test.ts",
+      "description": "Tests for string type handling."
+    },
+    "zod-test-test-utils": {
       "type": "file",
       "path": "packages/zod/test/test-utils.ts",
-      "description": "Test utilities for the Zod package."
+      "description": "Test utilities for Zod tests."
     },
-    "zod_test_ts": {
+    "zod-test-type": {
       "type": "file",
-      "path": "packages/zod/test/e2e/zod.test.ts",
-      "description": "Tests for Zod to JSON Schema conversion."
+      "path": "packages/zod/test/type.test.ts",
+      "description": "Tests for type inference and validation."
     },
-    "array_test_ts": {
+    "zod-test-vitest-dts": {
       "type": "file",
-      "path": "packages/zod/test/e2e/array.test.ts",
-      "description": "end-to-end tests for array json schema to zod conversions."
+      "path": "packages/zod/test/vitest.d.ts",
+      "description": "Type definitions for Vitest in Zod tests."
     },
-    "combination_test_ts": {
+    "zod-test-snapshots-Example-generated": {
       "type": "file",
-      "path": "packages/zod/test/e2e/combination.test.ts",
-      "description": "end-to-end tests for schema combination (allof, anyof, oneof) conversions."
-    },
-    "meta_test_ts": {
-      "type": "file",
-      "path": "packages/zod/test/e2e/meta.test.ts",
-      "description": "end-to-end tests for meta schema properties (title, description, default)."
-    },
-    "number_test_ts": {
-      "type": "file",
-      "path": "packages/zod/test/e2e/number.test.ts",
-      "description": "end-to-end tests for number json schema to zod conversions."
-    },
-    "object_test_ts": {
-      "type": "file",
-      "path": "packages/zod/test/e2e/object.test.ts",
-      "description": "end-to-end tests for object json schema to zod conversions."
-    },
-    "reference_test_ts": {
-      "type": "file",
-      "path": "packages/zod/test/e2e/reference.test.ts",
-      "description": "end-to-end tests for $ref and $defs handling."
-    },
-    "string_test_ts": {
-      "type": "file",
-      "path": "packages/zod/test/e2e/string.test.ts",
-      "description": "end-to-end tests for string json schema to zod conversions."
-    },
-    "type_test_ts": {
-      "type": "file",
-      "path": "packages/zod/test/e2e/type.test.ts",
-      "description": "end-to-end tests for type keyword and related conversions."
+      "path": "packages/zod/test/snapshots/Example.generated.ts",
+      "description": "Snapshot of generated Zod schema for example case."
     }
   }
 }
