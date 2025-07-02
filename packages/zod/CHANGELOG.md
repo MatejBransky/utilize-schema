@@ -1,5 +1,12 @@
 # @utilize/zod
 
+## 0.3.2
+
+### Patch Changes
+
+- Updated dependencies [28889b5]
+  - @utilize/json-schema@0.0.4
+
 ## 0.3.1
 
 ### Patch Changes
