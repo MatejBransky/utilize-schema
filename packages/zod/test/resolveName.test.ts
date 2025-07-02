@@ -1,3 +1,4 @@
+import { Meta, type ParsedJSONSchemaObject } from '@utilize/json-schema';
 import { describe, expect, it } from 'vitest';
 
 import { withMeta } from './test-utils';
@@ -39,5 +40,16 @@ describe('resolveName', () => {
 	it('falls back to Unknown if nothing else matches', () => {
 		const schema = withMeta({});
 		expect(resolveName({ schema })).toBe('Unknown');
+	});
+
+	it('uses custom resolver if provided', () => {
+		const schema = withMeta(
+			{},
+			{ parent: null, fileName: 'kebab-case.schema' }
+		);
+		const customResolver = (schema: ParsedJSONSchemaObject) => {
+			schema[Meta].fileName = schema[Meta].fileName.replace(/\.schema$/, '');
+		};
+		expect(resolveName({ schema, customResolver })).toBe('KebabCase');
 	});
 });

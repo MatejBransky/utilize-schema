@@ -1,14 +1,29 @@
 import { type ParsedJSONSchemaObject, Meta } from '@utilize/json-schema';
 
+export type CustomNameResolver = (
+	schema: ParsedJSONSchemaObject,
+	usedNames: Set<string>
+) => string | void;
+
 interface ResolveNameOptions {
 	schema: ParsedJSONSchemaObject;
 	usedNames?: Set<string>;
+	customResolver?: CustomNameResolver;
 }
 
 export function resolveName({
 	schema,
 	usedNames = new Set(),
+	customResolver,
 }: ResolveNameOptions): string {
+	// 0. If user provided a custom resolver, use it first
+	if (customResolver) {
+		const customName = customResolver(schema, usedNames);
+		if (customName) {
+			return customName;
+		}
+	}
+
 	// 1. Prefer $id or title if present
 	if (schema.$id) {
 		const id = schema.$id.split(/[/#]/).filter(Boolean).pop()!;

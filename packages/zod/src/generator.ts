@@ -7,12 +7,12 @@ import toposort from 'toposort';
 
 import { collectStandaloneSchemas } from './collectStandaloneSchemas';
 import { generateSchema } from './generators/generateSchema';
-import { resolveName } from './resolveName';
+import { resolveName, type CustomNameResolver } from './resolveName';
 import { NEWLINE, ts } from './utils';
 
 export function generate(
 	root: ParsedJSONSchema,
-	options?: { importZod?: boolean }
+	options?: { importZod?: boolean; customNameResolver?: CustomNameResolver }
 ): string {
 	const usedNames = new Set<string>();
 
@@ -32,7 +32,12 @@ export function generate(
 
 	for (const schema of sorted) {
 		const name =
-			schema[Meta].resolvedName ?? resolveName({ schema, usedNames });
+			schema[Meta].resolvedName ??
+			resolveName({
+				schema,
+				usedNames,
+				customResolver: options?.customNameResolver,
+			});
 		schema[Meta].resolvedName = name;
 
 		const zodExpression = generateSchema(schema, { usedNames });
