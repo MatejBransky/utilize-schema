@@ -1,5 +1,11 @@
 # @utilize/zod
 
+## 0.3.0
+
+### Minor Changes
+
+- 4e9a14e: added custom schema name resolver
+
 ## 0.2.3
 
 ### Patch Changes
