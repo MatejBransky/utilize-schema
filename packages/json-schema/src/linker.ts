@@ -22,7 +22,7 @@ export interface LinkNodeOptions {
 
 export function link({
 	schema,
-	parent,
+	parent = null,
 	path,
 	$refs,
 	stack,
