@@ -5,11 +5,13 @@ import { readFileSync, writeFileSync } from 'fs';
 import path from 'path';
 
 import { generate } from './generator';
+import type { CustomNameResolver } from './resolveName';
 
 interface CompileOptions {
 	input: string;
 	output: string;
 	cwd?: string;
+	customNameResolver?: CustomNameResolver;
 }
 
 const defaultOptions = {
@@ -33,7 +35,9 @@ export async function compile(userOptions: CompileOptions) {
 	});
 	console.log(`Parsed ${referencedSchemas.length + 1} schemas`);
 
-	const code = generate(root);
+	const code = generate(root, {
+		customNameResolver: options.customNameResolver,
+	});
 	console.log(`Generated code`);
 
 	writeFileSync(outputPath, code, 'utf8');
