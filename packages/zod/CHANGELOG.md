@@ -1,5 +1,11 @@
 # @utilize/zod
 
+## 0.3.1
+
+### Patch Changes
+
+- 9d91589: fixed compile options
+
 ## 0.3.0
 
 ### Minor Changes
