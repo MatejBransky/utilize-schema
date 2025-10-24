@@ -48,6 +48,7 @@
 		"@apidevtools/json-schema-ref-parser": "^14.2.1",
 		"@total-typescript/tsconfig": "1.0.4",
 		"@types/lodash": "^4.17.20",
+		"@types/node": "^22.0.0",
 		"@utilize/eslint-config": "3.0.1",
 		"@utilize/prettier-config": "1.1.3",
 		"eslint": "^9.38.0",

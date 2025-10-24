@@ -30,6 +30,9 @@ importers:
       '@types/json-schema':
         specifier: 7.0.15
         version: 7.0.15
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.15.30
       '@utilize/eslint-config':
         specifier: 3.0.1
         version: 3.0.1(@typescript-eslint/parser@8.46.2(eslint@9.38.0(jiti@2.6.1))(typescript@5.9.3))(eslint@9.38.0(jiti@2.6.1))(prettier@3.6.2)(typescript@5.9.3)
@@ -76,6 +79,9 @@ importers:
       '@types/lodash':
         specifier: ^4.17.20
         version: 4.17.20
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.15.30
       '@utilize/eslint-config':
         specifier: 3.0.1
         version: 3.0.1(@typescript-eslint/parser@8.46.2(eslint@9.38.0(jiti@2.6.1))(typescript@5.9.3))(eslint@9.38.0(jiti@2.6.1))(prettier@3.6.2)(typescript@5.9.3)
@@ -3247,7 +3253,6 @@ snapshots:
   '@types/node@22.15.30':
     dependencies:
       undici-types: 6.21.0
-    optional: true
 
   '@types/resolve@1.20.2': {}
 
@@ -5347,8 +5352,7 @@ snapshots:
       - vue-sfc-transformer
       - vue-tsc
 
-  undici-types@6.21.0:
-    optional: true
+  undici-types@6.21.0: {}
 
   universalify@0.1.2: {}
 
