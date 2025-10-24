@@ -1,5 +1,16 @@
 # @utilize/zod
 
+## 0.4.0
+
+### Minor Changes
+
+- d56dd72: updated external deps
+
+### Patch Changes
+
+- Updated dependencies [d56dd72]
+  - @utilize/json-schema@0.1.0
+
 ## 0.3.2
 
 ### Patch Changes
