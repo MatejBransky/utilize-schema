@@ -1,4 +1,7 @@
 {
-	"extends": "@total-typescript/tsconfig/bundler/dom/library-monorepo",
-	"include": ["src", "test"]
+	"extends": "@total-typescript/tsconfig/bundler/no-dom/library-monorepo",
+	"include": ["src", "test"],
+	"compilerOptions": {
+		"types": ["node"]
+	}
 }

@@ -37,25 +37,26 @@
 		"test": "vitest",
 		"ci:test": "vitest run"
 	},
-	"packageManager": "pnpm@10.6.5",
+	"packageManager": "pnpm@10.19.0",
 	"dependencies": {
 		"@types/toposort": "2.0.7",
 		"@utilize/json-schema": "workspace:*",
 		"toposort": "2.0.2",
-		"zod": "3.26.0-canary.20250609T052512"
+		"zod": "4.1.12"
 	},
 	"devDependencies": {
-		"@apidevtools/json-schema-ref-parser": "^13.0.4",
+		"@apidevtools/json-schema-ref-parser": "^14.2.1",
 		"@total-typescript/tsconfig": "1.0.4",
-		"@types/lodash": "^4.17.17",
+		"@types/lodash": "^4.17.20",
+		"@types/node": "^22.0.0",
 		"@utilize/eslint-config": "3.0.1",
 		"@utilize/prettier-config": "1.1.3",
-		"eslint": "^9.28.0",
+		"eslint": "^9.38.0",
 		"lodash": "4.17.21",
-		"prettier": "3.5.3",
-		"typescript": "~5.8.3",
-		"unbuild": "3.5.0",
-		"vitest": "3.2.2"
+		"prettier": "3.6.2",
+		"typescript": "~5.9.3",
+		"unbuild": "3.6.1",
+		"vitest": "4.0.3"
 	},
 	"prettier": "@utilize/prettier-config"
 }

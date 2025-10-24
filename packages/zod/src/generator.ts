@@ -27,7 +27,7 @@ export function generate(
 
 	const code: string[] = [];
 	if (options?.importZod ?? true) {
-		code.push(ts`import { z } from 'zod/v4';${NEWLINE}`);
+		code.push(ts`import { z } from 'zod';${NEWLINE}`);
 	}
 
 	for (const schema of sorted) {
