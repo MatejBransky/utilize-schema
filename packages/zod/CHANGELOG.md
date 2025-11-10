@@ -1,5 +1,11 @@
 # @utilize/zod
 
+## 0.4.1
+
+### Patch Changes
+
+- 8c0c238: fix boolean default values conversion from string ones to boolean ones
+
 ## 0.4.0
 
 ### Minor Changes
