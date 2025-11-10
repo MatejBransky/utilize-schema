@@ -25,7 +25,7 @@ export const generateSchema = (
 	}
 
 	if (schema.default !== undefined) {
-		expression = withDefault(expression, schema.default);
+		expression = withDefault(expression, schema.default, schema);
 	}
 
 	return expression;
@@ -38,6 +38,18 @@ function withMetadata(
 	return ts`${expression}.meta(${JSON.stringify({ id: $id, title, description })})`;
 }
 
-function withDefault(expression: string, defaultValue: unknown) {
+function withDefault(
+	expression: string,
+	defaultValue: unknown,
+	schema: ParsedJSONSchemaObject
+) {
+	if (schema.type === 'boolean' && typeof defaultValue === 'string') {
+		if (defaultValue === 'true') {
+			return ts`${expression}.default(true)`;
+		}
+		if (defaultValue === 'false') {
+			return ts`${expression}.default(false)`;
+		}
+	}
 	return ts`${expression}.default(${JSON.stringify(defaultValue)})`;
 }
