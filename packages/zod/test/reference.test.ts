@@ -200,4 +200,32 @@ describe('reference', () => {
       export type Root = z.infer<typeof Root>;
     `);
 	});
+
+	test('cyclic reference across files', async () => {
+		const result = await compile({
+			type: 'object',
+			properties: {
+				a: { $ref: './definitions/CycleA.json' },
+			},
+		});
+
+		await expect(result).toMatchCode(ts`
+      export const CycleB = z.object({
+        get a() {
+          return z.union([CycleA, z.null()]).optional();
+        },
+      });
+      export type CycleB = z.infer<typeof CycleB>;
+
+      export const CycleA = z.object({
+        b: CycleB.optional(),
+      });
+      export type CycleA = z.infer<typeof CycleA>;
+
+      export const Root = z.object({
+        a: CycleA.optional(),
+      });
+      export type Root = z.infer<typeof Root>;
+    `);
+	});
 });

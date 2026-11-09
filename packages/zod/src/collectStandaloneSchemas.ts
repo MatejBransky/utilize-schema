@@ -1,8 +1,13 @@
 import { type ParsedJSONSchemaObject, Meta } from '@utilize/json-schema';
 
+export type SchemaEdge = [
+	ParsedJSONSchemaObject | null,
+	ParsedJSONSchemaObject,
+];
+
 interface StandaloneSchemasResult {
 	schemas: ParsedJSONSchemaObject[];
-	edges: [ParsedJSONSchemaObject | null, ParsedJSONSchemaObject][];
+	edges: SchemaEdge[];
 }
 
 // Helper to collect all standalone schemas: referenced and $defs/definitions
