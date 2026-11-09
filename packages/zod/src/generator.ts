@@ -19,9 +19,7 @@ export function generate(
 
 	const { schemas: standaloneSchemas, edges } = collectStandaloneSchemas(root);
 	const acyclicEdges = breakReferenceCycles(edges);
-	const sorted = (
-		toposort(acyclicEdges).filter(Boolean) as ParsedJSONSchemaObject[]
-	)
+	const sorted = (toposort(acyclicEdges).filter(Boolean) as ParsedJSONSchemaObject[])
 		.filter((schema) => standaloneSchemas.includes(schema))
 		.reverse();
 

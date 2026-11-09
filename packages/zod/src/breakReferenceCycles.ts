@@ -50,8 +50,6 @@ function groupBySource(edges: SchemaEdge[]) {
 	return edgesBySource;
 }
 
-function isReference(
-	node: SchemaNode
-): node is ParsedJSONSchemaObject & { $ref: string } {
+function isReference(node: SchemaNode): node is ParsedJSONSchemaObject & { $ref: string } {
 	return node?.$ref !== undefined;
 }

@@ -1,9 +1,6 @@
 import { type ParsedJSONSchemaObject, Meta } from '@utilize/json-schema';
 
-export type SchemaEdge = [
-	ParsedJSONSchemaObject | null,
-	ParsedJSONSchemaObject,
-];
+export type SchemaEdge = [ParsedJSONSchemaObject | null, ParsedJSONSchemaObject];
 
 interface StandaloneSchemasResult {
 	schemas: ParsedJSONSchemaObject[];

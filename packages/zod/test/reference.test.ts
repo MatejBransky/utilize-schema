@@ -1,6 +1,7 @@
+import { type JSONSchema } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
-import { compile, ts } from './test-utils';
+import { compile, compileToZod, ts } from './test-utils';
 
 describe('reference', () => {
 	test('local $refs', async () => {
@@ -227,5 +228,51 @@ describe('reference', () => {
       });
       export type Root = z.infer<typeof Root>;
     `);
+	});
+});
+
+describe('recursive reference at runtime', () => {
+	const treeSchema: JSONSchema = {
+		type: 'object',
+		properties: {
+			name: { type: 'string' },
+			children: { type: 'array', items: { $ref: '#' } },
+		},
+		required: ['name'],
+	};
+
+	test('parses a tree three levels deep', async () => {
+		const Tree = await compileToZod(treeSchema);
+
+		const result = Tree.safeParse({
+			name: 'root',
+			children: [{ name: 'child', children: [{ name: 'grandchild' }] }],
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	test('rejects an invalid node deep in the tree', async () => {
+		const Tree = await compileToZod(treeSchema);
+
+		const result = Tree.safeParse({
+			name: 'root',
+			children: [{ name: 'child', children: [{ name: 42 }] }],
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	test('parses nested data across a cyclic pair of files', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: {
+				a: { $ref: './definitions/CycleA.json' },
+			},
+		});
+
+		const result = Root.safeParse({ a: { b: { a: { b: { a: null } } } } });
+
+		expect(result.success).toBe(true);
 	});
 });
