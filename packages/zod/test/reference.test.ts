@@ -164,4 +164,40 @@ describe('reference', () => {
       export type Root = z.infer<typeof Root>;
     `);
 	});
+
+	test('self-reference nested in array items', async () => {
+		const result = await compile({
+			type: 'object',
+			properties: {
+				children: { type: 'array', items: { $ref: '#' } },
+			},
+		});
+
+		await expect(result).toMatchCode(ts`
+      export const Root = z.object({
+        get children() {
+          return z.array(Root).optional();
+        },
+      });
+      export type Root = z.infer<typeof Root>;
+    `);
+	});
+
+	test('self-reference nested in anyOf', async () => {
+		const result = await compile({
+			type: 'object',
+			properties: {
+				parent: { anyOf: [{ $ref: '#' }, { type: 'null' }] },
+			},
+		});
+
+		await expect(result).toMatchCode(ts`
+      export const Root = z.object({
+        get parent() {
+          return z.union([Root, z.null()]).optional();
+        },
+      });
+      export type Root = z.infer<typeof Root>;
+    `);
+	});
 });
