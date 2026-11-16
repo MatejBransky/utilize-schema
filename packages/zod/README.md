@@ -39,6 +39,10 @@ pnpm add zod
   standalone schema.
 - `readOnlyKeyword` — map `readOnly: true` to `.readonly()`. Off by default,
   because it freezes values and changes the inferred type.
+- `bannerComment` — header prepended to written files; `false` disables it.
+
+For custom pipelines, `compileFile()` and `compileSchema()` return the generated
+code without writing anything, and `withBanner()` applies the default header.
 
 ## Output
 

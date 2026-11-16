@@ -26,6 +26,10 @@ await compile({
 });
 ```
 
+`compile()` accepts JSON or YAML input and writes a "do not edit" banner by
+default (`bannerComment: false` to omit it). `compileFile()` and
+`compileSchema()` return the generated code without writing anything.
+
 ## CLI
 
 ```sh

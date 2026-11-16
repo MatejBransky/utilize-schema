@@ -53,6 +53,18 @@ Both generators require their runtime as a peer dependency: `zod`
 pnpm add zod effect
 ```
 
+Both packages also ship a CLI that accepts a file, directory or glob, reads JSON
+and YAML, and writes to a file, a directory or stdout:
+
+```sh
+utilize-zod schema.json schema.generated.ts
+utilize-effect --input 'schemas/**/*.json' --output generated/
+cat schema.yaml | utilize-zod > schema.generated.ts
+```
+
+Generated files start with a "do not edit" banner (`--no-banner` omits it). See
+the package READMEs for the remaining flags.
+
 ## 🧪 Playground
 
 The [`playground`](./playground) package is a browser app for editing multiple
