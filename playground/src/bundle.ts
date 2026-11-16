@@ -224,12 +224,8 @@ function rewriteRef(ref: string, file: SchemaFile, context: RewriteContext): str
 		return key ? `#/$defs/${escapePointer(key)}${ref.slice(1)}` : ref;
 	}
 
+	// Remote refs are fetched by the parser when the schema is generated.
 	if (/^(https?:)?\/\//.test(ref)) {
-		context.problems.push({
-			fileId: file.id,
-			severity: 'warning',
-			message: `Remote $ref "${ref}" is not resolved in the playground.`,
-		});
 		return ref;
 	}
 

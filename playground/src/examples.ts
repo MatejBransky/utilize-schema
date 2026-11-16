@@ -265,6 +265,19 @@ export const examples: Example[] = [
 			},
 		},
 	}),
+	single('external-ref', 'External $ref', 'References', {
+		title: 'Release',
+		type: 'object',
+		properties: {
+			downloads: {
+				$ref: 'https://json-schema.org/draft-07/schema#/definitions/nonNegativeInteger',
+			},
+			tags: {
+				$ref: 'https://json-schema.org/draft-07/schema#/definitions/stringArray',
+			},
+		},
+		required: ['downloads'],
+	}),
 	{
 		id: 'multi-file',
 		name: 'Multi-file refs',
