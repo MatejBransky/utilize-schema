@@ -430,7 +430,7 @@
 	transition: background 120ms ease;
 }
 
-.dropTarget:hover {
+.dropTarget[data-active] {
 	background: rgb(255 255 255 / 0.14);
 }
 

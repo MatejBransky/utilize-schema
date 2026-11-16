@@ -9,11 +9,17 @@ interface FileDropOptions {
 
 export function useFileDrop({ onDrop }: FileDropOptions) {
 	const [dragging, setDragging] = useState(false);
+	const [activeMode, setActiveMode] = useState<DropMode | null>(null);
 	const dropHandler = useRef(onDrop);
 
 	dropHandler.current = onDrop;
 
 	useEffect(() => {
+		const reset = () => {
+			setDragging(false);
+			setActiveMode(null);
+		};
+
 		const show = (event: DragEvent) => {
 			if (!hasFileDrag(event.dataTransfer)) {
 				return;
@@ -32,11 +38,12 @@ export function useFileDrop({ onDrop }: FileDropOptions) {
 			if (event.dataTransfer) {
 				event.dataTransfer.dropEffect = 'copy';
 			}
+			setActiveMode(dropModeAt(event.target));
 		};
 
 		const hide = (event: DragEvent) => {
 			if (event.relatedTarget === null) {
-				setDragging(false);
+				reset();
 			}
 		};
 
@@ -46,7 +53,7 @@ export function useFileDrop({ onDrop }: FileDropOptions) {
 			}
 
 			event.preventDefault();
-			setDragging(false);
+			reset();
 		};
 
 		window.addEventListener('dragenter', show);
@@ -68,11 +75,22 @@ export function useFileDrop({ onDrop }: FileDropOptions) {
 		event.preventDefault();
 		event.stopPropagation();
 		setDragging(false);
+		setActiveMode(null);
 
 		if (event.dataTransfer) {
 			dropHandler.current(event.dataTransfer, mode);
 		}
 	}
 
-	return { dragging, drop };
+	return { dragging, activeMode, drop };
+}
+
+function dropModeAt(target: EventTarget | null): DropMode | null {
+	if (!(target instanceof Element)) {
+		return null;
+	}
+
+	const mode = target.closest('[data-drop-mode]')?.getAttribute('data-drop-mode');
+
+	return mode === 'add' || mode === 'replace' ? mode : null;
 }

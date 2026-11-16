@@ -65,7 +65,7 @@ export default function App() {
 	const [shared, setShared] = useState(false);
 	const schemaEditorRef = useRef<MonacoEditorHandle>(null);
 	const codeEditorRef = useRef<MonacoEditorHandle>(null);
-	const { dragging, drop } = useFileDrop({ onDrop: handleDrop });
+	const { dragging, activeMode, drop } = useFileDrop({ onDrop: handleDrop });
 
 	const resolvedTheme = colorMode === 'auto' ? (systemDark ? 'dark' : 'light') : colorMode;
 	const monacoTheme = resolvedTheme === 'dark' ? 'utilize-dark' : 'utilize-light';
@@ -646,6 +646,7 @@ export default function App() {
 							<div
 								className={styles.dropTarget}
 								data-drop-mode="add"
+								data-active={activeMode === 'add' ? 'true' : undefined}
 								onDrop={(event) => drop(event, 'add')}
 							>
 								<span className={styles.dropKicker}>Add</span>
@@ -658,6 +659,7 @@ export default function App() {
 							<div
 								className={styles.dropTarget}
 								data-drop-mode="replace"
+								data-active={activeMode === 'replace' ? 'true' : undefined}
 								onDrop={(event) => drop(event, 'replace')}
 							>
 								<span className={styles.dropKicker}>Replace</span>
