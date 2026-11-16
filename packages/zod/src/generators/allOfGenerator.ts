@@ -16,16 +16,15 @@ export const generator = createGenerator<
 			return ts`z.never()`;
 		}
 
-		if (schema.allOf.length > 2) {
-			throw new Error('Intersection of more than two schemas is not supported');
-		}
-
 		if (schema.allOf.length === 1 && schema.allOf[0]) {
 			return generateSchema(schema.allOf[0], context);
 		}
 
-		const subschemas = schema.allOf.map((subschema) => generateSchema(subschema, context));
+		const [first, ...rest] = schema.allOf.map((subschema) => generateSchema(subschema, context));
 
-		return ts`z.intersection(${subschemas.join(`,${NEWLINE}`)})`;
+		return rest.reduce(
+			(expression, next) => ts`z.intersection(${expression},${NEWLINE}${next})`,
+			first!
+		);
 	}
 );

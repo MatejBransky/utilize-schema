@@ -39,8 +39,40 @@ const mutualDefsSchema: JSONSchema = {
 	},
 };
 
-const defaultOverRecursiveUnionSchema: JSONSchema = {
+const arrayPairSchema: JSONSchema = {
 	type: 'object',
+	properties: { a: { $ref: './definitions/ArrayPairA.json' } },
+};
+
+const recursiveAdditionalPropertiesSchema: JSONSchema = {
+	type: 'object',
+	properties: { name: { type: 'string' } },
+	additionalProperties: { $ref: '#' },
+};
+
+const recursiveRecordSchema: JSONSchema = {
+	type: 'object',
+	additionalProperties: { $ref: '#' },
+};
+
+const looseRecursiveObjectSchema: JSONSchema = {
+	type: 'object',
+	properties: { next: { $ref: '#' } },
+	additionalProperties: true,
+};
+
+const recursiveArraySchema: JSONSchema = {
+	type: 'array',
+	items: { $ref: '#' },
+};
+
+const recursiveTupleSchema: JSONSchema = {
+	type: 'array',
+	items: [{ $ref: '#' }],
+};
+
+const defaultOverRecursiveUnionSchema: JSONSchema = {
+	type: ['object', 'boolean'],
 	properties: {
 		items: {
 			anyOf: [{ $ref: '#' }, { $ref: '#/definitions/schemaArray' }],
@@ -56,29 +88,118 @@ const defaultOverRecursiveUnionSchema: JSONSchema = {
 	},
 };
 
-describe('generated recursive schemas type-check', () => {
-	test('infer recursive types with TypeScript', async () => {
-		await expect(typeCheck({ 'Tree.ts': treeSchema })).resolves.toBeUndefined();
-	});
+const allOfSchema: JSONSchema = {
+	allOf: [
+		{ type: 'object', properties: { a: { type: 'string' } }, required: ['a'] },
+		{ type: 'object', properties: { b: { type: 'number' } }, required: ['b'] },
+		{ type: 'object', properties: { c: { type: 'boolean' } }, required: ['c'] },
+	],
+};
 
-	test('infer recursive types across files', async () => {
+const notSchema: JSONSchema = {
+	type: 'string',
+	not: { const: 'forbidden' },
+};
+
+const ifThenElseSchema: JSONSchema = {
+	type: 'object',
+	properties: {
+		country: { type: 'string' },
+		postal: { type: 'string' },
+	},
+	required: ['country'],
+	if: {
+		properties: { country: { const: 'US' } },
+		required: ['country'],
+	},
+	then: {
+		properties: { postal: { pattern: '^[0-9]{5}$' } },
+		required: ['postal'],
+	},
+	else: {
+		properties: { postal: { minLength: 3 } },
+	},
+};
+
+const containsSchema: JSONSchema = {
+	type: 'array',
+	contains: { type: 'number' },
+};
+
+const propertyNamesSchema: JSONSchema = {
+	type: 'object',
+	additionalProperties: true,
+	propertyNames: { pattern: '^[a-z]+$' },
+};
+
+const dependenciesSchema: JSONSchema = {
+	type: 'object',
+	properties: {
+		a: { type: 'string' },
+		b: { type: 'string' },
+	},
+	dependencies: {
+		a: ['b'],
+		b: { required: ['a'] },
+	},
+};
+
+const examplesSchema: JSONSchema = {
+	type: 'string',
+	examples: ['a', 'b'],
+};
+
+const prefixItemsSchema = {
+	$schema: 'https://json-schema.org/draft/2020-12/schema',
+	type: 'array',
+	prefixItems: [{ type: 'string' }],
+	items: { type: 'number' },
+} as unknown as JSONSchema;
+
+const dependentRequiredSchema = {
+	$schema: 'https://json-schema.org/draft/2020-12/schema',
+	type: 'object',
+	properties: {
+		a: { type: 'string' },
+		b: { type: 'string' },
+	},
+	dependentRequired: { a: ['b'] },
+} as unknown as JSONSchema;
+
+const draft04ExclusiveSchema = {
+	$schema: 'http://json-schema.org/draft-04/schema#',
+	type: 'number',
+	minimum: 0,
+	exclusiveMinimum: true,
+} as unknown as JSONSchema;
+
+describe('generated recursive schemas type-check', () => {
+	test('infer recursive value types with TypeScript', async () => {
 		await expect(
 			typeCheck({
+				'Tree.ts': treeSchema,
 				'ObjectArray.ts': objectArraySchema,
 				'CrossFile.ts': crossFileSchema,
 				'MutualDefs.ts': mutualDefsSchema,
+				'ArrayPair.ts': arrayPairSchema,
+				'AdditionalProperties.ts': recursiveAdditionalPropertiesSchema,
+				'Record.ts': recursiveRecordSchema,
+				'LooseObject.ts': looseRecursiveObjectSchema,
+				'Array.ts': recursiveArraySchema,
+				'Tuple.ts': recursiveTupleSchema,
+				'DefaultOverRecursiveUnion.ts': defaultOverRecursiveUnionSchema,
+				'AllOf.ts': allOfSchema,
+				'Not.ts': notSchema,
+				'IfThenElse.ts': ifThenElseSchema,
+				'Contains.ts': containsSchema,
+				'PropertyNames.ts': propertyNamesSchema,
+				'Dependencies.ts': dependenciesSchema,
+				'Examples.ts': examplesSchema,
+				'PrefixItems.ts': prefixItemsSchema,
+				'DependentRequired.ts': dependentRequiredSchema,
+				'Draft04Exclusive.ts': draft04ExclusiveSchema,
 			})
 		).resolves.toBeUndefined();
-	});
-
-	// TypeScript cannot infer a getter whose value applies `.default()` over a
-	// recursive union (TS7023/TS2615), even on zod 4.6.7 and TypeScript 7. The
-	// documented workaround is an explicit getter return type, which needs a
-	// type generator. Remove `.fails` once upstream inference handles it.
-	test.fails('infer a default over a recursive union', async () => {
-		await typeCheck({
-			'DefaultOverRecursiveUnion.ts': defaultOverRecursiveUnionSchema,
-		});
 	});
 });
 

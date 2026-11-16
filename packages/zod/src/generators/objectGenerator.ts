@@ -11,9 +11,15 @@ export const generator = createGenerator(
 		// TODO: handle patternProperties
 
 		const properties = Object.entries(schema.properties ?? {}).map(([key, value]) => {
+			const keyLiteral = JSON.stringify(key);
 			let optionalPart = '.optional()';
 
-			if (value.default !== undefined) {
+			if (
+				typeof value === 'object' &&
+				value !== null &&
+				'default' in value &&
+				value.default !== undefined
+			) {
 				optionalPart = '';
 			}
 
@@ -22,40 +28,70 @@ export const generator = createGenerator(
 			}
 
 			if (containsCircularRef(value)) {
-				return ts`get ${key} () {
+				return ts`get ${keyLiteral}() {
             return ${generateSchema(value, context)}${optionalPart};
           }`;
 			}
 
-			return `${key}: ${generateSchema(value, context)}${optionalPart}`;
+			return `${keyLiteral}: ${generateSchema(value, context)}${optionalPart}`;
 		});
 		const propertiesPart = properties.join(`,${NEWLINE}`);
+		const requiredWithoutProperties = (schema.required ?? []).filter(
+			(key) => !Object.hasOwn(schema.properties ?? {}, key)
+		);
+		const additionalProperties = schema.additionalProperties;
+		const requiredValue =
+			additionalProperties === false
+				? ts`z.never()`
+				: isSchemaObject<ParsedJSONSchemaObject>(additionalProperties)
+					? generateSchema(additionalProperties, context)
+					: ts`z.unknown()`;
+		const requiredPart = requiredWithoutProperties
+			.map((key) => `${JSON.stringify(key)}: ${requiredValue}`)
+			.join(`,${NEWLINE}`);
+		const allProperties = [propertiesPart, requiredPart].filter(Boolean).join(`,${NEWLINE}`);
+		const requiredCheck =
+			requiredWithoutProperties.length > 0
+				? ts`.superRefine((value, ctx) => {
+        for (const key of ${JSON.stringify(requiredWithoutProperties)}) {
+          if (!Object.hasOwn(value, key)) {
+            ctx.addIssue({
+              code: 'custom',
+              message: 'Required property is missing.',
+              path: [key],
+            });
+          }
+        }
+      })`
+				: '';
 
-		const additionalProperties =
-			schema.additionalProperties !== undefined
-				? generateSchema(schema.additionalProperties, context)
-				: undefined;
-		const catchAllPart = additionalProperties ? ts`.catchall(${additionalProperties})` : '';
+		const catchAllPart = isSchemaObject<ParsedJSONSchemaObject>(additionalProperties)
+			? ts`.catchall(${generateSchema(additionalProperties, context)})`
+			: '';
 
-		if (schema.additionalProperties === false) {
+		if (additionalProperties === false) {
 			return ts`z.strictObject({
-        ${propertiesPart}
-      })`;
+        ${allProperties}
+      })${requiredCheck}`;
 		}
 
-		if (schema.additionalProperties === true) {
+		if (additionalProperties === true) {
 			return ts`z.looseObject({
-        ${propertiesPart}
-      })`;
+        ${allProperties}
+      })${requiredCheck}`;
 		}
 
 		return ts`z.object({
-      ${propertiesPart}
-    })${catchAllPart}`;
+      ${allProperties}
+    })${catchAllPart}${requiredCheck}`;
 	}
 );
 
-function containsCircularRef(schema: ParsedJSONSchemaObject): boolean {
+function containsCircularRef(schema: ParsedJSONSchemaObject | boolean): boolean {
+	if (typeof schema !== 'object' || schema === null) {
+		return false;
+	}
+
 	if (schema.$ref) {
 		return schema[Meta].isCircular === true;
 	}

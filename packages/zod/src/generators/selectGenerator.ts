@@ -18,26 +18,37 @@ import { generator as refGenerator } from './refGenerator';
 import { generator as stringGenerator } from './stringGenerator';
 import { generator as tupleGenerator } from './tupleGenerator';
 
-const generators = [
-	refGenerator,
-	multipleTypeGenerator,
-	anyOfGenerator,
-	allOfGenerator,
-	oneOfGenerator,
-	nullGenerator,
-	literalGenerator,
-	booleanGenerator,
-	numberGenerator,
-	stringGenerator,
-	recordGenerator,
-	objectGenerator,
-	tupleGenerator,
-	arrayGenerator,
-	enumGenerator,
-];
+let generators: ExpressionGenerator[] | undefined;
+
+/**
+ * Built lazily because the generator modules import `generateSchema`, which
+ * imports this module. Eagerly reading the imports while they are still
+ * initializing yields `undefined` entries in the list.
+ */
+function getGenerators(): ExpressionGenerator[] {
+	generators ??= [
+		refGenerator,
+		multipleTypeGenerator,
+		anyOfGenerator,
+		allOfGenerator,
+		oneOfGenerator,
+		nullGenerator,
+		literalGenerator,
+		booleanGenerator,
+		numberGenerator,
+		stringGenerator,
+		recordGenerator,
+		objectGenerator,
+		tupleGenerator,
+		arrayGenerator,
+		enumGenerator,
+	];
+
+	return generators;
+}
 
 export function selectGenerator(input: ParsedJSONSchemaObject): ExpressionGenerator {
-	const generator = generators.find(({ predicate }) => predicate(input));
+	const generator = getGenerators().find(({ predicate }) => predicate(input));
 
 	if (!generator) {
 		return anyGenerator;

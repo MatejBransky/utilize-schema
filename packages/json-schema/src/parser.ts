@@ -2,6 +2,7 @@ import { $RefParser } from '@apidevtools/json-schema-ref-parser';
 
 import { link } from './linker';
 import { type JSONSchema, type ParsedJSONSchema } from './model';
+import { detectSchemaVersion, normalizeSchema } from './normalize';
 
 type SchemaPath = string;
 
@@ -30,7 +31,11 @@ export async function parse(
 
 	const entries = Object.entries($refs.values()) as Array<[SchemaPath, JSONSchema]>;
 
+	const rootVersion = detectSchemaVersion(schema);
+
 	entries.forEach(([filePath, entrySchema]) => {
+		normalizeSchema(entrySchema, detectSchemaVersion(entrySchema, rootVersion));
+
 		const rootSchema = $refs.get('#');
 		const isRootSchema = entrySchema === rootSchema;
 		const prefixPath = isRootSchema ? '#' : filePath.replace(cwd, '');

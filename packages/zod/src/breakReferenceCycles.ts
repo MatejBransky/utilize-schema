@@ -1,32 +1,41 @@
 import { type ParsedJSONSchemaObject, Meta } from '@utilize/json-schema';
 
 import { type SchemaEdge } from './collectStandaloneSchemas';
-import { unsupportedCycleError } from './errors';
 import { isPropertyBacked } from './isPropertyBacked';
 
 type SchemaNode = SchemaEdge[0];
+
+export interface BreakReferenceCyclesResult {
+	edges: SchemaEdge[];
+	/**
+	 * $refs whose dependency edge was removed but which cannot be emitted as a
+	 * getter. The generator emits `z.lazy()` for them.
+	 */
+	lazyRefs: Set<ParsedJSONSchemaObject>;
+}
 
 /**
  * Finds $refs that close a cycle and removes their dependency edge, so the
  * remaining graph can be topologically sorted.
  *
- * A cycle is always broken at a $ref nested in an object property: that is the
- * only place where the generator can emit a getter and defer the reference
+ * A cycle is preferably broken at a $ref nested in an object property: that is
+ * the only place where the generator can emit a getter and defer the reference
  * without losing type inference. When a cycle never passes through an object
- * property, generation fails instead of emitting code that throws at import.
+ * property, the $ref is emitted as `z.lazy()` instead.
  */
 export function breakReferenceCycles(
 	edges: SchemaEdge[],
 	standaloneSchemas?: Set<ParsedJSONSchemaObject>
-): SchemaEdge[] {
+): BreakReferenceCyclesResult {
 	resetCircularFlags(edges);
 	let remaining = edges;
+	const lazyRefs = new Set<ParsedJSONSchemaObject>();
 
 	for (;;) {
 		const cycle = findCycle(remaining);
 
 		if (!cycle) {
-			return remaining;
+			return { edges: remaining, lazyRefs };
 		}
 
 		const backEdge = cycle.at(-1)!;
@@ -36,22 +45,22 @@ export function breakReferenceCycles(
 			.filter((ref, index, all) => all.indexOf(ref) === index);
 
 		if (refs.length === 0) {
-			throw unsupportedCycleError([]);
+			throw new Error('Cyclic dependency without a $ref edge');
 		}
 
 		// Prefer the edge that closes the cycle: removing it breaks this cycle
 		// outright. If it cannot be deferred with a getter, look for any other
-		// $ref on the cycle that can.
+		// $ref on the cycle that can. When none can, fall back to z.lazy().
 		const circularRef =
 			isReference(backEdge[0]) && isPropertyBacked(backEdge[0], standaloneSchemas)
 				? backEdge[0]
-				: refs.find((ref) => isPropertyBacked(ref, standaloneSchemas));
-
-		if (!circularRef) {
-			throw unsupportedCycleError(refs);
-		}
+				: (refs.find((ref) => isPropertyBacked(ref, standaloneSchemas)) ?? refs[0]!);
 
 		circularRef[Meta].isCircular = true;
+
+		if (!isPropertyBacked(circularRef, standaloneSchemas)) {
+			lazyRefs.add(circularRef);
+		}
 
 		const breakEdge = cycle.find(([source]) => source === circularRef)!;
 		remaining = remaining.filter((edge) => edge !== breakEdge);

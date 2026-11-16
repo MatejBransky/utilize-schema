@@ -69,8 +69,34 @@ export function collectStandaloneSchemas(root: ParsedJSONSchemaObject): Standalo
 			}
 		}
 
+		if (schema.prefixItems) {
+			for (const item of schema.prefixItems) {
+				visit(item, schema);
+			}
+		}
+
 		if (schema.additionalItems && typeof schema.additionalItems === 'object') {
 			visit(schema.additionalItems, schema);
+		}
+
+		if (schema.contains) {
+			visit(schema.contains, schema);
+		}
+
+		if (schema.propertyNames) {
+			visit(schema.propertyNames, schema);
+		}
+
+		if (schema.if) {
+			visit(schema.if as ParsedJSONSchemaObject, schema);
+		}
+
+		if (schema.then) {
+			visit(schema.then as ParsedJSONSchemaObject, schema);
+		}
+
+		if (schema.else) {
+			visit(schema.else as ParsedJSONSchemaObject, schema);
 		}
 
 		if (schema.allOf) schema.allOf.forEach((n) => visit(n, schema));

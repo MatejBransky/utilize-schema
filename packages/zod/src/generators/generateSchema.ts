@@ -3,18 +3,25 @@ import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-sch
 import { selectGenerator } from './selectGenerator';
 import type { GeneratorContext } from './types';
 
+import { applyRefinements } from '../refinements';
 import { ts } from '../utils';
 
 export const generateSchema = (schema: ParsedJSONSchema, context: GeneratorContext) => {
+	if (schema === undefined) {
+		return ts`z.unknown()`;
+	}
+
 	if (typeof schema !== 'object' || schema === null) {
-		return schema ? ts`z.any()` : ts`z.unknown()`;
+		return schema === true ? ts`z.any()` : schema === false ? ts`z.never()` : ts`z.unknown()`;
 	}
 
 	const selectedGenerator = selectGenerator(schema);
 
 	let expression = selectedGenerator.generate(schema, context);
 
-	if (schema.$id || schema.title || schema.description) {
+	expression = applyRefinements(expression, schema, context, generateSchema);
+
+	if (schema.$id || schema.title || schema.description || schema.examples !== undefined) {
 		expression = withMetadata(expression, schema);
 	}
 
@@ -25,8 +32,11 @@ export const generateSchema = (schema: ParsedJSONSchema, context: GeneratorConte
 	return expression;
 };
 
-function withMetadata(expression: string, { $id, title, description }: ParsedJSONSchemaObject) {
-	return ts`${expression}.meta(${JSON.stringify({ id: $id, title, description })})`;
+function withMetadata(
+	expression: string,
+	{ $id, title, description, examples }: ParsedJSONSchemaObject
+) {
+	return ts`${expression}.meta(${JSON.stringify({ id: $id, title, description, examples })})`;
 }
 
 function withDefault(expression: string, defaultValue: unknown, schema: ParsedJSONSchemaObject) {

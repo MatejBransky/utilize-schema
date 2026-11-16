@@ -44,7 +44,7 @@ describe('schema combinations', () => {
       `);
 		});
 
-		test('throw error for more than 2 subschemas', async () => {
+		test('more than 2 objects', async () => {
 			await expect(
 				compile({
 					allOf: [
@@ -53,7 +53,22 @@ describe('schema combinations', () => {
 						{ type: 'object', properties: { field3: { type: 'boolean' } } },
 					],
 				})
-			).rejects.toThrow('Intersection of more than two schemas is not supported');
+			).toMatchCode(ts`
+        export const Root = z.intersection(
+          z.intersection(
+            z.object({
+              field1: z.string().optional(),
+            }),
+            z.object({
+              field2: z.number().optional(),
+            }),
+          ),
+          z.object({
+            field3: z.boolean().optional(),
+          }),
+        );
+        export type Root = z.infer<typeof Root>;
+      `);
 		});
 	});
 
@@ -164,7 +179,15 @@ export type MinLength = z.infer<typeof MinLength>;
 export const MaxLength = NonNegativeInteger;
 export type MaxLength = z.infer<typeof MaxLength>;
 
-export const Schema = z
+type SchemaValue =
+	| {
+			$id?: string;
+			maxLength?: NonNegativeInteger;
+			minLength?: NonNegativeIntegerDefault0;
+			items: SchemaValue | SchemaArrayValue;
+	  }
+	| boolean;
+export const Schema: z.ZodType<SchemaValue> = z
 	.union([
 		z
 			.object({
@@ -181,7 +204,8 @@ export const Schema = z
 	.meta({ id: 'http://json-schema.org/draft-07/schema#', title: 'Core schema meta-schema' });
 export type Schema = z.infer<typeof Schema>;
 
-export const SchemaArray = z.array(Schema).min(1);
+type SchemaArrayValue = SchemaValue[];
+export const SchemaArray: z.ZodType<SchemaArrayValue> = z.array(Schema).min(1);
 export type SchemaArray = z.infer<typeof SchemaArray>;
 `);
 	});

@@ -21,14 +21,16 @@ describe('cyclic references', () => {
 		});
 
 		await expect(result).toMatchCode(ts`
-      export const B = z.object({
+      type BValue = { a?: AValue };
+      export const B: z.ZodType<BValue> = z.object({
         get a() {
           return A.optional();
         },
       });
       export type B = z.infer<typeof B>;
 
-      export const A = z.object({
+      type AValue = { b?: BValue };
+      export const A: z.ZodType<AValue> = z.object({
         b: B.optional(),
       });
       export type A = z.infer<typeof A>;
@@ -47,14 +49,18 @@ describe('cyclic references', () => {
 		});
 
 		await expect(result).toMatchCode(ts`
-      export const ListCycleObject = z.object({
-        get list() {
-          return ListCycle.optional();
-        },
-      });
+      type ListCycleObjectValue = { list?: ListCycleValue };
+      export const ListCycleObject: z.ZodType<ListCycleObjectValue> =
+        z.object({
+          get list() {
+            return ListCycle.optional();
+          },
+        });
       export type ListCycleObject = z.infer<typeof ListCycleObject>;
 
-      export const ListCycle = z.array(ListCycleObject);
+      type ListCycleValue = ListCycleObjectValue[];
+      export const ListCycle: z.ZodType<ListCycleValue> =
+        z.array(ListCycleObject);
       export type ListCycle = z.infer<typeof ListCycle>;
 
       export const Root = z.object({
@@ -68,15 +74,86 @@ describe('cyclic references', () => {
 		const result = await compile(metaSchemaLike);
 
 		await expect(result).toMatchCode(ts`
-      export const Root = z.object({
-        get items() {
-          return z.union([Root, SchemaArray]).default(true);
-        },
-      });
+      type RootValue = { items: RootValue | SchemaArrayValue } | boolean;
+      export const Root: z.ZodType<RootValue> = z.union([
+        z.object({
+          get items() {
+            return z.union([Root, SchemaArray]).default(true);
+          },
+        }),
+        z.boolean(),
+      ]);
       export type Root = z.infer<typeof Root>;
 
-      export const SchemaArray = z.array(Root).min(1);
+      type SchemaArrayValue = RootValue[];
+      export const SchemaArray: z.ZodType<SchemaArrayValue> = z
+        .array(Root)
+        .min(1);
       export type SchemaArray = z.infer<typeof SchemaArray>;
+    `);
+	});
+
+	test('array-to-array cycle', async () => {
+		const result = await compile({
+			type: 'object',
+			properties: { a: { $ref: './definitions/ArrayPairA.json' } },
+		});
+
+		await expect(result).toMatchCode(ts`
+      type ArrayPairAValue = ArrayPairBValue[];
+      export const ArrayPairA: z.ZodType<ArrayPairAValue> = z.array(
+        z.lazy(() => ArrayPairB),
+      );
+      export type ArrayPairA = z.infer<typeof ArrayPairA>;
+
+      type ArrayPairBValue = ArrayPairAValue[];
+      export const ArrayPairB: z.ZodType<ArrayPairBValue> =
+        z.array(ArrayPairA);
+      export type ArrayPairB = z.infer<typeof ArrayPairB>;
+
+      export const Root = z.object({
+        a: ArrayPairA.optional(),
+      });
+      export type Root = z.infer<typeof Root>;
+    `);
+	});
+
+	test('recursive additionalProperties', async () => {
+		const result = await compile({
+			type: 'object',
+			properties: { name: { type: 'string' } },
+			additionalProperties: { $ref: '#' },
+		});
+
+		await expect(result).toMatchCode(ts`
+      interface RootValue {
+        name?: string;
+        [key: string]: string | RootValue | undefined;
+      }
+      export const Root: z.ZodType<RootValue> = z
+        .object({
+          name: z.string().optional(),
+        })
+        .catchall(z.lazy(() => Root));
+      export type Root = z.infer<typeof Root>;
+    `);
+	});
+
+	test('recursive record', async () => {
+		const result = await compile({
+			type: 'object',
+			additionalProperties: { $ref: '#' },
+		});
+
+		await expect(result).toMatchCode(ts`
+      interface RootValue {
+        [key: string]: RootValue;
+      }
+      export const Root: z.ZodType<RootValue> = z.record(
+        z.string(),
+        z.lazy(() => Root),
+      );
+      export type Root = z.infer<typeof Root>;
     `);
 	});
 });
@@ -111,18 +188,53 @@ describe('recursive references at runtime', () => {
 
 		expect(Root.safeParse({ items: [1] }).success).toBe(false);
 	});
+
+	test('parses nested arrays through an array-to-array cycle', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: { a: { $ref: './definitions/ArrayPairA.json' } },
+		});
+
+		expect(Root.safeParse({ a: [[], []] }).success).toBe(true);
+	});
+
+	test('rejects an invalid value in an array-to-array cycle', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: { a: { $ref: './definitions/ArrayPairA.json' } },
+		});
+
+		expect(Root.safeParse({ a: [1] }).success).toBe(false);
+	});
+
+	test('parses nested data through recursive additionalProperties', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: { name: { type: 'string' } },
+			additionalProperties: { $ref: '#' },
+		});
+
+		expect(Root.safeParse({ name: 'root', child: { name: 'child' } }).success).toBe(true);
+	});
+
+	test('rejects an invalid value in recursive additionalProperties', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: { name: { type: 'string' } },
+			additionalProperties: { $ref: '#' },
+		});
+
+		expect(Root.safeParse({ name: 'root', child: { name: 42 } }).success).toBe(false);
+	});
 });
 
-describe('cycles that cannot be deferred with a getter', () => {
-	test('array-only property cycle fails at compile time', async () => {
+describe('cycles without a type indirection', () => {
+	test('a sibling structural branch does not anchor the cycle', async () => {
 		await expect(
 			compile({
-				type: 'object',
-				properties: {
-					list: { type: 'array', items: { $ref: '#/properties/list' } },
-				},
+				anyOf: [{ $ref: '#' }, { type: 'object' }],
 			})
-		).rejects.toThrow(/Cannot generate a type-safe Zod schema/);
+		).rejects.toThrow(/only passes through unions or aliases/);
 	});
 
 	test('union-only cycle fails at compile time', async () => {
@@ -135,31 +247,12 @@ describe('cycles that cannot be deferred with a getter', () => {
 					B: { anyOf: [{ $ref: '#/$defs/A' }, { type: 'null' }] },
 				},
 			})
-		).rejects.toThrow(/Cannot generate a type-safe Zod schema/);
-	});
-
-	test('array-to-array cycle fails at compile time', async () => {
-		await expect(
-			compile({
-				type: 'object',
-				properties: { a: { $ref: './definitions/ArrayPairA.json' } },
-			})
-		).rejects.toThrow(/#\/items/);
-	});
-
-	test('additionalProperties self reference fails at compile time', async () => {
-		await expect(
-			compile({
-				type: 'object',
-				properties: { name: { type: 'string' } },
-				additionalProperties: { $ref: '#' },
-			})
-		).rejects.toThrow(/additionalProperties/);
+		).rejects.toThrow(/only passes through unions or aliases/);
 	});
 });
 
 const metaSchemaLike: JSONSchema = {
-	type: 'object',
+	type: ['object', 'boolean'],
 	properties: {
 		items: {
 			anyOf: [{ $ref: '#' }, { $ref: '#/definitions/schemaArray' }],
@@ -174,3 +267,28 @@ const metaSchemaLike: JSONSchema = {
 		},
 	},
 };
+
+describe('array-only cycles', () => {
+	test('emits lazy for a standalone array cycle', async () => {
+		const result = await compile({
+			type: 'object',
+			properties: {
+				list: { type: 'array', items: { $ref: '#/properties/list' } },
+			},
+		});
+
+		expect(result).toContain('z.lazy');
+	});
+
+	test('parses nested data through a standalone array cycle', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: {
+				list: { type: 'array', items: { $ref: '#/properties/list' } },
+			},
+		});
+
+		expect(Root.safeParse({ list: [[]] }).success).toBe(true);
+		expect(Root.safeParse({ list: [1] }).success).toBe(false);
+	});
+});

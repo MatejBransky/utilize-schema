@@ -5,27 +5,60 @@ import { generateSchema } from './generateSchema';
 
 import { NEWLINE, ts } from '../utils';
 
-export const generator = createGenerator<
-	ParsedJSONSchemaObject & {
-		items: ParsedJSONSchemaObject[];
-	}
->(
+export const generator = createGenerator(
 	(schema) => {
-		if (schema.type === 'array' && Array.isArray(schema.items)) {
-			return true;
+		if (schema.type !== 'array') {
+			return false;
 		}
 
-		return false;
+		return tupleItems(schema) !== undefined;
 	},
 	(schema, context) => {
-		const itemsPart = schema.items.map((item) => generateSchema(item, context));
-		const spreadPart = schema.additionalItems
-			? ts`,${NEWLINE}${generateSchema(schema.additionalItems, context)}`
-			: '';
-		const expression = ts`z.tuple([
+		const itemsPart = tupleItems(schema)!.map(
+			(item) => ts`${generateSchema(item, context)}.optional()`
+		);
+		const rest = tupleRest(schema);
+		const restPart =
+			rest === false
+				? ''
+				: ts`.rest(${rest === undefined || rest === true ? ts`z.unknown()` : generateSchema(rest, context)})`;
+		let expression = ts`z.tuple([
     ${itemsPart.join(`,${NEWLINE}`)}
-  ]${spreadPart})`;
+  ])${restPart}`;
+		const checks: string[] = [];
+
+		if (schema.minItems !== undefined) {
+			checks.push(`value.length >= ${schema.minItems}`);
+		}
+		if (schema.maxItems !== undefined) {
+			checks.push(`value.length <= ${schema.maxItems}`);
+		}
+		if (checks.length > 0) {
+			expression = ts`${expression}.refine((value) => ${checks.join(' && ')}, { message: 'Array length is out of bounds.' })`;
+		}
 
 		return expression;
 	}
 );
+
+export function tupleItems(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject[] | undefined {
+	if (Array.isArray(schema.prefixItems)) {
+		return schema.prefixItems;
+	}
+
+	if (Array.isArray(schema.items)) {
+		return schema.items;
+	}
+
+	return undefined;
+}
+
+export function tupleRest(
+	schema: ParsedJSONSchemaObject
+): ParsedJSONSchemaObject | boolean | undefined {
+	if (Array.isArray(schema.prefixItems)) {
+		return Array.isArray(schema.items) ? undefined : schema.items;
+	}
+
+	return schema.additionalItems;
+}
