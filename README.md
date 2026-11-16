@@ -90,7 +90,8 @@ assertions)** pass; the remaining gaps are listed in
 | `enum`                                       | ✅  | ✅            | Zod deep-equals composites; Effect supports primitives only                 |
 | `const`                                      | ✅  | ✅            | Zod deep-equals composites; Effect supports primitives only                 |
 | `default`                                    | ✅  | ✅            | Zod decodes with `.default()`; Effect stores it as an annotation            |
-| `description` / `title`                      | ✅  | ✅            | Zod `.meta({})`, Effect `.annotate({})`                                     |
+| `description` / `title` / `deprecated`       | ✅  | ✅            | Zod `.meta({})`, Effect `.annotate({})`                                     |
+| `readOnly`                                   | ✅  | —             | Zod `.readonly()` with `readOnlyKeyword`; Effect keeps it as an annotation  |
 | `minimum` / `maximum`                        | ✅  | ✅            | Supported                                                                   |
 | `exclusiveMinimum` / `exclusiveMaximum`      | ✅  | ✅            | Supported (boolean draft-04 form included)                                  |
 | `multipleOf`                                 | ✅  | ✅            | Supported                                                                   |
