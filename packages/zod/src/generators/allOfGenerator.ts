@@ -24,9 +24,7 @@ export const generator = createGenerator<
 			return generateSchema(schema.allOf[0], context);
 		}
 
-		const subschemas = schema.allOf.map((subschema) =>
-			generateSchema(subschema, context)
-		);
+		const subschemas = schema.allOf.map((subschema) => generateSchema(subschema, context));
 
 		return ts`z.intersection(${subschemas.join(`,${NEWLINE}`)})`;
 	}

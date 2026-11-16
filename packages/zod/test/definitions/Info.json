@@ -9,16 +9,7 @@
 	},
 	"definitions": {
 		"OriginalDataType": {
-			"enum": [
-				"UNKNOWN",
-				"STRING",
-				"NUMBER",
-				"BOOLEAN",
-				"DATE",
-				"DATETIME",
-				"ARRAY",
-				"OBJECT"
-			]
+			"enum": ["UNKNOWN", "STRING", "NUMBER", "BOOLEAN", "DATE", "DATETIME", "ARRAY", "OBJECT"]
 		}
 	}
 }

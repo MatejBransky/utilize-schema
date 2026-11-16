@@ -4,6 +4,9 @@ Thank you for your interest in contributing! We welcome bug reports, feature req
 
 ## Getting Started
 
+This repository requires Node.js 24 and pnpm 11. The exact pnpm version is
+pinned in `package.json#packageManager`; Corepack can install it for you.
+
 1. **Clone the repository:**
 
    ```sh
@@ -32,7 +35,7 @@ Thank you for your interest in contributing! We welcome bug reports, feature req
 - Use [pnpm](https://pnpm.io/) for all scripts and dependency management.
 - Make sure all tests pass before submitting a PR.
 - Write or update tests for any new features or bug fixes.
-- Use TypeScript and follow the existing code style (see `.editorconfig` and Prettier config).
+- Use TypeScript and follow the existing code style (oxlint and oxfmt).
 
 ## Running Tests
 
@@ -45,13 +48,19 @@ Thank you for your interest in contributing! We welcome bug reports, feature req
   pnpm test -- --watch
   ```
 
+## Dependency Versions
+
+Shared dependencies are pinned once in the `catalog` section of `pnpm-workspace.yaml`.
+Package manifests reference them with `"catalog:"` instead of a version range, so an upgrade
+only changes the catalog entry. Use `pnpm add --save-catalog` for a new shared dependency.
+
 ## Code Style
 
-- Format code with Prettier:
+- Format code with oxfmt:
   ```sh
   pnpm format
   ```
-- Lint code:
+- Lint code with oxlint:
   ```sh
   pnpm check:lint
   ```

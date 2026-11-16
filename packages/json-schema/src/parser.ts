@@ -28,19 +28,15 @@ export async function parse(
 	const parser = new $RefParser();
 	const $refs = await parser.resolve(cwd, schema, {});
 
-	const entries = Object.entries($refs.values()) as Array<
-		[SchemaPath, JSONSchema]
-	>;
+	const entries = Object.entries($refs.values()) as Array<[SchemaPath, JSONSchema]>;
 
-	entries.forEach(([filePath, schema]) => {
+	entries.forEach(([filePath, entrySchema]) => {
 		const rootSchema = $refs.get('#');
-		const isRootSchema = schema === rootSchema;
+		const isRootSchema = entrySchema === rootSchema;
 		const prefixPath = isRootSchema ? '#' : filePath.replace(cwd, '');
-		const fileName = isRootSchema
-			? rootFileName
-			: (filePath.split(/[\\/]/).at(-1) ?? 'Unknown');
+		const fileName = isRootSchema ? rootFileName : (filePath.split(/[\\/]/).at(-1) ?? 'Unknown');
 		link({
-			schema,
+			schema: entrySchema,
 			parent: null,
 			fileName,
 			filePath: prefixPath,
@@ -49,16 +45,14 @@ export async function parse(
 			stack: new Set(),
 		});
 	});
-	console.log(
-		`Parsed ${entries.length} schemas from ${rootFileName} at ${cwd}`
-	);
+	console.log(`Parsed ${entries.length} schemas from ${rootFileName} at ${cwd}`);
 	const root = $refs.get('#') as unknown as ParsedJSONSchema;
 
 	return {
 		root,
 		get: ($ref: string) => $refs.get($ref) as unknown as ParsedJSONSchema,
 		referencedSchemas: entries
-			.filter(([, schema]) => schema !== root)
-			.map(([, schema]) => schema) as ParsedJSONSchema[],
+			.filter(([, entrySchema]) => entrySchema !== root)
+			.map(([, entrySchema]) => entrySchema) as ParsedJSONSchema[],
 	};
 }

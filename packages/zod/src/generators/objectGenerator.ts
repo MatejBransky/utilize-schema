@@ -10,39 +10,35 @@ export const generator = createGenerator(
 	(schema, context) => {
 		// TODO: handle patternProperties
 
-		const properties = Object.entries(schema.properties ?? {}).map(
-			([key, value]) => {
-				let optionalPart = '.optional()';
+		const properties = Object.entries(schema.properties ?? {}).map(([key, value]) => {
+			let optionalPart = '.optional()';
 
-				if (value.default !== undefined) {
-					optionalPart = '';
-				}
+			if (value.default !== undefined) {
+				optionalPart = '';
+			}
 
-				if (schema.required?.includes(key)) {
-					optionalPart = '';
-				}
+			if (schema.required?.includes(key)) {
+				optionalPart = '';
+			}
 
-				if (value.$ref) {
-					const metadata = value[Meta];
-					if (metadata.isCircular) {
-						return ts`get ${key} () {
+			if (value.$ref) {
+				const metadata = value[Meta];
+				if (metadata.isCircular) {
+					return ts`get ${key} () {
             return ${generateSchema(value, context)}${optionalPart};
           }`;
-					}
 				}
-
-				return `${key}: ${generateSchema(value, context)}${optionalPart}`;
 			}
-		);
+
+			return `${key}: ${generateSchema(value, context)}${optionalPart}`;
+		});
 		const propertiesPart = properties.join(`,${NEWLINE}`);
 
 		const additionalProperties =
 			schema.additionalProperties !== undefined
 				? generateSchema(schema.additionalProperties, context)
 				: undefined;
-		const catchAllPart = additionalProperties
-			? ts`.catchall(${additionalProperties})`
-			: '';
+		const catchAllPart = additionalProperties ? ts`.catchall(${additionalProperties})` : '';
 
 		if (schema.additionalProperties === false) {
 			return ts`z.strictObject({

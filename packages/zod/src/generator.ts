@@ -1,8 +1,4 @@
-import {
-	Meta,
-	type ParsedJSONSchema,
-	type ParsedJSONSchemaObject,
-} from '@utilize/json-schema';
+import { Meta, type ParsedJSONSchema, type ParsedJSONSchemaObject } from '@utilize/json-schema';
 import toposort from 'toposort';
 
 import { collectStandaloneSchemas } from './collectStandaloneSchemas';

@@ -21,8 +21,7 @@ describe('string constraints', () => {
 	});
 
 	test('pattern', async () => {
-		await expect(compile({ type: 'string', pattern: String.raw`^\d+$` }))
-			.toMatchCode(ts`
+		await expect(compile({ type: 'string', pattern: String.raw`^\d+$` })).toMatchCode(ts`
       export const Root = z.string().regex(/^\d+$/)
       export type Root = z.infer<typeof Root>;
     `);

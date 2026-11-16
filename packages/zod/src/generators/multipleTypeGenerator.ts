@@ -1,7 +1,4 @@
-import type {
-	JSONSchemaTypeName,
-	ParsedJSONSchemaObject,
-} from '@utilize/json-schema';
+import type { JSONSchemaTypeName, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
 import { generateSchema } from './generateSchema';
@@ -16,10 +13,7 @@ export const generator = createGenerator<
 	(schema) => Array.isArray(schema.type),
 	(schema, context) => {
 		const subschemas = schema.type.map((type) =>
-			generateSchema(
-				{ ...schema, type, default: undefined, title: undefined },
-				context
-			)
+			generateSchema({ ...schema, type, default: undefined, title: undefined }, context)
 		);
 
 		return ts`z.union([

@@ -1,64 +1,53 @@
-name: Changesets
+name: Release
 
 on:
-  push:
-    branches:
-      - main
-
-env:
-  CI: true
+  workflow_dispatch:
 
 permissions:
-  id-token: write
   contents: write
+  id-token: write
   pull-requests: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   release:
-    timeout-minutes: 15
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [22]
+    name: Publish to npm
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    # Only Matej can approve this environment. Phil may trigger the workflow,
+    # but the publish never starts without Matej's approval.
+    environment:
+      name: npm-publish
 
     steps:
       - name: Checkout code repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
-      - name: Cache pnpm modules
-        # Cache depends on number of dependencies in project
-        # - For small projects (< 10 deps), cache doesn't make sense and sometimes can be even slower
-        # - For big projects (> 100 deps), cache brings good speed advantages
-        # Measurement results:
-        # https://github.com/actions/setup-node/issues/271#issuecomment-871408337
-        uses: actions/cache@v4
-        with:
-          path: ~/.pnpm-store
-          key: ${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-
-
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - name: Use Node.js 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: "pnpm"
+          node-version: 24
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
-      - name: Create and publish versions
-        uses: changesets/action@v1
+      - name: Build packages
+        run: pnpm build
+
+      - name: Publish packages
+        uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
-          version: pnpm ci:version
-          commit: "chore: update versions"
-          title: "chore: update versions"
-          publish: pnpm ci:publish
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          version-script: pnpm ci:version
+          commit-message: 'chore: update versions'
+          pr-title: 'chore: update versions'
+          publish-script: pnpm ci:publish
+          github-token: ${{ secrets.GITHUB_TOKEN }}

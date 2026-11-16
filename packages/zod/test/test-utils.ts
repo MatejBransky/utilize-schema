@@ -1,20 +1,33 @@
-import {
-	type JSONSchema,
-	Meta,
-	parse,
-	type ParsedJSONSchemaObject,
-} from '@utilize/json-schema';
+import { type JSONSchema, Meta, parse, type ParsedJSONSchemaObject } from '@utilize/json-schema';
+import { format as formatCode } from 'oxfmt';
 
 import { generate } from '../src/generator';
-import { format } from '../src/utils';
 
 /**
- * A tagged template literal function that formats TypeScript code.
+ * A tagged template literal function for expected TypeScript code. Code is
+ * compared with whitespace normalized, so the generated output does not need
+ * to be formatted.
  */
-export const ts = (strings: TemplateStringsArray, ...values: unknown[]) => {
-	const rawString = String.raw(strings, ...values);
-	return format(rawString);
-};
+export const ts = (strings: TemplateStringsArray, ...values: unknown[]) =>
+	formatSource(String.raw(strings, ...values));
+
+const formatOptions = {
+	bracketSpacing: true,
+	endOfLine: 'lf',
+	semi: true,
+	singleQuote: true,
+	trailingComma: 'es5',
+	useTabs: true,
+	objectWrap: 'collapse',
+} as const;
+
+function formatSource(code: string) {
+	return formatCode('code.ts', code, formatOptions).then((result) => result.code);
+}
+
+export function normalizeCode(code: string): string {
+	return code.replace(/\r\n?/g, '\n').trim();
+}
 
 export function withMeta(obj: JSONSchema, meta: Partial<Meta> = {}) {
 	Object.defineProperty(obj, Meta, {
@@ -40,5 +53,5 @@ export async function compile(schema: JSONSchema, options?: CompileOptions) {
 	const code = generate(parsed.root, {
 		importZod: options?.importZod ?? false,
 	});
-	return format(code);
+	return formatSource(code);
 }

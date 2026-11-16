@@ -17,9 +17,7 @@ export const generator = createGenerator<
 		return false;
 	},
 	(schema) => {
-		const stringValues = schema.enum.filter(
-			(value) => typeof value === 'string'
-		);
+		const stringValues = schema.enum.filter((value) => typeof value === 'string');
 
 		if (stringValues.length === schema.enum.length) {
 			return ts`z.enum([${stringValues.map((value) => JSON.stringify(value)).join(`,${NEWLINE}`)}])`;

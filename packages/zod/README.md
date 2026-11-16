@@ -16,8 +16,8 @@ TypeScript/Zod code generator for JSON Schema. Converts any JSON Schema (with re
 import { compile } from '@utilize/zod';
 
 await compile({
-  input: './schema.json',
-  output: './schema.generated.ts',
+	input: './schema.json',
+	output: './schema.generated.ts',
 });
 ```
 
@@ -40,4 +40,3 @@ export type MyType = z.infer<typeof MyType>;
 ## When to use
 
 Use this package to automate Zod schema and TypeScript type generation from JSON Schema, including complex schemas with references and modular structure.
-

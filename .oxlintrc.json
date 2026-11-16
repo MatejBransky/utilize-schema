@@ -1,0 +1,23 @@
+{
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"plugins": ["typescript", "unicorn", "oxc", "import"],
+	"categories": {
+		"correctness": "error",
+		"suspicious": "warn"
+	},
+	"rules": {
+		"unicorn/no-thenable": "off",
+		"import/no-unassigned-import": "off",
+		"unicorn/no-array-reverse": "off",
+		"unicorn/consistent-function-scoping": "off"
+	},
+	"env": {
+		"builtin": true
+	},
+	"ignorePatterns": [
+		"**/dist/**",
+		"**/node_modules/**",
+		".agents/**",
+		"packages/zod/test/snapshots/**"
+	]
+}

@@ -2,12 +2,7 @@ import type { $Refs } from '@apidevtools/json-schema-ref-parser';
 
 import { join as pathJoin, dirname } from 'path';
 
-import {
-	Meta,
-	type JSONSchema,
-	type ParsedJSONSchemaObject,
-	type Path,
-} from './model';
+import { Meta, type JSONSchema, type ParsedJSONSchemaObject, type Path } from './model';
 import { isPlainObject } from './utils';
 
 export interface LinkNodeOptions {
