@@ -4,6 +4,7 @@ import { render } from 'vitest-browser-react';
 
 import App from './App';
 import type { SchemaFile } from './bundle';
+import './polyfills';
 
 vi.mock('./monaco/format', () => ({
 	formatTypeScript: async (source: string) => source,
@@ -148,6 +149,27 @@ test('dropping files on the add target keeps the open files', async () => {
 	await vi.waitFor(() => expect(tabNames()).toHaveLength(before + 1));
 	expect(tabNames().some((name) => name.includes('person.json'))).toBe(true);
 	expect(tabNames().at(-1)).toContain('extra.json');
+});
+
+test('the copy button resets when the schema changes', async () => {
+	Object.defineProperty(navigator, 'clipboard', {
+		configurable: true,
+		value: { writeText: async () => {} },
+	});
+
+	const screen = await render(<App />);
+	const copy = screen.getByRole('button', { name: 'Copy code' });
+
+	await vi.waitFor(() => expect((copy.element() as HTMLButtonElement).disabled).toBe(false));
+	await copy.click();
+	await expect.element(screen.getByRole('button', { name: 'Copied' })).toBeVisible();
+
+	await screen.getByLabelText('Rename person.json').click();
+	await screen.getByLabelText('File name').fill('contact.json');
+	await screen.getByLabelText('Confirm rename').click();
+
+	await expect.element(screen.getByRole('button', { name: 'Copy code' })).toBeVisible();
+	await expect.element(screen.getByRole('button', { name: 'Copied' })).not.toBeInTheDocument();
 });
 
 test('an agent can find and change the playground controls', async () => {
