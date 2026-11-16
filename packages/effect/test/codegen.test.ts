@@ -6,7 +6,7 @@ describe('code generation', () => {
 	test('exports a const and a type for the root schema', async () => {
 		const result = await compile({ type: 'string', minLength: 1 });
 
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
 			export const Root = Schema.String.check(Schema.isMinCodePoints(1));
 
 			export type Root = typeof Root.Type;
@@ -26,7 +26,7 @@ describe('code generation', () => {
 			required: ['name'],
 		});
 
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
 			export const Root = Schema.StructWithRest(
 				Schema.Struct({
 					name: Schema.String.check(Schema.isMinCodePoints(1)).annotate({ description: 'The name' }),
@@ -51,7 +51,7 @@ describe('code generation', () => {
 			minProperties: 1,
 		});
 
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
 			export const Root = Schema.StructWithRest(Schema.Struct({ a: Schema.String }), [
 				Schema.Record(Schema.String, Schema.Json),
 			]).check(
@@ -72,7 +72,7 @@ describe('code generation', () => {
 			additionalProperties: { type: 'integer' },
 		});
 
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
 			export const Root = Schema.StructWithRest(Schema.Struct({ a: Schema.optionalKey(Schema.String) }), [
 				Schema.Record(Schema.String, Schema.Json),
 			]).check(
@@ -92,7 +92,7 @@ describe('code generation', () => {
 	test('decodes a single record when only additionalProperties is given', async () => {
 		const result = await compile({ type: 'object', additionalProperties: { type: 'string' } });
 
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
 			export const Root = Schema.Record(Schema.String, Schema.String);
 
 			export type Root = typeof Root.Type;
@@ -106,7 +106,7 @@ describe('code generation', () => {
 			items: false,
 		});
 
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
 			export const Root = Schema.Tuple([
 				Schema.optionalKey(Schema.String),
 				Schema.optionalKey(Schema.Int),
@@ -124,7 +124,7 @@ describe('code generation', () => {
 			minItems: 1,
 		});
 
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
 			export const Root = Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Int]);
 
 			export type Root = typeof Root.Type;
@@ -140,7 +140,7 @@ describe('code generation', () => {
 			uniqueItems: true,
 		});
 
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
 			export const Root = Schema.Array(Schema.String).check(
 				Schema.isMinLength(1),
 				Schema.isMaxLength(2),
@@ -158,7 +158,7 @@ describe('code generation', () => {
 			properties: { child: { $ref: '#/$defs/Child' } },
 		});
 
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
 			export const Child = Schema.StructWithRest(
 				Schema.Struct({ id: Schema.optionalKey(Schema.String) }),
 				[Schema.Record(Schema.String, Schema.Json)]
@@ -186,7 +186,7 @@ describe('code generation', () => {
 			required: ['value'],
 		});
 
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
 			type NodeValue = { value: string; children?: ReadonlyArray<NodeValue> };
 
 			export const Node: Schema.Codec<NodeValue> = Schema.StructWithRest(
@@ -202,13 +202,13 @@ describe('code generation', () => {
 	});
 
 	test('maps anyOf and oneOf to unions', async () => {
-		expect(await compile({ anyOf: [{ type: 'string' }, { type: 'number' }] })).toMatchCode(ts`
+		await expect(await compile({ anyOf: [{ type: 'string' }, { type: 'number' }] })).toMatchCode(ts`
 			export const Root = Schema.Union([Schema.String, Schema.Finite]);
 
 			export type Root = typeof Root.Type;
 		`);
 
-		expect(await compile({ oneOf: [{ type: 'string' }, { type: 'number' }] })).toMatchCode(ts`
+		await expect(await compile({ oneOf: [{ type: 'string' }, { type: 'number' }] })).toMatchCode(ts`
 			export const Root = Schema.Union([Schema.String, Schema.Finite], { mode: 'oneOf' });
 
 			export type Root = typeof Root.Type;
@@ -223,7 +223,7 @@ describe('code generation', () => {
 			],
 		});
 
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
 			export const Root = Schema.StructWithRest(
 				Schema.Struct({ a: Schema.String, b: Schema.optionalKey(Schema.Finite) }),
 				[Schema.Record(Schema.String, Schema.Json)]
@@ -236,7 +236,7 @@ describe('code generation', () => {
 	test('keeps every JSON type for schemas without a type', async () => {
 		const result = await compile({ minLength: 2 });
 
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
 			export const Root = Schema.Union([
 				Schema.Null,
 				Schema.Boolean,
@@ -251,13 +251,13 @@ describe('code generation', () => {
 	});
 
 	test('emits literals for const and enum', async () => {
-		expect(await compile({ const: 'fixed' })).toMatchCode(ts`
+		await expect(await compile({ const: 'fixed' })).toMatchCode(ts`
 			export const Root = Schema.Literal('fixed');
 
 			export type Root = typeof Root.Type;
 		`);
 
-		expect(await compile({ enum: ['a', 'b'] })).toMatchCode(ts`
+		await expect(await compile({ enum: ['a', 'b'] })).toMatchCode(ts`
 			export const Root = Schema.Literals(['a', 'b']);
 
 			export type Root = typeof Root.Type;
@@ -267,7 +267,7 @@ describe('code generation', () => {
 	test('adds the effect import when requested', async () => {
 		const result = await compile({ type: 'string' }, { importEffect: true });
 
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
 			import { Schema } from 'effect';
 
 			export const Root = Schema.String;

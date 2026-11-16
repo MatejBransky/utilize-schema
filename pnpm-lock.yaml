@@ -74,6 +74,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2
+      '@utilize/zod':
+        specifier: workspace:*
+        version: link:../zod
       effect:
         specifier: 'catalog:'
         version: 4.1.4
@@ -89,6 +92,9 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 5.1.0(@types/node@24.19.2)(@vitest/browser-playwright@5.1.0)(@vitest/ui@5.1.0)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.6.1)(yaml@2.9.1))
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
 
   packages/json-schema:
     dependencies:

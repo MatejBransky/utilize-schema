@@ -1,4 +1,4 @@
-import { type JSONSchema, parse } from '@utilize/json-schema';
+import { type JSONSchema, Meta, parse, type ParsedJSONSchemaObject } from '@utilize/json-schema';
 import { Schema } from 'effect';
 import { format as formatCode } from 'oxfmt';
 
@@ -40,6 +40,17 @@ const formatOptions = {
 
 function formatSource(code: string) {
 	return formatCode('code.ts', code, formatOptions).then((result) => result.code);
+}
+
+export function withMeta(obj: JSONSchema, meta: Partial<Meta> = {}) {
+	Object.defineProperty(obj, Meta, {
+		enumerable: false,
+		value: { ...meta },
+		writable: true,
+		configurable: true,
+	});
+
+	return obj as ParsedJSONSchemaObject;
 }
 
 export function normalizeCode(code: string): string {

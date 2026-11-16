@@ -40,11 +40,13 @@
 	"devDependencies": {
 		"@total-typescript/tsconfig": "catalog:",
 		"@types/node": "catalog:",
+		"@utilize/zod": "workspace:*",
 		"effect": "catalog:",
 		"oxfmt": "catalog:",
 		"tsdown": "catalog:",
 		"typescript": "catalog:",
-		"vitest": "catalog:"
+		"vitest": "catalog:",
+		"zod": "catalog:"
 	},
 	"peerDependencies": {
 		"effect": ">=4.0.0 <5"
