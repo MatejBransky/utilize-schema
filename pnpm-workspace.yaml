@@ -9,7 +9,7 @@ saveExact: true
 catalog:
   '@apidevtools/json-schema-ref-parser': 16.0.8
   '@total-typescript/tsconfig': 1.0.4
-  '@types/node': 24.19.2
+  '@types/node': 26.6.6
   oxfmt: 0.78.0
   oxlint: 1.93.0
   tsdown: 0.23.7
