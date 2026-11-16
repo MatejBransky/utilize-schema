@@ -31,13 +31,15 @@ export function link({
 		return schema as ParsedJSONSchemaObject;
 	}
 
-	if (schema.$ref) {
-		if (filePath !== '#' && schema.$ref.startsWith('#')) {
-			pointer = filePath + '#' + schema.$ref.slice(1);
-		} else if (schema.$ref.startsWith('./')) {
-			pointer = pathJoin(dirname(filePath), schema.$ref);
+	const ref = typeof schema.$ref === 'string' ? schema.$ref : undefined;
+
+	if (ref) {
+		if (filePath !== '#' && ref.startsWith('#')) {
+			pointer = filePath + '#' + ref.slice(1);
+		} else if (ref.startsWith('./')) {
+			pointer = pathJoin(dirname(filePath), ref);
 		} else {
-			pointer = schema.$ref;
+			pointer = ref;
 		}
 
 		if ($refs.exists(pointer, {})) {
@@ -67,7 +69,7 @@ export function link({
 		parent: parent as ParsedJSONSchemaObject,
 	};
 
-	if (schema.$ref && $refs.exists(pointer, {})) {
+	if (ref && $refs.exists(pointer, {})) {
 		const referencedSchema = $refs.get(pointer) as JSONSchema;
 		meta.reference = referencedSchema as ParsedJSONSchemaObject;
 		meta.isCircular = stack.has(referencedSchema);

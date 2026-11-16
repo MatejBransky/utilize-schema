@@ -92,6 +92,23 @@ test('parser', async () => {
 	`);
 });
 
+test('a property named $ref is not treated as a reference', async () => {
+	const schema: JSONSchema = {
+		type: 'object',
+		properties: {
+			$ref: { type: 'string' },
+		},
+		required: ['$ref'],
+	};
+	const parsed = await parse(schema, {
+		cwd: __dirname + '/',
+		fileName: 'Unknown',
+	});
+
+	assert(typeof parsed.root === 'object' && parsed.root !== null);
+	expect(parsed.root.properties?.$ref?.[Meta].reference).toBeUndefined();
+});
+
 test('circular references', async () => {
 	const schema: JSONSchema = {
 		type: 'object',
