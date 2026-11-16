@@ -1,5 +1,6 @@
-import { parse } from '@utilize/json-schema';
-import { generate } from '@utilize/zod';
+import { generate as generateEffect } from '@utilize/effect';
+import { parse, type ParsedJSONSchema } from '@utilize/json-schema';
+import { generate as generateZod } from '@utilize/zod';
 import { Button } from '@ui-sdk/react/button';
 import { Input } from '@ui-sdk/react/input';
 import {
@@ -151,7 +152,7 @@ export default function App() {
 						fileName: bundle.rootFileName,
 					});
 
-					const rawCode = generate(root, { importZod: true });
+					const rawCode = generateCodeFor(target, root);
 
 					nextCode = cancelled ? nextCode : await formatTypeScript(rawCode).catch(() => rawCode);
 				} catch (error) {
@@ -817,4 +818,15 @@ function uniqueName(base: string, files: SchemaFile[]): string {
 	}
 
 	return `${stem}-${counter}${extension}`;
+}
+
+function generateCodeFor(target: TargetId, root: ParsedJSONSchema): string {
+	switch (target) {
+		case 'effect':
+			return generateEffect(root, { importEffect: true });
+		case 'zod':
+			return generateZod(root, { importZod: true });
+		default:
+			throw new Error(`The ${target} generator is not available yet.`);
+	}
 }

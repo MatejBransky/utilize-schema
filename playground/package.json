@@ -14,6 +14,7 @@
 	"dependencies": {
 		"@ui-sdk/core": "0.1.0-beta.3",
 		"@ui-sdk/react": "0.1.0-beta.3",
+		"@utilize/effect": "workspace:*",
 		"@utilize/json-schema": "workspace:*",
 		"@utilize/zod": "workspace:*",
 		"ajv": "8.20.0",

@@ -50,6 +50,9 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			'@utilize/zod': fileURLToPath(new URL('../packages/zod/src/generator.ts', import.meta.url)),
+			'@utilize/effect': fileURLToPath(
+				new URL('../packages/effect/src/generator.ts', import.meta.url)
+			),
 			'@utilize/json-schema': fileURLToPath(
 				new URL('../packages/json-schema/src/index.ts', import.meta.url)
 			),

@@ -172,6 +172,9 @@ importers:
       '@ui-sdk/react':
         specifier: 0.1.0-beta.3
         version: 0.1.0-beta.3(@types/react@19.3.0)(@ui-sdk/core@0.1.0-beta.3)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@utilize/effect':
+        specifier: workspace:*
+        version: link:../packages/effect
       '@utilize/json-schema':
         specifier: workspace:*
         version: link:../packages/json-schema
