@@ -15,7 +15,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/MatejBransky/utilize-schema.git",
+		"url": "git+https://github.com/MatejBransky/utilize-schema.git",
 		"directory": "packages/effect"
 	},
 	"files": [
