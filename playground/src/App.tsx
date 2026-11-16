@@ -121,6 +121,21 @@ export default function App() {
 	}, [files, target]);
 
 	useEffect(() => {
+		setShared(false);
+		setCopied(false);
+	}, [files, target]);
+
+	useEffect(() => {
+		if (!copied) {
+			return;
+		}
+
+		const timer = setTimeout(() => setCopied(false), 2000);
+
+		return () => clearTimeout(timer);
+	}, [copied]);
+
+	useEffect(() => {
 		let cancelled = false;
 		setBusy(true);
 

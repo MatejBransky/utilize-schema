@@ -143,3 +143,13 @@ test('clicking outside the rename input cancels the rename', async () => {
 	await expect.element(screen.getByLabelText('File name')).not.toBeInTheDocument();
 	expect(tabNames().some((name) => name.includes('person.json'))).toBe(true);
 });
+
+test('share feedback resets when the workspace changes', async () => {
+	const screen = await render(<App />);
+
+	await screen.getByRole('button', { name: 'Share' }).click();
+	await expect.element(screen.getByRole('button', { name: 'Link copied' })).toBeVisible();
+
+	await screen.getByLabelText('Add file').click();
+	await expect.element(screen.getByRole('button', { name: 'Share' })).toBeVisible();
+});
