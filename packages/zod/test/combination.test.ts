@@ -164,7 +164,15 @@ export type MinLength = z.infer<typeof MinLength>;
 export const MaxLength = NonNegativeInteger;
 export type MaxLength = z.infer<typeof MaxLength>;
 
-export const Schema = z
+type SchemaValue =
+	| {
+			$id?: string;
+			maxLength?: NonNegativeInteger;
+			minLength?: NonNegativeIntegerDefault0;
+			items: SchemaValue | SchemaArrayValue;
+	  }
+	| boolean;
+export const Schema: import('zod').z.ZodType<SchemaValue> = z
 	.union([
 		z
 			.object({
@@ -181,7 +189,10 @@ export const Schema = z
 	.meta({ id: 'http://json-schema.org/draft-07/schema#', title: 'Core schema meta-schema' });
 export type Schema = z.infer<typeof Schema>;
 
-export const SchemaArray = z.array(Schema).min(1);
+type SchemaArrayValue = SchemaValue[];
+export const SchemaArray: import('zod').z.ZodType<SchemaArrayValue> = z
+	.array(Schema)
+	.min(1);
 export type SchemaArray = z.infer<typeof SchemaArray>;
 `);
 	});

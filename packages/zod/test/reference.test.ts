@@ -45,7 +45,8 @@ describe('reference', () => {
 		});
 
 		expect(result).toMatchCode(ts`
-      export const Root = z.object({
+      type RootValue = { field?: RootValue };
+      export const Root: import('zod').z.ZodType<RootValue> = z.object({
         get field() {
           return Root.optional()
         }
@@ -156,7 +157,8 @@ describe('reference', () => {
 		});
 
 		expect(result).toMatchCode(ts`
-      export const Root = z.object({
+      type RootValue = { value: string; next?: RootValue };
+      export const Root: import('zod').z.ZodType<RootValue> = z.object({
         value: z.string(),
         get next() {
           return Root.optional();
@@ -175,7 +177,8 @@ describe('reference', () => {
 		});
 
 		await expect(result).toMatchCode(ts`
-      export const Root = z.object({
+      type RootValue = { children?: RootValue[] };
+      export const Root: import('zod').z.ZodType<RootValue> = z.object({
         get children() {
           return z.array(Root).optional();
         },
@@ -193,7 +196,8 @@ describe('reference', () => {
 		});
 
 		await expect(result).toMatchCode(ts`
-      export const Root = z.object({
+      type RootValue = { parent?: RootValue | null };
+      export const Root: import('zod').z.ZodType<RootValue> = z.object({
         get parent() {
           return z.union([Root, z.null()]).optional();
         },
@@ -211,14 +215,16 @@ describe('reference', () => {
 		});
 
 		await expect(result).toMatchCode(ts`
-      export const CycleB = z.object({
+      type CycleBValue = { a?: CycleAValue | null };
+      export const CycleB: import('zod').z.ZodType<CycleBValue> = z.object({
         get a() {
           return z.union([CycleA, z.null()]).optional();
         },
       });
       export type CycleB = z.infer<typeof CycleB>;
 
-      export const CycleA = z.object({
+      type CycleAValue = { b?: CycleBValue };
+      export const CycleA: import('zod').z.ZodType<CycleAValue> = z.object({
         b: CycleB.optional(),
       });
       export type CycleA = z.infer<typeof CycleA>;

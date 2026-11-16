@@ -19,22 +19,22 @@ export function schemaLocation(schema: ParsedJSONSchemaObject): string {
 }
 
 /**
- * Builds the error thrown when a recursive reference cannot be deferred with a
- * getter on an object property.
+ * A cycle made only of unions and aliases has no value type TypeScript can
+ * express recursively, so it fails at generation time instead of emitting
+ * code that does not type-check.
  */
-export function unsupportedCycleError(
-	refs: ParsedJSONSchemaObject[]
+export function unsupportedUnionCycleError(
+	groups: ParsedJSONSchemaObject[][]
 ): UnsupportedCyclicReferenceError {
-	const lines = refs.map((ref) => `  - ${schemaLocation(ref)} ($ref: ${JSON.stringify(ref.$ref)})`);
+	const lines = groups.flat().map((schema) => `  - ${schemaLocation(schema)}`);
 
 	return new UnsupportedCyclicReferenceError(
 		[
-			'Cannot generate a type-safe Zod schema for this cyclic $ref:',
+			'Cannot generate a type-safe Zod schema for a cyclic $ref that only passes through unions or aliases:',
 			...lines,
 			'',
-			'A recursive reference can only be deferred with a getter on an object property.',
-			'Put the reference under an object\'s "properties", or restructure the schemas',
-			'so that the cycle passes through an object property.',
+			'A recursive type needs an object, array, tuple or record in the cycle',
+			'so TypeScript can represent it. Add one of those to the cycle.',
 		].join('\n')
 	);
 }
