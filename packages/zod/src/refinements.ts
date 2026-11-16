@@ -20,7 +20,7 @@ export function applyRefinements(
 	let result = expression;
 	const contextType = typeof schema.type === 'string' ? schema.type : undefined;
 
-	if (schema.not) {
+	if (schema.not !== undefined) {
 		const not = generate(withContextType(schema.not, contextType), context);
 
 		result = ts`${result}.refine(
@@ -29,19 +29,21 @@ export function applyRefinements(
     )`;
 	}
 
-	if (schema.if) {
+	if (schema.if !== undefined) {
 		const condition = generate(
 			withContextType(schema.if as unknown as ParsedJSONSchema, contextType),
 			context
 		);
 		const thenSchema = schema.then as unknown as ParsedJSONSchema | undefined;
 		const elseSchema = schema.else as unknown as ParsedJSONSchema | undefined;
-		const thenBlock = thenSchema
-			? checkBlock(generate(withContextType(thenSchema, contextType), context))
-			: '';
-		const elseBlock = elseSchema
-			? checkBlock(generate(withContextType(elseSchema, contextType), context))
-			: '';
+		const thenBlock =
+			thenSchema !== undefined
+				? checkBlock(generate(withContextType(thenSchema, contextType), context))
+				: '';
+		const elseBlock =
+			elseSchema !== undefined
+				? checkBlock(generate(withContextType(elseSchema, contextType), context))
+				: '';
 
 		result = ts`${result}.superRefine((value, ctx) => {
       if (${condition}.safeParse(value).success) {
@@ -52,7 +54,7 @@ export function applyRefinements(
     })`;
 	}
 
-	if (schema.contains) {
+	if (schema.contains !== undefined) {
 		const contains = generate(schema.contains, context);
 
 		result = ts`${result}.superRefine((value, ctx) => {
@@ -70,7 +72,7 @@ export function applyRefinements(
     })`;
 	}
 
-	if (schema.propertyNames) {
+	if (schema.propertyNames !== undefined) {
 		const propertyNames = generate(withContextType(schema.propertyNames, 'string'), context);
 
 		result = ts`${result}.superRefine((value, ctx) => {
@@ -107,12 +109,8 @@ export function applyRefinements(
 				continue;
 			}
 
-			if (typeof dependency !== 'object' || dependency === null) {
-				continue;
-			}
-
 			const dependencySchema = generate(
-				withContextType(dependency as ParsedJSONSchemaObject, 'object'),
+				withContextType(dependency as ParsedJSONSchema, 'object'),
 				context
 			);
 

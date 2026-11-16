@@ -7,8 +7,12 @@ import { applyRefinements } from '../refinements';
 import { ts } from '../utils';
 
 export const generateSchema = (schema: ParsedJSONSchema, context: GeneratorContext) => {
+	if (schema === undefined) {
+		return ts`z.unknown()`;
+	}
+
 	if (typeof schema !== 'object' || schema === null) {
-		return schema ? ts`z.any()` : ts`z.unknown()`;
+		return schema === true ? ts`z.any()` : schema === false ? ts`z.never()` : ts`z.unknown()`;
 	}
 
 	const selectedGenerator = selectGenerator(schema);

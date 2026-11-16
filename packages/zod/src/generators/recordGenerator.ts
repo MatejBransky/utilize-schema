@@ -9,7 +9,11 @@ export const generator = createGenerator<{
 	additionalProperties: ParsedJSONSchemaObject;
 }>(
 	(schema) => {
-		if (!schema.properties && isPlainObject(schema.additionalProperties)) {
+		if (
+			!schema.properties &&
+			!schema.required?.length &&
+			isPlainObject(schema.additionalProperties)
+		) {
 			return true;
 		}
 

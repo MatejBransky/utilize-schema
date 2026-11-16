@@ -44,6 +44,10 @@ export function renderValueTypeDeclaration(
 }
 
 function renderType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): string {
+	if (typeof schema !== 'object' || schema === null) {
+		return schema ? 'unknown' : 'never';
+	}
+
 	const generator = selectGenerator(schema);
 
 	if (generator === refGenerator) {
@@ -208,6 +212,20 @@ function renderObjectMembers(
 		const type = renderType(additionalProperties as ParsedJSONSchemaObject, context);
 
 		index = propertyTypes.length === 0 ? type : union([...propertyTypes, type, 'undefined']);
+	}
+
+	const requiredWithoutProperties = (schema.required ?? []).filter(
+		(key) => !Object.hasOwn(schema.properties ?? {}, key)
+	);
+	const requiredType =
+		additionalProperties === false
+			? 'never'
+			: isPlainObject(additionalProperties)
+				? renderType(additionalProperties as ParsedJSONSchemaObject, context)
+				: 'unknown';
+
+	for (const key of requiredWithoutProperties) {
+		lines.push(`${propertyKey(key)}: ${requiredType}`);
 	}
 
 	return { lines, index };

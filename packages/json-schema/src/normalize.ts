@@ -38,31 +38,65 @@ export function detectSchemaVersion(
  * Rewrites keywords that have a different shape in newer drafts into the
  * draft-07 form the generator understands. Mutates the schema in place.
  */
+const MAP_KEYWORDS = new Set([
+	'properties',
+	'patternProperties',
+	'$defs',
+	'definitions',
+	'dependentSchemas',
+]);
+const SINGLE_SCHEMA_KEYWORDS = new Set([
+	'additionalProperties',
+	'additionalItems',
+	'contains',
+	'propertyNames',
+	'if',
+	'then',
+	'else',
+	'not',
+]);
+const ARRAY_SCHEMA_KEYWORDS = new Set(['allOf', 'anyOf', 'oneOf', 'prefixItems']);
+
 export function normalizeSchema(schema: unknown, version: SchemaVersion) {
 	const seen = new Set<unknown>();
 
-	visit(schema);
+	visitSchema(schema);
 
-	function visit(node: unknown) {
-		if (Array.isArray(node)) {
-			for (const item of node) {
-				visit(item);
-			}
-			return;
-		}
-
-		if (!isPlainObject(node) || seen.has(node)) {
+	function visitSchema(node: unknown) {
+		if (typeof node !== 'object' || node === null || seen.has(node)) {
 			return;
 		}
 
 		seen.add(node);
+
+		if (!isPlainObject(node)) {
+			return;
+		}
+
 		normalizeNode(node, version);
 
 		for (const [key, value] of Object.entries(node)) {
 			if (key === '$schema') {
 				continue;
 			}
-			visit(value);
+
+			if (key === 'items') {
+				if (Array.isArray(value)) {
+					for (const item of value) visitSchema(item);
+				} else {
+					visitSchema(value);
+				}
+			} else if (MAP_KEYWORDS.has(key) && isPlainObject(value)) {
+				for (const subschema of Object.values(value)) visitSchema(subschema);
+			} else if (SINGLE_SCHEMA_KEYWORDS.has(key)) {
+				visitSchema(value);
+			} else if (ARRAY_SCHEMA_KEYWORDS.has(key) && Array.isArray(value)) {
+				for (const subschema of value) visitSchema(subschema);
+			} else if (key === 'dependencies' && isPlainObject(value)) {
+				for (const dependency of Object.values(value)) {
+					if (!Array.isArray(dependency)) visitSchema(dependency);
+				}
+			}
 		}
 	}
 }
@@ -81,6 +115,8 @@ function normalizeNode(node: Record<string, unknown>, version: SchemaVersion): v
 		'unevaluatedItems',
 		'$recursiveRef',
 		'$dynamicRef',
+		'minContains',
+		'maxContains',
 	]) {
 		if (node[keyword] !== undefined) {
 			throw new UnsupportedSchemaFeatureError(keyword);
@@ -96,13 +132,19 @@ function normalizeNode(node: Record<string, unknown>, version: SchemaVersion): v
 		delete node.prefixItems;
 	}
 
-	const dependencies = isPlainObject(node.dependencies) ? node.dependencies : {};
+	const dependencies: Record<string, unknown> = isPlainObject(node.dependencies)
+		? { ...node.dependencies }
+		: {};
 
-	for (const [key, value] of Object.entries(node.dependentRequired ?? {})) {
-		dependencies[key] = value;
+	for (const [key, value] of Object.entries(
+		isPlainObject(node.dependentRequired) ? node.dependentRequired : {}
+	)) {
+		mergeDependency(dependencies, key, value);
 	}
-	for (const [key, value] of Object.entries(node.dependentSchemas ?? {})) {
-		dependencies[key] = value;
+	for (const [key, value] of Object.entries(
+		isPlainObject(node.dependentSchemas) ? node.dependentSchemas : {}
+	)) {
+		mergeDependency(dependencies, key, value);
 	}
 	if (Object.keys(dependencies).length > 0) {
 		node.dependencies = dependencies;
@@ -125,4 +167,23 @@ function normalizeDraft04ExclusiveBounds(node: Record<string, unknown>) {
 			delete node[exclusiveKey];
 		}
 	}
+}
+
+function mergeDependency(dependencies: Record<string, unknown>, key: string, next: unknown): void {
+	const current = dependencies[key];
+
+	if (current === undefined) {
+		dependencies[key] = next;
+		return;
+	}
+
+	if (Array.isArray(current) && Array.isArray(next)) {
+		dependencies[key] = [...new Set([...current, ...next])];
+		return;
+	}
+
+	const currentSchema = Array.isArray(current) ? { required: current } : current;
+	const nextSchema = Array.isArray(next) ? { required: next } : next;
+
+	dependencies[key] = { allOf: [currentSchema, nextSchema] };
 }

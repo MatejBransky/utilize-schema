@@ -55,6 +55,10 @@ export function findCyclicSchemas(
  * a recursive type alias.
  */
 function hasStructuralConstructor(schema: ParsedJSONSchemaObject): boolean {
+	if (typeof schema !== 'object' || schema === null) {
+		return false;
+	}
+
 	const generator = selectGenerator(schema);
 
 	if (
