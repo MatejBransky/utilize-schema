@@ -1,61 +1,47 @@
-import { monaco } from './setup';
+import type { Options, Plugin } from 'prettier';
 
-const FORMAT_OPTIONS = {
-	ConvertTabsToSpaces: true,
-	TabSize: 2,
-	IndentSize: 2,
-	IndentStyle: 2,
-	NewLineCharacter: '\n',
-	InsertSpaceAfterCommaDelimiter: true,
-	InsertSpaceAfterSemicolonInForStatements: true,
-	InsertSpaceBeforeAndAfterBinaryOperators: true,
-	InsertSpaceAfterKeywordsInControlFlowStatements: true,
-	InsertSpaceAfterFunctionKeywordForAnonymousFunctions: true,
-	InsertSpaceAfterOpeningAndBeforeClosingNonemptyParenthesis: false,
-	InsertSpaceAfterOpeningAndBeforeClosingNonemptyBrackets: false,
-	InsertSpaceAfterOpeningAndBeforeClosingTemplateStringBraces: false,
-	PlaceOpenBraceOnNewLineForControlBlocks: false,
-	PlaceOpenBraceOnNewLineForFunctions: false,
+/**
+ * The generators emit one long line per schema, so the formatting lives here
+ * instead of in the generators. Prettier is loaded on demand to keep it out of
+ * the initial bundle.
+ */
+const PRINT_OPTIONS: Options = {
+	parser: 'typescript',
+	printWidth: 80,
+	useTabs: true,
+	tabWidth: 2,
+	singleQuote: true,
+	semi: true,
+	trailingComma: 'es5',
+	bracketSpacing: true,
 };
 
-interface TextChange {
-	span: { start: number; length: number };
-	newText: string;
+interface Formatter {
+	format(source: string, options: Options): Promise<string>;
+	plugins: Plugin[];
 }
 
-let modelCounter = 0;
+let formatterPromise: Promise<Formatter> | undefined;
+
+function loadFormatter(): Promise<Formatter> {
+	formatterPromise ??= Promise.all([
+		import('prettier/standalone'),
+		import('prettier/plugins/typescript'),
+		import('prettier/plugins/estree'),
+	]).then(([prettier, typescript, estree]) => ({
+		format: prettier.format,
+		plugins: [typescript, estree],
+	}));
+
+	return formatterPromise as Promise<Formatter>;
+}
 
 export async function formatTypeScript(source: string): Promise<string> {
 	if (!source.trim()) {
 		return source;
 	}
 
-	const uri = monaco.Uri.parse(`file:///playground/format-${++modelCounter}.ts`);
-	const model = monaco.editor.createModel(source, 'typescript', uri);
+	const { format, plugins } = await loadFormatter();
 
-	try {
-		const worker = await monaco.typescript.getTypeScriptWorker();
-		const client = await worker(uri);
-		const changes = (await client.getFormattingEditsForDocument(
-			uri.toString(),
-			FORMAT_OPTIONS
-		)) as TextChange[];
-
-		return applyChanges(source, changes);
-	} finally {
-		model.dispose();
-	}
-}
-
-function applyChanges(source: string, changes: TextChange[]): string {
-	let result = source;
-
-	for (const change of changes.toSorted((a, b) => b.span.start - a.span.start)) {
-		result =
-			result.slice(0, change.span.start) +
-			change.newText +
-			result.slice(change.span.start + change.span.length);
-	}
-
-	return result;
+	return format(source, { ...PRINT_OPTIONS, plugins });
 }
