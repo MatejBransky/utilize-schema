@@ -1,5 +1,26 @@
 # @utilize/zod
 
+## 0.5.0
+
+### Minor Changes
+
+- a25f59a: Generate `allOf` with any number of subschemas using nested `z.intersection()` calls.
+- a25f59a: Detect the JSON Schema draft from `$schema` and normalize 2019-09 and 2020-12 keywords to the draft-07 model.
+- a25f59a: Emit typed `z.lazy()` schemas and generated value types for recursive `$ref`s that cannot be deferred with a getter, so recursive output type-checks.
+- a25f59a: Support `not`, `if`/`then`/`else`, `contains`, `propertyNames` and `dependencies` with refinements.
+
+### Patch Changes
+
+- dbfa88e: break cyclic $refs at object properties; cycles that cannot be deferred with a getter now fail at generation instead of producing code that throws at import
+- a25f59a: Enforce required object keys that are not declared in `properties`.
+- dbefc30: Update the build toolchain and runtime dependencies, and publish ESM builds
+  with tsdown.
+- a25f59a: Annotate recursive schemas with `z.ZodType` instead of an inline import type.
+- Updated dependencies [a7d3cf0]
+- Updated dependencies [a25f59a]
+- Updated dependencies [dbefc30]
+  - @utilize/json-schema@0.2.0
+
 ## 0.4.1
 
 ### Patch Changes
