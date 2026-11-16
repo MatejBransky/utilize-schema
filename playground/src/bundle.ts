@@ -96,6 +96,13 @@ export function buildBundle(parsedFiles: ParsedFile[], rootId: string): BundleRe
 
 	const keyByFile = new Map<string, string>();
 	const usedKeys = new Set<string>();
+	const rootSchema = rootParsed.schema;
+	const definitionsKey =
+		isPlainObject(rootSchema) && isPlainObject(rootSchema.$defs)
+			? '$defs'
+			: isPlainObject(rootSchema) && isPlainObject(rootSchema.definitions)
+				? 'definitions'
+				: '$defs';
 
 	if (isPlainObject(rootParsed.schema)) {
 		for (const key of Object.keys(rootParsed.schema.$defs ?? {})) {
@@ -128,6 +135,7 @@ export function buildBundle(parsedFiles: ParsedFile[], rootId: string): BundleRe
 	const context: RewriteContext = {
 		rootId: rootParsed.file.id,
 		keyByFile,
+		definitionsKey,
 		byName,
 		parsedById,
 		problems,
@@ -145,7 +153,7 @@ export function buildBundle(parsedFiles: ParsedFile[], rootId: string): BundleRe
 
 	if (isPlainObject(root)) {
 		const definitions: Record<string, unknown> = {
-			...(root.$defs as Record<string, unknown> | undefined),
+			...(root[definitionsKey] as Record<string, unknown> | undefined),
 		};
 
 		for (const parsed of parsedFiles) {
@@ -156,7 +164,7 @@ export function buildBundle(parsedFiles: ParsedFile[], rootId: string): BundleRe
 			}
 		}
 
-		root = { ...root, $defs: definitions };
+		root = { ...root, [definitionsKey]: definitions };
 	} else if (keyByFile.size > 0) {
 		problems.push({
 			fileId: rootParsed.file.id,
@@ -176,16 +184,32 @@ export function buildBundle(parsedFiles: ParsedFile[], rootId: string): BundleRe
 interface RewriteContext {
 	rootId: string;
 	keyByFile: Map<string, string>;
+	definitionsKey: '$defs' | 'definitions';
 	byName: Map<string, ParsedFile>;
 	parsedById: Map<string, ParsedFile>;
 	problems: Problem[];
 }
 
-function rewrite(value: unknown, file: SchemaFile, context: RewriteContext): unknown {
-	if (Array.isArray(value)) {
-		return value.map((item) => rewrite(item, file, context));
-	}
+const MAP_KEYWORDS = new Set([
+	'properties',
+	'patternProperties',
+	'$defs',
+	'definitions',
+	'dependentSchemas',
+]);
+const SINGLE_SCHEMA_KEYWORDS = new Set([
+	'additionalProperties',
+	'additionalItems',
+	'contains',
+	'propertyNames',
+	'if',
+	'then',
+	'else',
+	'not',
+]);
+const ARRAY_SCHEMA_KEYWORDS = new Set(['allOf', 'anyOf', 'oneOf', 'prefixItems']);
 
+function rewrite(value: unknown, file: SchemaFile, context: RewriteContext): unknown {
 	if (!isPlainObject(value)) {
 		return value;
 	}
@@ -193,11 +217,33 @@ function rewrite(value: unknown, file: SchemaFile, context: RewriteContext): unk
 	const copy: Record<string, unknown> = {};
 
 	for (const [key, child] of Object.entries(value)) {
-		copy[key] = rewrite(child, file, context);
-	}
+		if (key === '$ref' && typeof child === 'string') {
+			copy[key] = rewriteRef(child, file, context);
+		} else if (MAP_KEYWORDS.has(key) && isPlainObject(child)) {
+			const map: Record<string, unknown> = {};
 
-	if (typeof value.$ref === 'string') {
-		copy.$ref = rewriteRef(value.$ref, file, context);
+			for (const [name, subschema] of Object.entries(child)) {
+				map[name] = rewrite(subschema, file, context);
+			}
+			copy[key] = map;
+		} else if (key === 'items' && Array.isArray(child)) {
+			copy[key] = child.map((item) => rewrite(item, file, context));
+		} else if (SINGLE_SCHEMA_KEYWORDS.has(key) || key === 'items') {
+			copy[key] = rewrite(child, file, context);
+		} else if (ARRAY_SCHEMA_KEYWORDS.has(key) && Array.isArray(child)) {
+			copy[key] = child.map((item) => rewrite(item, file, context));
+		} else if (key === 'dependencies' && isPlainObject(child)) {
+			const dependencies: Record<string, unknown> = {};
+
+			for (const [name, dependency] of Object.entries(child)) {
+				dependencies[name] = Array.isArray(dependency)
+					? dependency
+					: rewrite(dependency, file, context);
+			}
+			copy[key] = dependencies;
+		} else {
+			copy[key] = child;
+		}
 	}
 
 	return copy;
@@ -262,7 +308,7 @@ function rewriteRef(ref: string, file: SchemaFile, context: RewriteContext): str
 		return ref;
 	}
 
-	return `#/$defs/${escapePointer(key)}${fragment}`;
+	return `#/${context.definitionsKey}/${escapePointer(key)}${fragment}`;
 }
 
 function pointerExists(parsed: ParsedFile, fragment: string): boolean {
@@ -270,13 +316,21 @@ function pointerExists(parsed: ParsedFile, fragment: string): boolean {
 		return true;
 	}
 
-	if (parsed.schema === undefined || !fragment.startsWith('/')) {
+	let decoded: string;
+
+	try {
+		decoded = decodeURIComponent(fragment);
+	} catch {
+		return false;
+	}
+
+	if (parsed.schema === undefined || !decoded.startsWith('/')) {
 		return false;
 	}
 
 	let current: unknown = parsed.schema;
 
-	for (const segment of fragment.slice(1).split('/')) {
+	for (const segment of decoded.slice(1).split('/')) {
 		const key = segment.replace(/~1/g, '/').replace(/~0/g, '~');
 
 		if (Array.isArray(current)) {

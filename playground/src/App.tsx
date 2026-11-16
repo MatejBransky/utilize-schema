@@ -113,7 +113,11 @@ export default function App() {
 	}, [files, activeId]);
 
 	useEffect(() => {
-		localStorage.setItem(STORAGE_KEY, JSON.stringify({ files, target }));
+		try {
+			localStorage.setItem(STORAGE_KEY, JSON.stringify({ files, target }));
+		} catch {
+			// Storage can be full or denied. Keep the workspace in memory.
+		}
 	}, [files, target]);
 
 	useEffect(() => {
@@ -167,7 +171,12 @@ export default function App() {
 
 	useEffect(() => {
 		document.documentElement.dataset.theme = resolvedTheme;
-		localStorage.setItem(THEME_STORAGE_KEY, colorMode);
+
+		try {
+			localStorage.setItem(THEME_STORAGE_KEY, colorMode);
+		} catch {
+			// Theme persistence is optional.
+		}
 	}, [colorMode, resolvedTheme]);
 
 	useEffect(() => {
@@ -325,7 +334,9 @@ export default function App() {
 	}
 
 	function clearExampleUrl() {
-		if (new URL(location.href).searchParams.has(EXAMPLE_PARAM)) {
+		const url = new URL(location.href);
+
+		if (url.searchParams.has(EXAMPLE_PARAM) || url.hash) {
 			setExampleUrl(null, 'replace');
 		}
 	}
