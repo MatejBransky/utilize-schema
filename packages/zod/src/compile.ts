@@ -1,5 +1,4 @@
 import { parse } from '@utilize/json-schema';
-import merge from 'lodash/merge';
 
 import { readFileSync, writeFileSync } from 'fs';
 import path from 'path';
@@ -7,9 +6,9 @@ import path from 'path';
 import { generate } from './generator';
 import type { CustomNameResolver } from './resolveName';
 
-interface CompileOptions {
+export interface CompileOptions {
 	input: string;
-	output: string;
+	output?: string;
 	cwd?: string;
 	customNameResolver?: CustomNameResolver;
 	/** Map `readOnly: true` to `.readonly()`; off by default because it changes the value type. */
@@ -22,7 +21,7 @@ const defaultOptions = {
 } satisfies Omit<CompileOptions, 'name' | 'input'>;
 
 export async function compile(userOptions: CompileOptions) {
-	const options = merge({}, defaultOptions, userOptions);
+	const options = { ...defaultOptions, ...userOptions };
 
 	const inputPath = path.resolve(options.cwd, options.input);
 	const outputPath = path.resolve(options.cwd, options.output);
