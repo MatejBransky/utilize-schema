@@ -35,21 +35,20 @@ pinned in `package.json#packageManager`; Corepack can install it for you.
 ## Playground previews
 
 Every pull request gets a preview deployment of the playground on Vercel. The
-project is connected at the repository root and configured by `vercel.json`, so
-the preview installs the workspace once and builds only the playground:
+project uses the **Root Directory** `playground` and `playground/vercel.json`,
+so Vercel installs the pnpm workspace from the repository root and then builds
+only the playground (`playground/dist`).
 
-```sh
-pnpm install --frozen-lockfile
-pnpm --filter playground build   # output: playground/dist
-```
+Keep `vercel.json` inside the Root Directory: Vercel resolves its paths relative
+to it, so a `vercel.json` at the repository root would point at
+`playground/playground/dist` and fail with `STATIC_BUILD_NO_OUT_DIR`.
 
 To set this up on a fork or a new repository:
 
-1. Import the repository in Vercel and keep the **Root Directory** at the
-   repository root (do not point it at `playground`, the build needs the pnpm
-   workspace).
-2. Leave the framework preset unset; `vercel.json` supplies the install, build
-   and output settings.
+1. Import the repository in Vercel and set the **Root Directory** to
+   `playground`.
+2. Keep the framework preset on Vite; `playground/vercel.json` supplies the
+   build command and output directory.
 3. Do not add a custom domain to preview deployments, so every PR keeps its own
    URL.
 
