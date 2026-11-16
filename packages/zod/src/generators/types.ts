@@ -7,4 +7,6 @@ export type GeneratorContext = {
 	lazyRefs: Set<ParsedJSONSchemaObject>;
 	/** Set when a `oneOf` needs the single-pass helper emitted at the top of the file. */
 	usesOneOf?: boolean;
+	/** Map `readOnly: true` to `.readonly()`; off by default because it changes the value type. */
+	readOnlyKeyword?: boolean;
 };

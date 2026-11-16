@@ -117,14 +117,28 @@ function normalizeNode(node: Record<string, unknown>, version: SchemaVersion): v
 		return;
 	}
 
-	for (const keyword of [
-		'unevaluatedProperties',
-		'unevaluatedItems',
-		'$recursiveRef',
-		'$dynamicRef',
-		'minContains',
-		'maxContains',
-	]) {
+	// `additionalProperties` / `additionalItems` cover the common case, where the
+	// schema does not rely on properties evaluated by applicators. That mapping
+	// is best effort; the full `unevaluated*` semantics need evaluation tracking.
+	if (node.unevaluatedProperties !== undefined) {
+		if (node.additionalProperties === undefined) {
+			node.additionalProperties = node.unevaluatedProperties;
+		}
+
+		delete node.unevaluatedProperties;
+	}
+
+	if (node.unevaluatedItems !== undefined) {
+		if (Array.isArray(node.prefixItems) && node.items === undefined) {
+			node.items = node.unevaluatedItems;
+		} else if (node.additionalItems === undefined) {
+			node.additionalItems = node.unevaluatedItems;
+		}
+
+		delete node.unevaluatedItems;
+	}
+
+	for (const keyword of ['$recursiveRef', '$dynamicRef', 'minContains', 'maxContains']) {
 		if (node[keyword] !== undefined) {
 			throw new UnsupportedSchemaFeatureError(keyword);
 		}

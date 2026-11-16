@@ -3,6 +3,8 @@ import type { JSONSchema7, JSONSchema7TypeName } from 'json-schema';
 
 export interface JSONSchema extends JSONSchema7 {
 	discriminator?: string;
+	/** 2019-09 annotation; draft-07 schemas can carry it too. */
+	deprecated?: boolean;
 }
 export type JSONSchemaTypeName = JSONSchema7TypeName;
 

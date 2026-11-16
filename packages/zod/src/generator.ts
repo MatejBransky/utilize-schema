@@ -13,13 +13,21 @@ import { renderValueTypeDeclaration, type ValueTypeContext } from './valueTypes'
 
 export function generate(
 	root: ParsedJSONSchema,
-	options?: { importZod?: boolean; customNameResolver?: CustomNameResolver }
+	options?: {
+		importZod?: boolean;
+		customNameResolver?: CustomNameResolver;
+		readOnlyKeyword?: boolean;
+	}
 ): string {
 	const usedNames = new Set<string>(['z']);
 	const lazyRefs = new Set<ParsedJSONSchemaObject>();
 
 	if (typeof root !== 'object' || root === null) {
-		return generateSchema(root, { usedNames, lazyRefs });
+		return generateSchema(root, {
+			usedNames,
+			lazyRefs,
+			readOnlyKeyword: options?.readOnlyKeyword,
+		});
 	}
 
 	const { schemas: standaloneSchemas, edges } = collectStandaloneSchemas(root);
@@ -38,6 +46,7 @@ export function generate(
 	const context: GeneratorContext = {
 		usedNames,
 		lazyRefs: broken.lazyRefs,
+		readOnlyKeyword: options?.readOnlyKeyword,
 	};
 
 	const aliases = new Map<ParsedJSONSchemaObject, string>();

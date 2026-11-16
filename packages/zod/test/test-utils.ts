@@ -47,6 +47,7 @@ export interface CompileOptions {
 	importZod?: boolean;
 	cwd?: string;
 	fileName?: string;
+	readOnlyKeyword?: boolean;
 }
 
 export async function compile(schema: JSONSchema, options?: CompileOptions) {
@@ -56,6 +57,7 @@ export async function compile(schema: JSONSchema, options?: CompileOptions) {
 	});
 	const code = generate(parsed.root, {
 		importZod: options?.importZod ?? false,
+		readOnlyKeyword: options?.readOnlyKeyword,
 	});
 	return formatSource(code);
 }

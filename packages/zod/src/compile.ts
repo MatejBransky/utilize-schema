@@ -12,6 +12,8 @@ interface CompileOptions {
 	output: string;
 	cwd?: string;
 	customNameResolver?: CustomNameResolver;
+	/** Map `readOnly: true` to `.readonly()`; off by default because it changes the value type. */
+	readOnlyKeyword?: boolean;
 }
 
 const defaultOptions = {
@@ -37,6 +39,7 @@ export async function compile(userOptions: CompileOptions) {
 
 	const code = generate(root, {
 		customNameResolver: options.customNameResolver,
+		readOnlyKeyword: options.readOnlyKeyword,
 	});
 	console.log(`Generated code`);
 
