@@ -171,7 +171,6 @@ test('an agent can find and change the playground controls', async () => {
 		'Schema files',
 		'Add file',
 		'Format schema',
-		'Format code',
 		'Copy code',
 		'Share',
 		'GitHub',

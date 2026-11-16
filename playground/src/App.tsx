@@ -416,14 +416,6 @@ export default function App() {
 		}
 	}
 
-	async function formatGeneratedCode() {
-		try {
-			setCode(await formatTypeScript(codeEditorRef.current?.getValue() ?? code));
-		} catch {
-			// Keep the code as it is when the formatter cannot parse it.
-		}
-	}
-
 	async function copyCode() {
 		const text = codeEditorRef.current?.getValue() ?? code;
 
@@ -678,9 +670,6 @@ export default function App() {
 						<h2 className={styles.heading}>Generated TypeScript</h2>
 						<div className={styles.outputActions}>
 							{busy ? <span className={styles.muted}>Generating…</span> : null}
-							<Button onClick={formatGeneratedCode} disabled={!code || busy}>
-								Format code
-							</Button>
 							<Button onClick={copyCode} disabled={!code || busy}>
 								{copied ? 'Copied' : 'Copy code'}
 							</Button>
