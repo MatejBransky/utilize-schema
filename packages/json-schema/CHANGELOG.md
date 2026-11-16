@@ -1,5 +1,17 @@
 # @utilize/json-schema
 
+## 0.2.0
+
+### Minor Changes
+
+- a25f59a: Detect the JSON Schema draft from `$schema` and normalize 2019-09 and 2020-12 keywords to the draft-07 model.
+
+### Patch Changes
+
+- a7d3cf0: Ignore non-string `$ref` values when linking, so schemas with a property named `$ref`, such as the draft-07 meta-schema, can be parsed.
+- dbefc30: Update the build toolchain and runtime dependencies, and publish ESM builds
+  with tsdown.
+
 ## 0.1.0
 
 ### Minor Changes
