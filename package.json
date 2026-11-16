@@ -1,36 +1,43 @@
 {
-  "private": true,
-  "name": "utilize-schema",
-  "description": "A collection of utilities for working with JSON Schema",
-  "keywords": [
-    "schema",
-    "json-schema",
-    "utilities",
-    "parser",
-    "validation",
-    "generator"
-  ],
-  "license": "MIT",
-  "author": {
-    "name": "Matej Bransky",
-    "email": "matej.bransky@gmail.com"
-  },
-  "scripts": {
-    "preinstall": "npx only-allow pnpm",
-    "build": "pnpm run --recursive --parallel --aggregate-output --reporter-hide-prefix --if-present build",
-    "build:dev": "pnpm run --recursive --parallel --aggregate-output --reporter-hide-prefix --if-present build:dev",
-    "check:format": "pnpm run --recursive --parallel --aggregate-output --if-present check:format",
-    "check:lint": "pnpm run --recursive --parallel --aggregate-output --reporter-hide-prefix --if-present check:lint",
-    "check:types": "pnpm run --recursive --parallel --aggregate-output --reporter-hide-prefix --if-present check:types",
-    "format": "pnpm run --recursive --parallel --aggregate-output --if-present format",
-    "test": "pnpm run --recursive --parallel --aggregate-output --reporter-hide-prefix --if-present test",
-    "ci:test": "pnpm run --recursive --parallel --aggregate-output --reporter-hide-prefix --if-present ci:test",
-    "ci:version": "pnpm changeset version",
-    "ci:publish": "pnpm changeset publish",
-    "example": "pnpm --filter temp-example run run"
-  },
-  "devDependencies": {
-    "@changesets/cli": "2.29.7"
-  },
-  "packageManager": "pnpm@10.19.0"
+	"name": "utilize-schema",
+	"private": true,
+	"description": "A collection of utilities for working with JSON Schema",
+	"keywords": [
+		"generator",
+		"json-schema",
+		"parser",
+		"schema",
+		"utilities",
+		"validation"
+	],
+	"license": "MIT",
+	"author": {
+		"name": "Matej Bransky",
+		"email": "matej.bransky@gmail.com"
+	},
+	"scripts": {
+		"preinstall": "npx only-allow pnpm",
+		"build": "pnpm run --recursive --aggregate-output --reporter-hide-prefix --if-present build",
+		"build:dev": "pnpm run --recursive --aggregate-output --reporter-hide-prefix --if-present build:dev",
+		"check:format": "oxfmt --check .",
+		"check:lint": "oxlint packages",
+		"check:types": "pnpm run --recursive --aggregate-output --reporter-hide-prefix --if-present check:types",
+		"format": "oxfmt .",
+		"test": "pnpm run --recursive --aggregate-output --reporter-hide-prefix --if-present test",
+		"ci:test": "pnpm run --recursive --aggregate-output --reporter-hide-prefix --if-present ci:test",
+		"ci:version": "pnpm changeset version",
+		"ci:publish": "pnpm changeset publish",
+		"verify": "pnpm check:format && pnpm check:lint && pnpm check:types && pnpm ci:test",
+		"security": "pnpm audit --audit-level=high"
+	},
+	"devDependencies": {
+		"@changesets/cli": "3.0.3",
+		"oxfmt": "catalog:",
+		"oxlint": "catalog:",
+		"typescript": "catalog:"
+	},
+	"engines": {
+		"node": ">=24"
+	},
+	"packageManager": "pnpm@11.28.12"
 }

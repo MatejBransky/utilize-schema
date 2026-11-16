@@ -1,5 +1,45 @@
 packages:
   - packages/*
-onlyBuiltDependencies:
-  - "@swc/core"
-savePrefix: ""
+
+# Pin every install to an exact version (no ^ / ~ ranges) when adding a dependency.
+saveExact: true
+
+# Shared dependency versions. Upgrade here once; packages reference "catalog:".
+catalog:
+  '@apidevtools/json-schema-ref-parser': 16.0.8
+  '@total-typescript/tsconfig': 1.0.4
+  '@types/node': 24.19.2
+  oxfmt: 0.78.0
+  oxlint: 1.93.0
+  tsdown: 0.23.7
+  typescript: 7.0.2
+  vitest: 5.1.0
+  zod: 4.6.7
+
+# Supply-chain guardrails for registry dependencies.
+minimumReleaseAge: 1440
+minimumReleaseAgeStrict: true
+trustPolicy: no-downgrade
+# These old transitive versions have weaker provenance than their
+# predecessors. They are widely used, stable releases; remove an exclusion
+# after the package publishes a version with restored trust evidence.
+trustPolicyExclude:
+  - semver@6.3.1
+  - undici-types@6.21.0
+blockExoticSubdeps: true
+
+# Keep transitive tooling on patched releases. These are dev-only builds and
+# tests, but an audit gate should still pass.
+overrides:
+  nanoid: 3.3.20
+  picomatch: 4.0.7
+  postcss: 8.5.33
+  rollup: 4.68.3
+  source-map-js: 1.2.2
+  vite: 7.3.8
+
+# Only these reviewed packages may run install scripts.
+strictDepBuilds: true
+allowBuilds:
+  '@swc/core': true
+  esbuild: true
