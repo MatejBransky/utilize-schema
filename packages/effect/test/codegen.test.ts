@@ -175,6 +175,32 @@ describe('code generation', () => {
 		`);
 	});
 
+	test('annotates recursive schemas with a value type', async () => {
+		const result = await compile({
+			title: 'Node',
+			type: 'object',
+			properties: {
+				value: { type: 'string' },
+				children: { type: 'array', items: { $ref: '#' } },
+			},
+			required: ['value'],
+		});
+
+		expect(result).toMatchCode(ts`
+			type NodeValue = { value: string; children?: ReadonlyArray<NodeValue> };
+
+			export const Node: Schema.Codec<NodeValue> = Schema.StructWithRest(
+				Schema.Struct({
+					value: Schema.String,
+					children: Schema.optionalKey(Schema.Array(Schema.suspend(() => Node))),
+				}),
+				[Schema.Record(Schema.String, Schema.Json)]
+			).annotate({ title: 'Node' });
+
+			export type Node = typeof Node.Type;
+		`);
+	});
+
 	test('maps anyOf and oneOf to unions', async () => {
 		expect(await compile({ anyOf: [{ type: 'string' }, { type: 'number' }] })).toMatchCode(ts`
 			export const Root = Schema.Union([Schema.String, Schema.Finite]);

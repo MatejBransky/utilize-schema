@@ -5,9 +5,11 @@ import {
 	type ParsedJSONSchemaObject,
 } from '@utilize/json-schema';
 
-import { collectStandaloneSchemas } from './collectStandaloneSchemas';
+import { collectStandaloneSchemas, type SchemaEdge } from './collectStandaloneSchemas';
 import { UnresolvedReferenceError, UnsupportedEffectSchemaFeatureError } from './errors';
-import { resolveName, type CustomNameResolver } from './resolveName';
+import { findCyclicSchemas } from './findCyclicSchemas';
+import { generateName, resolveName, type CustomNameResolver } from './resolveName';
+import { renderValueTypeDeclaration, type ValueTypeContext } from './valueTypes';
 
 export interface GenerateOptions {
 	/** Emit `import { Schema } from 'effect';` at the top of the generated code. */
@@ -73,15 +75,26 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 	const usedNames = new Set<string>(['Schema']);
 	const names = new Map<ParsedJSONSchemaObject, string>();
 	const objectRoot = isPlainObject(root) ? (root as ParsedJSONSchemaObject) : undefined;
-	const standalone = objectRoot
-		? collectStandaloneSchemas(objectRoot).schemas.filter((schema) => schema !== objectRoot)
-		: [];
+	const collected = objectRoot
+		? collectStandaloneSchemas(objectRoot)
+		: { schemas: [] as ParsedJSONSchemaObject[], edges: [] as SchemaEdge[] };
+	const standalone = collected.schemas.filter((schema) => schema !== objectRoot);
+	const cyclic = findCyclicSchemas(collected.edges, collected.schemas);
+	const valueAliases = new Map<ParsedJSONSchemaObject, string>();
 
 	const rootName = objectRoot ? ensureName(objectRoot) : 'Root';
 	const definitions = standalone.map((schema) => ({
 		schema,
 		name: ensureName(schema),
 	}));
+	const valueTypeContext: ValueTypeContext = {
+		aliasFor(schema) {
+			return cyclic.has(schema) ? aliasOf(schema) : undefined;
+		},
+		typeNameFor(schema) {
+			return ensureName(schema);
+		},
+	};
 
 	const context: Context = {
 		nameOf(schema, ref) {
@@ -102,14 +115,42 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 	}
 
 	for (const { schema, name } of definitions) {
-		parts.push(`export const ${name} = ${generateSchema(schema, context)};`);
-		parts.push(`export type ${name} = typeof ${name}.Type;`);
+		parts.push(renderDeclaration(name, schema));
 	}
 
-	parts.push(`export const ${rootName} = ${generateSchema(root, context)};`);
-	parts.push(`export type ${rootName} = typeof ${rootName}.Type;`);
+	parts.push(renderDeclaration(rootName, root));
 
 	return `${parts.join('\n\n')}\n`;
+
+	function renderDeclaration(name: string, schema: ParsedJSONSchema): string {
+		const alias = isPlainObject(schema)
+			? valueTypeContext.aliasFor(schema as ParsedJSONSchemaObject)
+			: undefined;
+		const expression = generateSchema(schema, context);
+		const declaration =
+			alias === undefined
+				? `export const ${name} = ${expression};`
+				: `export const ${name}: Schema.Codec<${alias}> = ${expression};`;
+		const lines =
+			alias === undefined
+				? []
+				: [renderValueTypeDeclaration(alias, schema as ParsedJSONSchemaObject, valueTypeContext)];
+
+		return [...lines, declaration, `export type ${name} = typeof ${name}.Type;`].join('\n\n');
+	}
+
+	function aliasOf(schema: ParsedJSONSchemaObject): string {
+		const existing = valueAliases.get(schema);
+
+		if (existing !== undefined) {
+			return existing;
+		}
+
+		const alias = generateName(`${ensureName(schema)}Value`, usedNames);
+
+		valueAliases.set(schema, alias);
+		return alias;
+	}
 
 	function ensureName(schema: ParsedJSONSchemaObject): string {
 		const existing = names.get(schema);

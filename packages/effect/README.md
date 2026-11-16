@@ -35,8 +35,25 @@ export const MyType = Schema.Struct({ ... });
 export type MyType = typeof MyType.Type;
 ```
 
+Recursive schemas get a value type and an explicit annotation, because an
+inferred `typeof X.Type` would reference itself and collapse to `any`:
+
+```ts
+type TreeValue = { name: string; children?: ReadonlyArray<TreeValue> };
+
+export const Tree: Schema.Codec<TreeValue> = Schema.StructWithRest(
+	Schema.Struct({
+		name: Schema.String,
+		children: Schema.optionalKey(Schema.Array(Schema.suspend(() => Tree))),
+	}),
+	[Schema.Record(Schema.String, Schema.Json)]
+);
+
+export type Tree = typeof Tree.Type;
+```
+
 References are always emitted as lazy schemas, so recursive and mutually
-recursive definitions work without ordering constraints:
+recursive definitions work without ordering constraints.
 
 ```ts
 export const Tree = Schema.StructWithRest(

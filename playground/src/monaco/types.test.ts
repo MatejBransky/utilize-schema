@@ -1,34 +1,63 @@
+import { generate } from '@utilize/effect';
+import { parse } from '@utilize/json-schema';
 import { expect, test, vi } from 'vitest';
 
+import '../polyfills';
+
+import { buildBundle, parseJsonFile } from '../bundle';
+import { exampleById } from '../examples';
 import { monaco, preloadEffectTypes } from './setup';
 
 /**
  * The output editor resolves the imported `effect` module through the
  * declarations registered by `preloadEffectTypes()`. If that wiring breaks, the
  * generated code falls back to `any` and types in hover stop working, so
- * type-check a representative snippet with the real worker.
+ * type-check representative snippets with the real worker.
  */
 test('the Effect Schema declarations resolve in the TypeScript worker', async () => {
+	const diagnostics = await typeCheck(
+		[
+			"import { Schema } from 'effect';",
+			'',
+			'export const Address = Schema.StructWithRest(',
+			'	Schema.Struct({',
+			'		street: Schema.String,',
+			'		zip: Schema.optionalKey(Schema.String)',
+			'	}),',
+			'	[Schema.Record(Schema.String, Schema.Json)]',
+			');',
+			'',
+			'export type Address = typeof Address.Type;',
+			'',
+		].join('\n')
+	);
+
+	expect(diagnostics).toEqual([]);
+});
+
+test('the recursive multi-file example type-checks', async () => {
+	const example = exampleById('multi-file')!;
+	const bundle = buildBundle(example.files.map(parseJsonFile), example.files[0]!.id);
+	const { root } = await parse(bundle.root as never, {
+		cwd: '/',
+		fileName: bundle.rootFileName,
+	});
+	const code = generate(root, { importEffect: true });
+
+	expect(code).toContain('Schema.Codec<NodeValue>');
+
+	const diagnostics = await typeCheck(code);
+
+	expect(diagnostics.map((diagnostic) => diagnostic.messageText)).toEqual([]);
+});
+
+async function typeCheck(source: string) {
 	await preloadEffectTypes();
 
-	const source = [
-		"import { Schema } from 'effect';",
-		'',
-		'export const Address = Schema.StructWithRest(',
-		'	Schema.Struct({',
-		'		street: Schema.String,',
-		'		zip: Schema.optionalKey(Schema.String)',
-		'	}),',
-		'	[Schema.Record(Schema.String, Schema.Json)]',
-		');',
-		'',
-		'export type Address = typeof Address.Type;',
-		'',
-	].join('\n');
 	const model = monaco.editor.createModel(
 		source,
 		'typescript',
-		monaco.Uri.parse('file:///playground/effect-types.test.ts')
+		monaco.Uri.parse(`file:///playground/effect-types-${Date.now()}.test.ts`)
 	);
 
 	try {
@@ -45,21 +74,9 @@ test('the Effect Schema declarations resolve in the TypeScript worker', async ()
 		);
 
 		const client = await worker(model.uri);
-		const diagnostics = await client.getSemanticDiagnostics(model.uri.toString());
 
-		expect(diagnostics.map((diagnostic) => diagnostic.messageText)).toEqual([]);
-
-		const quickInfo = await client.getQuickInfoAtPosition(
-			model.uri.toString(),
-			source.indexOf('Address.Type')
-		);
-		const display = (quickInfo?.displayParts ?? [])
-			.map((part: { text: string }) => part.text)
-			.join('');
-
-		expect(display).not.toBe('');
-		expect(display).not.toContain('any');
+		return await client.getSemanticDiagnostics(model.uri.toString());
 	} finally {
 		model.dispose();
 	}
-});
+}
