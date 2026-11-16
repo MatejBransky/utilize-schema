@@ -88,6 +88,14 @@ const defaultOverRecursiveUnionSchema: JSONSchema = {
 	},
 };
 
+const allOfSchema: JSONSchema = {
+	allOf: [
+		{ type: 'object', properties: { a: { type: 'string' } }, required: ['a'] },
+		{ type: 'object', properties: { b: { type: 'number' } }, required: ['b'] },
+		{ type: 'object', properties: { c: { type: 'boolean' } }, required: ['c'] },
+	],
+};
+
 const notSchema: JSONSchema = {
 	type: 'string',
 	not: { const: 'forbidden' },
@@ -180,6 +188,7 @@ describe('generated recursive schemas type-check', () => {
 				'Array.ts': recursiveArraySchema,
 				'Tuple.ts': recursiveTupleSchema,
 				'DefaultOverRecursiveUnion.ts': defaultOverRecursiveUnionSchema,
+				'AllOf.ts': allOfSchema,
 				'Not.ts': notSchema,
 				'IfThenElse.ts': ifThenElseSchema,
 				'Contains.ts': containsSchema,

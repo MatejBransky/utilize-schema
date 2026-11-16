@@ -44,7 +44,7 @@ describe('schema combinations', () => {
       `);
 		});
 
-		test('throw error for more than 2 subschemas', async () => {
+		test('more than 2 objects', async () => {
 			await expect(
 				compile({
 					allOf: [
@@ -53,7 +53,22 @@ describe('schema combinations', () => {
 						{ type: 'object', properties: { field3: { type: 'boolean' } } },
 					],
 				})
-			).rejects.toThrow('Intersection of more than two schemas is not supported');
+			).toMatchCode(ts`
+        export const Root = z.intersection(
+          z.intersection(
+            z.object({
+              field1: z.string().optional(),
+            }),
+            z.object({
+              field2: z.number().optional(),
+            }),
+          ),
+          z.object({
+            field3: z.boolean().optional(),
+          }),
+        );
+        export type Root = z.infer<typeof Root>;
+      `);
 		});
 	});
 

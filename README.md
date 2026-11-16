@@ -69,7 +69,7 @@ await compile({
 | `additionalItems`                       | ✅         | Supported                                                                   |
 | `contains`                              | ✅         | Uses `.superRefine()`                                                       |
 | `dependencies`                          | ✅         | Uses `.superRefine()`                                                       |
-| `allOf`                                 | ⚠️         | Only two schemas supported via `z.intersection()`, more planned             |
+| `allOf`                                 | ✅         | Any number of schemas via nested `z.intersection()` calls                   |
 | `anyOf`                                 | ✅         | Uses `z.union()`                                                            |
 | `oneOf`                                 | ✅         | Uses `z.union()`                                                            |
 | `not`                                   | ✅         | Uses `.refine()`                                                            |
