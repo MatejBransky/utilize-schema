@@ -9,7 +9,7 @@ Generate robust, type-safe Zod schemas and TypeScript types from JSON Schema —
 - **$ref support:** Local, external, and cyclic references. Recursive schemas are emitted as getters or typed `z.lazy()`.
 - **Standalone schema generation:** Every definition gets its own Zod schema and type.
 - **TypeScript-first:** Generates runtime Zod schemas and inferred TypeScript types, including recursive ones.
-- **Draft 7 support:** Covers most of JSON Schema Draft 7.
+- **Draft support:** Draft-04/06/07, with normalization for 2019-09 and 2020-12.
 
 ---
 
@@ -47,43 +47,49 @@ await compile({
 
 ## Supported features
 
-| JSON Schema Keyword                     | Supported? | Notes                                                                                   |
-| --------------------------------------- | ---------- | --------------------------------------------------------------------------------------- |
-| `type`                                  | ✅         | Full support                                                                            |
-| `enum`                                  | ✅         | Strings use `z.enum()`; other values use `z.literal()`                                  |
-| `const`                                 | ✅         | Uses `z.literal()`                                                                      |
-| `default`                               | ✅         | Uses `.default()`                                                                       |
-| `description` / `title`                 | ✅         | Uses `.meta({})`                                                                        |
-| `minimum` / `maximum`                   | ✅         | Supported                                                                               |
-| `exclusiveMinimum` / `exclusiveMaximum` | ✅         | Supported                                                                               |
-| `multipleOf`                            | ✅         | Supported                                                                               |
-| `minLength` / `maxLength`               | ✅         | Supported                                                                               |
-| `pattern`                               | ✅         | Uses `.regex()`                                                                         |
-| `format`                                | ✅         | Known formats map to Zod helpers; unknown formats fall back to `z.string()`             |
-| `properties`                            | ✅         | Supported                                                                               |
-| `required`                              | ✅         | Supported                                                                               |
-| `additionalProperties`                  | ✅         | Supported                                                                               |
-| `patternProperties`                     | ❌         | Planned, not generated yet                                                              |
-| `propertyNames`                         | ✅         | Uses `.superRefine()`                                                                   |
-| `items`                                 | ✅         | Supported                                                                               |
-| `additionalItems`                       | ✅         | Supported                                                                               |
-| `contains`                              | ✅         | Uses `.superRefine()`                                                                   |
-| `dependencies`                          | ✅         | Uses `.superRefine()`                                                                   |
-| `allOf`                                 | ⚠️         | Only two schemas supported via `z.intersection()`, more planned                         |
-| `anyOf`                                 | ✅         | Uses `z.union()`                                                                        |
-| `oneOf`                                 | ✅         | Uses `z.union()`                                                                        |
-| `not`                                   | ✅         | Uses `.refine()`                                                                        |
-| `$ref`                                  | ✅         | Supported                                                                               |
-| `$defs` / `definitions`                 | ✅         | Supported                                                                               |
-| `if` / `then` / `else`                  | ✅         | Uses `.superRefine()`                                                                   |
-| `discriminator`                         | ✅         | Uses `z.discriminatedUnion()`                                                           |
-| `$id`                                   | ✅         | Used in `.meta({ id })`; does not affect $ref resolution                                |
-| `examples`                              | ✅         | Uses `.meta({ examples })`                                                              |
-| `$schema`                               | ⚠️         | Planned: Will detect and support multiple JSON Schema versions based on `$schema` value |
+| JSON Schema Keyword                     | Supported? | Notes                                                                       |
+| --------------------------------------- | ---------- | --------------------------------------------------------------------------- |
+| `type`                                  | ✅         | Full support                                                                |
+| `enum`                                  | ✅         | Strings use `z.enum()`; other values use `z.literal()`                      |
+| `const`                                 | ✅         | Uses `z.literal()`                                                          |
+| `default`                               | ✅         | Uses `.default()`                                                           |
+| `description` / `title`                 | ✅         | Uses `.meta({})`                                                            |
+| `minimum` / `maximum`                   | ✅         | Supported                                                                   |
+| `exclusiveMinimum` / `exclusiveMaximum` | ✅         | Supported                                                                   |
+| `multipleOf`                            | ✅         | Supported                                                                   |
+| `minLength` / `maxLength`               | ✅         | Supported                                                                   |
+| `pattern`                               | ✅         | Uses `.regex()`                                                             |
+| `format`                                | ✅         | Known formats map to Zod helpers; unknown formats fall back to `z.string()` |
+| `properties`                            | ✅         | Supported                                                                   |
+| `required`                              | ✅         | Supported                                                                   |
+| `additionalProperties`                  | ✅         | Supported                                                                   |
+| `patternProperties`                     | ❌         | Planned, not generated yet                                                  |
+| `propertyNames`                         | ✅         | Uses `.superRefine()`                                                       |
+| `items`                                 | ✅         | Supported                                                                   |
+| `additionalItems`                       | ✅         | Supported                                                                   |
+| `contains`                              | ✅         | Uses `.superRefine()`                                                       |
+| `dependencies`                          | ✅         | Uses `.superRefine()`                                                       |
+| `allOf`                                 | ⚠️         | Only two schemas supported via `z.intersection()`, more planned             |
+| `anyOf`                                 | ✅         | Uses `z.union()`                                                            |
+| `oneOf`                                 | ✅         | Uses `z.union()`                                                            |
+| `not`                                   | ✅         | Uses `.refine()`                                                            |
+| `$ref`                                  | ✅         | Supported                                                                   |
+| `$defs` / `definitions`                 | ✅         | Supported                                                                   |
+| `if` / `then` / `else`                  | ✅         | Uses `.superRefine()`                                                       |
+| `discriminator`                         | ✅         | Uses `z.discriminatedUnion()`                                               |
+| `$id`                                   | ✅         | Used in `.meta({ id })`; does not affect $ref resolution                    |
+| `examples`                              | ✅         | Uses `.meta({ examples })`                                                  |
+| `$schema`                               | ✅         | Detects draft-04/06/07/2019-09/2020-12; normalizes newer keywords           |
 
 Schemas that omit `type` infer it from a single keyword family (object, array,
 string or number), so constraints such as `{ pattern }` or `{ required }`
 are not silently dropped.
+
+2020-12 `prefixItems` maps to the tuple form of `items`, and
+`dependentRequired`/`dependentSchemas` map to `dependencies`. Unknown
+`$schema` values fall back to draft-07. 2019-09/2020-12 keywords without a
+generator (`unevaluatedProperties`, `unevaluatedItems`, `$recursiveRef`,
+`$dynamicRef`) fail with `UnsupportedSchemaFeatureError`.
 
 ---
 

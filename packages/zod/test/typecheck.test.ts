@@ -141,6 +141,30 @@ const examplesSchema: JSONSchema = {
 	examples: ['a', 'b'],
 };
 
+const prefixItemsSchema = {
+	$schema: 'https://json-schema.org/draft/2020-12/schema',
+	type: 'array',
+	prefixItems: [{ type: 'string' }],
+	items: { type: 'number' },
+} as unknown as JSONSchema;
+
+const dependentRequiredSchema = {
+	$schema: 'https://json-schema.org/draft/2020-12/schema',
+	type: 'object',
+	properties: {
+		a: { type: 'string' },
+		b: { type: 'string' },
+	},
+	dependentRequired: { a: ['b'] },
+} as unknown as JSONSchema;
+
+const draft04ExclusiveSchema = {
+	$schema: 'http://json-schema.org/draft-04/schema#',
+	type: 'number',
+	minimum: 0,
+	exclusiveMinimum: true,
+} as unknown as JSONSchema;
+
 describe('generated recursive schemas type-check', () => {
 	test('infer recursive value types with TypeScript', async () => {
 		await expect(
@@ -162,6 +186,9 @@ describe('generated recursive schemas type-check', () => {
 				'PropertyNames.ts': propertyNamesSchema,
 				'Dependencies.ts': dependenciesSchema,
 				'Examples.ts': examplesSchema,
+				'PrefixItems.ts': prefixItemsSchema,
+				'DependentRequired.ts': dependentRequiredSchema,
+				'Draft04Exclusive.ts': draft04ExclusiveSchema,
 			})
 		).resolves.toBeUndefined();
 	});
