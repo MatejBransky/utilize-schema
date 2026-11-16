@@ -1,6 +1,6 @@
 # Utilize Schema Monorepo
 
-Generate robust, type-safe Zod schemas and TypeScript types from JSON Schema — with first-class support for references, standalone definitions, and modern validation features.
+Generate robust, type-safe Zod and Effect Schema codecs and TypeScript types from JSON Schema — with first-class support for references, standalone definitions, and modern validation features.
 
 ---
 
@@ -41,9 +41,10 @@ await compile({
 ## 🧪 Playground
 
 The [`playground`](./playground) package is a browser app for editing multiple
-JSON Schema files with references and watching the generated Zod code and
-schema validation update live. It is deployed to GitHub Pages:
-<https://matejbransky.github.io/utilize-schema/>.
+JSON Schema files with references and watching the generated Zod or Effect
+Schema code and schema validation update live. It is deployed to GitHub Pages:
+<https://matejbransky.github.io/utilize-schema/>. Every pull request also gets a
+Vercel preview deployment of the playground.
 
 ---
 

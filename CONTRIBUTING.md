@@ -29,7 +29,29 @@ pinned in `package.json#packageManager`; Corepack can install it for you.
 
 - `packages/json-schema`: Core JSON Schema utilities and parser.
 - `packages/zod`: Zod code generator and related logic.
-- `playground`: Browser app for editing multi-file schemas and previewing the generated Zod code.
+- `packages/effect`: Effect Schema code generator and related logic.
+- `playground`: Browser app for editing multi-file schemas and previewing the generated Zod or Effect Schema code.
+
+## Playground previews
+
+Every pull request gets a preview deployment of the playground on Vercel. The
+project is connected at the repository root and configured by `vercel.json`, so
+the preview installs the workspace once and builds only the playground:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm --filter playground build   # output: playground/dist
+```
+
+To set this up on a fork or a new repository:
+
+1. Import the repository in Vercel and keep the **Root Directory** at the
+   repository root (do not point it at `playground`, the build needs the pnpm
+   workspace).
+2. Leave the framework preset unset; `vercel.json` supplies the install, build
+   and output settings.
+3. Do not add a custom domain to preview deployments, so every PR keeps its own
+   URL.
 
 ## Development Workflow
 
