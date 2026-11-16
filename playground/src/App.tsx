@@ -604,6 +604,7 @@ export default function App() {
 						ariaLabel="Generated TypeScript"
 						language="typescript"
 						path="file:///playground/generated.ts"
+						resolveEffectTypes={target === 'effect'}
 						theme={monacoTheme}
 						value={code || '// Generated code will appear here'}
 						readOnly
