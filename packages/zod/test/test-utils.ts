@@ -26,7 +26,7 @@ function formatSource(code: string) {
 }
 
 export function normalizeCode(code: string): string {
-	return code.replace(/\s+/g, ' ').trim();
+	return code.replace(/\r\n?/g, '\n').trim();
 }
 
 export function withMeta(obj: JSONSchema, meta: Partial<Meta> = {}) {
