@@ -85,19 +85,34 @@ npm removes a fresh configuration that does not complete a publish within about
 
 ### First publish of a new package
 
-npm cannot trust a package that does not exist yet, so the first version of a
-new package is published by hand from `main`:
+npm cannot trust a package that does not exist yet, so a new package needs one
+manual publish before its trusted publisher can be added. Do it **before** the
+version pull request bumps the package, so the release workflow still publishes
+the real version and creates its tag:
 
 ```sh
-pnpm changeset version          # after the version pull request is merged
+git switch main && git pull
+pnpm install
 pnpm --filter @utilize/<name> build
 npm login
-npm publish --access public --workspace @utilize/<name>
+(cd packages/<name> && npm publish --access public)   # placeholder version
 ```
 
-Then add the trusted publisher for that package (GitHub Actions, this
-repository, workflow `release.yml`, environment `npm-publish`, allowed action
-`npm publish`). Every later release goes through the Release workflow.
+`npm publish` has to run inside the package directory: npm does not read
+`pnpm-workspace.yaml`, so `npm publish --workspace …` fails. Publishing the
+already bumped version instead would make `changeset publish` skip the package,
+and no git tag or GitHub release would be created for it.
+
+Publishing from an agent or a script fails with `EOTP` when the account requires
+2FA, so a maintainer runs this step in an interactive terminal. Finish the npm
+web authentication prompt and the placeholder version is published.
+
+Then add the trusted publisher right before the release that uses it:
+
+```sh
+npm trust github @utilize/<name> --file release.yml \
+  --repo MatejBransky/utilize-schema --env npm-publish --allow-publish --yes
+```
 
 Peer dependencies are declared, not bundled: `@utilize/effect` expects
 `effect >=4.0.0 <5`, so consumers install `effect` themselves.
