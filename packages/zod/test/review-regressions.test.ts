@@ -135,3 +135,24 @@ test('$refs into prefixItems survive schema normalization', async () => {
 	expect(Root.safeParse({ list: ['a', 1], first: 'b' }).success).toBe(true);
 	expect(Root.safeParse({ list: ['a', 1], first: 1 }).success).toBe(false);
 });
+
+test('propertyNames sees keys before the object strips them', async () => {
+	const Root = await compileToZod({
+		type: 'object',
+		propertyNames: { pattern: '^[a-z]+$' },
+	});
+
+	expect(Root.safeParse({ abc: 1 }).success).toBe(true);
+	expect(Root.safeParse({ Abc: 1 }).success).toBe(false);
+});
+
+test('dependencies sees undeclared keys before the object strips them', async () => {
+	const Root = await compileToZod({
+		type: 'object',
+		properties: { a: { type: 'string' } },
+		dependencies: { a: ['b'] },
+	});
+
+	expect(Root.safeParse({ a: 'x', b: 'y' }).success).toBe(true);
+	expect(Root.safeParse({ a: 'x' }).success).toBe(false);
+});
