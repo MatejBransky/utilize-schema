@@ -13,7 +13,15 @@ import {
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@ui-sdk/react/tabs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { buildBundle, normalizeName, parseJsonFile, type Problem, type SchemaFile } from './bundle';
+import {
+	buildBundle,
+	detectRootId,
+	normalizeName,
+	parseJsonFile,
+	type Problem,
+	type SchemaFile,
+} from './bundle';
+import { collectDroppedFiles, readDroppedSchemas, type DropMode } from './drop';
 import { defaultExampleId, exampleById, examples } from './examples';
 import { formatTypeScript } from './monaco/format';
 import { MonacoEditor, type MonacoEditorHandle } from './monaco/MonacoEditor';
@@ -22,6 +30,7 @@ import { loadColorMode, THEME_STORAGE_KEY, type ColorMode } from './theme';
 import { ComboboxPicker } from './ui/ComboboxPicker';
 import { Header } from './ui/Header';
 import { CheckIcon, CloseIcon, PencilIcon, PlusIcon } from './ui/icons';
+import { useFileDrop } from './useFileDrop';
 import { validateSchemas } from './validation';
 
 import styles from './App.module.css';
@@ -56,6 +65,7 @@ export default function App() {
 	const [shared, setShared] = useState(false);
 	const schemaEditorRef = useRef<MonacoEditorHandle>(null);
 	const codeEditorRef = useRef<MonacoEditorHandle>(null);
+	const { dragging, drop } = useFileDrop({ onDrop: handleDrop });
 
 	const resolvedTheme = colorMode === 'auto' ? (systemDark ? 'dark' : 'light') : colorMode;
 	const monacoTheme = resolvedTheme === 'dark' ? 'utilize-dark' : 'utilize-light';
@@ -270,6 +280,42 @@ export default function App() {
 
 		setFiles((current) => [...current, { id, name, content: '{\n  "type": "object"\n}' }]);
 		setActiveId(id);
+	}
+
+	async function handleDrop(dataTransfer: DataTransfer, mode: DropMode) {
+		const schemas = await readDroppedSchemas(await collectDroppedFiles(dataTransfer)).catch(
+			() => null
+		);
+
+		if (!schemas || schemas.length === 0) {
+			return;
+		}
+
+		const base = mode === 'replace' ? [] : files;
+		const added: SchemaFile[] = [];
+
+		for (const schema of schemas) {
+			added.push({
+				id: newFileId(),
+				name: uniqueName(schema.name, [...base, ...added]),
+				content: schema.content,
+			});
+		}
+
+		clearExampleUrl();
+		setEditingId(null);
+
+		if (mode === 'add') {
+			setFiles([...files, ...added]);
+			setActiveId(added[0]!.id);
+			return;
+		}
+
+		const detectedRootId = detectRootId(added) ?? added[0]!.id;
+		const root = added.find((file) => file.id === detectedRootId) ?? added[0]!;
+
+		setFiles([root, ...added.filter((file) => file.id !== root.id)]);
+		setActiveId(root.id);
 	}
 
 	function closeFile(id: string) {
@@ -590,6 +636,39 @@ export default function App() {
 							</span>
 						</div>
 					</Tabs>
+					{dragging ? (
+						<div
+							className={styles.dropOverlay}
+							role="group"
+							aria-label="Import JSON Schema files"
+							data-testid="file-drop-overlay"
+						>
+							<div
+								className={styles.dropTarget}
+								data-drop-mode="add"
+								onDrop={(event) => drop(event, 'add')}
+							>
+								<span className={styles.dropKicker}>Add</span>
+								<h2 className={styles.dropTitle}>Add to this workspace</h2>
+								<p className={styles.dropText}>
+									Keep the files already open and add every dropped JSON schema as a new tab.
+								</p>
+								<span className={styles.dropHint}>Folders are loaded recursively.</span>
+							</div>
+							<div
+								className={styles.dropTarget}
+								data-drop-mode="replace"
+								onDrop={(event) => drop(event, 'replace')}
+							>
+								<span className={styles.dropKicker}>Replace</span>
+								<h2 className={styles.dropTitle}>Start from the dropped files</h2>
+								<p className={styles.dropText}>
+									Close the current files and open only the dropped JSON schemas as tabs.
+								</p>
+								<span className={styles.dropHint}>Folders are loaded recursively.</span>
+							</div>
+						</div>
+					) : null}
 				</section>
 
 				<section className={`${styles.pane} ${styles.outputPane}`}>

@@ -4,7 +4,7 @@ import { expect, test } from 'vitest';
 
 import './polyfills';
 
-import { buildBundle, parseJsonFile, type SchemaFile } from './bundle';
+import { buildBundle, detectRootId, parseJsonFile, type SchemaFile } from './bundle';
 
 function file(id: string, name: string, schema: unknown): SchemaFile {
 	return { id, name, content: JSON.stringify(schema) };
@@ -80,4 +80,57 @@ test('generates a root schema that only contains a $ref', async () => {
 	const code = generate(parsed.root, { importZod: true });
 
 	expect(code).toContain('export const');
+});
+
+test('detectRootId picks the file that no other file references', () => {
+	const files = [
+		file('address', 'address.json', { type: 'object' }),
+		file('person', 'person.json', {
+			type: 'object',
+			properties: { address: { $ref: './address.json' } },
+		}),
+	];
+
+	expect(detectRootId(files)).toBe('person');
+});
+
+test('detectRootId resolves references between nested folders', () => {
+	const files = [
+		file('address', 'schemas/common/address.json', { type: 'object' }),
+		file('person', 'schemas/person.json', {
+			properties: { address: { $ref: './common/address.json' } },
+		}),
+	];
+
+	expect(detectRootId(files)).toBe('person');
+});
+
+test('detectRootId prefers a schema file among unreferenced files', () => {
+	const files = [
+		file('readme', 'readme.json', { title: 'Read me' }),
+		file('index', 'index.json', { $schema: 'http://json-schema.org/draft-07/schema#' }),
+	];
+
+	expect(detectRootId(files)).toBe('index');
+});
+
+test('detectRootId falls back to the file with the most outgoing references', () => {
+	const files = [
+		file('a', 'a.json', { properties: { b: { $ref: './b.json' } } }),
+		file('b', 'b.json', { properties: { a: { $ref: './a.json' } } }),
+		file('c', 'c.json', {
+			properties: { a: { $ref: './a.json' }, b: { $ref: './b.json' } },
+		}),
+	];
+
+	expect(detectRootId(files)).toBe('c');
+});
+
+test('detectRootId accepts invalid JSON files without failing', () => {
+	const files: SchemaFile[] = [
+		{ id: 'broken', name: 'broken.json', content: '{ nope' },
+		file('address', 'address.json', { type: 'object' }),
+	];
+
+	expect(detectRootId(files)).toBe('address');
 });
