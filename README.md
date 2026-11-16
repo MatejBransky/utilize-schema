@@ -6,10 +6,10 @@ Generate robust, type-safe Zod schemas and TypeScript types from JSON Schema —
 
 ## ✨ Features
 
-- **Full $ref support:** Handles local, external, and cyclic references.
+- **$ref support:** Local, external, and cyclic references. Recursive schemas are emitted as getters or typed `z.lazy()`.
 - **Standalone schema generation:** Every definition gets its own Zod schema and type.
-- **TypeScript-first:** Generates both runtime Zod schemas and inferred TS types.
-- **Draft 7 support:** Covers most of JSON Schema Draft 7, with clear metadata for edge cases.
+- **TypeScript-first:** Generates runtime Zod schemas and inferred TypeScript types, including recursive ones.
+- **Draft 7 support:** Covers most of JSON Schema Draft 7.
 
 ---
 
@@ -40,7 +40,8 @@ await compile({
 
 1. $ref resolver: resolves all $ref (local, external, cyclic)
 2. linker: annotates node with metadata (parent, referenced schema)
-3. generator: emits Zod schema and TypeScript types
+3. cycle handling: finds recursive $refs and breaks them with a getter or typed `z.lazy()`
+4. generator: emits Zod schemas and TypeScript types, deriving value types for recursive schemas
 
 ---
 
@@ -49,7 +50,7 @@ await compile({
 | JSON Schema Keyword                     | Supported? | Notes                                                                                   |
 | --------------------------------------- | ---------- | --------------------------------------------------------------------------------------- |
 | `type`                                  | ✅         | Full support                                                                            |
-| `enum`                                  | ✅         | Only primitive values (via `z.enum()` or `z.literal()`)                                 |
+| `enum`                                  | ✅         | Strings use `z.enum()`; other values use `z.literal()`                                  |
 | `const`                                 | ✅         | Uses `z.literal()`                                                                      |
 | `default`                               | ✅         | Uses `.default()`                                                                       |
 | `description` / `title`                 | ✅         | Uses `.meta({})`                                                                        |
@@ -57,28 +58,30 @@ await compile({
 | `exclusiveMinimum` / `exclusiveMaximum` | ✅         | Supported                                                                               |
 | `multipleOf`                            | ✅         | Supported                                                                               |
 | `minLength` / `maxLength`               | ✅         | Supported                                                                               |
-| `pattern`                               | ⚠️         | Work in progress                                                                        |
-| `format`                                | ✅         | Supported                                                                               |
+| `pattern`                               | ✅         | Uses `.regex()`                                                                         |
+| `format`                                | ✅         | Known formats map to Zod helpers; unknown formats fall back to `z.string()`             |
 | `properties`                            | ✅         | Supported                                                                               |
 | `required`                              | ✅         | Supported                                                                               |
 | `additionalProperties`                  | ✅         | Supported                                                                               |
-| `patternProperties`                     | ⚠️         | Partial support, work in progress                                                       |
-| `propertyNames`                         | ❌         | Planned                                                                                 |
+| `patternProperties`                     | ❌         | Planned, not generated yet                                                              |
+| `propertyNames`                         | ❌         | Planned, not generated yet                                                              |
 | `items`                                 | ✅         | Supported                                                                               |
 | `additionalItems`                       | ✅         | Supported                                                                               |
-| `contains`                              | ❌         | Planned                                                                                 |
-| `dependencies`                          | ❌         | Planned                                                                                 |
+| `contains`                              | ❌         | Planned, not generated yet                                                              |
+| `dependencies`                          | ❌         | Planned, not generated yet                                                              |
 | `allOf`                                 | ⚠️         | Only two schemas supported via `z.intersection()`, more planned                         |
 | `anyOf`                                 | ✅         | Uses `z.union()`                                                                        |
 | `oneOf`                                 | ✅         | Uses `z.union()`                                                                        |
-| `not`                                   | ❌         | Planned                                                                                 |
+| `not`                                   | ❌         | Planned, not generated yet                                                              |
 | `$ref`                                  | ✅         | Supported                                                                               |
 | `$defs` / `definitions`                 | ✅         | Supported                                                                               |
-| `if` / `then` / `else`                  | ❌         | Planned                                                                                 |
+| `if` / `then` / `else`                  | ❌         | Planned, not generated yet                                                              |
 | `discriminator`                         | ✅         | Uses `z.discriminatedUnion()`                                                           |
-| `$id`                                   | ✅         | Supported                                                                               |
-| `examples`                              | ❌         | Not supported                                                                           |
+| `$id`                                   | ✅         | Used in `.meta({ id })`; does not affect $ref resolution                                |
+| `examples`                              | ❌         | Ignored metadata                                                                        |
 | `$schema`                               | ⚠️         | Planned: Will detect and support multiple JSON Schema versions based on `$schema` value |
+
+Keywords marked as planned are not generated yet.
 
 ---
 
@@ -99,6 +102,9 @@ A cycle that only passes through unions or aliases has no value type TypeScript
 can express recursively. Generation then fails with
 `UnsupportedCyclicReferenceError` and the locations of the refs in the cycle,
 instead of emitting code that does not type-check.
+
+The generated `Value` aliases are internal. Use the exported type, for example
+`export type ListCycle = z.infer<typeof ListCycle>`, in your own code.
 
 ---
 
