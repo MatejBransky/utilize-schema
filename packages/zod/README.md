@@ -25,6 +25,12 @@ await compile({
 });
 ```
 
+`@utilize/zod` requires `zod` 4 as a peer dependency:
+
+```sh
+pnpm add zod
+```
+
 ## Options
 
 `compile()` accepts the following options:
