@@ -31,6 +31,7 @@
 		"build:dev": "tsdown",
 		"check:types": "tsc --noEmit",
 		"test": "vitest",
+		"test:suite": "vitest run test/jsonSchemaTestSuite.test.ts",
 		"ci:test": "vitest run",
 		"dev": "tsdown --watch"
 	},
@@ -45,6 +46,7 @@
 		"@total-typescript/tsconfig": "catalog:",
 		"@types/lodash": "4.17.27",
 		"@types/node": "catalog:",
+		"json-schema-test-suite": "github:json-schema-org/JSON-Schema-Test-Suite#e2a68a15cd490750fd6b95e604e4054d7d978d1f",
 		"lodash": "4.18.1",
 		"oxfmt": "catalog:",
 		"tsdown": "catalog:",

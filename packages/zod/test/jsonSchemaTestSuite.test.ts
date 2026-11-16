@@ -1,0 +1,167 @@
+import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
+
+import { DRAFT_7, isCompatible } from './suite/compatibility';
+import { compileToZodSchema } from './suite/compile';
+import { knownFailures } from './suite/knownFailures';
+import { loadSuiteFiles, type SuiteCase, suiteCaseKey } from './suite/loadSuite';
+
+/**
+ * Runs the official JSON Schema Test Suite against the generated Zod schemas.
+ *
+ * Scope: draft-07, the dialect this package generates for. The suite keeps all
+ * dialects in one file and marks each case with `compatibility`, so cases for
+ * older and newer releases are filtered out here.
+ *
+ * Cases tagged `format-annotation` are not run: the generator asserts known
+ * formats, while those cases expect `format` to be ignored. Cases that need
+ * `externalSchemas` are skipped until the parser can be given schemas by URI.
+ *
+ * Known gaps live in `suite/knownFailures.ts` and run as expected failures, so
+ * CI stays green until the gap is fixed.
+ */
+
+const files = loadSuiteFiles();
+
+const stats = {
+	cases: 0,
+	run: 0,
+	knownGaps: 0,
+	skippedDialect: 0,
+	skippedExternalSchemas: 0,
+	skippedFormatAnnotation: 0,
+};
+
+type SkipKind = 'dialect' | 'external' | 'format';
+
+function skipReason(testCase: SuiteCase): { kind: SkipKind; reason: string } | undefined {
+	if (!isCompatible(testCase.compatibility, DRAFT_7)) {
+		return { kind: 'dialect', reason: 'not part of draft-07' };
+	}
+
+	if (testCase.externalSchemas) {
+		return {
+			kind: 'external',
+			reason: 'external schemas are not wired into the parser yet',
+		};
+	}
+
+	if (testCase.tags?.includes('format-annotation')) {
+		return {
+			kind: 'format',
+			reason: 'the generator asserts known formats, so annotation-only cases do not apply',
+		};
+	}
+
+	return undefined;
+}
+
+beforeAll(() => {
+	// `parse` and generation log progress for every schema.
+	vi.spyOn(console, 'log').mockImplementation(() => {});
+	vi.spyOn(console, 'warn').mockImplementation(() => {});
+});
+
+afterAll(() => {
+	vi.restoreAllMocks();
+	console.log(
+		[
+			'JSON Schema Test Suite (draft-07)',
+			`${stats.run} cases run, ${stats.knownGaps} known gaps`,
+			`${stats.skippedExternalSchemas} skipped (external schemas)`,
+			`${stats.skippedFormatAnnotation} skipped (format annotation)`,
+			`${stats.skippedDialect} filtered out (other dialects)`,
+		].join(' · ')
+	);
+});
+
+for (const file of files) {
+	const runnable: Array<{ testCase: SuiteCase; skip: ReturnType<typeof skipReason> }> = [];
+
+	for (const testCase of file.cases) {
+		stats.cases++;
+
+		const skip = skipReason(testCase);
+
+		if (skip?.kind === 'dialect') {
+			stats.skippedDialect++;
+			continue;
+		}
+
+		runnable.push({ testCase, skip });
+	}
+
+	// A file can be entirely outside the tested dialect; Vitest rejects empty suites.
+	if (runnable.length === 0) {
+		continue;
+	}
+
+	describe(file.name, () => {
+		for (const { testCase, skip } of runnable) {
+			if (skip) {
+				if (skip.kind === 'external') {
+					stats.skippedExternalSchemas++;
+				} else {
+					stats.skippedFormatAnnotation++;
+				}
+
+				test.skip(`${testCase.description} — skipped: ${skip.reason}`, () => {});
+				continue;
+			}
+
+			stats.run++;
+
+			const key = suiteCaseKey(file, testCase);
+			const gap = knownFailures[key];
+
+			const run = async () => {
+				const zodSchema = await compileToZodSchema(testCase.schema);
+				const failures = testCase.tests
+					.filter((suiteTest) => zodSchema.safeParse(suiteTest.data).success !== suiteTest.valid)
+					.map(
+						(suiteTest) =>
+							`${suiteTest.description}: ${JSON.stringify(suiteTest.data)} should be ${
+								suiteTest.valid ? 'valid' : 'invalid'
+							}`
+					);
+
+				expect(failures).toEqual([]);
+			};
+
+			if (gap) {
+				stats.knownGaps++;
+				test.fails(`${testCase.description} — known gap: ${gap}`, run);
+			} else {
+				test(testCase.description, run);
+			}
+		}
+	});
+}
+
+describe('known failures', () => {
+	const exercised = new Map<string, string | undefined>();
+
+	for (const file of files) {
+		for (const testCase of file.cases) {
+			exercised.set(suiteCaseKey(file, testCase), skipReason(testCase)?.reason);
+		}
+	}
+
+	test('point at existing cases that are exercised', () => {
+		const problems: string[] = [];
+
+		for (const key of Object.keys(knownFailures)) {
+			if (!exercised.has(key)) {
+				problems.push(`${key}: no such case in the suite`);
+				continue;
+			}
+
+			const reason = exercised.get(key);
+
+			if (reason) {
+				problems.push(`${key}: skipped because ${reason}`);
+			}
+		}
+
+		expect(problems).toEqual([]);
+	});
+});

@@ -60,6 +60,25 @@ code.
 - Selects the right generator for each schema node
 - Emits Zod code and inferred types
 
+## Testing
+
+```sh
+pnpm test          # unit tests
+pnpm test:suite    # official JSON Schema Test Suite (draft-07)
+```
+
+The generator is checked against the official
+[JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
+The suite is pinned to a commit and installed as a dev dependency. Each test
+case is compiled to a Zod schema in memory and every instance from the suite is
+run through `safeParse`.
+
+Cases the generator does not handle yet are listed in
+`test/suite/knownFailures.ts` and run as expected failures. When one starts
+passing, Vitest reports it, and the entry should be removed. The runner prints
+the current totals at the end of every run, so the list doubles as the
+conformance baseline.
+
 ## When to use
 
 Use this package to automate Zod schema and TypeScript type generation from
