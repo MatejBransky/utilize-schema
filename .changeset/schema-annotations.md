@@ -1,4 +1,5 @@
 ---
+'@utilize/effect': minor
 '@utilize/json-schema': minor
 '@utilize/zod': minor
 ---
