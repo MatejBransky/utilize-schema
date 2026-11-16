@@ -26,6 +26,8 @@ const stats = {
 	cases: 0,
 	run: 0,
 	knownGaps: 0,
+	assertions: 0,
+	failedAssertions: 0,
 	skippedDialect: 0,
 	skippedExternalSchemas: 0,
 	skippedFormatAnnotation: 0,
@@ -66,7 +68,9 @@ afterAll(() => {
 	console.log(
 		[
 			'JSON Schema Test Suite (draft-07)',
-			`${stats.run} cases run, ${stats.knownGaps} known gaps`,
+			`${stats.run - stats.knownGaps}/${stats.run} cases, ${
+				stats.assertions - stats.failedAssertions
+			}/${stats.assertions} assertions`,
 			`${stats.skippedExternalSchemas} skipped (external schemas)`,
 			`${stats.skippedFormatAnnotation} skipped (format annotation)`,
 			`${stats.skippedDialect} filtered out (other dialects)`,
@@ -109,20 +113,31 @@ for (const file of files) {
 			}
 
 			stats.run++;
+			stats.assertions += testCase.tests.length;
 
 			const key = suiteCaseKey(file, testCase);
 			const gap = knownFailures[key];
 
 			const run = async () => {
-				const zodSchema = await compileToZodSchema(testCase.schema);
-				const failures = testCase.tests
-					.filter((suiteTest) => zodSchema.safeParse(suiteTest.data).success !== suiteTest.valid)
-					.map(
-						(suiteTest) =>
-							`${suiteTest.description}: ${JSON.stringify(suiteTest.data)} should be ${
-								suiteTest.valid ? 'valid' : 'invalid'
-							}`
-					);
+				let failures: string[];
+
+				try {
+					const zodSchema = await compileToZodSchema(testCase.schema);
+
+					failures = testCase.tests
+						.filter((suiteTest) => zodSchema.safeParse(suiteTest.data).success !== suiteTest.valid)
+						.map(
+							(suiteTest) =>
+								`${suiteTest.description}: ${JSON.stringify(suiteTest.data)} should be ${
+									suiteTest.valid ? 'valid' : 'invalid'
+								}`
+						);
+				} catch (error) {
+					stats.failedAssertions += testCase.tests.length;
+					throw error;
+				}
+
+				stats.failedAssertions += failures.length;
 
 				expect(failures).toEqual([]);
 			};

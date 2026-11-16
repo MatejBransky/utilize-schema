@@ -77,6 +77,10 @@ To set this up on a fork or a new repository:
   ```sh
   pnpm test -- --watch
   ```
+- Run the official JSON Schema Test Suite for the Zod generator:
+  ```sh
+  pnpm --filter @utilize/zod test:suite
+  ```
 
 ## Dependency Versions
 
