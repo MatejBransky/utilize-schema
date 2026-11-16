@@ -23,6 +23,10 @@ Generate robust, type-safe Zod schemas and TypeScript types from JSON Schema —
 
 > Zod code generator. Walks the parsed JSON Schema and emits Zod schemas + TypeScript types.
 
+### [`@utilize/effect`](./packages/effect)
+
+> Effect Schema code generator. Walks the parsed JSON Schema and emits Effect Schema codecs + TypeScript types, with every `$ref` emitted through `Schema.suspend`.
+
 ---
 
 ```typescript
