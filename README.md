@@ -11,7 +11,7 @@ Generate robust, type-safe Zod or Effect Schema codecs and TypeScript types from
 - **Standalone schema generation:** Every definition gets its own schema and type.
 - **TypeScript-first:** Generates runtime schemas and TypeScript types, including recursive ones.
 - **Draft support:** Draft-04/06/07, with normalization for 2019-09 and 2020-12.
-- **Conformance:** the Zod generator is tested against the official [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite) — 213 of 271 draft-07 cases (1,299 of 1,605 assertions) pass today; remaining gaps are tracked per keyword.
+- **Conformance:** the Zod generator is tested against the official [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite) — 233 of 271 draft-07 cases (1,323 of 1,605 assertions) pass today; remaining gaps are tracked per keyword.
 
 ---
 
@@ -80,15 +80,15 @@ Vercel preview deployment of the playground.
 Both generators accept the same input and are checked against each other by a
 differential test suite (`packages/effect/test/parity.test.ts`), so the table
 below is kept honest by CI. The Zod generator is also checked against the
-official JSON Schema Test Suite for draft-07: **213 of 271 cases (1,299 of 1,605
+official JSON Schema Test Suite for draft-07: **233 of 271 cases (1,323 of 1,605
 assertions)** pass; the remaining gaps are listed in
 `packages/zod/test/suite/knownFailures.ts`.
 
 | JSON Schema Keyword                          | Zod | Effect Schema | Notes                                                                       |
 | -------------------------------------------- | --- | ------------- | --------------------------------------------------------------------------- |
 | `type`                                       | ✅  | ✅            | Full support, including unions of types                                     |
-| `enum`                                       | ✅  | ✅            | Zod uses `z.enum()`/`z.literal()`, Effect uses `Schema.Literals`            |
-| `const`                                      | ✅  | ✅            | Literal schemas                                                             |
+| `enum`                                       | ✅  | ✅            | Zod deep-equals composites; Effect supports primitives only                 |
+| `const`                                      | ✅  | ✅            | Zod deep-equals composites; Effect supports primitives only                 |
 | `default`                                    | ✅  | ✅            | Zod decodes with `.default()`; Effect stores it as an annotation            |
 | `description` / `title`                      | ✅  | ✅            | Zod `.meta({})`, Effect `.annotate({})`                                     |
 | `minimum` / `maximum`                        | ✅  | ✅            | Supported                                                                   |
@@ -112,7 +112,7 @@ assertions)** pass; the remaining gaps are listed in
 | `dependencies`                               | ✅  | ✅            | Also covers `dependentRequired` and `dependentSchemas`                      |
 | `allOf`                                      | ✅  | ✅            | Zod intersects any schemas; Effect merges disjoint object subschemas        |
 | `anyOf`                                      | ✅  | ✅            | Supported                                                                   |
-| `oneOf`                                      | ✅  | ✅            | Zod uses `z.union()`, Effect uses the exclusive union mode                  |
+| `oneOf`                                      | ✅  | ✅            | Zod requires exactly one match; Effect uses the exclusive union mode        |
 | `not`                                        | ✅  | ✅            | Supported                                                                   |
 | `if` / `then` / `else`                       | ✅  | ✅            | Supported                                                                   |
 | `discriminator`                              | ✅  | —             | Zod emits a discriminated union; Effect ignores the annotation              |
