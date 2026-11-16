@@ -37,9 +37,7 @@ export function resolveName({
 	const meta = schema[Meta];
 	if (meta?.path) {
 		// Try to find $defs or definitions in the path and use the next segment as name
-		const idx = meta.path.findIndex(
-			(p) => p === '$defs' || p === 'definitions'
-		);
+		const idx = meta.path.findIndex((p) => p === '$defs' || p === 'definitions');
 		if (idx >= 0 && typeof meta.path[idx + 1] === 'string') {
 			return generateName(meta.path[idx + 1] as string, usedNames);
 		}

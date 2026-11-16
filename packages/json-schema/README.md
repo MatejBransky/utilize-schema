@@ -12,7 +12,7 @@ Generator-agnostic JSON Schema resolver with full $ref support (local, external,
 
 Each schema node is annotated with a non-enumerable `Meta` symbol:
 
-```ts
+````ts
 import { parse, Meta } from '@utilize/json-schema';
 
 const { root } = await parse(schema, { cwd, fileName });
@@ -35,9 +35,8 @@ import { parse, Meta } from '@utilize/json-schema';
 
 const { root } = await parse(schema, { cwd: process.cwd(), fileName: 'schema.json' });
 console.log(root[Meta]);
-```
+````
 
 ## When to use
 
 Use this package if you need to preprocess JSON Schema for code generation, validation, or analysis, and require robust $ref resolution and metadata.
-

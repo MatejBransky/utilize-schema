@@ -58,9 +58,8 @@ describe('type', () => {
 	});
 
 	test('object without additional props', async () => {
-		await expect(
-			compile({ type: 'object', properties: { field: { type: 'boolean' } } })
-		).toMatchCode(ts`
+		await expect(compile({ type: 'object', properties: { field: { type: 'boolean' } } }))
+			.toMatchCode(ts`
       export const Root = z.object({
         field: z.boolean().optional(),
       })
@@ -114,8 +113,7 @@ describe('type', () => {
 	});
 
 	test('array', async () => {
-		await expect(compile({ type: 'array', items: { type: 'string' } }))
-			.toMatchCode(ts`
+		await expect(compile({ type: 'array', items: { type: 'string' } })).toMatchCode(ts`
         export const Root = z.array(z.string())
         export type Root = z.infer<typeof Root>;
       `);

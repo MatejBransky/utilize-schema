@@ -6,14 +6,10 @@ interface StandaloneSchemasResult {
 }
 
 // Helper to collect all standalone schemas: referenced and $defs/definitions
-export function collectStandaloneSchemas(
-	root: ParsedJSONSchemaObject
-): StandaloneSchemasResult {
+export function collectStandaloneSchemas(root: ParsedJSONSchemaObject): StandaloneSchemasResult {
 	const standalone = new Set<ParsedJSONSchemaObject>();
 	const seen = new Set<ParsedJSONSchemaObject>();
-	const edges = new Set<
-		[ParsedJSONSchemaObject | null, ParsedJSONSchemaObject]
-	>();
+	const edges = new Set<[ParsedJSONSchemaObject | null, ParsedJSONSchemaObject]>();
 
 	function visit(
 		schema: ParsedJSONSchemaObject | undefined,
@@ -55,10 +51,7 @@ export function collectStandaloneSchemas(
 			}
 		}
 
-		if (
-			schema.additionalProperties &&
-			typeof schema.additionalProperties === 'object'
-		) {
+		if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
 			visit(schema.additionalProperties, schema);
 		}
 

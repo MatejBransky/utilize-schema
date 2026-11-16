@@ -26,11 +26,11 @@ Generate robust, type-safe Zod schemas and TypeScript types from JSON Schema —
 ---
 
 ```typescript
-import { compile } from "@utilize/zod";
+import { compile } from '@utilize/zod';
 
 await compile({
-  input: "./schema.json",
-  output: "./schema.generated.ts",
+	input: './schema.json',
+	output: './schema.generated.ts',
 });
 ```
 

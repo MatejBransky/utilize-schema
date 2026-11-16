@@ -1,7 +1,4 @@
-import {
-	isPlainObject,
-	type ParsedJSONSchemaObject,
-} from '@utilize/json-schema';
+import { isPlainObject, type ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
 import { generateSchema } from './generateSchema';
@@ -21,10 +18,7 @@ export const generator = createGenerator<{
 	(schema, context) => {
 		// TODO: handle patternProperties
 
-		const additionalProperties = generateSchema(
-			schema.additionalProperties,
-			context
-		);
+		const additionalProperties = generateSchema(schema.additionalProperties, context);
 
 		return ts`z.record(z.string(), ${additionalProperties})`;
 	}

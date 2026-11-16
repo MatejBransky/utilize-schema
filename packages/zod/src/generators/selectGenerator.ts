@@ -36,9 +36,7 @@ const generators = [
 	enumGenerator,
 ];
 
-export function selectGenerator(
-	input: ParsedJSONSchemaObject
-): ExpressionGenerator {
+export function selectGenerator(input: ParsedJSONSchemaObject): ExpressionGenerator {
 	const generator = generators.find(({ predicate }) => predicate(input));
 
 	if (!generator) {

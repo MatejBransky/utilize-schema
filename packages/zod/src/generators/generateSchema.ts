@@ -1,17 +1,11 @@
-import type {
-	ParsedJSONSchema,
-	ParsedJSONSchemaObject,
-} from '@utilize/json-schema';
+import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { selectGenerator } from './selectGenerator';
 import type { GeneratorContext } from './types';
 
 import { ts } from '../utils';
 
-export const generateSchema = (
-	schema: ParsedJSONSchema,
-	context: GeneratorContext
-) => {
+export const generateSchema = (schema: ParsedJSONSchema, context: GeneratorContext) => {
 	if (typeof schema !== 'object' || schema === null) {
 		return schema ? ts`z.any()` : ts`z.unknown()`;
 	}
@@ -31,18 +25,11 @@ export const generateSchema = (
 	return expression;
 };
 
-function withMetadata(
-	expression: string,
-	{ $id, title, description }: ParsedJSONSchemaObject
-) {
+function withMetadata(expression: string, { $id, title, description }: ParsedJSONSchemaObject) {
 	return ts`${expression}.meta(${JSON.stringify({ id: $id, title, description })})`;
 }
 
-function withDefault(
-	expression: string,
-	defaultValue: unknown,
-	schema: ParsedJSONSchemaObject
-) {
+function withDefault(expression: string, defaultValue: unknown, schema: ParsedJSONSchemaObject) {
 	if (schema.type === 'boolean' && typeof defaultValue === 'string') {
 		if (defaultValue === 'true') {
 			return ts`${expression}.default(true)`;

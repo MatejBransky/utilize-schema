@@ -12,9 +12,7 @@ export const generator = createGenerator<
 >(
 	(schema) => Array.isArray(schema.anyOf),
 	(schema, context) => {
-		const subschemas = schema.anyOf.map((subschema) =>
-			generateSchema(subschema, context)
-		);
+		const subschemas = schema.anyOf.map((subschema) => generateSchema(subschema, context));
 
 		return ts`z.union([${subschemas.join(', ')}])`;
 	}

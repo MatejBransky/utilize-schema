@@ -13,9 +13,7 @@ export const generator = createGenerator<
 >(
 	(schema) => Array.isArray(schema.oneOf),
 	(schema, context) => {
-		const subschemas = schema.oneOf.map((subschema) =>
-			generateSchema(subschema, context)
-		);
+		const subschemas = schema.oneOf.map((subschema) => generateSchema(subschema, context));
 
 		if (schema.discriminator) {
 			return ts`z.discriminatedUnion('${schema.discriminator}', [${subschemas.join(', ')}])`;

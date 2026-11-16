@@ -86,7 +86,8 @@ export type Meta = {
 };
 
 export interface ParsedJSONSchemaObject
-	extends Omit<JSONSchema, keyof SchemaKeysType<JSONSchema>>,
+	extends
+		Omit<JSONSchema, keyof SchemaKeysType<JSONSchema>>,
 		SchemaKeysType<ParsedJSONSchemaObject> {
 	[Meta]: Meta;
 }

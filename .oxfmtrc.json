@@ -1,6 +1,6 @@
 {
 	"$schema": "./node_modules/oxfmt/configuration_schema.json",
-	"ignorePatterns": [".agents/**"],
+	"ignorePatterns": [".agents/**", "packages/zod/test/snapshots/**"],
 	"useTabs": true,
 	"singleQuote": true,
 	"semi": true,

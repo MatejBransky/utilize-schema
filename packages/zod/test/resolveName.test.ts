@@ -43,12 +43,9 @@ describe('resolveName', () => {
 	});
 
 	it('uses custom resolver if provided', () => {
-		const schema = withMeta(
-			{},
-			{ parent: null, fileName: 'kebab-case.schema' }
-		);
-		const customResolver = (schema: ParsedJSONSchemaObject) => {
-			schema[Meta].fileName = schema[Meta].fileName.replace(/\.schema$/, '');
+		const schema = withMeta({}, { parent: null, fileName: 'kebab-case.schema' });
+		const customResolver = (candidate: ParsedJSONSchemaObject) => {
+			candidate[Meta].fileName = candidate[Meta].fileName.replace(/\.schema$/, '');
 		};
 		expect(resolveName({ schema, customResolver })).toBe('KebabCase');
 	});

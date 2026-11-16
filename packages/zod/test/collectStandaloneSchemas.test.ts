@@ -61,18 +61,9 @@ describe('collectStandaloneSchemas', () => {
 	it('sorts schemas by dependency', () => {
 		const external = withMeta({ $id: 'external', type: 'number' });
 		const definitionA = withMeta({ $id: 'definitionA', type: 'string' });
-		const definitionB = withMeta(
-			{ $ref: './external.json' },
-			{ reference: external }
-		);
-		const propertyA = withMeta(
-			{ $ref: '#/definitions/A' },
-			{ reference: definitionA }
-		);
-		const propertyB = withMeta(
-			{ $ref: '#/definitions/B' },
-			{ reference: definitionB }
-		);
+		const definitionB = withMeta({ $ref: './external.json' }, { reference: external });
+		const propertyA = withMeta({ $ref: '#/definitions/A' }, { reference: definitionA });
+		const propertyB = withMeta({ $ref: '#/definitions/B' }, { reference: definitionB });
 		const root = withMeta(
 			{
 				$id: 'root',

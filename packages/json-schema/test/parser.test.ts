@@ -56,8 +56,7 @@ test('parser', async () => {
 
 	expect(parsed.root[Meta].parent).toBeNull();
 	expect(parsed.root[Meta].path).toEqual([]);
-	expect(parsed.root.properties?.externalRefOnly?.[Meta].parent)
-		.toMatchInlineSnapshot(`
+	expect(parsed.root.properties?.externalRefOnly?.[Meta].parent).toMatchInlineSnapshot(`
 			{
 			  "externalRefOnly": {
 			    "$ref": "./EnumSchema.json",
@@ -81,8 +80,7 @@ test('parser', async () => {
 			  },
 			}
 		`);
-	expect(parsed.root.properties?.externalRefOnly?.[Meta].reference)
-		.toMatchInlineSnapshot(`
+	expect(parsed.root.properties?.externalRefOnly?.[Meta].reference).toMatchInlineSnapshot(`
 		{
 		  "$schema": "http://json-schema.org/draft-07/schema#",
 		  "enum": [
