@@ -923,6 +923,9 @@ function applyAnnotations(expression: string, schema: ParsedJSONSchemaObject): s
 	if (typeof schema.writeOnly === 'boolean') {
 		annotations.push(`writeOnly: ${schema.writeOnly}`);
 	}
+	if (typeof schema.deprecated === 'boolean') {
+		annotations.push(`deprecated: ${schema.deprecated}`);
+	}
 
 	return annotations.length > 0
 		? `${expression}.annotate({ ${annotations.join(', ')} })`

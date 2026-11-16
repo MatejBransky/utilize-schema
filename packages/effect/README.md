@@ -84,7 +84,7 @@ Supported keywords:
 - `not`, `if`/`then`/`else`, `contains`, `dependencies` (applied as filters)
 - `$ref`, `$defs`, `definitions`
 - `title`, `description`, `default`, `examples`, `$id`, `readOnly`,
-  `writeOnly` as annotations
+  `writeOnly`, `deprecated` as annotations
 
 Effect has no schema constructor for negation, conditionals or "contains", so
 `not`, `if`/`then`/`else`, `contains` and `dependencies` are emitted as
