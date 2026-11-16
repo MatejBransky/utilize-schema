@@ -16,7 +16,7 @@ import { generator as recordGenerator } from './generators/recordGenerator';
 import { generator as refGenerator } from './generators/refGenerator';
 import { selectGenerator } from './generators/selectGenerator';
 import { generator as stringGenerator } from './generators/stringGenerator';
-import { generator as tupleGenerator } from './generators/tupleGenerator';
+import { generator as tupleGenerator, tupleItems, tupleRest } from './generators/tupleGenerator';
 
 export interface ValueTypeContext {
 	/** The generated value-type alias of a schema in a cycle, when it has one. */
@@ -133,8 +133,8 @@ function renderType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): 
 	}
 
 	if (generator === tupleGenerator) {
-		const items = (schema.items as ParsedJSONSchemaObject[]).map((item) =>
-			renderType(item, context)
+		const items = (tupleItems(schema) ?? []).map(
+			(item) => `${parenthesize(renderType(item, context))}?`
 		);
 		const rest = renderTupleRest(schema, context);
 
@@ -232,17 +232,17 @@ function renderObjectMembers(
 }
 
 function renderTupleRest(schema: ParsedJSONSchemaObject, context: ValueTypeContext): string {
-	const additionalItems = schema.additionalItems;
+	const rest = tupleRest(schema);
 
-	if (additionalItems === undefined || additionalItems === false || additionalItems === null) {
+	if (rest === false) {
 		return '';
 	}
 
-	if (additionalItems === true) {
-		return '...any[]';
+	if (rest === undefined || rest === true || rest === null) {
+		return '...unknown[]';
 	}
 
-	return `...${parenthesize(renderType(additionalItems, context))}[]`;
+	return `...${parenthesize(renderType(rest, context))}[]`;
 }
 
 function literalType(value: unknown): string {

@@ -28,6 +28,8 @@ export interface SchemaKeysType<Schema extends JSONSchema> {
 
 	// https://www.learnjsonschema.com/draft7/validation/items/
 	items?: Schema | Schema[];
+	// https://json-schema.org/draft/2020-12/applicator#prefixItems
+	prefixItems?: Schema[];
 	// https://www.learnjsonschema.com/draft7/validation/additionalitems/
 	additionalItems?: boolean | Schema;
 	// https://www.learnjsonschema.com/draft7/validation/contains/
@@ -64,6 +66,7 @@ export const SchemaKeys: Record<keyof SchemaKeysType<JSONSchema>, string> = {
 
 	additionalItems: 'additionalItems',
 	items: 'items',
+	prefixItems: 'prefixItems',
 	contains: 'contains',
 
 	dependencies: 'dependencies',

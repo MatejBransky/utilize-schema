@@ -1,12 +1,9 @@
 import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import type { SchemaEdge } from './collectStandaloneSchemas';
-import { generator as allOfGenerator } from './generators/allOfGenerator';
-import { generator as anyOfGenerator } from './generators/anyOfGenerator';
 import { generator as arrayGenerator } from './generators/arrayGenerator';
 import { generator as multipleTypeGenerator } from './generators/multipleTypeGenerator';
 import { generator as objectGenerator } from './generators/objectGenerator';
-import { generator as oneOfGenerator } from './generators/oneOfGenerator';
 import { generator as recordGenerator } from './generators/recordGenerator';
 import { selectGenerator } from './generators/selectGenerator';
 import { generator as tupleGenerator } from './generators/tupleGenerator';
@@ -36,7 +33,7 @@ export function findCyclicSchemas(
 			continue;
 		}
 
-		if (members.every((member) => !hasStructuralConstructor(member))) {
+		if (members.every((member) => !isStructuralNode(member))) {
 			unsupported.push(members);
 			continue;
 		}
@@ -50,11 +47,11 @@ export function findCyclicSchemas(
 }
 
 /**
- * True when the schema (or one of its subschemas) produces an object, array,
- * tuple or record. Those are the only constructors TypeScript can use to defer
- * a recursive type alias.
+ * True when the schema itself produces an object, array, tuple or record.
+ * Subschema branches do not count: a structural constructor in a sibling
+ * `anyOf` branch does not anchor a cycle that bypasses it.
  */
-function hasStructuralConstructor(schema: ParsedJSONSchemaObject): boolean {
+function isStructuralNode(schema: ParsedJSONSchemaObject): boolean {
 	if (typeof schema !== 'object' || schema === null) {
 		return false;
 	}
@@ -71,24 +68,9 @@ function hasStructuralConstructor(schema: ParsedJSONSchemaObject): boolean {
 	}
 
 	if (generator === multipleTypeGenerator) {
-		return (schema.type as unknown as string[]).some((type) =>
-			hasStructuralConstructor({
-				...schema,
-				type,
-				default: undefined,
-				title: undefined,
-			} as ParsedJSONSchemaObject)
+		return (schema.type as unknown as string[]).some(
+			(type) => type === 'object' || type === 'array'
 		);
-	}
-
-	if (
-		generator === anyOfGenerator ||
-		generator === oneOfGenerator ||
-		generator === allOfGenerator
-	) {
-		const subschemas = schema.anyOf ?? schema.oneOf ?? schema.allOf ?? [];
-
-		return subschemas.some(hasStructuralConstructor);
 	}
 
 	return false;

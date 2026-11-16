@@ -127,10 +127,10 @@ describe('type', () => {
 			})
 		).toMatchCode(ts`
       export const Root = z.tuple([
-        z.string(),
-        z.number(),
-        z.boolean(),
-      ])
+        z.string().optional(),
+        z.number().optional(),
+        z.boolean().optional(),
+      ]).rest(z.unknown())
       export type Root = z.infer<typeof Root>;
     `);
 	});
@@ -144,9 +144,9 @@ describe('type', () => {
 			})
 		).toMatchCode(ts`
       export const Root = z.tuple([
-        z.string(),
-        z.number(),
-      ], z.boolean())
+        z.string().optional(),
+        z.number().optional(),
+      ]).rest(z.boolean())
       export type Root = z.infer<typeof Root>;
     `);
 	});

@@ -52,9 +52,36 @@ describe('$schema versions', () => {
 	test('2020-12 prefixItems and items', async () => {
 		const Root = await compileToZod(prefixItemsSchema);
 
+		expect(Root.safeParse([]).success).toBe(true);
+		expect(Root.safeParse(['a']).success).toBe(true);
+		expect(Root.safeParse(['a', 1]).success).toBe(true);
 		expect(Root.safeParse(['a', 1, 2]).success).toBe(true);
 		expect(Root.safeParse([1]).success).toBe(false);
 		expect(Root.safeParse(['a', 'b']).success).toBe(false);
+	});
+
+	test('draft-07 tuple positions are optional and allow a tail by default', async () => {
+		const Root = await compileToZod({
+			type: 'array',
+			items: [{ type: 'string' }, { type: 'number' }],
+		});
+
+		expect(Root.safeParse([]).success).toBe(true);
+		expect(Root.safeParse(['a']).success).toBe(true);
+		expect(Root.safeParse(['a', 1, true]).success).toBe(true);
+		expect(Root.safeParse([1]).success).toBe(false);
+	});
+
+	test('draft-07 additionalItems false forbids extra items', async () => {
+		const Root = await compileToZod({
+			type: 'array',
+			items: [{ type: 'string' }],
+			additionalItems: false,
+		});
+
+		expect(Root.safeParse([]).success).toBe(true);
+		expect(Root.safeParse(['a']).success).toBe(true);
+		expect(Root.safeParse(['a', 1]).success).toBe(false);
 	});
 
 	test('2020-12 dependentRequired', async () => {

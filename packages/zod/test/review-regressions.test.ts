@@ -102,3 +102,36 @@ describe('review regressions', () => {
 		expect(Root.safeParse({ b: 'y', c: 'z' }).success).toBe(true);
 	});
 });
+
+test('keyword-only schemas do not reject other types', async () => {
+	const Root = await compileToZod({ pattern: '^x' });
+
+	expect(Root.safeParse('xyz').success).toBe(true);
+	expect(Root.safeParse('abc').success).toBe(false);
+	expect(Root.safeParse(42).success).toBe(true);
+});
+
+test('not narrows a keyword-only subschema to the parent type', async () => {
+	const Root = await compileToZod({ type: 'object', not: { pattern: 'x' } });
+
+	expect(Root.safeParse({}).success).toBe(false);
+});
+
+test('$refs into prefixItems survive schema normalization', async () => {
+	const Root = await compileToZod({
+		$schema: 'https://json-schema.org/draft/2020-12/schema',
+		type: 'object',
+		properties: {
+			list: {
+				type: 'array',
+				prefixItems: [{ type: 'string' }],
+				items: { type: 'number' },
+			},
+			first: { $ref: '#/properties/list/prefixItems/0' },
+		},
+		required: ['list', 'first'],
+	} as unknown as JSONSchema);
+
+	expect(Root.safeParse({ list: ['a', 1], first: 'b' }).success).toBe(true);
+	expect(Root.safeParse({ list: ['a', 1], first: 1 }).success).toBe(false);
+});

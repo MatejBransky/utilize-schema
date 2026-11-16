@@ -57,6 +57,8 @@ const SINGLE_SCHEMA_KEYWORDS = new Set([
 ]);
 const ARRAY_SCHEMA_KEYWORDS = new Set(['allOf', 'anyOf', 'oneOf', 'prefixItems']);
 
+const normalizedNodes = new WeakSet<object>();
+
 export function normalizeSchema(schema: unknown, version: SchemaVersion) {
 	const seen = new Set<unknown>();
 
@@ -72,6 +74,11 @@ export function normalizeSchema(schema: unknown, version: SchemaVersion) {
 		if (!isPlainObject(node)) {
 			return;
 		}
+
+		if (normalizedNodes.has(node)) {
+			return;
+		}
+		normalizedNodes.add(node);
 
 		normalizeNode(node, version);
 
@@ -123,15 +130,6 @@ function normalizeNode(node: Record<string, unknown>, version: SchemaVersion): v
 		}
 	}
 
-	if (version === '2020-12' && Array.isArray(node.prefixItems)) {
-		const rest = node.items;
-		node.items = node.prefixItems;
-		if (rest !== undefined) {
-			node.additionalItems = rest;
-		}
-		delete node.prefixItems;
-	}
-
 	const dependencies: Record<string, unknown> = isPlainObject(node.dependencies)
 		? { ...node.dependencies }
 		: {};
@@ -149,8 +147,6 @@ function normalizeNode(node: Record<string, unknown>, version: SchemaVersion): v
 	if (Object.keys(dependencies).length > 0) {
 		node.dependencies = dependencies;
 	}
-	delete node.dependentRequired;
-	delete node.dependentSchemas;
 }
 
 function normalizeDraft04ExclusiveBounds(node: Record<string, unknown>) {

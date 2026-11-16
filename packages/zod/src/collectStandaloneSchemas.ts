@@ -69,6 +69,12 @@ export function collectStandaloneSchemas(root: ParsedJSONSchemaObject): Standalo
 			}
 		}
 
+		if (schema.prefixItems) {
+			for (const item of schema.prefixItems) {
+				visit(item, schema);
+			}
+		}
+
 		if (schema.additionalItems && typeof schema.additionalItems === 'object') {
 			visit(schema.additionalItems, schema);
 		}

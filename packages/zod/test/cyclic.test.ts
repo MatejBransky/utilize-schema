@@ -229,6 +229,14 @@ describe('recursive references at runtime', () => {
 });
 
 describe('cycles without a type indirection', () => {
+	test('a sibling structural branch does not anchor the cycle', async () => {
+		await expect(
+			compile({
+				anyOf: [{ $ref: '#' }, { type: 'object' }],
+			})
+		).rejects.toThrow(/only passes through unions or aliases/);
+	});
+
 	test('union-only cycle fails at compile time', async () => {
 		await expect(
 			compile({
