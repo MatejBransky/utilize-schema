@@ -7,7 +7,10 @@ import { type ParsedJSONSchemaObject, Meta } from '@utilize/json-schema';
  * This is the only place where the generator can emit a getter, and a getter is
  * the only way to defer a recursive reference without losing type inference.
  */
-export function isPropertyBacked(schema: ParsedJSONSchemaObject): boolean {
+export function isPropertyBacked(
+	schema: ParsedJSONSchemaObject,
+	standaloneSchemas?: Set<ParsedJSONSchemaObject>
+): boolean {
 	let node: ParsedJSONSchemaObject = schema;
 
 	for (;;) {
@@ -18,10 +21,43 @@ export function isPropertyBacked(schema: ParsedJSONSchemaObject): boolean {
 		}
 
 		if (isPropertiesMap(parent)) {
-			return true;
+			if (!standaloneSchemas) {
+				return true;
+			}
+
+			const owner = parent[Meta]?.parent;
+
+			if (!owner || typeof owner !== 'object') {
+				return false;
+			}
+
+			return (
+				nearestStandalone(schema, standaloneSchemas) === nearestStandalone(owner, standaloneSchemas)
+			);
 		}
 
 		node = parent;
+	}
+}
+
+function nearestStandalone(
+	node: ParsedJSONSchemaObject,
+	standaloneSchemas: Set<ParsedJSONSchemaObject>
+): ParsedJSONSchemaObject | undefined {
+	let current: ParsedJSONSchemaObject = node;
+
+	for (;;) {
+		if (standaloneSchemas.has(current)) {
+			return current;
+		}
+
+		const parent = current[Meta]?.parent;
+
+		if (!parent || typeof parent !== 'object') {
+			return undefined;
+		}
+
+		current = parent;
 	}
 }
 

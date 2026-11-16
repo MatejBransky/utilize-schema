@@ -114,6 +114,17 @@ describe('recursive references at runtime', () => {
 });
 
 describe('cycles that cannot be deferred with a getter', () => {
+	test('array-only property cycle fails at compile time', async () => {
+		await expect(
+			compile({
+				type: 'object',
+				properties: {
+					list: { type: 'array', items: { $ref: '#/properties/list' } },
+				},
+			})
+		).rejects.toThrow(/Cannot generate a type-safe Zod schema/);
+	});
+
 	test('union-only cycle fails at compile time', async () => {
 		await expect(
 			compile({

@@ -15,7 +15,10 @@ type SchemaNode = SchemaEdge[0];
  * without losing type inference. When a cycle never passes through an object
  * property, generation fails instead of emitting code that throws at import.
  */
-export function breakReferenceCycles(edges: SchemaEdge[]): SchemaEdge[] {
+export function breakReferenceCycles(
+	edges: SchemaEdge[],
+	standaloneSchemas?: Set<ParsedJSONSchemaObject>
+): SchemaEdge[] {
 	resetCircularFlags(edges);
 	let remaining = edges;
 
@@ -40,9 +43,9 @@ export function breakReferenceCycles(edges: SchemaEdge[]): SchemaEdge[] {
 		// outright. If it cannot be deferred with a getter, look for any other
 		// $ref on the cycle that can.
 		const circularRef =
-			isReference(backEdge[0]) && isPropertyBacked(backEdge[0])
+			isReference(backEdge[0]) && isPropertyBacked(backEdge[0], standaloneSchemas)
 				? backEdge[0]
-				: refs.find(isPropertyBacked);
+				: refs.find((ref) => isPropertyBacked(ref, standaloneSchemas));
 
 		if (!circularRef) {
 			throw unsupportedCycleError(refs);
