@@ -27,7 +27,7 @@
 		"ci:test": "pnpm run --recursive --aggregate-output --reporter-hide-prefix --if-present ci:test",
 		"ci:version": "pnpm changeset version",
 		"ci:publish": "pnpm changeset publish",
-		"verify": "pnpm check:format && pnpm check:lint && pnpm check:types && pnpm ci:test",
+		"verify": "pnpm build:dev && pnpm check:format && pnpm check:lint && pnpm check:types && pnpm ci:test",
 		"security": "pnpm audit --audit-level=high"
 	},
 	"devDependencies": {
