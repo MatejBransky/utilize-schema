@@ -18,6 +18,9 @@
 		"url": "git+https://github.com/MatejBransky/utilize-schema.git",
 		"directory": "packages/zod"
 	},
+	"files": [
+		"dist"
+	],
 	"type": "module",
 	"main": "./dist/index.mjs",
 	"module": "./dist/index.mjs",
