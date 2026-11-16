@@ -36,6 +36,19 @@ files in the repository.
 - Allow the repository admin (Matej) to bypass the ruleset so a solo change
   is still possible; maintainers cannot bypass it.
 
+### Version pull request token
+
+Pull requests created with the repository `GITHUB_TOKEN` do not trigger
+`pull_request` workflows. Configure a GitHub App with `contents: write` and
+`pull-requests: write`, install it on this repository, and set:
+
+- repository variable `RELEASE_APP_CLIENT_ID`
+- repository secret `RELEASE_APP_PRIVATE_KEY`
+
+The Version workflow uses that app token for the version PR, so the required
+`Run code quality tools and tests` check runs. Without it, the workflow falls
+back to `GITHUB_TOKEN` and the version PR will be blocked by the ruleset.
+
 ### `npm-publish` environment
 
 - Required reviewer: Matej.

@@ -23,7 +23,7 @@
 		"check:lint": "oxlint packages",
 		"check:types": "pnpm run --recursive --aggregate-output --reporter-hide-prefix --if-present check:types",
 		"format": "oxfmt .",
-		"test": "pnpm run --recursive --aggregate-output --reporter-hide-prefix --if-present test",
+		"test": "pnpm run --recursive --parallel --aggregate-output --reporter-hide-prefix --if-present test",
 		"ci:test": "pnpm run --recursive --aggregate-output --reporter-hide-prefix --if-present ci:test",
 		"ci:version": "pnpm changeset version",
 		"ci:publish": "pnpm changeset publish",
