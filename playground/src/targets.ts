@@ -9,7 +9,7 @@ export interface Target {
 
 export const targets: Target[] = [
 	{ value: 'zod', label: 'Zod', hint: 'Available' },
-	{ value: 'effect', label: 'Effect Schema', hint: 'Coming soon', disabled: true },
+	{ value: 'effect', label: 'Effect Schema', hint: 'Available' },
 	{ value: 'valibot', label: 'Valibot', hint: 'Coming soon', disabled: true },
 ];
 

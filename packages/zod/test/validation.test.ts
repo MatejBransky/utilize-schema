@@ -116,6 +116,61 @@ const ifThenElseSchema: JSONSchema = {
 	},
 };
 
+describe('array and object size keywords', () => {
+	test('uniqueItems', async () => {
+		const Root = await compileToZod({
+			type: 'array',
+			items: { type: 'number' },
+			uniqueItems: true,
+		});
+
+		expect(Root.safeParse([1, 2]).success).toBe(true);
+		expect(Root.safeParse([]).success).toBe(true);
+		expect(Root.safeParse([1, 1]).success).toBe(false);
+	});
+
+	test('uniqueItems compares objects regardless of key order', async () => {
+		const Root = await compileToZod({
+			type: 'array',
+			items: { type: 'object' },
+			uniqueItems: true,
+		});
+
+		expect(
+			Root.safeParse([
+				{ a: 1, b: 2 },
+				{ b: 2, a: 1 },
+			]).success
+		).toBe(false);
+		expect(Root.safeParse([{ a: 1 }, { a: 2 }]).success).toBe(true);
+	});
+
+	test('uniqueItems false keeps duplicates', async () => {
+		const Root = await compileToZod({ type: 'array', uniqueItems: false });
+
+		expect(Root.safeParse([1, 1]).success).toBe(true);
+	});
+
+	test('minProperties counts undeclared keys too', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: { a: { type: 'string' } },
+			minProperties: 1,
+		});
+
+		expect(Root.safeParse({}).success).toBe(false);
+		expect(Root.safeParse({ a: 'x' }).success).toBe(true);
+		expect(Root.safeParse({ b: 1 }).success).toBe(true);
+	});
+
+	test('maxProperties', async () => {
+		const Root = await compileToZod({ type: 'object', maxProperties: 1 });
+
+		expect(Root.safeParse({ a: 1 }).success).toBe(true);
+		expect(Root.safeParse({ a: 1, b: 2 }).success).toBe(false);
+	});
+});
+
 const propertyNamesSchema: JSONSchema = {
 	type: 'object',
 	additionalProperties: true,

@@ -1,5 +1,6 @@
-import { parse } from '@utilize/json-schema';
-import { generate } from '@utilize/zod';
+import { generate as generateEffect } from '@utilize/effect';
+import { parse, type ParsedJSONSchema } from '@utilize/json-schema';
+import { generate as generateZod } from '@utilize/zod';
 import { Button } from '@ui-sdk/react/button';
 import { Input } from '@ui-sdk/react/input';
 import {
@@ -151,7 +152,7 @@ export default function App() {
 						fileName: bundle.rootFileName,
 					});
 
-					const rawCode = generate(root, { importZod: true });
+					const rawCode = generateCodeFor(target, root);
 
 					nextCode = cancelled ? nextCode : await formatTypeScript(rawCode).catch(() => rawCode);
 				} catch (error) {
@@ -366,6 +367,14 @@ export default function App() {
 
 		if (url.searchParams.has(EXAMPLE_PARAM) || url.hash) {
 			setExampleUrl(null, 'replace');
+		}
+	}
+
+	async function formatGeneratedCode() {
+		try {
+			setCode(await formatTypeScript(codeEditorRef.current?.getValue() ?? code));
+		} catch {
+			// Keep the code as it is when the formatter cannot parse it.
 		}
 	}
 
@@ -588,7 +597,7 @@ export default function App() {
 						<h2 className={styles.heading}>Generated TypeScript</h2>
 						<div className={styles.outputActions}>
 							{busy ? <span className={styles.muted}>Generating…</span> : null}
-							<Button onClick={() => codeEditorRef.current?.format()} disabled={!code || busy}>
+							<Button onClick={formatGeneratedCode} disabled={!code || busy}>
 								Format code
 							</Button>
 							<Button onClick={copyCode} disabled={!code || busy}>
@@ -603,6 +612,7 @@ export default function App() {
 						ariaLabel="Generated TypeScript"
 						language="typescript"
 						path="file:///playground/generated.ts"
+						resolveEffectTypes={target === 'effect'}
 						theme={monacoTheme}
 						value={code || '// Generated code will appear here'}
 						readOnly
@@ -817,4 +827,15 @@ function uniqueName(base: string, files: SchemaFile[]): string {
 	}
 
 	return `${stem}-${counter}${extension}`;
+}
+
+function generateCodeFor(target: TargetId, root: ParsedJSONSchema): string {
+	switch (target) {
+		case 'effect':
+			return generateEffect(root, { importEffect: true });
+		case 'zod':
+			return generateZod(root, { importZod: true });
+		default:
+			throw new Error(`The ${target} generator is not available yet.`);
+	}
 }

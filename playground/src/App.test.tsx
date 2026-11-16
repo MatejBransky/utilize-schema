@@ -133,6 +133,20 @@ test('an example URL loads that example', async () => {
 	await vi.waitFor(() => expect(new URL(location.href).searchParams.get('generator')).toBe('zod'));
 });
 
+test('an agent can switch the generator', async () => {
+	const agent = createAgent({ allow: () => true });
+	await render(<App />);
+
+	const result = await agent.act({
+		steps: [{ ref: 'Generator', action: 'setValue', args: ['Effect Schema'] }],
+	});
+
+	expect(result.ok, result.error?.message).toBe(true);
+	await vi.waitFor(() =>
+		expect(new URL(location.href).searchParams.get('generator')).toBe('effect')
+	);
+});
+
 test('clicking outside the rename input cancels the rename', async () => {
 	const screen = await render(<App />);
 

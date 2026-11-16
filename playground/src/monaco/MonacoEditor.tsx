@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 
-import { monaco } from './setup';
+import { monaco, preloadEffectTypes } from './setup';
 
 import styles from './MonacoEditor.module.css';
 
@@ -17,6 +17,8 @@ interface MonacoEditorProps {
 	theme: string;
 	path?: string;
 	readOnly?: boolean;
+	/** Registers the Effect Schema declarations with the TypeScript worker. */
+	resolveEffectTypes?: boolean;
 	ariaLabel?: string;
 	testId?: string;
 	onChange?: (value: string) => void;
@@ -27,7 +29,18 @@ const FONT_FAMILY =
 	"ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', monospace";
 
 export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(function MonacoEditor(
-	{ value, language, theme, path, readOnly = false, ariaLabel, testId, onChange, onCursorChange },
+	{
+		value,
+		language,
+		theme,
+		path,
+		readOnly = false,
+		resolveEffectTypes: loadEffectTypes = false,
+		ariaLabel,
+		testId,
+		onChange,
+		onCursorChange,
+	},
 	ref
 ) {
 	const hostRef = useRef<HTMLDivElement>(null);
@@ -35,6 +48,12 @@ export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(fu
 	const callbacks = useRef({ onChange, onCursorChange });
 
 	callbacks.current = { onChange, onCursorChange };
+
+	useEffect(() => {
+		if (loadEffectTypes) {
+			void preloadEffectTypes();
+		}
+	}, [loadEffectTypes]);
 
 	useEffect(() => {
 		const host = hostRef.current;

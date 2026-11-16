@@ -29,7 +29,36 @@ pinned in `package.json#packageManager`; Corepack can install it for you.
 
 - `packages/json-schema`: Core JSON Schema utilities and parser.
 - `packages/zod`: Zod code generator and related logic.
-- `playground`: Browser app for editing multi-file schemas and previewing the generated Zod code.
+- `packages/effect`: Effect Schema code generator and related logic.
+- `playground`: Browser app for editing multi-file schemas and previewing the generated Zod or Effect Schema code.
+
+Generators are pluggable: `packages/json-schema` owns parsing, linking and
+normalization, and each target package only maps the parsed tree to its own
+schema API. A new target follows the shape of `packages/effect` — a `generate`
+function that returns a module with one const and one type per standalone
+schema, plus a `compile` helper for the CLI. See the
+[playground README](./playground/README.md#adding-a-generator) for the wiring a
+target needs to show up in the UI.
+
+## Playground previews
+
+Every pull request gets a preview deployment of the playground on Vercel. The
+project uses the **Root Directory** `playground` and `playground/vercel.json`,
+so Vercel installs the pnpm workspace from the repository root and then builds
+only the playground (`playground/dist`).
+
+Keep `vercel.json` inside the Root Directory: Vercel resolves its paths relative
+to it, so a `vercel.json` at the repository root would point at
+`playground/playground/dist` and fail with `STATIC_BUILD_NO_OUT_DIR`.
+
+To set this up on a fork or a new repository:
+
+1. Import the repository in Vercel and set the **Root Directory** to
+   `playground`.
+2. Keep the framework preset on Vite; `playground/vercel.json` supplies the
+   build command and output directory.
+3. Do not add a custom domain to preview deployments, so every PR keeps its own
+   URL.
 
 ## Development Workflow
 

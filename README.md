@@ -1,14 +1,15 @@
 # Utilize Schema Monorepo
 
-Generate robust, type-safe Zod schemas and TypeScript types from JSON Schema — with first-class support for references, standalone definitions, and modern validation features.
+Generate robust, type-safe Zod or Effect Schema codecs and TypeScript types from JSON Schema — with first-class support for references, standalone definitions, and modern validation features.
 
 ---
 
 ## ✨ Features
 
-- **$ref support:** Local, external, and cyclic references. Recursive schemas are emitted as getters or typed `z.lazy()`.
-- **Standalone schema generation:** Every definition gets its own Zod schema and type.
-- **TypeScript-first:** Generates runtime Zod schemas and inferred TypeScript types, including recursive ones.
+- **Pluggable generators:** the parser is generator-agnostic, so a new target only needs a generator. `@utilize/zod` and `@utilize/effect` share the same pipeline.
+- **$ref support:** Local, external, and cyclic references. Each generator picks its own strategy: Zod uses getters or typed `z.lazy()`, Effect Schema always emits `Schema.suspend`.
+- **Standalone schema generation:** Every definition gets its own schema and type.
+- **TypeScript-first:** Generates runtime schemas and TypeScript types, including recursive ones.
 - **Draft support:** Draft-04/06/07, with normalization for 2019-09 and 2020-12.
 
 ---
@@ -23,110 +24,161 @@ Generate robust, type-safe Zod schemas and TypeScript types from JSON Schema —
 
 > Zod code generator. Walks the parsed JSON Schema and emits Zod schemas + TypeScript types.
 
+### [`@utilize/effect`](./packages/effect)
+
+> Effect Schema code generator. Walks the parsed JSON Schema and emits Effect Schema codecs + TypeScript types, with every `$ref` emitted through `Schema.suspend`.
+
 ---
 
 ```typescript
-import { compile } from '@utilize/zod';
+import { compile as compileZod } from '@utilize/zod';
+import { compile as compileEffect } from '@utilize/effect';
 
-await compile({
+await compileZod({
 	input: './schema.json',
-	output: './schema.generated.ts',
+	output: './schema.zod.generated.ts',
 });
+
+await compileEffect({
+	input: './schema.json',
+	output: './schema.effect.generated.ts',
+});
+```
+
+`@utilize/effect` requires `effect` as a peer dependency (`>=4.0.0 <5`):
+
+```sh
+pnpm add effect
 ```
 
 ## 🧪 Playground
 
 The [`playground`](./playground) package is a browser app for editing multiple
-JSON Schema files with references and watching the generated Zod code and
-schema validation update live. It is deployed to GitHub Pages:
-<https://matejbransky.github.io/utilize-schema/>.
+JSON Schema files with references, switching between the Zod and Effect Schema
+generators and watching the generated code and schema validation update live. It
+is deployed to GitHub Pages:
+<https://matejbransky.github.io/utilize-schema/>. Every pull request also gets a
+Vercel preview deployment of the playground.
 
 ---
 
 ## Architecture
 
 1. $ref resolver: resolves all $ref (local, external, cyclic)
-2. linker: annotates node with metadata (parent, referenced schema)
-3. cycle handling: finds recursive $refs and breaks them with a getter or typed `z.lazy()`
-4. generator: emits Zod schemas and TypeScript types, deriving value types for recursive schemas
+2. linker: annotates each node with metadata (parent, referenced schema, path)
+3. generator: one per target, emitting code and types for every standalone schema
+4. target specifics: cycle handling and type inference differ per generator — Zod
+   breaks cycles with getters/`z.lazy()` and derives value types, Effect Schema
+   emits every reference through `Schema.suspend` and annotates only the schemas
+   that take part in a cycle
 
 ---
 
 ## Supported features
 
-| JSON Schema Keyword                     | Supported? | Notes                                                                       |
-| --------------------------------------- | ---------- | --------------------------------------------------------------------------- |
-| `type`                                  | ✅         | Full support                                                                |
-| `enum`                                  | ✅         | Strings use `z.enum()`; other values use `z.literal()`                      |
-| `const`                                 | ✅         | Uses `z.literal()`                                                          |
-| `default`                               | ✅         | Uses `.default()`                                                           |
-| `description` / `title`                 | ✅         | Uses `.meta({})`                                                            |
-| `minimum` / `maximum`                   | ✅         | Supported                                                                   |
-| `exclusiveMinimum` / `exclusiveMaximum` | ✅         | Supported                                                                   |
-| `multipleOf`                            | ✅         | Supported                                                                   |
-| `minLength` / `maxLength`               | ✅         | Supported                                                                   |
-| `pattern`                               | ✅         | Uses `.regex()`                                                             |
-| `format`                                | ✅         | Known formats map to Zod helpers; unknown formats fall back to `z.string()` |
-| `properties`                            | ✅         | Supported                                                                   |
-| `required`                              | ✅         | Supported                                                                   |
-| `additionalProperties`                  | ✅         | Supported                                                                   |
-| `patternProperties`                     | ❌         | Planned, not generated yet                                                  |
-| `propertyNames`                         | ✅         | Uses `.superRefine()`                                                       |
-| `items`                                 | ✅         | Supported                                                                   |
-| `additionalItems`                       | ✅         | Supported                                                                   |
-| `contains`                              | ✅         | Uses `.superRefine()`                                                       |
-| `dependencies`                          | ✅         | Uses `.superRefine()`                                                       |
-| `allOf`                                 | ✅         | Any number of schemas via nested `z.intersection()` calls                   |
-| `anyOf`                                 | ✅         | Uses `z.union()`                                                            |
-| `oneOf`                                 | ✅         | Uses `z.union()`                                                            |
-| `not`                                   | ✅         | Uses `.refine()`                                                            |
-| `$ref`                                  | ✅         | Supported                                                                   |
-| `$defs` / `definitions`                 | ✅         | Supported                                                                   |
-| `if` / `then` / `else`                  | ✅         | Uses `.superRefine()`                                                       |
-| `discriminator`                         | ✅         | Uses `z.discriminatedUnion()`                                               |
-| `$id`                                   | ✅         | Used in `.meta({ id })`; does not affect $ref resolution                    |
-| `examples`                              | ✅         | Uses `.meta({ examples })`                                                  |
-| `$schema`                               | ✅         | Detects draft-04/06/07/2019-09/2020-12; normalizes newer keywords           |
+Both generators accept the same input and are checked against each other by a
+differential test suite (`packages/effect/test/parity.test.ts`), so the table
+below is kept honest by CI.
+
+| JSON Schema Keyword                          | Zod | Effect Schema | Notes                                                                       |
+| -------------------------------------------- | --- | ------------- | --------------------------------------------------------------------------- |
+| `type`                                       | ✅  | ✅            | Full support, including unions of types                                     |
+| `enum`                                       | ✅  | ✅            | Zod uses `z.enum()`/`z.literal()`, Effect uses `Schema.Literals`            |
+| `const`                                      | ✅  | ✅            | Literal schemas                                                             |
+| `default`                                    | ✅  | ✅            | Zod decodes with `.default()`; Effect stores it as an annotation            |
+| `description` / `title`                      | ✅  | ✅            | Zod `.meta({})`, Effect `.annotate({})`                                     |
+| `minimum` / `maximum`                        | ✅  | ✅            | Supported                                                                   |
+| `exclusiveMinimum` / `exclusiveMaximum`      | ✅  | ✅            | Supported (boolean draft-04 form included)                                  |
+| `multipleOf`                                 | ✅  | ✅            | Supported                                                                   |
+| `minLength` / `maxLength`                    | ✅  | ✅            | Effect counts code points, like JSON Schema                                 |
+| `pattern`                                    | ✅  | ✅            | Zod `.regex()`, Effect `Schema.isPattern`                                   |
+| `format`                                     | ✅  | —             | Zod validates known formats; Effect keeps it as an annotation               |
+| `properties`                                 | ✅  | ✅            | Supported                                                                   |
+| `required`                                   | ✅  | ✅            | Supported                                                                   |
+| `additionalProperties`                       | ✅  | ✅            | Zod `z.strictObject`/`.catchall`, Effect keeps excess keys and filters them |
+| `minProperties` / `maxProperties`            | ✅  | ✅            | Counted on the input, so undeclared keys count too                          |
+| `patternProperties`                          | ❌  | ❌            | Not generated                                                               |
+| `propertyNames`                              | ✅  | ✅            | Supported                                                                   |
+| `items`                                      | ✅  | ✅            | Supported                                                                   |
+| `prefixItems`                                | ✅  | ✅            | 2020-12 syntax, also via the tuple form of `items`                          |
+| `additionalItems`                            | ✅  | ✅            | Supported                                                                   |
+| `uniqueItems`                                | ✅  | ✅            | Key-order-insensitive comparison                                            |
+| `contains`                                   | ✅  | ✅            | Supported                                                                   |
+| `minContains` / `maxContains`                | ❌  | ❌            | Rejected instead of silently dropped                                        |
+| `dependencies`                               | ✅  | ✅            | Also covers `dependentRequired` and `dependentSchemas`                      |
+| `allOf`                                      | ✅  | ✅            | Zod intersects any schemas; Effect merges disjoint object subschemas        |
+| `anyOf`                                      | ✅  | ✅            | Supported                                                                   |
+| `oneOf`                                      | ✅  | ✅            | Zod uses `z.union()`, Effect uses the exclusive union mode                  |
+| `not`                                        | ✅  | ✅            | Supported                                                                   |
+| `if` / `then` / `else`                       | ✅  | ✅            | Supported                                                                   |
+| `discriminator`                              | ✅  | —             | Zod emits a discriminated union; Effect ignores the annotation              |
+| `$ref`                                       | ✅  | ✅            | Local, external and cyclic                                                  |
+| `$defs` / `definitions`                      | ✅  | ✅            | Supported                                                                   |
+| `$id`                                        | ✅  | ✅            | Kept as metadata                                                            |
+| `examples`                                   | ✅  | ✅            | Kept as metadata                                                            |
+| `$schema`                                    | ✅  | ✅            | Detects draft-04/06/07/2019-09/2020-12 and normalizes newer keywords        |
+| `unevaluatedProperties` / `unevaluatedItems` | ❌  | ❌            | Rejected by the normalizer                                                  |
+
+`✅` supported, `❌` rejected with a clear error, `—` accepted but only kept as
+an annotation.
 
 Schemas that omit `type` infer it from a single keyword family (object, array,
-string or number), so constraints such as `{ pattern }` or `{ required }`
-are not silently dropped.
-
-2020-12 `prefixItems` maps to the tuple form of `items`, and
-`dependentRequired`/`dependentSchemas` map to `dependencies`. Unknown
-`$schema` values fall back to draft-07. 2019-09/2020-12 keywords without a
-generator (`unevaluatedProperties`, `unevaluatedItems`, `$recursiveRef`,
-`$dynamicRef`) fail with `UnsupportedSchemaFeatureError`.
+string or number), so constraints such as `{ pattern }` or `{ required }` are not
+silently dropped. Unknown `$schema` values fall back to draft-07.
 
 ---
 
-## 🔁 Cyclic references
+## 🔁 Recursive schemas
 
-Recursive `$ref`s are emitted as getters on object properties. That is how Zod
-supports recursive types while keeping TypeScript inference, and cycles are
-broken at the property that contains the recursion.
+Both generators support self-referencing and mutually recursive schemas, but
+they express the recursion differently.
+
+**Zod** emits getters for recursion inside object properties:
+
+```ts
+type TreeValue = { name: string; children?: TreeValue[] };
+export const Tree: z.ZodType<TreeValue> = z.object({
+	name: z.string(),
+	get children() {
+		return z.array(Tree).optional();
+	},
+});
+export type Tree = z.infer<typeof Tree>;
+```
 
 Cycles that cannot be deferred with a getter — array items, tuples, records and
 recursive `additionalProperties` — are emitted as `z.lazy()` together with a
-generated value type. The exported schema is annotated as `z.ZodType<Value>`,
-so TypeScript can still infer the recursive type. Schema-specific methods such
-as `.shape` are not available on those annotated consts; non-recursive schemas
-keep their concrete Zod types.
+generated value type. A cycle that only passes through unions or aliases has no
+value type TypeScript can express recursively, so generation fails with
+`UnsupportedCyclicReferenceError` instead of emitting code that does not
+type-check.
 
-A cycle that only passes through unions or aliases has no value type TypeScript
-can express recursively. Generation then fails with
-`UnsupportedCyclicReferenceError` and the locations of the refs in the cycle,
-instead of emitting code that does not type-check.
+**Effect Schema** always emits references as lazy schemas, so no dependency
+ordering is needed. Schemas that take part in a cycle get a value type and an
+explicit annotation, because an inferred `typeof X.Type` would reference itself
+and collapse to `any`:
 
-The generated `Value` aliases are internal. Use the exported type, for example
-`export type ListCycle = z.infer<typeof ListCycle>`, in your own code.
+```ts
+type TreeValue = { name: string; children?: ReadonlyArray<TreeValue> };
+
+export const Tree: Schema.Codec<TreeValue> = Schema.StructWithRest(
+	Schema.Struct({
+		name: Schema.String,
+		children: Schema.optionalKey(Schema.Array(Schema.suspend(() => Tree))),
+	}),
+	[Schema.Record(Schema.String, Schema.Json)]
+);
+
+export type Tree = typeof Tree.Type;
+```
 
 ---
 
 ## 🤔 Why Utilize Schema?
 
-- **No more hand-written Zod schemas:** Automate your validation and types.
+- **No more hand-written schemas:** Automate validation and types for Zod or Effect Schema.
 - **Handles real-world schemas:** Works with complex, modular, and referenced schemas.
+- **Pluggable targets:** The parser and linker are shared, so adding another target only means writing a generator.
 - **Well-tested, well-documented:** Inspired by the best of open-source codegen tools.
 
 ---

@@ -35,7 +35,10 @@ console.log(meta);
 `isCircular` is a per-file hint: it marks a `$ref` whose target is already on
 the current file's stack. A cycle that spans files, or one that goes through
 references between definitions, has to be derived from the `reference` links by
-the generator. `@utilize/zod` does that before sorting the dependency graph.
+the generator. Generators derive those cycles from the `reference` links, each in its own way:
+`@utilize/zod` sorts a dependency graph and breaks cycles with getters or
+`z.lazy()`, while `@utilize/effect` emits every reference through
+`Schema.suspend`.
 
 `parse` also returns `get($ref)` for looking up a resolved schema and
 `referencedSchemas` for the external files that were loaded.

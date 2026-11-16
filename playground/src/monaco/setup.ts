@@ -52,6 +52,22 @@ for (const [file, content] of Object.entries(zodTypes)) {
 	typescript.typescriptDefaults.addExtraLib(content, `file:///node_modules/zod/${file}`);
 }
 
+let effectTypesPromise: Promise<void> | undefined;
+
+/**
+ * Effect ships ~6 MB of declarations, so they are registered in the TypeScript
+ * worker only when the playground actually shows Effect Schema code.
+ */
+export function preloadEffectTypes(): Promise<void> {
+	effectTypesPromise ??= import('virtual:effect-types').then(({ default: effectTypes }) => {
+		for (const [file, content] of Object.entries(effectTypes)) {
+			typescript.typescriptDefaults.addExtraLib(content, `file:///node_modules/effect/${file}`);
+		}
+	});
+
+	return effectTypesPromise;
+}
+
 // Generated code can be noisy for edge keywords, so keep semantic diagnostics
 // off; hover still uses the full type checker and the real zod types.
 typescript.typescriptDefaults.setDiagnosticsOptions({
