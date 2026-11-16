@@ -12,9 +12,6 @@
 
 const patternProperties = 'patternProperties is not generated yet';
 
-const siblingKeywords =
-	'keywords next to $ref/allOf/anyOf/oneOf are dropped, and only one combinator is generated';
-
 const oneOfKeyword = 'oneOf is emitted as z.union, so exactly-one semantics are not enforced';
 
 const deepEquality = 'const/enum compare non-primitive values by identity instead of deep equality';
@@ -27,8 +24,6 @@ const prototypeNames =
 const idRefs = '$id/$anchor based $ref resolution is not implemented';
 
 const idCycle = 'a self-referencing $id or URN schema is reported as an unsupported cycle';
-
-const booleanRef = '$ref to a boolean schema throws';
 
 const typelessCycle = 'a typeless recursive root cannot be represented as a type-safe Zod schema';
 
@@ -46,13 +41,6 @@ export const knownFailures: Record<string, string> = {
 		patternProperties,
 	'properties.json :: properties, patternProperties, additionalProperties interaction':
 		patternProperties,
-
-	// keywords next to a combinator or $ref
-	'additionalProperties.json :: additionalProperties does not look in applicators': siblingKeywords,
-	'allOf.json :: allOf combined with anyOf, oneOf': siblingKeywords,
-	'allOf.json :: allOf with base schema': siblingKeywords,
-	'anyOf.json :: anyOf with base schema': siblingKeywords,
-	'items.json :: additionalItems does not look in applicators, invalid case': siblingKeywords,
 
 	// oneOf
 	'oneOf.json :: oneOf': oneOfKeyword,
@@ -114,10 +102,6 @@ export const knownFailures: Record<string, string> = {
 	'properties.json :: properties whose names are Javascript object property names': prototypeNames,
 	'required.json :: required properties whose names are Javascript object property names':
 		prototypeNames,
-
-	// boolean schemas
-	'ref-legacy.json :: $ref to boolean schema false': booleanRef,
-	'ref-legacy.json :: $ref to boolean schema true': booleanRef,
 
 	// recursion
 	'ref.json :: root pointer ref': typelessCycle,

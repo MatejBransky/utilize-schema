@@ -83,7 +83,7 @@ export type Meta = {
 	filePath: string;
 	path: Path;
 	parent: ParsedJSONSchema | null;
-	reference?: ParsedJSONSchemaObject;
+	reference?: ParsedJSONSchema;
 	isCircular?: boolean;
 	resolvedName?: string;
 };

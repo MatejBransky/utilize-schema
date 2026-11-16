@@ -53,8 +53,12 @@ function renderType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): 
 	if (generator === refGenerator) {
 		const reference = schema[Meta]?.reference;
 
-		if (!reference) {
+		if (reference === undefined || reference === null) {
 			return 'unknown';
+		}
+
+		if (typeof reference !== 'object') {
+			return reference ? 'unknown' : 'never';
 		}
 
 		return context.aliasFor(reference) ?? context.typeNameFor(reference);

@@ -2,7 +2,13 @@ import type { $Refs } from '@apidevtools/json-schema-ref-parser';
 
 import { join as pathJoin, dirname } from 'path';
 
-import { Meta, type JSONSchema, type ParsedJSONSchemaObject, type Path } from './model';
+import {
+	Meta,
+	type JSONSchema,
+	type ParsedJSONSchema,
+	type ParsedJSONSchemaObject,
+	type Path,
+} from './model';
 import { isPlainObject } from './utils';
 
 export interface LinkNodeOptions {
@@ -50,7 +56,13 @@ export function link({
 		}
 	}
 
-	if (reference && !Array.isArray(reference) && !isPlainObject(reference)) {
+	if (
+		reference !== undefined &&
+		reference !== null &&
+		typeof reference !== 'boolean' &&
+		!Array.isArray(reference) &&
+		!isPlainObject(reference)
+	) {
 		throw new Error(`Reference is not a valid object: ${pointer}`);
 	}
 
@@ -71,7 +83,7 @@ export function link({
 
 	if (ref && $refs.exists(pointer, {})) {
 		const referencedSchema = $refs.get(pointer) as JSONSchema;
-		meta.reference = referencedSchema as ParsedJSONSchemaObject;
+		meta.reference = referencedSchema as unknown as ParsedJSONSchema;
 		meta.isCircular = stack.has(referencedSchema);
 
 		Object.defineProperty(schema, Meta, {

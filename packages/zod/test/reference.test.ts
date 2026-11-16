@@ -282,3 +282,23 @@ describe('recursive reference at runtime', () => {
 		expect(result.success).toBe(true);
 	});
 });
+
+describe('boolean references', () => {
+	test('$ref to true and false schemas', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: {
+				allowed: { $ref: '#/definitions/allowed' },
+				denied: { $ref: '#/definitions/denied' },
+			},
+			definitions: {
+				allowed: true,
+				denied: false,
+			},
+		} as unknown as JSONSchema);
+
+		expect(Root.safeParse({ allowed: 'anything' }).success).toBe(true);
+		expect(Root.safeParse({ denied: 'anything' }).success).toBe(false);
+		expect(Root.safeParse({}).success).toBe(true);
+	});
+});
