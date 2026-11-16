@@ -67,6 +67,9 @@ importers:
       '@utilize/json-schema':
         specifier: workspace:*
         version: link:../json-schema
+      js-yaml:
+        specifier: 5.4.2
+        version: 5.4.2
     devDependencies:
       '@total-typescript/tsconfig':
         specifier: 'catalog:'

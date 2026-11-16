@@ -26,6 +26,18 @@ await compile({
 });
 ```
 
+## CLI
+
+```sh
+utilize-effect schema.json schema.generated.ts
+utilize-effect --input 'schemas/**/*.json' --output generated/
+cat schema.yaml | utilize-effect > schema.generated.ts
+```
+
+Input can be a file, a directory or a glob; JSON and YAML are supported. Output
+defaults to stdout. Every generated file starts with a "do not edit" banner
+(`--no-banner` omits it).
+
 ## Output
 
 For each standalone schema (root, `$defs`, `definitions`, referenced):
