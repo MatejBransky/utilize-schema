@@ -208,7 +208,7 @@ function generateExpression(schema: ParsedJSONSchemaObject, context: Context): s
 			return reference(schema, context);
 		}
 
-		if (allOf !== undefined && siblings.length === 1) {
+		if (allOf !== undefined && allOf.length > 0 && siblings.length === 1) {
 			return generateIntersection([schema, ...allOf], context);
 		}
 
@@ -226,7 +226,7 @@ function generateExpression(schema: ParsedJSONSchemaObject, context: Context): s
 		return literals(schema.enum);
 	}
 
-	if (Array.isArray(schema.allOf)) {
+	if (Array.isArray(schema.allOf) && schema.allOf.length > 0) {
 		return generateIntersection([parentSchema(schema), ...schema.allOf], context);
 	}
 
@@ -505,12 +505,16 @@ function generateObject(schema: ParsedJSONSchemaObject, context: Context): strin
 
 	const fields = keys.map((key) => {
 		const property = Object.hasOwn(properties, key) ? properties[key] : undefined;
+		// A required key without a `properties` entry is still validated by
+		// `additionalProperties`, and is unsatisfiable when that is `false`.
 		const expression =
 			property !== undefined
 				? generateSchema(property, context)
 				: additional === false
 					? 'Schema.Never'
-					: 'Schema.Json';
+					: isPlainObject(additional)
+						? generateSchema(additional, context)
+						: 'Schema.Json';
 
 		return `${JSON.stringify(key)}: ${
 			required.has(key) ? expression : `Schema.optionalKey(${expression})`

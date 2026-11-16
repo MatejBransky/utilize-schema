@@ -244,7 +244,9 @@ function renderObject(
 				? renderValueType(property, context, self, true)
 				: additional === false
 					? 'never'
-					: 'Schema.Json';
+					: isPlainObject(additional)
+						? renderValueType(additional, context, self, true)
+						: 'Schema.Json';
 
 		return `${propertyKey(key)}${required.has(key) ? '' : '?'}: ${type}`;
 	});

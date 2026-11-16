@@ -1,0 +1,33 @@
+{
+	"$schema": "https://json-schema.org/draft-07/schema",
+	"type": "object",
+	"properties": {
+		"testArray": {
+			"$ref": "#/definitions/TestArray"
+		},
+		"testObject": {
+			"$ref": "#/definitions/TestObject"
+		}
+	},
+	"definitions": {
+		"TestArray": {
+			"type": "object",
+			"properties": {
+				"propertyA": {
+					"type": "array",
+					"items": {
+						"$ref": "./PropertyA.json"
+					}
+				}
+			}
+		},
+		"TestObject": {
+			"type": "object",
+			"properties": {
+				"propertyB": {
+					"$ref": "./PropertyB.json"
+				}
+			}
+		}
+	}
+}

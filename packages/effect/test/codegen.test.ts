@@ -233,6 +233,63 @@ describe('code generation', () => {
 		`);
 	});
 
+	test('intersects more than two allOf subschemas', async () => {
+		const result = await compile({
+			allOf: [
+				{ type: 'object', properties: { a: { type: 'string' } }, required: ['a'] },
+				{ type: 'object', properties: { b: { type: 'number' } }, required: ['b'] },
+				{ type: 'object', properties: { c: { type: 'boolean' } }, required: ['c'] },
+			],
+		});
+
+		await expect(result).toMatchCode(ts`
+			export const Root = Schema.StructWithRest(
+				Schema.Struct({
+					a: Schema.String,
+					b: Schema.Finite,
+					c: Schema.Boolean,
+				}),
+				[Schema.Record(Schema.String, Schema.Json)]
+			);
+
+			export type Root = typeof Root.Type;
+		`);
+	});
+
+	test('treats an empty allOf as no constraint', async () => {
+		const result = await compile({ allOf: [] });
+
+		await expect(result).toMatchCode(ts`
+			export const Root = Schema.Json;
+
+			export type Root = typeof Root.Type;
+		`);
+	});
+
+	test('maps a union of types to a union of schemas', async () => {
+		const result = await compile({ type: ['string', 'null'] });
+
+		await expect(result).toMatchCode(ts`
+			export const Root = Schema.Union([Schema.String, Schema.Null]);
+
+			export type Root = typeof Root.Type;
+		`);
+	});
+
+	test('emits boolean literals for const', async () => {
+		await expect(await compile({ const: false })).toMatchCode(ts`
+			export const Root = Schema.Literal(false);
+
+			export type Root = typeof Root.Type;
+		`);
+
+		await expect(await compile({ const: true })).toMatchCode(ts`
+			export const Root = Schema.Literal(true);
+
+			export type Root = typeof Root.Type;
+		`);
+	});
+
 	test('keeps every JSON type for schemas without a type', async () => {
 		const result = await compile({ minLength: 2 });
 

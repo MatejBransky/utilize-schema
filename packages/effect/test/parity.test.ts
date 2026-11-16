@@ -314,6 +314,17 @@ describe('design differences', () => {
 		expect(Schema.is(effectRoot)('not-an-email')).toBe(true);
 		expect(zodValid(zodRoot, 'not-an-email')).toBe(false);
 	});
+
+	test('an empty allOf is vacuous for Effect and never for Zod', async () => {
+		const schema: TestSchema = { allOf: [] };
+		const [zodRoot, effectRoot] = await Promise.all([
+			loadRoot(schema, 'zod'),
+			loadRoot(schema, 'effect'),
+		]);
+
+		expect(Schema.is(effectRoot)(1)).toBe(true);
+		expect(zodValid(zodRoot, 1)).toBe(false);
+	});
 });
 
 async function loadRoot(schema: TestSchema, target: 'zod' | 'effect') {
