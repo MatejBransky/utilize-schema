@@ -1,4 +1,8 @@
+import { parse } from '@utilize/json-schema';
+import { generate } from '@utilize/zod';
 import { expect, test } from 'vitest';
+
+import './polyfills';
 
 import { buildBundle, parseJsonFile, type SchemaFile } from './bundle';
 
@@ -49,4 +53,31 @@ test('percent-decodes JSON Pointer fragments', () => {
 	const bundle = buildBundle([parseJsonFile(root)], 'root');
 
 	expect(bundle.problems).toEqual([]);
+});
+
+test('reports duplicate normalized file names', () => {
+	const first = file('first', './person.json', { type: 'string' });
+	const second = file('second', 'person.json', { type: 'number' });
+
+	const bundle = buildBundle([parseJsonFile(first), parseJsonFile(second)], 'first');
+
+	expect(bundle.problems.some((problem) => problem.message.includes('Duplicate file name'))).toBe(
+		true
+	);
+});
+
+test('generates a root schema that only contains a $ref', async () => {
+	const root = file('root', 'root.json', { $ref: './child.json' });
+	const child = file('child', 'child.json', { type: 'string' });
+
+	const bundle = buildBundle([parseJsonFile(root), parseJsonFile(child)], 'root');
+	expect(bundle.problems).toEqual([]);
+
+	const parsed = await parse(bundle.root as never, {
+		cwd: '/',
+		fileName: bundle.rootFileName,
+	});
+	const code = generate(parsed.root, { importZod: true });
+
+	expect(code).toContain('export const');
 });

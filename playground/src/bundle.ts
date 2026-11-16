@@ -129,8 +129,22 @@ export function buildBundle(parsedFiles: ParsedFile[], rootId: string): BundleRe
 		keyByFile.set(parsed.file.id, key);
 	}
 
-	const byName = new Map(parsedFiles.map((parsed) => [normalizeName(parsed.file.name), parsed]));
+	const byName = new Map<string, ParsedFile>();
 	const parsedById = new Map(parsedFiles.map((parsed) => [parsed.file.id, parsed]));
+
+	for (const parsed of parsedFiles) {
+		const name = normalizeName(parsed.file.name);
+
+		if (byName.has(name)) {
+			problems.push({
+				fileId: parsed.file.id,
+				severity: 'error',
+				message: `Duplicate file name "${name}". Rename one of the files.`,
+			});
+		} else {
+			byName.set(name, parsed);
+		}
+	}
 	const rewritten = new Map<string, unknown>();
 	const context: RewriteContext = {
 		rootId: rootParsed.file.id,

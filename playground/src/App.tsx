@@ -12,7 +12,7 @@ import {
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@ui-sdk/react/tabs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { buildBundle, parseJsonFile, type Problem, type SchemaFile } from './bundle';
+import { buildBundle, normalizeName, parseJsonFile, type Problem, type SchemaFile } from './bundle';
 import { defaultExampleId, exampleById, examples } from './examples';
 import { formatTypeScript } from './monaco/format';
 import { MonacoEditor, type MonacoEditorHandle } from './monaco/MonacoEditor';
@@ -41,6 +41,7 @@ export default function App() {
 	const [activeId, setActiveId] = useState(initial.files[0]?.id ?? '');
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [draftName, setDraftName] = useState('');
+	const [renameError, setRenameError] = useState<string | null>(null);
 	const [code, setCode] = useState('');
 	const [busy, setBusy] = useState(false);
 	const [generationProblems, setGenerationProblems] = useState<Problem[]>([]);
@@ -290,6 +291,7 @@ export default function App() {
 	function startRename(file: SchemaFile) {
 		setEditingId(file.id);
 		setDraftName(file.name);
+		setRenameError(null);
 	}
 
 	function commitRename() {
@@ -299,6 +301,17 @@ export default function App() {
 
 		const name = draftName.trim();
 
+		if (
+			name &&
+			files.some(
+				(file) => file.id !== editingId && normalizeName(file.name) === normalizeName(name)
+			)
+		) {
+			setRenameError('A file with this name already exists.');
+			return;
+		}
+
+		setRenameError(null);
 		if (name) {
 			updateFile(editingId, { name });
 		}
@@ -473,6 +486,10 @@ export default function App() {
 													<Input
 														className={styles.tabInput}
 														aria-label="File name"
+
+														aria-invalid={renameError ? true : undefined}
+
+														title={renameError ?? undefined}
 														data-rename-input=""
 														value={draftName}
 														autoFocus
@@ -524,6 +541,11 @@ export default function App() {
 							<Button className={styles.addTab} aria-label="Add file" onClick={addFile}>
 								<PlusIcon />
 							</Button>
+							{renameError ? (
+								<span className={styles.renameError} role="alert">
+									{renameError}
+								</span>
+							) : null}
 						</div>
 
 						{files.map((file) => (

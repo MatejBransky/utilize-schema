@@ -153,3 +153,14 @@ test('share feedback resets when the workspace changes', async () => {
 	await screen.getByLabelText('Add file').click();
 	await expect.element(screen.getByRole('button', { name: 'Share' })).toBeVisible();
 });
+
+test('rejects renaming to an existing file name', async () => {
+	const screen = await render(<App />);
+
+	await screen.getByLabelText('Rename person.json').click();
+	await screen.getByLabelText('File name').fill('address.json');
+	await screen.getByLabelText('Confirm rename').click();
+
+	await expect.element(screen.getByText('A file with this name already exists.')).toBeVisible();
+	expect(screen.getByLabelText('File name')).toBeInTheDocument();
+});
