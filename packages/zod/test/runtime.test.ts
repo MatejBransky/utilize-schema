@@ -134,3 +134,37 @@ function makeTreeSchema(options: { title?: string; childRef?: string } = {}): JS
 		required: ['name'],
 	};
 }
+
+describe('literal values', () => {
+	test('compares const and enum values by deep equality', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: {
+				config: { const: { a: 1, b: [true, null] } },
+				mode: { enum: [{ kind: 'x' }, [1, 2], 'plain'] },
+			},
+		});
+
+		expect(Root.safeParse({ config: { b: [true, null], a: 1 } }).success).toBe(true);
+		expect(Root.safeParse({ config: { a: 1, b: [true, null], extra: 1 } }).success).toBe(false);
+		expect(Root.safeParse({ config: { a: 1, b: [true, 0] } }).success).toBe(false);
+
+		expect(Root.safeParse({ mode: { kind: 'x' } }).success).toBe(true);
+		expect(Root.safeParse({ mode: { kind: 'x', extra: 1 } }).success).toBe(false);
+		expect(Root.safeParse({ mode: [1, 2] }).success).toBe(true);
+		expect(Root.safeParse({ mode: [1, 2, 3] }).success).toBe(false);
+		expect(Root.safeParse({ mode: 'plain' }).success).toBe(true);
+	});
+
+	test('requires exactly one oneOf branch to match', async () => {
+		const Root = await compileToZod({
+			type: 'number',
+			oneOf: [{ multipleOf: 2 }, { multipleOf: 3 }],
+		});
+
+		expect(Root.safeParse(2).success).toBe(true);
+		expect(Root.safeParse(3).success).toBe(true);
+		expect(Root.safeParse(6).success).toBe(false);
+		expect(Root.safeParse(5).success).toBe(false);
+	});
+});

@@ -12,10 +12,6 @@
 
 const patternProperties = 'patternProperties is not generated yet';
 
-const oneOfKeyword = 'oneOf is emitted as z.union, so exactly-one semantics are not enforced';
-
-const deepEquality = 'const/enum compare non-primitive values by identity instead of deep equality';
-
 const format = 'format validation disagrees with the Zod helpers (strict or loose)';
 
 const prototypeNames =
@@ -41,30 +37,6 @@ export const knownFailures: Record<string, string> = {
 		patternProperties,
 	'properties.json :: properties, patternProperties, additionalProperties interaction':
 		patternProperties,
-
-	// oneOf
-	'oneOf.json :: oneOf': oneOfKeyword,
-	'oneOf.json :: oneOf complex types': oneOfKeyword,
-	'oneOf.json :: oneOf with base schema': oneOfKeyword,
-	'oneOf.json :: oneOf with boolean schemas, all true': oneOfKeyword,
-	'oneOf.json :: oneOf with boolean schemas, more than one true': oneOfKeyword,
-	'oneOf.json :: oneOf with empty schema': oneOfKeyword,
-	'oneOf.json :: oneOf with missing optional property': oneOfKeyword,
-	'oneOf.json :: oneOf with required': oneOfKeyword,
-
-	// const/enum deep equality
-	'const.json :: const with [false] does not match [0]': deepEquality,
-	'const.json :: const with [true] does not match [1]': deepEquality,
-	'const.json :: const with array': deepEquality,
-	'const.json :: const with object': deepEquality,
-	'const.json :: const with {"a": false} does not match {"a": 0}': deepEquality,
-	'const.json :: const with {"a": true} does not match {"a": 1}': deepEquality,
-	'enum.json :: enum with [0] does not match [false]': deepEquality,
-	'enum.json :: enum with [1] does not match [true]': deepEquality,
-	'enum.json :: enum with [false] does not match [0]': deepEquality,
-	'enum.json :: enum with [true] does not match [1]': deepEquality,
-	'enum.json :: heterogeneous enum validation': deepEquality,
-	'ref-legacy.json :: naive replacement of $ref with its destination is not correct': deepEquality,
 
 	// format
 	'format-date-time.json :: validation of date-time strings': format,
