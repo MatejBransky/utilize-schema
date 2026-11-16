@@ -2,7 +2,7 @@ import { assert, expect, test } from 'vitest';
 
 import RefProperties from './RefProperties.json';
 
-import { Meta, parse, type JSONSchema } from '../src';
+import { Meta, parse, type JSONSchema, type ParsedJSONSchemaObject } from '../src';
 
 test('parser', async () => {
 	const parsed = await parse(RefProperties as JSONSchema, {
@@ -107,6 +107,21 @@ test('a property named $ref is not treated as a reference', async () => {
 
 	assert(typeof parsed.root === 'object' && parsed.root !== null);
 	expect(parsed.root.properties?.$ref?.[Meta].reference).toBeUndefined();
+});
+
+test('links sibling definitions when the root is a $ref', async () => {
+	const schema: JSONSchema = {
+		$ref: '#/$defs/Child',
+		$defs: { Child: { type: 'string' } },
+	};
+	const parsed = await parse(schema, {
+		cwd: __dirname + '/',
+		fileName: 'Unknown',
+	});
+
+	assert(typeof parsed.root === 'object' && parsed.root !== null);
+	const defs = (parsed.root as { $defs?: Record<string, ParsedJSONSchemaObject> }).$defs;
+	expect(defs?.Child?.[Meta]).toBeDefined();
 });
 
 test('circular references', async () => {

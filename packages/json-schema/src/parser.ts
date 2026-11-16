@@ -1,7 +1,7 @@
 import { $RefParser } from '@apidevtools/json-schema-ref-parser';
 
 import { link } from './linker';
-import { type JSONSchema, type ParsedJSONSchema } from './model';
+import { Meta, type JSONSchema, type ParsedJSONSchema } from './model';
 import { detectSchemaVersion, normalizeSchema } from './normalize';
 
 type SchemaPath = string;
@@ -52,6 +52,18 @@ export async function parse(
 	});
 	console.log(`Parsed ${entries.length} schemas from ${rootFileName} at ${cwd}`);
 	const root = $refs.get('#') as unknown as ParsedJSONSchema;
+
+	if (typeof root === 'object' && root !== null && !Object.hasOwnProperty.call(root, Meta)) {
+		link({
+			schema: root,
+			parent: null,
+			fileName: rootFileName,
+			filePath: '#',
+			path: [],
+			$refs,
+			stack: new Set(),
+		});
+	}
 
 	return {
 		root,

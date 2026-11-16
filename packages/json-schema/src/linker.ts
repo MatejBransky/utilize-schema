@@ -80,6 +80,28 @@ export function link({
 			writable: false,
 		});
 
+		// A root `$ref` can carry sibling definitions (for example after the
+		// playground bundles a remote file). Link them too.
+		stack.add(schema);
+
+		for (const [key, value] of Object.entries(schema)) {
+			if (key === '$ref') {
+				continue;
+			}
+
+			link({
+				schema: value,
+				parent: schema,
+				path: [...path, key],
+				filePath,
+				$refs,
+				stack,
+				fileName,
+			});
+		}
+
+		stack.delete(schema);
+
 		return schema as unknown as ParsedJSONSchemaObject;
 	}
 
