@@ -30,6 +30,13 @@ export const generator = createGenerator(
 			return `${key}: ${generateSchema(value, context)}${optionalPart}`;
 		});
 		const propertiesPart = properties.join(`,${NEWLINE}`);
+		const requiredWithoutProperties = (schema.required ?? []).filter(
+			(key) => !(key in (schema.properties ?? {}))
+		);
+		const requiredPart = requiredWithoutProperties
+			.map((key) => `${key}: z.unknown()`)
+			.join(`,${NEWLINE}`);
+		const allProperties = [propertiesPart, requiredPart].filter(Boolean).join(`,${NEWLINE}`);
 
 		const additionalProperties =
 			schema.additionalProperties !== undefined
@@ -39,18 +46,18 @@ export const generator = createGenerator(
 
 		if (schema.additionalProperties === false) {
 			return ts`z.strictObject({
-        ${propertiesPart}
+        ${allProperties}
       })`;
 		}
 
 		if (schema.additionalProperties === true) {
 			return ts`z.looseObject({
-        ${propertiesPart}
+        ${allProperties}
       })`;
 		}
 
 		return ts`z.object({
-      ${propertiesPart}
+      ${allProperties}
     })${catchAllPart}`;
 	}
 );

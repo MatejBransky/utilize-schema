@@ -73,6 +73,26 @@ export function collectStandaloneSchemas(root: ParsedJSONSchemaObject): Standalo
 			visit(schema.additionalItems, schema);
 		}
 
+		if (schema.contains) {
+			visit(schema.contains, schema);
+		}
+
+		if (schema.propertyNames) {
+			visit(schema.propertyNames, schema);
+		}
+
+		if (schema.if) {
+			visit(schema.if as ParsedJSONSchemaObject, schema);
+		}
+
+		if (schema.then) {
+			visit(schema.then as ParsedJSONSchemaObject, schema);
+		}
+
+		if (schema.else) {
+			visit(schema.else as ParsedJSONSchemaObject, schema);
+		}
+
 		if (schema.allOf) schema.allOf.forEach((n) => visit(n, schema));
 		if (schema.anyOf) schema.anyOf.forEach((n) => visit(n, schema));
 		if (schema.oneOf) schema.oneOf.forEach((n) => visit(n, schema));

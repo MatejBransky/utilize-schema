@@ -64,24 +64,26 @@ await compile({
 | `required`                              | ✅         | Supported                                                                               |
 | `additionalProperties`                  | ✅         | Supported                                                                               |
 | `patternProperties`                     | ❌         | Planned, not generated yet                                                              |
-| `propertyNames`                         | ❌         | Planned, not generated yet                                                              |
+| `propertyNames`                         | ✅         | Uses `.superRefine()`                                                                   |
 | `items`                                 | ✅         | Supported                                                                               |
 | `additionalItems`                       | ✅         | Supported                                                                               |
-| `contains`                              | ❌         | Planned, not generated yet                                                              |
-| `dependencies`                          | ❌         | Planned, not generated yet                                                              |
+| `contains`                              | ✅         | Uses `.superRefine()`                                                                   |
+| `dependencies`                          | ✅         | Uses `.superRefine()`                                                                   |
 | `allOf`                                 | ⚠️         | Only two schemas supported via `z.intersection()`, more planned                         |
 | `anyOf`                                 | ✅         | Uses `z.union()`                                                                        |
 | `oneOf`                                 | ✅         | Uses `z.union()`                                                                        |
-| `not`                                   | ❌         | Planned, not generated yet                                                              |
+| `not`                                   | ✅         | Uses `.refine()`                                                                        |
 | `$ref`                                  | ✅         | Supported                                                                               |
 | `$defs` / `definitions`                 | ✅         | Supported                                                                               |
-| `if` / `then` / `else`                  | ❌         | Planned, not generated yet                                                              |
+| `if` / `then` / `else`                  | ✅         | Uses `.superRefine()`                                                                   |
 | `discriminator`                         | ✅         | Uses `z.discriminatedUnion()`                                                           |
 | `$id`                                   | ✅         | Used in `.meta({ id })`; does not affect $ref resolution                                |
-| `examples`                              | ❌         | Ignored metadata                                                                        |
+| `examples`                              | ✅         | Uses `.meta({ examples })`                                                              |
 | `$schema`                               | ⚠️         | Planned: Will detect and support multiple JSON Schema versions based on `$schema` value |
 
-Keywords marked as planned are not generated yet.
+Schemas that omit `type` infer it from a single keyword family (object, array,
+string or number), so constraints such as `{ pattern }` or `{ required }`
+are not silently dropped.
 
 ---
 

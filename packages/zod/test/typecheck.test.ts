@@ -88,6 +88,59 @@ const defaultOverRecursiveUnionSchema: JSONSchema = {
 	},
 };
 
+const notSchema: JSONSchema = {
+	type: 'string',
+	not: { const: 'forbidden' },
+};
+
+const ifThenElseSchema: JSONSchema = {
+	type: 'object',
+	properties: {
+		country: { type: 'string' },
+		postal: { type: 'string' },
+	},
+	required: ['country'],
+	if: {
+		properties: { country: { const: 'US' } },
+		required: ['country'],
+	},
+	then: {
+		properties: { postal: { pattern: '^[0-9]{5}$' } },
+		required: ['postal'],
+	},
+	else: {
+		properties: { postal: { minLength: 3 } },
+	},
+};
+
+const containsSchema: JSONSchema = {
+	type: 'array',
+	contains: { type: 'number' },
+};
+
+const propertyNamesSchema: JSONSchema = {
+	type: 'object',
+	additionalProperties: true,
+	propertyNames: { pattern: '^[a-z]+$' },
+};
+
+const dependenciesSchema: JSONSchema = {
+	type: 'object',
+	properties: {
+		a: { type: 'string' },
+		b: { type: 'string' },
+	},
+	dependencies: {
+		a: ['b'],
+		b: { required: ['a'] },
+	},
+};
+
+const examplesSchema: JSONSchema = {
+	type: 'string',
+	examples: ['a', 'b'],
+};
+
 describe('generated recursive schemas type-check', () => {
 	test('infer recursive value types with TypeScript', async () => {
 		await expect(
@@ -103,6 +156,12 @@ describe('generated recursive schemas type-check', () => {
 				'Array.ts': recursiveArraySchema,
 				'Tuple.ts': recursiveTupleSchema,
 				'DefaultOverRecursiveUnion.ts': defaultOverRecursiveUnionSchema,
+				'Not.ts': notSchema,
+				'IfThenElse.ts': ifThenElseSchema,
+				'Contains.ts': containsSchema,
+				'PropertyNames.ts': propertyNamesSchema,
+				'Dependencies.ts': dependenciesSchema,
+				'Examples.ts': examplesSchema,
 			})
 		).resolves.toBeUndefined();
 	});

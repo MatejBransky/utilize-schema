@@ -7,6 +7,7 @@ import { unsupportedUnionCycleError } from './errors';
 import { findCyclicSchemas } from './findCyclicSchemas';
 import { generateSchema } from './generators/generateSchema';
 import type { GeneratorContext } from './generators/types';
+import { inferTypes } from './inferTypes';
 import { resolveName, type CustomNameResolver } from './resolveName';
 import { NEWLINE, ts } from './utils';
 import { renderValueTypeDeclaration, type ValueTypeContext } from './valueTypes';
@@ -21,6 +22,8 @@ export function generate(
 	if (typeof root !== 'object' || root === null) {
 		return generateSchema(root, { usedNames, lazyRefs });
 	}
+
+	inferTypes(root);
 
 	const { schemas: standaloneSchemas, edges } = collectStandaloneSchemas(root);
 	const { schemas: cyclicSchemas, unsupported } = findCyclicSchemas(edges, standaloneSchemas);
