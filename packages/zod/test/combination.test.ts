@@ -148,47 +148,41 @@ describe('schema combinations', () => {
 			},
 		});
 
-		expect(result).toMatchInlineSnapshot(`
-			"export const SchemaArray = z.array(Schema).min(1);
-			export type SchemaArray = z.infer<typeof SchemaArray>;
+		await expect(result).toMatchCode(ts`
+export const NonNegativeInteger = z.int().min(0);
+export type NonNegativeInteger = z.infer<typeof NonNegativeInteger>;
 
-			export const NonNegativeInteger = z.int().min(0);
-			export type NonNegativeInteger = z.infer<typeof NonNegativeInteger>;
+export const NonNegativeIntegerDefault0 = z.intersection(
+	NonNegativeInteger,
+	z.number().default(0)
+);
+export type NonNegativeIntegerDefault0 = z.infer<typeof NonNegativeIntegerDefault0>;
 
-			export const NonNegativeIntegerDefault0 = z.intersection(
-				NonNegativeInteger,
-				z.number().default(0)
-			);
-			export type NonNegativeIntegerDefault0 = z.infer<
-				typeof NonNegativeIntegerDefault0
-			>;
+export const MinLength = NonNegativeIntegerDefault0;
+export type MinLength = z.infer<typeof MinLength>;
 
-			export const MinLength = NonNegativeIntegerDefault0;
-			export type MinLength = z.infer<typeof MinLength>;
+export const MaxLength = NonNegativeInteger;
+export type MaxLength = z.infer<typeof MaxLength>;
 
-			export const MaxLength = NonNegativeInteger;
-			export type MaxLength = z.infer<typeof MaxLength>;
+export const Schema = z
+	.union([
+		z
+			.object({
+				$id: z.string().optional(),
+				maxLength: NonNegativeInteger.optional(),
+				minLength: NonNegativeIntegerDefault0.optional(),
+				get items() {
+					return z.union([Schema, SchemaArray]).default(true);
+				},
+			})
+			.meta({ id: 'http://json-schema.org/draft-07/schema#' }),
+		z.boolean().meta({ id: 'http://json-schema.org/draft-07/schema#' }),
+	])
+	.meta({ id: 'http://json-schema.org/draft-07/schema#', title: 'Core schema meta-schema' });
+export type Schema = z.infer<typeof Schema>;
 
-			export const Schema = z
-				.union([
-					z
-						.object({
-							$id: z.string().optional(),
-							maxLength: NonNegativeInteger.optional(),
-							minLength: NonNegativeIntegerDefault0.optional(),
-							get items() {
-								return z.union([Schema, SchemaArray]).default(true);
-							},
-						})
-						.meta({ id: 'http://json-schema.org/draft-07/schema#' }),
-					z.boolean().meta({ id: 'http://json-schema.org/draft-07/schema#' }),
-				])
-				.meta({
-					id: 'http://json-schema.org/draft-07/schema#',
-					title: 'Core schema meta-schema',
-				});
-			export type Schema = z.infer<typeof Schema>;
-			"
-		`);
+export const SchemaArray = z.array(Schema).min(1);
+export type SchemaArray = z.infer<typeof SchemaArray>;
+`);
 	});
 });

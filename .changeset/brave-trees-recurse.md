@@ -1,5 +1,5 @@
 ---
-"@utilize/zod": patch
+'@utilize/zod': patch
 ---
 
-fix cyclic $refs that span multiple files or are nested in items, anyOf, oneOf and similar keywords
+break cyclic $refs at object properties; cycles that cannot be deferred with a getter now fail at generation instead of producing code that throws at import

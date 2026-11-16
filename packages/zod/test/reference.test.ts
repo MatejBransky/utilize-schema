@@ -117,9 +117,6 @@ describe('reference', () => {
       export const Category = z.string();
       export type Category = z.infer<typeof Category>;
 
-      export const Meta = z.string();
-      export type Meta = z.infer<typeof Meta>;
-
       export const DataType = z
               .enum([
                       'BOOLEAN',
@@ -133,6 +130,9 @@ describe('reference', () => {
               ])
               .meta({ title: 'DataType' });
       export type DataType = z.infer<typeof DataType>;
+
+      export const Meta = z.string();
+      export type Meta = z.infer<typeof Meta>;
 
       export const Root = z.object({
               name: z.string().optional(),

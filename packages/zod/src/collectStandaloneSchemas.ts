@@ -25,18 +25,20 @@ export function collectStandaloneSchemas(root: ParsedJSONSchemaObject): Standalo
 		seen.add(schema);
 
 		// 1. If schema is referenced by $ref somewhere, mark as standalone
-		if (schema[Meta]?.reference && !schema[Meta].isCircular) {
+		if (schema[Meta]?.reference) {
 			standalone.add(schema[Meta].reference);
 			visit(schema[Meta].reference, schema);
 		}
 
 		const definitions = schema.$defs || schema.definitions;
 
-		// 2. If schema is in $defs or definitions, mark as standalone
+		// 2. If schema is in $defs or definitions, mark as standalone.
+		// Definitions get their own const, so they are not ordered under the
+		// schema that declares them: ordering must follow $ref edges only.
 		if (definitions) {
 			for (const def of Object.values(definitions)) {
 				standalone.add(def);
-				visit(def, schema);
+				visit(def, null);
 			}
 		}
 
