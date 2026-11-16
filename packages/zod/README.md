@@ -75,6 +75,19 @@ code.
 - Selects the right generator for each schema node
 - Emits Zod code and inferred types
 
+## CLI
+
+```sh
+utilize-zod schema.json schema.generated.ts
+utilize-zod --input 'schemas/**/*.json' --output generated/
+cat schema.yaml | utilize-zod > schema.generated.ts
+```
+
+Input can be a file, a directory or a glob; JSON and YAML are supported. Output
+defaults to stdout. Every generated file starts with a "do not edit" banner
+(`--no-banner` omits it). Pass `--readonly` to map `readOnly: true` to
+`.readonly()`.
+
 ## Testing
 
 ```sh
