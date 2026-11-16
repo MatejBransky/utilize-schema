@@ -113,10 +113,9 @@ function normalizeNode(node: Record<string, unknown>, version: SchemaVersion): v
 		normalizeDraft04ExclusiveBounds(node);
 	}
 
-	if (version !== '2019-09' && version !== '2020-12') {
-		return;
-	}
-
+	// These keywords have a single meaning and schemas often omit `$schema`, so
+	// map them before the version guard.
+	//
 	// `additionalProperties` / `additionalItems` cover the common case, where the
 	// schema does not rely on properties evaluated by applicators. That mapping
 	// is best effort; the full `unevaluated*` semantics need evaluation tracking.
@@ -136,6 +135,10 @@ function normalizeNode(node: Record<string, unknown>, version: SchemaVersion): v
 		}
 
 		delete node.unevaluatedItems;
+	}
+
+	if (version !== '2019-09' && version !== '2020-12') {
+		return;
 	}
 
 	for (const keyword of ['$recursiveRef', '$dynamicRef', 'minContains', 'maxContains']) {

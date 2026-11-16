@@ -24,13 +24,7 @@ type Context = {
 };
 
 /** Keywords that have no Effect Schema equivalent and are rejected instead of ignored. */
-const UNSUPPORTED_KEYWORDS = [
-	'patternProperties',
-	'minContains',
-	'maxContains',
-	'unevaluatedProperties',
-	'unevaluatedItems',
-] as const;
+const UNSUPPORTED_KEYWORDS = ['patternProperties', 'minContains', 'maxContains'] as const;
 
 /**
  * Keywords applied as filters on top of a generated schema. `dependentRequired`

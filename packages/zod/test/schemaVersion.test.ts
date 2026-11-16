@@ -130,6 +130,17 @@ describe('$schema versions', () => {
 		expect(Root.safeParse({ a: 'x', b: 1 }).success).toBe(false);
 	});
 
+	test('unevaluatedProperties maps without $schema', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: { a: { type: 'string' } },
+			unevaluatedProperties: false,
+		});
+
+		expect(Root.safeParse({ a: 'x' }).success).toBe(true);
+		expect(Root.safeParse({ a: 'x', b: 1 }).success).toBe(false);
+	});
+
 	test('2020-12 unevaluatedItems maps to the items rest', async () => {
 		const Root = await compileToZod({
 			$schema: 'https://json-schema.org/draft/2020-12/schema',

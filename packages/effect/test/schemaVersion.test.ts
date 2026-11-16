@@ -121,6 +121,17 @@ describe('$schema versions', () => {
 		expect(decode(Root, { a: 'x', b: 1 })).toBeUndefined();
 	});
 
+	test('unevaluatedProperties maps without $schema', async () => {
+		const Root = await compileToSchema({
+			type: 'object',
+			properties: { a: { type: 'string' } },
+			unevaluatedProperties: false,
+		});
+
+		expect(decode(Root, { a: 'x' })).toEqual({ a: 'x' });
+		expect(decode(Root, { a: 'x', b: 1 })).toBeUndefined();
+	});
+
 	test('2020-12 unevaluatedItems maps to the items rest', async () => {
 		const Root = await compileToSchema({
 			$schema: 'https://json-schema.org/draft/2020-12/schema',
