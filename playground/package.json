@@ -1,0 +1,41 @@
+{
+	"name": "playground",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "tsc --noEmit && vite build",
+		"preview": "vite preview",
+		"check:types": "tsc --noEmit",
+		"test": "vitest run",
+		"ci:test": "vitest run"
+	},
+	"dependencies": {
+		"@ui-sdk/core": "0.1.0-beta.3",
+		"@ui-sdk/react": "0.1.0-beta.3",
+		"@utilize/json-schema": "workspace:*",
+		"@utilize/zod": "workspace:*",
+		"ajv": "8.20.0",
+		"ajv-draft-04": "1.0.0",
+		"buffer": "6.0.3",
+		"monaco-editor": "0.57.0",
+		"path-browserify": "1.0.1",
+		"react": "19.3.1",
+		"react-dom": "19.3.1"
+	},
+	"devDependencies": {
+		"@types/node": "catalog:",
+		"@types/path-browserify": "1.0.3",
+		"@types/react": "19.3.0",
+		"@types/react-dom": "19.3.0",
+		"@vitejs/plugin-react-swc": "4.3.3",
+		"@vitest/browser-playwright": "5.1.0",
+		"playwright": "1.65.1",
+		"typescript": "catalog:",
+		"vite": "8.3.8",
+		"vitest": "catalog:",
+		"vitest-browser-react": "2.3.0",
+		"zod": "catalog:"
+	}
+}

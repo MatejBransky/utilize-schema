@@ -9,7 +9,8 @@
 		"unicorn/no-thenable": "off",
 		"import/no-unassigned-import": "off",
 		"unicorn/no-array-reverse": "off",
-		"unicorn/consistent-function-scoping": "off"
+		"unicorn/consistent-function-scoping": "off",
+		"no-underscore-dangle": ["warn", { "allow": ["__UI_SDK_STRICT__"] }]
 	},
 	"env": {
 		"builtin": true

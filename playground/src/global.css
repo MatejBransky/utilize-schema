@@ -1,0 +1,72 @@
+@layer ui-sdk;
+
+:root {
+	color-scheme: light;
+	--ui-background: #ffffff;
+	--ui-foreground: #0a0a0a;
+	--ui-muted: #f2f2f2;
+	--ui-muted-foreground: #595959;
+	--ui-border: #0a0a0a;
+	--ui-input: #0a0a0a;
+	--ui-primary: #0a0a0a;
+	--ui-primary-foreground: #ffffff;
+	--ui-destructive: #0a0a0a;
+	--ui-ring: #0a0a0a;
+	--ui-ring-border: #0a0a0a;
+	--ui-overlay: rgb(0 0 0 / 0.4);
+	--ui-shadow: none;
+	--ui-radius: 0;
+	--ui-spacing: 0.25rem;
+	--ui-font-size: 0.875rem;
+	--ui-line-height: 1.4;
+	--ui-font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+	--ui-font-mono:
+		ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+}
+
+:root[data-theme='dark'] {
+	color-scheme: dark;
+	--ui-background: #0a0a0a;
+	--ui-foreground: #fafafa;
+	--ui-muted: #1a1a1a;
+	--ui-muted-foreground: #a3a3a3;
+	--ui-border: #fafafa;
+	--ui-input: #fafafa;
+	--ui-primary: #fafafa;
+	--ui-primary-foreground: #0a0a0a;
+	--ui-destructive: #fafafa;
+	--ui-ring: #fafafa;
+	--ui-ring-border: #fafafa;
+	--ui-overlay: rgb(0 0 0 / 0.7);
+	--ui-shadow: none;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+	height: 100%;
+	margin: 0;
+}
+
+body {
+	background: var(--ui-background);
+	color: var(--ui-foreground);
+	font-family: var(--ui-font-sans);
+	font-size: var(--ui-font-size);
+	line-height: var(--ui-line-height);
+	-webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+p {
+	margin: 0;
+}
+
+[data-slot]:focus-visible {
+	outline-width: 2px;
+}

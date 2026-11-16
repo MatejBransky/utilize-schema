@@ -1,0 +1,97 @@
+import * as monaco from 'monaco-editor';
+// oxlint-disable-next-line import/default -- Vite worker imports have a default export.
+import editorWorker from 'monaco-editor/editor/editor.worker.js?worker';
+// oxlint-disable-next-line import/default -- Vite worker imports have a default export.
+import jsonWorker from 'monaco-editor/languages/features/json/json.worker.js?worker';
+// oxlint-disable-next-line import/default -- Vite worker imports have a default export.
+import tsWorker from 'monaco-editor/languages/features/typescript/ts.worker.js?worker';
+
+import zodTypes from 'virtual:zod-types';
+
+interface MonacoEnvironment {
+	getWorker(moduleId: string, label: string): Worker;
+}
+
+(self as { MonacoEnvironment?: MonacoEnvironment }).MonacoEnvironment = {
+	getWorker(_moduleId, label) {
+		if (label === 'json') {
+			return new jsonWorker();
+		}
+
+		if (label === 'typescript' || label === 'javascript') {
+			return new tsWorker();
+		}
+
+		return new editorWorker();
+	},
+};
+
+monaco.json.jsonDefaults.setDiagnosticsOptions({
+	validate: true,
+	allowComments: false,
+	enableSchemaRequest: false,
+	schemas: [],
+});
+
+const typescript = monaco.typescript;
+
+typescript.typescriptDefaults.setCompilerOptions({
+	target: typescript.ScriptTarget.ESNext,
+	module: typescript.ModuleKind.ESNext,
+	moduleResolution: typescript.ModuleResolutionKind.NodeJs,
+	strict: true,
+	noEmit: true,
+	skipLibCheck: true,
+	allowNonTsExtensions: true,
+	types: [],
+});
+
+typescript.typescriptDefaults.setEagerModelSync(true);
+
+for (const [file, content] of Object.entries(zodTypes)) {
+	typescript.typescriptDefaults.addExtraLib(content, `file:///node_modules/zod/${file}`);
+}
+
+// Generated code can be noisy for edge keywords, so keep semantic diagnostics
+// off; hover still uses the full type checker and the real zod types.
+typescript.typescriptDefaults.setDiagnosticsOptions({
+	noSemanticValidation: true,
+	noSyntaxValidation: false,
+});
+
+monaco.editor.defineTheme('utilize-dark', {
+	base: 'vs-dark',
+	inherit: true,
+	rules: [],
+	colors: {
+		'editor.background': '#0a0a0a',
+		'editor.lineHighlightBackground': '#1a1a1a',
+		'editorLineNumber.foreground': '#737373',
+		'editorLineNumber.activeForeground': '#fafafa',
+		'editorGutter.background': '#0a0a0a',
+	},
+});
+
+monaco.editor.defineTheme('utilize-light', {
+	base: 'vs',
+	inherit: true,
+	rules: [],
+	colors: {
+		'editor.background': '#ffffff',
+		'editor.lineHighlightBackground': '#f2f2f2',
+		'editorLineNumber.foreground': '#8a8a8a',
+		'editorLineNumber.activeForeground': '#0a0a0a',
+		'editorGutter.background': '#ffffff',
+	},
+});
+
+export { monaco };
+
+declare global {
+	interface Window {
+		monaco: typeof monaco;
+	}
+}
+
+// Exposed for the browser smoke tests and for debugging from the console.
+window.monaco = monaco;
