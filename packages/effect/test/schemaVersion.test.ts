@@ -36,11 +36,11 @@ const unknownVersionSchema: TestSchema = {
 	type: 'string',
 };
 
-const unsupportedFeatureSchema: TestSchema = {
+const unsupportedFeatureSchema = {
 	$schema: 'https://json-schema.org/draft/2020-12/schema',
 	type: 'object',
 	properties: { value: { $dynamicRef: '#meta' } },
-};
+} as unknown as TestSchema;
 
 describe('$schema versions', () => {
 	test('2020-12 prefixItems and items', async () => {
@@ -115,7 +115,7 @@ describe('$schema versions', () => {
 			type: 'object',
 			properties: { a: { type: 'string' } },
 			unevaluatedProperties: false,
-		} as unknown as TestSchema);
+		});
 
 		expect(decode(Root, { a: 'x' })).toEqual({ a: 'x' });
 		expect(decode(Root, { a: 'x', b: 1 })).toBeUndefined();
@@ -127,7 +127,7 @@ describe('$schema versions', () => {
 			type: 'array',
 			prefixItems: [{ type: 'string' }],
 			unevaluatedItems: false,
-		} as unknown as TestSchema);
+		});
 
 		expect(decode(Root, ['a'])).toEqual(['a']);
 		expect(decode(Root, ['a', 1])).toBeUndefined();

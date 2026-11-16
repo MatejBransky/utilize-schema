@@ -124,7 +124,7 @@ describe('$schema versions', () => {
 			type: 'object',
 			properties: { a: { type: 'string' } },
 			unevaluatedProperties: false,
-		} as unknown as JSONSchema);
+		});
 
 		expect(Root.safeParse({ a: 'x' }).success).toBe(true);
 		expect(Root.safeParse({ a: 'x', b: 1 }).success).toBe(false);
@@ -136,7 +136,7 @@ describe('$schema versions', () => {
 			type: 'array',
 			prefixItems: [{ type: 'string' }],
 			unevaluatedItems: false,
-		} as unknown as JSONSchema);
+		});
 
 		expect(Root.safeParse(['a']).success).toBe(true);
 		expect(Root.safeParse(['a', 1]).success).toBe(false);

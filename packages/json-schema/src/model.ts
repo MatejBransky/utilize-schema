@@ -5,6 +5,14 @@ export interface JSONSchema extends JSONSchema7 {
 	discriminator?: string;
 	/** 2019-09 annotation; draft-07 schemas can carry it too. */
 	deprecated?: boolean;
+	// 2019-09 and 2020-12 keywords. The normalizer maps or rejects them.
+	prefixItems?: JSONSchema[];
+	unevaluatedProperties?: boolean | JSONSchema;
+	unevaluatedItems?: boolean | JSONSchema;
+	$recursiveRef?: string;
+	$dynamicRef?: string;
+	minContains?: number;
+	maxContains?: number;
 }
 export type JSONSchemaTypeName = JSONSchema7TypeName;
 
