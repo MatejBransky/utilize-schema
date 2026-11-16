@@ -187,7 +187,7 @@ type SchemaValue =
 			items: SchemaValue | SchemaArrayValue;
 	  }
 	| boolean;
-export const Schema: import('zod').z.ZodType<SchemaValue> = z
+export const Schema: z.ZodType<SchemaValue> = z
 	.union([
 		z
 			.object({
@@ -205,9 +205,7 @@ export const Schema: import('zod').z.ZodType<SchemaValue> = z
 export type Schema = z.infer<typeof Schema>;
 
 type SchemaArrayValue = SchemaValue[];
-export const SchemaArray: import('zod').z.ZodType<SchemaArrayValue> = z
-	.array(Schema)
-	.min(1);
+export const SchemaArray: z.ZodType<SchemaArrayValue> = z.array(Schema).min(1);
 export type SchemaArray = z.infer<typeof SchemaArray>;
 `);
 	});

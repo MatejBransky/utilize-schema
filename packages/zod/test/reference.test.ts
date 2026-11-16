@@ -46,7 +46,7 @@ describe('reference', () => {
 
 		expect(result).toMatchCode(ts`
       type RootValue = { field?: RootValue };
-      export const Root: import('zod').z.ZodType<RootValue> = z.object({
+      export const Root: z.ZodType<RootValue> = z.object({
         get field() {
           return Root.optional()
         }
@@ -158,7 +158,7 @@ describe('reference', () => {
 
 		expect(result).toMatchCode(ts`
       type RootValue = { value: string; next?: RootValue };
-      export const Root: import('zod').z.ZodType<RootValue> = z.object({
+      export const Root: z.ZodType<RootValue> = z.object({
         value: z.string(),
         get next() {
           return Root.optional();
@@ -178,7 +178,7 @@ describe('reference', () => {
 
 		await expect(result).toMatchCode(ts`
       type RootValue = { children?: RootValue[] };
-      export const Root: import('zod').z.ZodType<RootValue> = z.object({
+      export const Root: z.ZodType<RootValue> = z.object({
         get children() {
           return z.array(Root).optional();
         },
@@ -197,7 +197,7 @@ describe('reference', () => {
 
 		await expect(result).toMatchCode(ts`
       type RootValue = { parent?: RootValue | null };
-      export const Root: import('zod').z.ZodType<RootValue> = z.object({
+      export const Root: z.ZodType<RootValue> = z.object({
         get parent() {
           return z.union([Root, z.null()]).optional();
         },
@@ -216,7 +216,7 @@ describe('reference', () => {
 
 		await expect(result).toMatchCode(ts`
       type CycleBValue = { a?: CycleAValue | null };
-      export const CycleB: import('zod').z.ZodType<CycleBValue> = z.object({
+      export const CycleB: z.ZodType<CycleBValue> = z.object({
         get a() {
           return z.union([CycleA, z.null()]).optional();
         },
@@ -224,7 +224,7 @@ describe('reference', () => {
       export type CycleB = z.infer<typeof CycleB>;
 
       type CycleAValue = { b?: CycleBValue };
-      export const CycleA: import('zod').z.ZodType<CycleAValue> = z.object({
+      export const CycleA: z.ZodType<CycleAValue> = z.object({
         b: CycleB.optional(),
       });
       export type CycleA = z.infer<typeof CycleA>;

@@ -16,7 +16,7 @@ export function generate(
 	root: ParsedJSONSchema,
 	options?: { importZod?: boolean; customNameResolver?: CustomNameResolver }
 ): string {
-	const usedNames = new Set<string>();
+	const usedNames = new Set<string>(['z']);
 	const lazyRefs = new Set<ParsedJSONSchemaObject>();
 
 	if (typeof root !== 'object' || root === null) {
@@ -44,7 +44,7 @@ export function generate(
 	};
 
 	const aliases = new Map<ParsedJSONSchemaObject, string>();
-	const typeNames = new Set<string>();
+	const typeNames = new Set<string>(['z']);
 
 	function ensureName(schema: ParsedJSONSchemaObject): string {
 		const existing = schema[Meta].resolvedName;
@@ -106,7 +106,7 @@ export function generate(
 
 		if (alias) {
 			code.push(renderValueTypeDeclaration(alias, schema, valueTypeContext));
-			code.push(ts`export const ${name}: import('zod').z.ZodType<${alias}> = ${zodExpression};`);
+			code.push(ts`export const ${name}: z.ZodType<${alias}> = ${zodExpression};`);
 		} else {
 			code.push(ts`export const ${name} = ${zodExpression};`);
 		}

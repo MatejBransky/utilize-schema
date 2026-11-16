@@ -22,7 +22,7 @@ describe('cyclic references', () => {
 
 		await expect(result).toMatchCode(ts`
       type BValue = { a?: AValue };
-      export const B: import('zod').z.ZodType<BValue> = z.object({
+      export const B: z.ZodType<BValue> = z.object({
         get a() {
           return A.optional();
         },
@@ -30,7 +30,7 @@ describe('cyclic references', () => {
       export type B = z.infer<typeof B>;
 
       type AValue = { b?: BValue };
-      export const A: import('zod').z.ZodType<AValue> = z.object({
+      export const A: z.ZodType<AValue> = z.object({
         b: B.optional(),
       });
       export type A = z.infer<typeof A>;
@@ -50,7 +50,7 @@ describe('cyclic references', () => {
 
 		await expect(result).toMatchCode(ts`
       type ListCycleObjectValue = { list?: ListCycleValue };
-      export const ListCycleObject: import('zod').z.ZodType<ListCycleObjectValue> =
+      export const ListCycleObject: z.ZodType<ListCycleObjectValue> =
         z.object({
           get list() {
             return ListCycle.optional();
@@ -59,7 +59,7 @@ describe('cyclic references', () => {
       export type ListCycleObject = z.infer<typeof ListCycleObject>;
 
       type ListCycleValue = ListCycleObjectValue[];
-      export const ListCycle: import('zod').z.ZodType<ListCycleValue> =
+      export const ListCycle: z.ZodType<ListCycleValue> =
         z.array(ListCycleObject);
       export type ListCycle = z.infer<typeof ListCycle>;
 
@@ -75,7 +75,7 @@ describe('cyclic references', () => {
 
 		await expect(result).toMatchCode(ts`
       type RootValue = { items: RootValue | SchemaArrayValue } | boolean;
-      export const Root: import('zod').z.ZodType<RootValue> = z.union([
+      export const Root: z.ZodType<RootValue> = z.union([
         z.object({
           get items() {
             return z.union([Root, SchemaArray]).default(true);
@@ -86,7 +86,7 @@ describe('cyclic references', () => {
       export type Root = z.infer<typeof Root>;
 
       type SchemaArrayValue = RootValue[];
-      export const SchemaArray: import('zod').z.ZodType<SchemaArrayValue> = z
+      export const SchemaArray: z.ZodType<SchemaArrayValue> = z
         .array(Root)
         .min(1);
       export type SchemaArray = z.infer<typeof SchemaArray>;
@@ -101,13 +101,13 @@ describe('cyclic references', () => {
 
 		await expect(result).toMatchCode(ts`
       type ArrayPairAValue = ArrayPairBValue[];
-      export const ArrayPairA: import('zod').z.ZodType<ArrayPairAValue> = z.array(
+      export const ArrayPairA: z.ZodType<ArrayPairAValue> = z.array(
         z.lazy(() => ArrayPairB),
       );
       export type ArrayPairA = z.infer<typeof ArrayPairA>;
 
       type ArrayPairBValue = ArrayPairAValue[];
-      export const ArrayPairB: import('zod').z.ZodType<ArrayPairBValue> =
+      export const ArrayPairB: z.ZodType<ArrayPairBValue> =
         z.array(ArrayPairA);
       export type ArrayPairB = z.infer<typeof ArrayPairB>;
 
@@ -130,7 +130,7 @@ describe('cyclic references', () => {
         name?: string;
         [key: string]: string | RootValue | undefined;
       }
-      export const Root: import('zod').z.ZodType<RootValue> = z
+      export const Root: z.ZodType<RootValue> = z
         .object({
           name: z.string().optional(),
         })
@@ -149,7 +149,7 @@ describe('cyclic references', () => {
       interface RootValue {
         [key: string]: RootValue;
       }
-      export const Root: import('zod').z.ZodType<RootValue> = z.record(
+      export const Root: z.ZodType<RootValue> = z.record(
         z.string(),
         z.lazy(() => Root),
       );

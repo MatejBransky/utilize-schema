@@ -38,7 +38,7 @@ Recursive schemas are annotated so TypeScript can infer them:
 
 ```ts
 type TreeValue = { children?: TreeValue[] };
-export const Tree: import('zod').z.ZodType<TreeValue> = z.object({
+export const Tree: z.ZodType<TreeValue> = z.object({
 	get children() {
 		return z.array(Tree).optional();
 	},
