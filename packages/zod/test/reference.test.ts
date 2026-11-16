@@ -1,6 +1,7 @@
+import { type JSONSchema } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
-import { compile, ts } from './test-utils';
+import { compile, compileToZod, ts } from './test-utils';
 
 describe('reference', () => {
 	test('local $refs', async () => {
@@ -116,9 +117,6 @@ describe('reference', () => {
       export const Category = z.string();
       export type Category = z.infer<typeof Category>;
 
-      export const Meta = z.string();
-      export type Meta = z.infer<typeof Meta>;
-
       export const DataType = z
               .enum([
                       'BOOLEAN',
@@ -132,6 +130,9 @@ describe('reference', () => {
               ])
               .meta({ title: 'DataType' });
       export type DataType = z.infer<typeof DataType>;
+
+      export const Meta = z.string();
+      export type Meta = z.infer<typeof Meta>;
 
       export const Root = z.object({
               name: z.string().optional(),
@@ -163,5 +164,115 @@ describe('reference', () => {
       });
       export type Root = z.infer<typeof Root>;
     `);
+	});
+
+	test('self-reference nested in array items', async () => {
+		const result = await compile({
+			type: 'object',
+			properties: {
+				children: { type: 'array', items: { $ref: '#' } },
+			},
+		});
+
+		await expect(result).toMatchCode(ts`
+      export const Root = z.object({
+        get children() {
+          return z.array(Root).optional();
+        },
+      });
+      export type Root = z.infer<typeof Root>;
+    `);
+	});
+
+	test('self-reference nested in anyOf', async () => {
+		const result = await compile({
+			type: 'object',
+			properties: {
+				parent: { anyOf: [{ $ref: '#' }, { type: 'null' }] },
+			},
+		});
+
+		await expect(result).toMatchCode(ts`
+      export const Root = z.object({
+        get parent() {
+          return z.union([Root, z.null()]).optional();
+        },
+      });
+      export type Root = z.infer<typeof Root>;
+    `);
+	});
+
+	test('cyclic reference across files', async () => {
+		const result = await compile({
+			type: 'object',
+			properties: {
+				a: { $ref: './definitions/CycleA.json' },
+			},
+		});
+
+		await expect(result).toMatchCode(ts`
+      export const CycleB = z.object({
+        get a() {
+          return z.union([CycleA, z.null()]).optional();
+        },
+      });
+      export type CycleB = z.infer<typeof CycleB>;
+
+      export const CycleA = z.object({
+        b: CycleB.optional(),
+      });
+      export type CycleA = z.infer<typeof CycleA>;
+
+      export const Root = z.object({
+        a: CycleA.optional(),
+      });
+      export type Root = z.infer<typeof Root>;
+    `);
+	});
+});
+
+describe('recursive reference at runtime', () => {
+	const treeSchema: JSONSchema = {
+		type: 'object',
+		properties: {
+			name: { type: 'string' },
+			children: { type: 'array', items: { $ref: '#' } },
+		},
+		required: ['name'],
+	};
+
+	test('parses a tree three levels deep', async () => {
+		const Tree = await compileToZod(treeSchema);
+
+		const result = Tree.safeParse({
+			name: 'root',
+			children: [{ name: 'child', children: [{ name: 'grandchild' }] }],
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	test('rejects an invalid node deep in the tree', async () => {
+		const Tree = await compileToZod(treeSchema);
+
+		const result = Tree.safeParse({
+			name: 'root',
+			children: [{ name: 'child', children: [{ name: 42 }] }],
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	test('parses nested data across a cyclic pair of files', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: {
+				a: { $ref: './definitions/CycleA.json' },
+			},
+		});
+
+		const result = Root.safeParse({ a: { b: { a: { b: { a: null } } } } });
+
+		expect(result.success).toBe(true);
 	});
 });

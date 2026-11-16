@@ -149,9 +149,6 @@ describe('schema combinations', () => {
 		});
 
 		await expect(result).toMatchCode(ts`
-export const SchemaArray = z.array(Schema).min(1);
-export type SchemaArray = z.infer<typeof SchemaArray>;
-
 export const NonNegativeInteger = z.int().min(0);
 export type NonNegativeInteger = z.infer<typeof NonNegativeInteger>;
 
@@ -174,13 +171,18 @@ export const Schema = z
 				$id: z.string().optional(),
 				maxLength: NonNegativeInteger.optional(),
 				minLength: NonNegativeIntegerDefault0.optional(),
-				items: z.union([Schema, SchemaArray]).default(true),
+				get items() {
+					return z.union([Schema, SchemaArray]).default(true);
+				},
 			})
 			.meta({ id: 'http://json-schema.org/draft-07/schema#' }),
 		z.boolean().meta({ id: 'http://json-schema.org/draft-07/schema#' }),
 	])
 	.meta({ id: 'http://json-schema.org/draft-07/schema#', title: 'Core schema meta-schema' });
 export type Schema = z.infer<typeof Schema>;
+
+export const SchemaArray = z.array(Schema).min(1);
+export type SchemaArray = z.infer<typeof SchemaArray>;
 `);
 	});
 });

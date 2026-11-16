@@ -82,6 +82,26 @@ await compile({
 
 ---
 
+## 🔁 Cyclic references
+
+Recursive `$ref`s are emitted as getters on object properties. That is how Zod
+supports recursive types while keeping TypeScript inference, and cycles are
+broken at the property that contains the recursion.
+
+A cycle that never passes through an object property — for example an array
+whose `items` point back to itself, a union-only cycle, or a recursive
+`additionalProperties` — cannot be deferred with a getter. Generation then
+fails with `UnsupportedCyclicReferenceError` and the locations of the refs in
+the cycle, instead of emitting code that throws when it is imported.
+`z.lazy()` would run, but it loses recursive type inference in TypeScript.
+
+Unless the cycle passes through a property, generated recursive schemas can
+still hit TypeScript's circular inference limits when a `.default()` is applied
+over a recursive union. The workaround is an explicit getter return type, as
+described in the [Zod docs](https://zod.dev/api?id=recursive-types).
+
+---
+
 ## 🤔 Why Utilize Schema?
 
 - **No more hand-written Zod schemas:** Automate your validation and types.
