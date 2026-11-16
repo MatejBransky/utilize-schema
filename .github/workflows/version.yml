@@ -1,0 +1,46 @@
+name: Version
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: version-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  version:
+    name: Open or update the version pull request
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code repository
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6.1.1
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Create or update the version pull request
+        uses: changesets/action@v2.1.2
+        with:
+          version-script: pnpm ci:version
+          commit-message: 'chore: update versions'
+          pr-title: 'chore: update versions'
+          github-token: ${{ secrets.GITHUB_TOKEN }}

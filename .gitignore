@@ -8,5 +8,4 @@ node_modules
 dist/
 dist_tests/
 
-__generated__-*/
 .vitest/

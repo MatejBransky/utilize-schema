@@ -4,6 +4,9 @@ Thank you for your interest in contributing! We welcome bug reports, feature req
 
 ## Getting Started
 
+This repository requires Node.js 24 and pnpm 11. The exact pnpm version is
+pinned in `package.json#packageManager`; Corepack can install it for you.
+
 1. **Clone the repository:**
 
    ```sh
