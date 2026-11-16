@@ -1,0 +1,55 @@
+{
+	"name": "@utilize/effect",
+	"version": "0.0.0",
+	"description": "Effect Schema generator for JSON Schema.",
+	"keywords": [
+		"effect",
+		"generator",
+		"json-schema",
+		"schema"
+	],
+	"license": "MIT",
+	"author": {
+		"name": "Matej Bransky",
+		"email": "matej.bransky@gmail.com"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/MatejBransky/utilize-schema.git",
+		"directory": "packages/effect"
+	},
+	"type": "module",
+	"main": "./dist/index.mjs",
+	"module": "./dist/index.mjs",
+	"types": "./dist/index.d.ts",
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"prepublishOnly": "pnpm build",
+		"build": "tsdown",
+		"build:dev": "tsdown",
+		"check:types": "tsc --noEmit",
+		"test": "vitest",
+		"ci:test": "vitest run",
+		"dev": "tsdown --watch"
+	},
+	"dependencies": {
+		"@utilize/json-schema": "workspace:*"
+	},
+	"devDependencies": {
+		"@total-typescript/tsconfig": "catalog:",
+		"@types/node": "catalog:",
+		"effect": "catalog:",
+		"oxfmt": "catalog:",
+		"tsdown": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	},
+	"peerDependencies": {
+		"effect": ">=4.0.0 <5"
+	},
+	"engines": {
+		"node": ">=22.19.0"
+	}
+}

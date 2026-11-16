@@ -15,6 +15,9 @@ catalogs:
     '@types/node':
       specifier: 24.19.2
       version: 24.19.2
+    effect:
+      specifier: 4.1.4
+      version: 4.1.4
     oxfmt:
       specifier: 0.78.0
       version: 0.78.0
@@ -58,6 +61,34 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
+
+  packages/effect:
+    dependencies:
+      '@utilize/json-schema':
+        specifier: workspace:*
+        version: link:../json-schema
+    devDependencies:
+      '@total-typescript/tsconfig':
+        specifier: 'catalog:'
+        version: 1.0.4
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.2
+      effect:
+        specifier: 'catalog:'
+        version: 4.1.4
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.78.0
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.23.7(typescript@7.0.2)
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.0(@types/node@24.19.2)(@vitest/browser-playwright@5.1.0)(@vitest/ui@5.1.0)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.6.1)(yaml@2.9.1))
 
   packages/json-schema:
     dependencies:
@@ -1344,6 +1375,9 @@ packages:
     peerDependenciesMeta:
       oxc-resolver:
         optional: true
+
+  effect@4.1.4:
+    resolution: {integrity: sha512-Tgrv/9FN+TZYyOn8XSli+fVqAfwDrDAkiX5Uu9vztINb675VTQdhD0gWI5Kzvhlh9QqzjZvw72iugqw5pwoghQ==}
 
   empathic@2.1.0:
     resolution: {integrity: sha512-AnfC1ATldl49/cvZdLPDjBfrRNwbDO05aibiOtzQu3qtlbJtomNLhF30HEtn/7iBz50dlMECqATo3fG0LrdEgw==}
@@ -2690,6 +2724,8 @@ snapshots:
       '@types/trusted-types': 2.0.7
 
   dts-resolver@3.0.0: {}
+
+  effect@4.1.4: {}
 
   empathic@2.1.0: {}
 
