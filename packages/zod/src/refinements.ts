@@ -112,6 +112,66 @@ export function applyRefinements(
     }`);
 	}
 
+	if (schema.uniqueItems === true) {
+		checks.push(ts`{
+      if (Array.isArray(value)) {
+        const seen = new Set(
+          value.map((item) =>
+            JSON.stringify(item, (_key, entry) =>
+              entry && typeof entry === 'object' && !Array.isArray(entry)
+                ? Object.fromEntries(
+                    Object.entries(entry).sort(([left], [right]) => left.localeCompare(right))
+                  )
+                : entry
+            )
+          )
+        );
+
+        if (seen.size !== value.length) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Array items must be unique.',
+            path: [],
+          });
+        }
+      }
+    }`);
+	}
+
+	if (typeof schema.minProperties === 'number') {
+		checks.push(ts`{
+      if (
+        typeof value === 'object' &&
+        value !== null &&
+        !Array.isArray(value) &&
+        Object.keys(value).length < ${schema.minProperties}
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Object must have at least ${schema.minProperties} properties.',
+          path: [],
+        });
+      }
+    }`);
+	}
+
+	if (typeof schema.maxProperties === 'number') {
+		checks.push(ts`{
+      if (
+        typeof value === 'object' &&
+        value !== null &&
+        !Array.isArray(value) &&
+        Object.keys(value).length > ${schema.maxProperties}
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Object must have at most ${schema.maxProperties} properties.',
+          path: [],
+        });
+      }
+    }`);
+	}
+
 	if (schema.propertyNames !== undefined) {
 		const propertyNames = generate(withContextType(schema.propertyNames, 'string'), context);
 

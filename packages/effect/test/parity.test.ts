@@ -243,6 +243,24 @@ const cases: ParityCase[] = [
 		invalid: [{ child: {} }, { child: { id: 1, extra: true } }],
 	},
 	{
+		name: 'uniqueItems',
+		schema: { type: 'array', items: { type: 'number' }, uniqueItems: true },
+		valid: [[1, 2], []],
+		invalid: [[1, 1]],
+	},
+	{
+		name: 'minProperties',
+		schema: { type: 'object', minProperties: 1 },
+		valid: [{ a: 1 }],
+		invalid: [{}],
+	},
+	{
+		name: 'maxProperties',
+		schema: { type: 'object', maxProperties: 1 },
+		valid: [{ a: 1 }],
+		invalid: [{ a: 1, b: 2 }],
+	},
+	{
 		name: 'recursion',
 		schema: {
 			type: 'object',
@@ -281,57 +299,12 @@ describe('parity with @utilize/zod', () => {
 });
 
 /**
- * Keywords the Zod generator does not implement, so the reference output is
- * more permissive there. These cases pin the differences down explicitly
- * instead of leaving them implicit in the parity table.
+ * JSON Schema defines `format` as an annotation, so Effect keeps it as
+ * metadata while the Zod generator validates known formats. That is a design
+ * difference, not a gap, so it is pinned here instead of in the parity table.
  */
-const effectOnlyCases: ParityCase[] = [
-	{
-		name: 'uniqueItems',
-		schema: { type: 'array', items: { type: 'number' }, uniqueItems: true },
-		valid: [[1, 2]],
-		invalid: [[1, 1]],
-	},
-	{
-		name: 'minProperties',
-		schema: { type: 'object', minProperties: 1 },
-		valid: [{ a: 1 }],
-		invalid: [{}],
-	},
-	{
-		name: 'maxProperties',
-		schema: { type: 'object', maxProperties: 1 },
-		valid: [{ a: 1 }],
-		invalid: [{ a: 1, b: 2 }],
-	},
-];
-
-describe('keywords the Zod generator ignores', () => {
-	test.each(effectOnlyCases)('$name', async (testCase) => {
-		const [zodRoot, effectRoot] = await Promise.all([
-			loadRoot(testCase.schema, 'zod'),
-			loadRoot(testCase.schema, 'effect'),
-		]);
-
-		for (const value of testCase.valid) {
-			expect(Schema.is(effectRoot)(value), `effect should accept ${JSON.stringify(value)}`).toBe(
-				true
-			);
-		}
-
-		for (const value of testCase.invalid) {
-			expect(Schema.is(effectRoot)(value), `effect should reject ${JSON.stringify(value)}`).toBe(
-				false
-			);
-			expect(zodValid(zodRoot, value), `zod is expected to accept ${JSON.stringify(value)}`).toBe(
-				true
-			);
-		}
-	});
-});
-
-describe('keywords the Zod generator validates but Effect only annotates', () => {
-	test('format', async () => {
+describe('design differences', () => {
+	test('format is validated by Zod and only annotated by Effect', async () => {
 		const schema: TestSchema = { type: 'string', format: 'email' };
 		const [zodRoot, effectRoot] = await Promise.all([
 			loadRoot(schema, 'zod'),

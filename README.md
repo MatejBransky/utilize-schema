@@ -75,9 +75,11 @@ Vercel preview deployment of the playground.
 | `properties`                            | ✅         | Supported                                                                   |
 | `required`                              | ✅         | Supported                                                                   |
 | `additionalProperties`                  | ✅         | Supported                                                                   |
+| `minProperties` / `maxProperties`       | ✅         | Uses `.superRefine()` on the input, so undeclared keys count as well        |
 | `patternProperties`                     | ❌         | Planned, not generated yet                                                  |
 | `propertyNames`                         | ✅         | Uses `.superRefine()`                                                       |
 | `items`                                 | ✅         | Supported                                                                   |
+| `uniqueItems`                           | ✅         | Uses `.superRefine()` with a key-order-insensitive comparison               |
 | `additionalItems`                       | ✅         | Supported                                                                   |
 | `contains`                              | ✅         | Uses `.superRefine()`                                                       |
 | `dependencies`                          | ✅         | Uses `.superRefine()`                                                       |
