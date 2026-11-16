@@ -34,9 +34,23 @@ export const generator = createGenerator(
 			(key) => !(key in (schema.properties ?? {}))
 		);
 		const requiredPart = requiredWithoutProperties
-			.map((key) => `${key}: z.unknown()`)
+			.map((key) => `${key}: z.unknown().refine(() => true)`)
 			.join(`,${NEWLINE}`);
 		const allProperties = [propertiesPart, requiredPart].filter(Boolean).join(`,${NEWLINE}`);
+		const requiredCheck =
+			requiredWithoutProperties.length > 0
+				? ts`.superRefine((value, ctx) => {
+        for (const key of ${JSON.stringify(requiredWithoutProperties)}) {
+          if (!Object.hasOwn(value, key)) {
+            ctx.addIssue({
+              code: 'custom',
+              message: 'Required property is missing.',
+              path: [key],
+            });
+          }
+        }
+      })`
+				: '';
 
 		const additionalProperties =
 			schema.additionalProperties !== undefined
@@ -47,18 +61,18 @@ export const generator = createGenerator(
 		if (schema.additionalProperties === false) {
 			return ts`z.strictObject({
         ${allProperties}
-      })`;
+      })${requiredCheck}`;
 		}
 
 		if (schema.additionalProperties === true) {
 			return ts`z.looseObject({
         ${allProperties}
-      })`;
+      })${requiredCheck}`;
 		}
 
 		return ts`z.object({
       ${allProperties}
-    })${catchAllPart}`;
+    })${catchAllPart}${requiredCheck}`;
 	}
 );
 
