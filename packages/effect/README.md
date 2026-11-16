@@ -53,7 +53,8 @@ export type Tree = typeof Tree.Type;
 ```
 
 References are always emitted as lazy schemas, so recursive and mutually
-recursive definitions work without ordering constraints.
+recursive definitions work without ordering constraints. A `$ref` to a boolean
+schema emits `Schema.Json` or `Schema.Never` directly.
 
 ```ts
 export const Tree = Schema.StructWithRest(

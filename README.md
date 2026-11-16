@@ -11,7 +11,7 @@ Generate robust, type-safe Zod or Effect Schema codecs and TypeScript types from
 - **Standalone schema generation:** Every definition gets its own schema and type.
 - **TypeScript-first:** Generates runtime schemas and TypeScript types, including recursive ones.
 - **Draft support:** Draft-04/06/07, with normalization for 2019-09 and 2020-12.
-- **Conformance:** the Zod generator is tested against the official [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite) — 206 of 271 draft-07 cases (1,289 of 1,605 assertions) pass today; remaining gaps are tracked per keyword.
+- **Conformance:** the Zod generator is tested against the official [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite) — 213 of 271 draft-07 cases (1,299 of 1,605 assertions) pass today; remaining gaps are tracked per keyword.
 
 ---
 
@@ -80,7 +80,7 @@ Vercel preview deployment of the playground.
 Both generators accept the same input and are checked against each other by a
 differential test suite (`packages/effect/test/parity.test.ts`), so the table
 below is kept honest by CI. The Zod generator is also checked against the
-official JSON Schema Test Suite for draft-07: **206 of 271 cases (1,289 of 1,605
+official JSON Schema Test Suite for draft-07: **213 of 271 cases (1,299 of 1,605
 assertions)** pass; the remaining gaps are listed in
 `packages/zod/test/suite/knownFailures.ts`.
 
@@ -116,7 +116,7 @@ assertions)** pass; the remaining gaps are listed in
 | `not`                                        | ✅  | ✅            | Supported                                                                   |
 | `if` / `then` / `else`                       | ✅  | ✅            | Supported                                                                   |
 | `discriminator`                              | ✅  | —             | Zod emits a discriminated union; Effect ignores the annotation              |
-| `$ref`                                       | ✅  | ✅            | Local, external and cyclic                                                  |
+| `$ref`                                       | ✅  | ✅            | Local, external and cyclic; boolean `true`/`false` targets supported        |
 | `$defs` / `definitions`                      | ✅  | ✅            | Supported                                                                   |
 | `$id`                                        | ✅  | ✅            | Kept as metadata                                                            |
 | `examples`                                   | ✅  | ✅            | Kept as metadata                                                            |
