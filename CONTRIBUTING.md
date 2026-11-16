@@ -29,6 +29,7 @@ pinned in `package.json#packageManager`; Corepack can install it for you.
 
 - `packages/json-schema`: Core JSON Schema utilities and parser.
 - `packages/zod`: Zod code generator and related logic.
+- `playground`: Browser app for editing multi-file schemas and previewing the generated Zod code.
 
 ## Development Workflow
 

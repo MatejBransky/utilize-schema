@@ -34,6 +34,13 @@ await compile({
 });
 ```
 
+## 🧪 Playground
+
+The [`playground`](./playground) package is a browser app for editing multiple
+JSON Schema files with references and watching the generated Zod code and
+schema validation update live. It is deployed to GitHub Pages:
+<https://matejbransky.github.io/utilize-schema/>.
+
 ---
 
 ## Architecture
