@@ -4,13 +4,11 @@ import { UnsupportedEffectSchemaFeatureError } from '../src';
 import { compile, type TestSchema } from './test-utils';
 
 const unsupported: Array<[string, TestSchema]> = [
-	['not', { not: { type: 'string' } }],
-	['if/then/else', { if: { type: 'string' }, then: { minLength: 1 } }],
-	['contains', { type: 'array', contains: { type: 'string' } }],
 	['minContains', { type: 'array', contains: { type: 'string' }, minContains: 1 }],
-	['dependencies', { type: 'object', dependencies: { a: ['b'] } }],
+	['maxContains', { type: 'array', contains: { type: 'string' }, maxContains: 2 }],
 	['patternProperties', { type: 'object', patternProperties: { '^a': { type: 'string' } } }],
 	['unevaluatedProperties', { type: 'object', unevaluatedProperties: false }],
+	['unevaluatedItems', { type: 'array', unevaluatedItems: false }],
 ];
 
 describe('unsupported keywords', () => {

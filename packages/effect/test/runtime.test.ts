@@ -222,3 +222,92 @@ describe('annotations', () => {
 		expect(decode(module.Name!, 'jane@example.com')).toBe('jane@example.com');
 	});
 });
+
+describe('filters without a schema constructor', () => {
+	test('rejects values that match a not schema', async () => {
+		const Root = await compileToSchema({
+			type: 'string',
+			not: { enum: ['admin', 'api'] },
+		});
+
+		expect(decode(Root, 'slug')).toBe('slug');
+		expect(decode(Root, 'admin')).toBeUndefined();
+	});
+
+	test('applies if/then/else', async () => {
+		const Root = await compileToSchema({
+			type: 'object',
+			properties: {
+				country: { type: 'string' },
+				postalCode: { type: 'string' },
+			},
+			if: {
+				properties: { country: { const: 'US' } },
+				required: ['country'],
+			},
+			then: {
+				properties: { postalCode: { pattern: '^[0-9]{5}$' } },
+				required: ['postalCode'],
+			},
+			else: {
+				properties: { postalCode: { minLength: 3 } },
+			},
+		});
+
+		expect(decode(Root, { country: 'US', postalCode: '12345' })).toEqual({
+			country: 'US',
+			postalCode: '12345',
+		});
+		expect(decode(Root, { country: 'US', postalCode: '1234' })).toBeUndefined();
+		expect(decode(Root, { country: 'US' })).toBeUndefined();
+		expect(decode(Root, { country: 'CZ', postalCode: '123' })).toEqual({
+			country: 'CZ',
+			postalCode: '123',
+		});
+		expect(decode(Root, { country: 'CZ', postalCode: '1' })).toBeUndefined();
+	});
+
+	test('requires a matching array item for contains', async () => {
+		const Root = await compileToSchema({
+			type: 'array',
+			items: { type: 'string' },
+			contains: { const: 'featured' },
+		});
+
+		expect(decode(Root, ['featured', 'x'])).toEqual(['featured', 'x']);
+		expect(decode(Root, ['x'])).toBeUndefined();
+		expect(decode(Root, [])).toBeUndefined();
+	});
+
+	test('applies array and schema dependencies', async () => {
+		const Root = await compileToSchema({
+			type: 'object',
+			properties: {
+				card: { type: 'string' },
+				billingAddress: { type: 'string' },
+				coupon: { type: 'string' },
+			},
+			dependencies: {
+				card: ['billingAddress'],
+				coupon: {
+					properties: { card: { type: 'string' } },
+					required: ['card'],
+				},
+			},
+		});
+
+		expect(decode(Root, { card: '4242', billingAddress: 'Street 1' })).toEqual({
+			card: '4242',
+			billingAddress: 'Street 1',
+		});
+		expect(decode(Root, { card: '4242' })).toBeUndefined();
+		expect(decode(Root, { coupon: 'SAVE', card: '4242', billingAddress: 'Street 1' })).toEqual({
+			coupon: 'SAVE',
+			card: '4242',
+			billingAddress: 'Street 1',
+		});
+		expect(decode(Root, { coupon: 'SAVE' })).toBeUndefined();
+		// `coupon` requires `card`, which in turn requires `billingAddress`.
+		expect(decode(Root, { coupon: 'SAVE', card: '4242' })).toBeUndefined();
+	});
+});

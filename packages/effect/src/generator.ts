@@ -23,20 +23,18 @@ type Context = {
 
 /** Keywords that have no Effect Schema equivalent and are rejected instead of ignored. */
 const UNSUPPORTED_KEYWORDS = [
-	'not',
-	'if',
-	'then',
-	'else',
-	'contains',
+	'patternProperties',
 	'minContains',
 	'maxContains',
-	'dependencies',
-	'dependentRequired',
-	'dependentSchemas',
 	'unevaluatedProperties',
 	'unevaluatedItems',
-	'patternProperties',
 ] as const;
+
+/**
+ * Keywords applied as filters on top of a generated schema. `dependentRequired`
+ * and `dependentSchemas` are merged into `dependencies` by the normalizer.
+ */
+const FILTER_KEYWORDS = new Set(['not', 'if', 'then', 'else']);
 
 /** Keywords that only carry metadata, so they can be attached to any schema. */
 const ANNOTATION_KEYWORDS = new Set([
@@ -152,16 +150,25 @@ function generateSchema(schema: ParsedJSONSchema, context: Context): string {
 
 	assertSupportedKeywords(schema);
 
+	const expression = applyChecks(
+		generateExpression(schema, context),
+		filterChecks(schema, context)
+	);
+
+	return applyAnnotations(expression, schema);
+}
+
+function generateExpression(schema: ParsedJSONSchemaObject, context: Context): string {
 	if (typeof schema.$ref === 'string') {
 		const siblings = constraintKeywords(schema);
 		const allOf = schema.allOf;
 
 		if (siblings.length === 0) {
-			return applyAnnotations(reference(schema, context), schema);
+			return reference(schema, context);
 		}
 
 		if (allOf !== undefined && siblings.length === 1) {
-			return applyAnnotations(generateIntersection([schema, ...allOf], context), schema);
+			return generateIntersection([schema, ...allOf], context);
 		}
 
 		throw new UnsupportedEffectSchemaFeatureError(
@@ -171,18 +178,15 @@ function generateSchema(schema: ParsedJSONSchema, context: Context): string {
 	}
 
 	if (Object.hasOwn(schema, 'const')) {
-		return applyAnnotations(literal(schema.const), schema);
+		return literal(schema.const);
 	}
 
 	if (Array.isArray(schema.enum)) {
-		return applyAnnotations(literals(schema.enum), schema);
+		return literals(schema.enum);
 	}
 
 	if (Array.isArray(schema.allOf)) {
-		return applyAnnotations(
-			generateIntersection([parentSchema(schema), ...schema.allOf], context),
-			schema
-		);
+		return generateIntersection([parentSchema(schema), ...schema.allOf], context);
 	}
 
 	const alternatives = Array.isArray(schema.anyOf)
@@ -192,13 +196,10 @@ function generateSchema(schema: ParsedJSONSchema, context: Context): string {
 			: undefined;
 
 	if (alternatives) {
-		return applyAnnotations(
-			generateUnion(alternatives, schema.oneOf !== undefined, context),
-			schema
-		);
+		return generateUnion(alternatives, schema.oneOf !== undefined, context);
 	}
 
-	return applyAnnotations(generateType(schema, context), schema);
+	return generateType(schema, context);
 }
 
 function generateUnion(
@@ -258,9 +259,19 @@ function generateType(schema: ParsedJSONSchemaObject, context: Context): string 
 	}
 }
 
-/** The declaring schema without the `allOf` that is being merged, so siblings still apply. */
+/**
+ * The declaring schema without the `allOf` that is being merged and without the
+ * filter keywords, which are applied on top of the merged object.
+ */
 function parentSchema(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject {
-	return { ...schema, allOf: undefined };
+	return {
+		...schema,
+		allOf: undefined,
+		not: undefined,
+		if: undefined,
+		then: undefined,
+		else: undefined,
+	};
 }
 
 /** Drops metadata so that only the keyword applicability of each union member remains. */
@@ -339,7 +350,7 @@ function generateArray(schema: ParsedJSONSchemaObject, context: Context): string
 		: Array.isArray(items)
 			? items
 			: undefined;
-	const checks = arrayChecks(schema);
+	const checks = arrayChecks(schema, context);
 	const singleItem = Array.isArray(items) ? undefined : items;
 
 	if (prefixItems === undefined) {
@@ -400,7 +411,7 @@ function arrayRest(
 	return (schema.additionalItems as unknown as ParsedJSONSchema | undefined) ?? true;
 }
 
-function arrayChecks(schema: ParsedJSONSchemaObject): string[] {
+function arrayChecks(schema: ParsedJSONSchemaObject, context: Context): string[] {
 	const checks: string[] = [];
 	const prefixLength = Array.isArray(schema.prefixItems)
 		? schema.prefixItems.length
@@ -417,6 +428,13 @@ function arrayChecks(schema: ParsedJSONSchemaObject): string[] {
 	}
 	if (schema.uniqueItems === true) {
 		checks.push('Schema.isUnique()');
+	}
+	if (schema.contains !== undefined) {
+		const contains = generateSchema(schema.contains, context);
+
+		checks.push(
+			`Schema.makeFilter((value) => value.some((item) => Schema.is(${contains})(item)) ? undefined : 'Array does not contain a matching item')`
+		);
 	}
 
 	return checks;
@@ -506,7 +524,84 @@ function objectChecks(schema: ParsedJSONSchemaObject, context: Context): string[
 		checks.push(`Schema.isPropertyNames(${generateSchema(schema.propertyNames, context)})`);
 	}
 
+	const dependencies = dependencyChecks(schema, context);
+
+	if (dependencies !== undefined) {
+		checks.push(dependencies);
+	}
+
 	return checks;
+}
+
+function dependencyChecks(schema: ParsedJSONSchemaObject, context: Context): string | undefined {
+	if (!isPlainObject(schema.dependencies)) {
+		return undefined;
+	}
+
+	const conditions: string[] = [];
+
+	for (const [key, dependency] of Object.entries(schema.dependencies)) {
+		const present = `Object.hasOwn(value, ${JSON.stringify(key)})`;
+
+		if (Array.isArray(dependency)) {
+			const required = dependency.filter((item): item is string => typeof item === 'string');
+
+			if (required.length > 0) {
+				conditions.push(
+					`(!${present} || ${JSON.stringify(required)}.every((key) => Object.hasOwn(value, key)))`
+				);
+			}
+		} else if (dependency !== undefined && dependency !== null) {
+			conditions.push(`(!${present} || Schema.is(${generateSchema(dependency, context)})(value))`);
+		}
+	}
+
+	if (conditions.length === 0) {
+		return undefined;
+	}
+
+	return `Schema.makeFilter((value) => ${conditions.join(' && ')} ? undefined : 'Object does not satisfy its dependencies')`;
+}
+
+/**
+ * `not` and `if`/`then`/`else` have no schema constructor, so they are applied
+ * as filters that evaluate the subschemas with `Schema.is`.
+ */
+function filterChecks(schema: ParsedJSONSchemaObject, context: Context): string[] {
+	const checks: string[] = [];
+
+	if (schema.not !== undefined) {
+		const not = generateSchema(schema.not, context);
+
+		checks.push(
+			`Schema.makeFilter((value) => Schema.is(${not})(value) ? 'Value must not match the "not" schema' : undefined)`
+		);
+	}
+
+	if (schema.if !== undefined) {
+		const condition = generateSchema(parsed(schema.if), context);
+		const thenBranch = branchCheck(schema.then, 'then', context);
+		const elseBranch = branchCheck(schema.else, 'else', context);
+
+		checks.push(
+			`Schema.makeFilter((value) => Schema.is(${condition})(value) ? (${thenBranch}) : (${elseBranch}))`
+		);
+	}
+
+	return checks;
+}
+
+function branchCheck(branch: unknown, keyword: 'then' | 'else', context: Context): string {
+	if (branch === undefined) {
+		return 'undefined';
+	}
+
+	return `Schema.is(${generateSchema(parsed(branch), context)})(value) ? undefined : 'Value does not match the "${keyword}" schema'`;
+}
+
+/** `JSONSchema7` types `if`/`then`/`else` without the linked schema metadata. */
+function parsed(schema: unknown): ParsedJSONSchema {
+	return schema as ParsedJSONSchema;
 }
 
 /**
@@ -743,7 +838,8 @@ function assertSupportedKeywords(schema: ParsedJSONSchemaObject): void {
 /** Constraint keywords, i.e. everything that is not only metadata. */
 function constraintKeywords(schema: ParsedJSONSchemaObject): string[] {
 	return Object.keys(schema).filter(
-		(keyword) => keyword !== '$ref' && !ANNOTATION_KEYWORDS.has(keyword)
+		(keyword) =>
+			keyword !== '$ref' && !ANNOTATION_KEYWORDS.has(keyword) && !FILTER_KEYWORDS.has(keyword)
 	);
 }
 

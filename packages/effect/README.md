@@ -63,18 +63,23 @@ Supported keywords:
 - `object`: `properties`, `required`, `additionalProperties`, `propertyNames`,
   `minProperties`, `maxProperties`
 - `allOf` between disjoint object subschemas, `anyOf`, `oneOf`
+- `not`, `if`/`then`/`else`, `contains`, `dependencies` (applied as filters)
 - `$ref`, `$defs`, `definitions`
 - `title`, `description`, `default`, `examples`, `$id`, `readOnly`,
   `writeOnly` as annotations
 
-Unsupported keywords throw `UnsupportedEffectSchemaFeatureError`: `not`,
-`if`/`then`/`else`, `contains`, `minContains`, `maxContains`, `dependencies`,
-`dependentRequired`, `dependentSchemas`, `patternProperties`,
-`unevaluatedProperties`, `unevaluatedItems`, and a `$ref` combined with
-constraint siblings.
+Effect has no schema constructor for negation, conditionals or "contains", so
+`not`, `if`/`then`/`else`, `contains` and `dependencies` are emitted as
+`Schema.makeFilter` checks that evaluate the subschemas with `Schema.is`.
+`dependentRequired` and `dependentSchemas` are normalized to `dependencies`
+before generation.
 
-Effect has no generic intersection or negation, so `allOf` is limited to
-merging object subschemas that do not declare the same property.
+Unsupported keywords throw `UnsupportedEffectSchemaFeatureError`:
+`patternProperties`, `minContains`, `maxContains`, `unevaluatedProperties`,
+`unevaluatedItems`, and a `$ref` combined with constraint siblings.
+
+Effect has no generic intersection, so `allOf` is limited to merging object
+subschemas that do not declare the same property.
 
 ## Notes
 
