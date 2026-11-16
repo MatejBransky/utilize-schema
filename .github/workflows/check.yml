@@ -95,3 +95,4 @@ jobs:
         with:
           fail-on-severity: high
           comment-summary-in-pr: never
+          show-openssf-scorecard: false
