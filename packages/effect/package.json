@@ -18,13 +18,13 @@
 		"url": "https://github.com/MatejBransky/utilize-schema.git",
 		"directory": "packages/effect"
 	},
+	"files": [
+		"dist"
+	],
 	"type": "module",
 	"main": "./dist/index.mjs",
 	"module": "./dist/index.mjs",
 	"types": "./dist/index.d.ts",
-	"files": [
-		"dist"
-	],
 	"publishConfig": {
 		"access": "public"
 	},
