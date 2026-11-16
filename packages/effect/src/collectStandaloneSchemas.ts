@@ -14,7 +14,7 @@ export function collectStandaloneSchemas(root: ParsedJSONSchemaObject): Standalo
 	const edges = new Set<[ParsedJSONSchemaObject | null, ParsedJSONSchemaObject]>();
 
 	function visit(
-		schema: ParsedJSONSchemaObject | undefined,
+		schema: ParsedJSONSchemaObject | boolean | undefined,
 		parent: ParsedJSONSchemaObject | null
 	) {
 		if (typeof schema !== 'object' || schema === null) return;
@@ -25,9 +25,11 @@ export function collectStandaloneSchemas(root: ParsedJSONSchemaObject): Standalo
 		seen.add(schema);
 
 		// 1. If schema is referenced by $ref somewhere, mark as standalone
-		if (schema[Meta]?.reference) {
-			standalone.add(schema[Meta].reference);
-			visit(schema[Meta].reference, schema);
+		const reference = schema[Meta]?.reference;
+
+		if (typeof reference === 'object' && reference !== null) {
+			standalone.add(reference);
+			visit(reference, schema);
 		}
 
 		const definitions = schema.$defs || schema.definitions;
@@ -36,8 +38,11 @@ export function collectStandaloneSchemas(root: ParsedJSONSchemaObject): Standalo
 		// Definitions get their own const, so they are not ordered under the
 		// schema that declares them: ordering must follow $ref edges only.
 		if (definitions) {
-			for (const def of Object.values(definitions)) {
-				standalone.add(def);
+			for (const def of Object.values(definitions) as Array<ParsedJSONSchemaObject | boolean>) {
+				if (typeof def === 'object' && def !== null) {
+					standalone.add(def);
+				}
+
 				visit(def, null);
 			}
 		}
