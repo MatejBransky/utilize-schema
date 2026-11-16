@@ -67,8 +67,8 @@ produced it.
 
 ### npm trusted publishing
 
-For both `@utilize/json-schema` and `@utilize/zod`, configure a trusted
-publisher on npmjs.com:
+For `@utilize/json-schema`, `@utilize/zod` and `@utilize/effect`, configure a
+trusted publisher on npmjs.com:
 
 - Provider: GitHub Actions
 - Repository: `MatejBransky/utilize-schema`
@@ -78,6 +78,29 @@ publisher on npmjs.com:
 
 Publishing uses the GitHub OIDC token. The workflow does not use `NPM_TOKEN`.
 After a successful OIDC release, delete the old `NPM_TOKEN` repository secret.
+
+A trusted publisher only applies to a package that already exists on npm, and
+npm removes a fresh configuration that does not complete a publish within about
+48 hours. Add it right before the release that uses it.
+
+### First publish of a new package
+
+npm cannot trust a package that does not exist yet, so the first version of a
+new package is published by hand from `main`:
+
+```sh
+pnpm changeset version          # after the version pull request is merged
+pnpm --filter @utilize/<name> build
+npm login
+npm publish --access public --workspace @utilize/<name>
+```
+
+Then add the trusted publisher for that package (GitHub Actions, this
+repository, workflow `release.yml`, environment `npm-publish`, allowed action
+`npm publish`). Every later release goes through the Release workflow.
+
+Peer dependencies are declared, not bundled: `@utilize/effect` expects
+`effect >=4.0.0 <5`, so consumers install `effect` themselves.
 
 ## Normal release flow
 

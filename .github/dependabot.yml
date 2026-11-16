@@ -19,6 +19,11 @@ updates:
       - dependency-name: '@types/node'
         update-types:
           - version-update:semver-major
+      # The effect peer dependency is `>=4.0.0 <5`. Bump the catalog major only
+      # together with that peer range.
+      - dependency-name: 'effect'
+        update-types:
+          - version-update:semver-major
     groups:
       npm-minor-patch:
         patterns:

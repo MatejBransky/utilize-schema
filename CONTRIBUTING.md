@@ -32,6 +32,14 @@ pinned in `package.json#packageManager`; Corepack can install it for you.
 - `packages/effect`: Effect Schema code generator and related logic.
 - `playground`: Browser app for editing multi-file schemas and previewing the generated Zod or Effect Schema code.
 
+Generators are pluggable: `packages/json-schema` owns parsing, linking and
+normalization, and each target package only maps the parsed tree to its own
+schema API. A new target follows the shape of `packages/effect` — a `generate`
+function that returns a module with one const and one type per standalone
+schema, plus a `compile` helper for the CLI. See the
+[playground README](./playground/README.md#adding-a-generator) for the wiring a
+target needs to show up in the UI.
+
 ## Playground previews
 
 Every pull request gets a preview deployment of the playground on Vercel. The
