@@ -16,7 +16,7 @@
 		"email": "matej.bransky@gmail.com"
 	},
 	"scripts": {
-		"preinstall": "npx only-allow pnpm",
+		"preinstall": "node scripts/check-package-manager.mjs",
 		"build": "pnpm run --recursive --aggregate-output --reporter-hide-prefix --if-present build",
 		"build:dev": "pnpm run --recursive --aggregate-output --reporter-hide-prefix --if-present build:dev",
 		"check:format": "oxfmt --check .",

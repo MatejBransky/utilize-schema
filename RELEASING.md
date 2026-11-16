@@ -47,8 +47,10 @@ Matej approves the deployment.
 
 ### Tag ruleset
 
-Protect `v*` tags from updates and deletion. This keeps a published version
-pointing at the commit that produced it.
+Protect `v*` and `@utilize/*` tags from updates and deletion. Changesets creates
+package tags such as `@utilize/zod@0.5.0`, so a `v*`-only rule would not cover
+release tags. This keeps a published version pointing at the commit that
+produced it.
 
 ### npm trusted publishing
 
