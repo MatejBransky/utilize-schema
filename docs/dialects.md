@@ -76,6 +76,13 @@ The other options:
 - `unknownDialect`: `'error'` (default) rejects an unrecognized `$schema`;
   `'fallback'` uses `fallbackDialect` instead.
 
+The CLIs expose the same options:
+
+```sh
+utilize-zod --keyword-policy warn --dialect 2020-12 schema.json
+utilize-effect --fallback-dialect draft-06 schema.yaml
+```
+
 `$ref` siblings are not an error in dialects that ignore them — the
 specification only says they are ignored. With `keywordPolicy: 'warn'` they are
 reported as `ignored-ref-siblings`.

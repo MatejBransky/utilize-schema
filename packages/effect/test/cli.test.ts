@@ -151,6 +151,22 @@ describe('CLI path handling', () => {
 		expect(stderr()).toContain('Refusing to overwrite');
 	});
 
+	test('--keyword-policy warn reports and ignores a foreign keyword', async () => {
+		const { io, stdout, stderr } = createIo(
+			JSON.stringify({
+				$schema: 'http://json-schema.org/draft-07/schema#',
+				type: 'array',
+				prefixItems: [{ type: 'string' }],
+			})
+		);
+
+		const exitCode = await run(['--no-banner', '--keyword-policy', 'warn'], io);
+
+		expect(exitCode).toBe(0);
+		expect(stderr()).toContain('"prefixItems" is not part of draft-07');
+		expect(stdout()).toContain('export const Root');
+	});
+
 	test('detects the entrypoint through a symlink', async () => {
 		const directory = await makeDirectory();
 		const real = join(directory, 'real.mjs');

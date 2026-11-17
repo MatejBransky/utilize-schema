@@ -6,7 +6,14 @@ import { parseArgs } from 'node:util';
 
 import { load as loadYaml } from 'js-yaml';
 
-import { type JSONSchema } from '@utilize/json-schema';
+import {
+	type DialectId,
+	type DialectOptions,
+	dialects,
+	formatIssue,
+	type JSONSchema,
+	type KeywordPolicy,
+} from '@utilize/json-schema';
 
 import { compileFile, compileSchema, withBanner } from './compile';
 
@@ -35,6 +42,10 @@ Options:
   --cwd <path>          directory used to resolve paths
   --readonly            map readOnly: true to .readonly()
   --no-banner           omit the generated-file banner
+  --dialect <id>        force a dialect (draft-04, draft-06, draft-07, 2019-09, 2020-12)
+  --fallback-dialect    dialect for schemas without $schema (default: draft-07)
+  --unknown-dialect     error (default) or fallback for an unrecognized $schema
+  --keyword-policy      error (default), warn or ignore foreign keywords
   -h, --help            show this help
 `;
 
@@ -54,6 +65,10 @@ export async function run(
 				cwd: { type: 'string' },
 				readonly: { type: 'boolean', default: false },
 				'no-banner': { type: 'boolean', default: false },
+				dialect: { type: 'string' },
+				'fallback-dialect': { type: 'string' },
+				'unknown-dialect': { type: 'string' },
+				'keyword-policy': { type: 'string' },
 				help: { type: 'boolean', short: 'h', default: false },
 			},
 		});
@@ -74,6 +89,11 @@ export async function run(
 	const output = values.output ?? positionals[1];
 	const banner = values['no-banner'] ? false : undefined;
 	const readOnlyKeyword = values.readonly;
+	const dialectOptions = readDialectOptions(values, io);
+
+	if (!dialectOptions) {
+		return 1;
+	}
 
 	try {
 		if (!input) {
@@ -82,6 +102,7 @@ export async function run(
 				cwd,
 				fileName: 'Root.json',
 				readOnlyKeyword,
+				...dialectOptions,
 			});
 			const content = withBanner(code, banner);
 
@@ -125,7 +146,7 @@ export async function run(
 		}
 
 		for (const [index, file] of files.entries()) {
-			const code = await compileFile(file.path, { readOnlyKeyword });
+			const code = await compileFile(file.path, { readOnlyKeyword, ...dialectOptions });
 			const content = withBanner(code, banner);
 
 			if (!output) {
@@ -225,6 +246,56 @@ async function readStdin() {
 	}
 
 	return Buffer.concat(chunks).toString('utf8');
+}
+
+const DIALECT_IDS = new Set<string>(Object.keys(dialects));
+
+function readDialectOptions(
+	values: {
+		dialect?: string;
+		'fallback-dialect'?: string;
+		'unknown-dialect'?: string;
+		'keyword-policy'?: string;
+	},
+	io: CliIo
+): DialectOptions | undefined {
+	const dialect = values.dialect;
+	const fallbackDialect = values['fallback-dialect'];
+	const unknownDialect = values['unknown-dialect'];
+	const keywordPolicy = values['keyword-policy'];
+
+	if (dialect !== undefined && dialect !== 'auto' && !DIALECT_IDS.has(dialect)) {
+		io.stderr.write(`Unknown dialect "${dialect}"\n`);
+		return undefined;
+	}
+
+	if (fallbackDialect !== undefined && !DIALECT_IDS.has(fallbackDialect)) {
+		io.stderr.write(`Unknown fallback dialect "${fallbackDialect}"\n`);
+		return undefined;
+	}
+
+	if (unknownDialect !== undefined && unknownDialect !== 'error' && unknownDialect !== 'fallback') {
+		io.stderr.write(`--unknown-dialect must be "error" or "fallback"\n`);
+		return undefined;
+	}
+
+	if (
+		keywordPolicy !== undefined &&
+		keywordPolicy !== 'error' &&
+		keywordPolicy !== 'warn' &&
+		keywordPolicy !== 'ignore'
+	) {
+		io.stderr.write(`--keyword-policy must be "error", "warn" or "ignore"\n`);
+		return undefined;
+	}
+
+	return {
+		dialect: dialect as DialectId | 'auto' | undefined,
+		fallbackDialect: fallbackDialect as DialectId | undefined,
+		unknownDialect: unknownDialect as 'error' | 'fallback' | undefined,
+		keywordPolicy: keywordPolicy as KeywordPolicy | undefined,
+		onDialectIssue: (issue) => io.stderr.write(`${formatIssue(issue)}\n`),
+	};
 }
 
 export function isEntrypoint(entry: string | undefined, moduleUrl: string): boolean {
