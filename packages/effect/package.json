@@ -38,6 +38,8 @@
 		"check:types": "tsc --noEmit",
 		"test": "vitest",
 		"ci:test": "vitest run",
+		"test:suite": "vitest run test/jsonSchemaTestSuite.test.ts",
+		"update:suite-baseline": "node scripts/update-suite-baseline.mjs",
 		"dev": "tsdown --watch"
 	},
 	"dependencies": {
@@ -49,6 +51,7 @@
 		"@types/node": "catalog:",
 		"@utilize/zod": "workspace:*",
 		"effect": "catalog:",
+		"json-schema-test-suite": "github:json-schema-org/JSON-Schema-Test-Suite#e2a68a15cd490750fd6b95e604e4054d7d978d1f",
 		"oxfmt": "catalog:",
 		"tsdown": "catalog:",
 		"typescript": "catalog:",
