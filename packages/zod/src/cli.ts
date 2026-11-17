@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { existsSync, globSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, globSync, mkdirSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 import { load as loadYaml } from 'js-yaml';
@@ -106,9 +106,25 @@ export async function run(
 			return 1;
 		}
 
-		const outputDirectory = output ? resolveOutputDirectory(output, cwd, files.length) : undefined;
+		const outputDirectory = output ? resolveOutputDirectory(output, cwd, files.length) : false;
+		const targets = output
+			? files.map((file) =>
+					outputDirectory
+						? path.resolve(cwd, output, outputName(file.relative))
+						: path.resolve(cwd, output)
+				)
+			: [];
 
-		for (const file of files) {
+		const duplicate = targets.find((target, index) => targets.indexOf(target) !== index);
+
+		if (duplicate) {
+			io.stderr.write(
+				`Refusing to overwrite ${duplicate}; several inputs map to the same output file.\n`
+			);
+			return 1;
+		}
+
+		for (const [index, file] of files.entries()) {
 			const code = await compileFile(file.path, { readOnlyKeyword });
 			const content = withBanner(code, banner);
 
@@ -117,9 +133,7 @@ export async function run(
 				continue;
 			}
 
-			const target = outputDirectory
-				? path.resolve(cwd, output, outputName(file.relative))
-				: path.resolve(cwd, output);
+			const target = targets[index]!;
 
 			writeFile(target, content);
 			io.stderr.write(`${file.path} -> ${target}\n`);
@@ -151,14 +165,29 @@ function discover(input: string, cwd: string): InputFile[] {
 	if (/[*?[\]{}]/.test(input)) {
 		// eslint-disable-next-line unicorn/no-array-sort -- globSync returns a fresh array
 		const matches = globSync(input, { cwd }).sort();
+		const base = path.resolve(cwd, globRoot(input));
 
-		return matches.map((file) => ({
-			path: path.resolve(cwd, file),
-			relative: path.basename(file),
-		}));
+		return matches.map((file) => {
+			const absolute = path.resolve(cwd, file);
+
+			return { path: absolute, relative: path.relative(base, absolute) };
+		});
 	}
 
 	return [{ path: resolved, relative: path.basename(resolved) }];
+}
+
+/**
+ * The non-magic prefix of a glob, used to keep the input's directory structure
+ * in the output. `schemas/**\/*.json` roots at `schemas`.
+ */
+function globRoot(pattern: string) {
+	const magic = pattern.search(/[*?[\]{}]/);
+	const prefix = magic === -1 ? pattern : pattern.slice(0, magic);
+	const endsWithSeparator = prefix.endsWith('/') || prefix.endsWith(path.sep);
+	const root = endsWithSeparator ? prefix.slice(0, -1) : path.dirname(prefix);
+
+	return root === '.' ? '' : root;
 }
 
 function resolveOutputDirectory(output: string, cwd: string, count: number): boolean {
@@ -198,6 +227,18 @@ async function readStdin() {
 	return Buffer.concat(chunks).toString('utf8');
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+export function isEntrypoint(entry: string | undefined, moduleUrl: string): boolean {
+	if (!entry) {
+		return false;
+	}
+
+	try {
+		return realpathSync(fileURLToPath(moduleUrl)) === realpathSync(entry);
+	} catch {
+		return false;
+	}
+}
+
+if (isEntrypoint(process.argv[1], import.meta.url)) {
 	process.exitCode = await run(process.argv.slice(2));
 }

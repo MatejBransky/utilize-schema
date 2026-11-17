@@ -1,10 +1,11 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { afterEach, describe, expect, test } from 'vitest';
 
-import { type CliIo, run } from '../src/cli';
+import { type CliIo, isEntrypoint, run } from '../src/cli';
 
 const temporaryDirectories: string[] = [];
 
@@ -104,5 +105,57 @@ describe('CLI', () => {
 
 		expect(exitCode).toBe(1);
 		expect(stderr()).toContain('output directory');
+	});
+});
+
+describe('CLI path handling', () => {
+	test('preserves paths from a glob root', async () => {
+		const directory = await makeDirectory();
+		const output = join(directory, 'generated');
+
+		await mkdir(join(directory, 'schemas', 'a'), { recursive: true });
+		await mkdir(join(directory, 'schemas', 'b'), { recursive: true });
+		await writeFile(
+			join(directory, 'schemas', 'a', 'user.json'),
+			JSON.stringify({ type: 'string' })
+		);
+		await writeFile(
+			join(directory, 'schemas', 'b', 'user.json'),
+			JSON.stringify({ type: 'number' })
+		);
+
+		const { io } = createIo();
+		const exitCode = await run(['-i', 'schemas/**/*.json', '-o', output, '--cwd', directory], io);
+
+		expect(exitCode).toBe(0);
+		expect(await readFile(join(output, 'a', 'user.generated.ts'), 'utf8')).toContain('z.string()');
+		expect(await readFile(join(output, 'b', 'user.generated.ts'), 'utf8')).toContain('z.number()');
+	});
+
+	test('refuses to overwrite colliding outputs', async () => {
+		const directory = await makeDirectory();
+		await writeFile(join(directory, 'a.json'), JSON.stringify({ type: 'string' }));
+		await writeFile(join(directory, 'a.yaml'), 'type: string\n');
+
+		const { io, stderr } = createIo();
+		const exitCode = await run(
+			['--input', directory, '--output', join(directory, 'generated')],
+			io
+		);
+
+		expect(exitCode).toBe(1);
+		expect(stderr()).toContain('Refusing to overwrite');
+	});
+
+	test('detects the entrypoint through a symlink', async () => {
+		const directory = await makeDirectory();
+		const real = join(directory, 'real.mjs');
+		await writeFile(real, '');
+		const link = join(directory, 'link.mjs');
+		await symlink(real, link);
+
+		expect(isEntrypoint(link, pathToFileURL(real).href)).toBe(true);
+		expect(isEntrypoint(real, pathToFileURL(join(directory, 'other.mjs')).href)).toBe(false);
+		expect(isEntrypoint(undefined, pathToFileURL(real).href)).toBe(false);
 	});
 });
