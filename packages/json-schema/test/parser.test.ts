@@ -154,6 +154,8 @@ test('circular references', async () => {
 
 	expect(parsed.root.properties?.self?.[Meta]).toMatchInlineSnapshot(`
 		{
+		  "dialect": "draft-07",
+		  "dialectSource": "fallback",
 		  "fileName": "Unknown",
 		  "filePath": "#",
 		  "isCircular": true,

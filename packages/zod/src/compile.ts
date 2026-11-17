@@ -1,4 +1,4 @@
-import { type JSONSchema, parse } from '@utilize/json-schema';
+import { type DialectOptions, type JSONSchema, parse } from '@utilize/json-schema';
 
 import { readFileSync, writeFileSync } from 'fs';
 import { load as loadYaml } from 'js-yaml';
@@ -6,10 +6,8 @@ import path from 'path';
 
 import { generate, type GenerateOptions } from './generator';
 
-export interface CompileOptions extends Pick<
-	GenerateOptions,
-	'customNameResolver' | 'schemaName' | 'typeName'
-> {
+export interface CompileOptions
+	extends DialectOptions, Pick<GenerateOptions, 'customNameResolver' | 'schemaName' | 'typeName'> {
 	input: string;
 	output?: string;
 	cwd?: string;
@@ -19,10 +17,8 @@ export interface CompileOptions extends Pick<
 	bannerComment?: string | false;
 }
 
-export interface CompileSchemaOptions extends Pick<
-	GenerateOptions,
-	'customNameResolver' | 'schemaName' | 'typeName'
-> {
+export interface CompileSchemaOptions
+	extends DialectOptions, Pick<GenerateOptions, 'customNameResolver' | 'schemaName' | 'typeName'> {
 	cwd: string;
 	fileName: string;
 	readOnlyKeyword?: boolean;
@@ -48,6 +44,11 @@ export async function compile(userOptions: CompileOptions) {
 		schemaName: userOptions.schemaName,
 		typeName: userOptions.typeName,
 		readOnlyKeyword: userOptions.readOnlyKeyword,
+		dialect: userOptions.dialect,
+		fallbackDialect: userOptions.fallbackDialect,
+		unknownDialect: userOptions.unknownDialect,
+		keywordPolicy: userOptions.keywordPolicy,
+		onDialectIssue: userOptions.onDialectIssue,
 	});
 
 	writeFileSync(outputPath, withBanner(code, userOptions.bannerComment), 'utf8');
@@ -67,6 +68,11 @@ export async function compileSchema(schema: JSONSchema, options: CompileSchemaOp
 	const { root } = await parse(schema, {
 		cwd: options.cwd,
 		fileName: options.fileName,
+		dialect: options.dialect,
+		fallbackDialect: options.fallbackDialect,
+		unknownDialect: options.unknownDialect,
+		keywordPolicy: options.keywordPolicy,
+		onDialectIssue: options.onDialectIssue,
 	});
 
 	return generate(root, {

@@ -2,6 +2,7 @@ import type { $Refs } from '@apidevtools/json-schema-ref-parser';
 
 import { join as pathJoin, dirname } from 'path';
 
+import { dialectFor } from './dialect';
 import {
 	Meta,
 	type JSONSchema,
@@ -9,6 +10,7 @@ import {
 	type ParsedJSONSchemaObject,
 	type Path,
 } from './model';
+import type { DialectMap } from './normalize';
 import { isPlainObject } from './utils';
 
 export interface LinkNodeOptions {
@@ -19,6 +21,8 @@ export interface LinkNodeOptions {
 	$refs: $Refs;
 	stack: Set<JSONSchema>;
 	fileName: string;
+	/** Dialects resolved by `prepareSchema`. Missing nodes fall back to draft-07. */
+	dialects?: DialectMap;
 }
 
 export function link({
@@ -29,6 +33,7 @@ export function link({
 	stack,
 	filePath,
 	fileName,
+	dialects,
 }: LinkNodeOptions): ParsedJSONSchemaObject {
 	let pointer = [filePath, ...path].join('/');
 	let reference = undefined;
@@ -49,7 +54,7 @@ export function link({
 		}
 
 		if ($refs.exists(pointer, {})) {
-			reference = $refs.get(pointer) as unknown as ParsedJSONSchemaObject;
+			reference = $refs.get(pointer) as unknown as ParsedJSONSchema;
 			if (reference === undefined) {
 				throw new Error(`Reference not found: ${pointer}`);
 			}
@@ -74,11 +79,15 @@ export function link({
 		return schema as unknown as ParsedJSONSchemaObject;
 	}
 
+	const resolvedDialect = dialects?.get(schema) ?? dialectFor(schema);
+
 	const meta: Meta = {
 		filePath,
 		fileName,
 		path,
 		parent: parent as ParsedJSONSchemaObject,
+		dialect: resolvedDialect.dialect.id,
+		dialectSource: resolvedDialect.source,
 	};
 
 	if (ref && $refs.exists(pointer, {})) {
@@ -109,6 +118,7 @@ export function link({
 				$refs,
 				stack,
 				fileName,
+				dialects,
 			});
 		}
 
@@ -135,6 +145,7 @@ export function link({
 				$refs,
 				stack,
 				fileName,
+				dialects,
 			})
 		);
 	}
@@ -148,6 +159,7 @@ export function link({
 			$refs,
 			stack,
 			fileName,
+			dialects,
 		});
 	}
 

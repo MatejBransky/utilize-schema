@@ -63,6 +63,7 @@ describe('objects', () => {
 describe('arrays', () => {
 	test('opens a tuple through items', async () => {
 		const Root = await compileToSchema({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
 			type: 'array',
 			prefixItems: [{ type: 'string' }, { type: 'integer' }],
 			items: { type: 'boolean' },
@@ -77,6 +78,7 @@ describe('arrays', () => {
 
 	test('closes a tuple through items: false', async () => {
 		const Root = await compileToSchema({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
 			type: 'array',
 			prefixItems: [{ type: 'string' }],
 			items: false,

@@ -1,4 +1,10 @@
-import { type JSONSchema, Meta, parse, type ParsedJSONSchemaObject } from '@utilize/json-schema';
+import {
+	type DialectOptions,
+	type JSONSchema,
+	Meta,
+	parse,
+	type ParsedJSONSchemaObject,
+} from '@utilize/json-schema';
 import { Schema } from 'effect';
 import { format as formatCode } from 'oxfmt';
 
@@ -58,7 +64,7 @@ export function normalizeCode(code: string): string {
 	return code.replace(/\r\n?/g, '\n').trim();
 }
 
-export interface CompileOptions {
+export interface CompileOptions extends DialectOptions {
 	importEffect?: boolean;
 	fileName?: string;
 	schemaName?: NameMapper;
@@ -69,6 +75,11 @@ export async function compile(schema: TestSchema, options: CompileOptions = {}) 
 	const parsed = await parse(schema, {
 		cwd: __dirname + '/',
 		fileName: options.fileName ?? 'Root.json',
+		dialect: options.dialect,
+		fallbackDialect: options.fallbackDialect,
+		unknownDialect: options.unknownDialect,
+		keywordPolicy: options.keywordPolicy,
+		onDialectIssue: options.onDialectIssue,
 	});
 	const code = generate(parsed.root, {
 		importEffect: options.importEffect ?? false,

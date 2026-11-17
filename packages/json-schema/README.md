@@ -29,6 +29,8 @@ console.log(meta);
 //   filePath,      // Path to the schema file
 //   path,          // Path within the schema
 //   resolvedName,  // Placeholder for code generators (set later)
+//   dialect,       // Dialect of the schema resource ('draft-07', '2020-12', ...)
+//   dialectSource, // 'declared' | 'inherited' | 'fallback' | 'forced'
 // }
 ```
 
@@ -54,6 +56,28 @@ const { root } = await parse(schema, {
 });
 console.log(root[Meta]);
 ```
+
+## Dialects
+
+The dialect is resolved per schema resource from `$schema` and copied into
+`Meta`. Keywords that do not belong to the node's dialect are rejected by
+default, so generated code cannot silently apply draft-2020-12 syntax to a
+draft-07 schema. `keywordPolicy: 'warn'` reports them, `'ignore'` drops them
+like the specification requires for unknown keywords.
+
+```ts
+await parse(schema, {
+	cwd: process.cwd(),
+	fileName: 'schema.json',
+	// dialect: '2020-12',              // force one dialect
+	fallbackDialect: 'draft-07', // used when `$schema` is missing
+	unknownDialect: 'error', // or 'fallback'
+	keywordPolicy: 'error', // or 'warn' / 'ignore'
+	onDialectIssue: (issue) => console.warn(issue),
+});
+```
+
+See [docs/dialects.md](../../docs/dialects.md) for the keyword matrix.
 
 ## When to use
 

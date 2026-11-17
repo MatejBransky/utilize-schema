@@ -60,6 +60,7 @@ describe('regressions', () => {
 	test('rejects minContains and maxContains instead of ignoring them', async () => {
 		await expect(
 			compile({
+				$schema: 'https://json-schema.org/draft/2020-12/schema',
 				type: 'array',
 				items: { type: 'string' },
 				contains: { const: 'x' },
@@ -68,6 +69,7 @@ describe('regressions', () => {
 		).rejects.toThrow(/minContains/);
 		await expect(
 			compile({
+				$schema: 'https://json-schema.org/draft/2020-12/schema',
 				type: 'array',
 				items: { type: 'string' },
 				contains: { const: 'x' },
@@ -107,6 +109,7 @@ describe('regressions', () => {
 
 	test('$refs into prefixItems survive schema normalization', async () => {
 		const Root = await compileToSchema({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
 			type: 'array',
 			prefixItems: [{ $ref: '#/$defs/Name' }, { type: 'number' }],
 			items: false,

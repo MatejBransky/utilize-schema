@@ -1,16 +1,13 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { type JSONSchema, parse } from '@utilize/json-schema';
-
+import { type DialectOptions, type JSONSchema, parse } from '@utilize/json-schema';
 import { load as loadYaml } from 'js-yaml';
 
 import { generate, type GenerateOptions } from './generator';
 
-export interface CompileOptions extends Pick<
-	GenerateOptions,
-	'customNameResolver' | 'schemaName' | 'typeName'
-> {
+export interface CompileOptions
+	extends DialectOptions, Pick<GenerateOptions, 'customNameResolver' | 'schemaName' | 'typeName'> {
 	/** Path of the JSON Schema file, resolved against `cwd`. */
 	input: string;
 	/** Path of the generated file, resolved against `cwd`. */
@@ -23,10 +20,8 @@ export interface CompileOptions extends Pick<
 	bannerComment?: string | false;
 }
 
-export interface CompileSchemaOptions extends Pick<
-	GenerateOptions,
-	'customNameResolver' | 'schemaName' | 'typeName'
-> {
+export interface CompileSchemaOptions
+	extends DialectOptions, Pick<GenerateOptions, 'customNameResolver' | 'schemaName' | 'typeName'> {
 	cwd: string;
 	fileName: string;
 	importEffect?: boolean;
@@ -54,6 +49,11 @@ export async function compile(options: CompileOptions): Promise<void> {
 		customNameResolver: options.customNameResolver,
 		schemaName: options.schemaName,
 		typeName: options.typeName,
+		dialect: options.dialect,
+		fallbackDialect: options.fallbackDialect,
+		unknownDialect: options.unknownDialect,
+		keywordPolicy: options.keywordPolicy,
+		onDialectIssue: options.onDialectIssue,
 	});
 
 	writeFileSync(outputPath, withBanner(code, options.bannerComment), 'utf8');
@@ -73,6 +73,11 @@ export async function compileSchema(schema: JSONSchema, options: CompileSchemaOp
 	const { root } = await parse(schema, {
 		cwd: options.cwd,
 		fileName: options.fileName,
+		dialect: options.dialect,
+		fallbackDialect: options.fallbackDialect,
+		unknownDialect: options.unknownDialect,
+		keywordPolicy: options.keywordPolicy,
+		onDialectIssue: options.onDialectIssue,
 	});
 
 	return generate(root, {

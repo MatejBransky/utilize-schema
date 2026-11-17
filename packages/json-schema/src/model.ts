@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { JSONSchema7, JSONSchema7TypeName } from 'json-schema';
 
+import type { DialectId, DialectSource } from './dialect';
+
 export interface JSONSchema extends JSONSchema7 {
 	discriminator?: string;
 	/** 2019-09 annotation; draft-07 schemas can carry it too. */
@@ -96,6 +98,10 @@ export type Meta = {
 	reference?: ParsedJSONSchema;
 	isCircular?: boolean;
 	resolvedName?: string;
+	/** Dialect of the schema resource this node belongs to. */
+	dialect: DialectId;
+	/** Where `dialect` came from: `$schema`, the enclosing resource, or a fallback. */
+	dialectSource: DialectSource;
 };
 
 export interface ParsedJSONSchemaObject

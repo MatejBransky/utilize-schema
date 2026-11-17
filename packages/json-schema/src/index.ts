@@ -1,3 +1,4 @@
+export * from './dialect';
 export * from './linker';
 export * from './model';
 export * from './normalize';

@@ -1,4 +1,4 @@
-import { detectSchemaVersion, isPlainObject, normalizeSchema } from '@utilize/json-schema';
+import { isPlainObject, prepareSchema, resolveDialect } from '@utilize/json-schema';
 
 export interface SchemaFile {
 	id: string;
@@ -76,7 +76,9 @@ export function buildBundle(parsedFiles: ParsedFile[], rootId: string): BundleRe
 		};
 	}
 
-	const rootVersion = detectSchemaVersion(rootParsed.schema);
+	const rootDialect = resolveDialect(rootParsed.schema, {
+		unknownDialect: 'fallback',
+	}).dialect.id;
 
 	for (const parsed of parsedFiles) {
 		if (parsed.schema === undefined) {
@@ -84,7 +86,10 @@ export function buildBundle(parsedFiles: ParsedFile[], rootId: string): BundleRe
 		}
 
 		try {
-			normalizeSchema(parsed.schema, detectSchemaVersion(parsed.schema, rootVersion));
+			prepareSchema(parsed.schema, {
+				filePath: parsed.file.name,
+				fallbackDialect: rootDialect,
+			});
 		} catch (error) {
 			problems.push({
 				fileId: parsed.file.id,

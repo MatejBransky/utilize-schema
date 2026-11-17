@@ -101,6 +101,7 @@ describe('code generation', () => {
 
 	test('builds closed tuples', async () => {
 		const result = await compile({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
 			type: 'array',
 			prefixItems: [{ type: 'string' }, { type: 'integer' }],
 			items: false,
@@ -118,6 +119,7 @@ describe('code generation', () => {
 
 	test('builds open tuples with a rest schema', async () => {
 		const result = await compile({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
 			type: 'array',
 			prefixItems: [{ type: 'string' }],
 			items: { type: 'integer' },
