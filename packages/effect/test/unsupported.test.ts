@@ -31,14 +31,25 @@ describe('unsupported keywords', () => {
 		await expect(compile(schema)).rejects.toBeInstanceOf(UnsupportedEffectSchemaFeatureError);
 	});
 
-	test('rejects a $ref combined with constraint siblings', async () => {
-		await expect(
-			compile({
-				$defs: { A: { type: 'object' } },
-				type: 'object',
-				properties: { value: { $ref: '#/$defs/A', required: ['a'] } },
-			})
-		).rejects.toThrow(/cannot be combined with required/);
+	test('ignores $ref siblings in draft-07', async () => {
+		const result = await compile({
+			$defs: { A: { type: 'object' } },
+			type: 'object',
+			properties: { value: { $ref: '#/$defs/A', required: ['a'] } },
+		});
+
+		await expect(result).not.toContain('a: Schema.Json');
+	});
+
+	test('applies $ref siblings in 2020-12', async () => {
+		const result = await compile({
+			$schema: twentyTwentyTwelve,
+			$defs: { A: { type: 'object' } },
+			type: 'object',
+			properties: { value: { $ref: '#/$defs/A', required: ['a'] } },
+		});
+
+		await expect(result).toContain('a: Schema.Json');
 	});
 
 	test('rejects allOf branches that declare the same property', async () => {

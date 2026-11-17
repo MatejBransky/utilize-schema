@@ -128,7 +128,7 @@ pnpm test:suite    # official JSON Schema Test Suite (draft-07)
 
 The generator is checked against the official
 [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
-Today it passes **204 of 269 draft-07 cases (774 of 939 assertions)**. Cases
+Today it passes **205 of 269 draft-07 cases (777 of 939 assertions)**. Cases
 tagged `format-assertion` are skipped because `format` is kept as an annotation;
 cases that need external schemas are not wired up yet.
 
@@ -172,8 +172,11 @@ before generation.
 for schemas that do not rely on properties evaluated by applicators.
 
 Unsupported keywords throw `UnsupportedEffectSchemaFeatureError`:
-`patternProperties`, `minContains`, `maxContains`, and a `$ref` combined with
-constraint siblings.
+`patternProperties`, `minContains`, `maxContains`.
+
+`$ref` siblings follow the dialect: draft-07 and older ignore them, 2019-09 and
+newer merge disjoint object siblings, and sibling combinations Effect cannot
+express throw.
 
 Effect has no generic intersection, so `allOf` is limited to merging object
 subschemas that do not declare the same property.

@@ -21,7 +21,7 @@ export const generator = createGenerator<
 			(subschema) =>
 				typeof subschema === 'object' &&
 				subschema !== null &&
-				selectGenerator(subschema) === objectGenerator &&
+				selectGenerator(subschema, context) === objectGenerator &&
 				composedSchemaParts(subschema) === undefined
 		);
 

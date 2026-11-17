@@ -1,4 +1,7 @@
 import {
+	type Dialect,
+	dialectOf,
+	isKeywordApplicable,
 	isPlainObject,
 	Meta,
 	type ParsedJSONSchema,
@@ -8,6 +11,7 @@ import {
 import { collectStandaloneSchemas, type SchemaEdge } from './collectStandaloneSchemas';
 import { UnresolvedReferenceError, UnsupportedEffectSchemaFeatureError } from './errors';
 import { findCyclicSchemas } from './findCyclicSchemas';
+import { referenceConstraints } from './refSiblings';
 import {
 	allocateName,
 	mapDeclarationNames,
@@ -32,6 +36,8 @@ export interface GenerateOptions {
 type Context = {
 	/** Name of an already declared standalone schema. */
 	nameOf(schema: ParsedJSONSchemaObject, ref: string): string;
+	/** Dialect of the document root, used for synthetic nodes without `Meta`. */
+	dialect: Dialect;
 };
 
 /** Keywords that have no Effect Schema equivalent and are rejected instead of ignored. */
@@ -97,6 +103,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		options
 	);
 	const valueTypeContext: ValueTypeContext = {
+		dialect: dialectOf(root),
 		aliasFor(schema) {
 			return cyclic.has(schema) ? aliasOf(schema) : undefined;
 		},
@@ -115,6 +122,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 
 			return names.schema;
 		},
+		dialect: dialectOf(root),
 	};
 
 	const parts: string[] = [];
@@ -223,36 +231,58 @@ function generateSchema(schema: ParsedJSONSchema, context: Context): string {
 		return 'Schema.Json';
 	}
 
-	assertSupportedKeywords(schema);
+	const dialect = dialectOf(schema, context.dialect);
+	const nodeContext = dialect === context.dialect ? context : { ...context, dialect };
+
+	assertSupportedKeywords(schema, dialect);
 
 	const expression = applyChecks(
-		generateExpression(schema, context),
-		filterChecks(schema, context)
+		generateExpression(schema, nodeContext),
+		filterChecks(schema, nodeContext)
 	);
 
 	return applyAnnotations(expression, schema);
 }
 
 function generateExpression(schema: ParsedJSONSchemaObject, context: Context): string {
-	if (typeof schema.$ref === 'string') {
-		const siblings = constraintKeywords(schema);
-		const allOf = schema.allOf;
+	const dialect = dialectOf(schema, context.dialect);
 
-		if (siblings.length === 0) {
+	if (typeof schema.$ref === 'string') {
+		if (dialect.refSiblings === 'ignore') {
 			return reference(schema, context);
 		}
 
-		if (allOf !== undefined && allOf.length > 0 && siblings.length === 1) {
-			return generateIntersection([schema, ...allOf], context);
+		if (constraintKeywords(schema).length === 0) {
+			if (schema.not !== undefined || schema.if !== undefined) {
+				throw new UnsupportedEffectSchemaFeatureError(
+					'$ref siblings',
+					'a reference cannot be combined with not/if/then/else'
+				);
+			}
+
+			return reference(schema, context);
 		}
 
-		throw new UnsupportedEffectSchemaFeatureError(
-			'$ref siblings',
-			`a reference cannot be combined with ${siblings.join(', ')}`
-		);
+		const target = dereference(schema);
+
+		if (!isPlainObject(target)) {
+			throw new UnsupportedEffectSchemaFeatureError(
+				'$ref siblings',
+				'a reference with sibling keywords must resolve to an object schema'
+			);
+		}
+
+		const rest = referenceConstraints(schema);
+		const branches = [
+			target as ParsedJSONSchemaObject,
+			...(Array.isArray(rest.allOf) ? rest.allOf : []),
+			{ ...rest, allOf: undefined } as unknown as ParsedJSONSchemaObject,
+		];
+
+		return generateIntersection(branches, context);
 	}
 
-	if (Object.hasOwn(schema, 'const')) {
+	if (Object.hasOwn(schema, 'const') && isKeywordApplicable(dialect, 'const')) {
 		return literal(schema.const);
 	}
 
@@ -419,12 +449,15 @@ function generateNumber(schema: ParsedJSONSchemaObject, integer: boolean): strin
 }
 
 function generateArray(schema: ParsedJSONSchemaObject, context: Context): string {
+	const dialect = dialectOf(schema, context.dialect);
 	const items = schema.items as unknown as ParsedJSONSchema | ParsedJSONSchema[] | undefined;
-	const prefixItems = Array.isArray(schema.prefixItems)
-		? (schema.prefixItems as ParsedJSONSchema[])
-		: Array.isArray(items)
-			? items
-			: undefined;
+	const tupleItems = Array.isArray(items) ? items : undefined;
+	const prefixItems =
+		dialect.tuple === 'prefixItems'
+			? Array.isArray(schema.prefixItems)
+				? (schema.prefixItems as ParsedJSONSchema[])
+				: undefined
+			: tupleItems;
 	const checks = arrayChecks(schema, context);
 	const singleItem = Array.isArray(items) ? undefined : items;
 
@@ -443,7 +476,7 @@ function generateArray(schema: ParsedJSONSchemaObject, context: Context): string
 
 		return index < minItems ? expression : `Schema.optionalKey(${expression})`;
 	});
-	const rest = arrayRest(schema, items);
+	const rest = arrayRest(schema, items, dialect);
 
 	if (rest === false) {
 		return applyChecks(`Schema.Tuple([${elements.join(', ')}])`, checks);
@@ -461,22 +494,15 @@ function generateArray(schema: ParsedJSONSchemaObject, context: Context): string
 
 function arrayRest(
 	schema: ParsedJSONSchemaObject,
-	items: ParsedJSONSchema | ParsedJSONSchema[] | undefined
+	items: ParsedJSONSchema | ParsedJSONSchema[] | undefined,
+	dialect: Dialect
 ): ParsedJSONSchema | false {
-	if (!Array.isArray(items)) {
-		if (Array.isArray(schema.prefixItems)) {
-			if (items === false) {
-				return false;
-			}
-
-			return items ?? true;
-		}
-
-		if (schema.additionalItems === false) {
+	if (dialect.tuple === 'prefixItems') {
+		if (items === false) {
 			return false;
 		}
 
-		return (schema.additionalItems as unknown as ParsedJSONSchema | undefined) ?? true;
+		return Array.isArray(items) ? true : (items ?? true);
 	}
 
 	if (schema.additionalItems === false) {
@@ -488,11 +514,15 @@ function arrayRest(
 
 function arrayChecks(schema: ParsedJSONSchemaObject, context: Context): string[] {
 	const checks: string[] = [];
-	const prefixLength = Array.isArray(schema.prefixItems)
-		? schema.prefixItems.length
-		: Array.isArray(schema.items)
-			? schema.items.length
-			: 0;
+	const dialect = dialectOf(schema, context.dialect);
+	const prefixLength =
+		dialect.tuple === 'prefixItems'
+			? Array.isArray(schema.prefixItems)
+				? schema.prefixItems.length
+				: 0
+			: Array.isArray(schema.items)
+				? schema.items.length
+				: 0;
 	const minItems = typeof schema.minItems === 'number' ? schema.minItems : 0;
 
 	if (minItems > prefixLength) {
@@ -599,7 +629,10 @@ function objectChecks(schema: ParsedJSONSchemaObject, context: Context): string[
 	if (typeof schema.maxProperties === 'number') {
 		checks.push(`Schema.isMaxProperties(${schema.maxProperties})`);
 	}
-	if (schema.propertyNames !== undefined) {
+	if (
+		schema.propertyNames !== undefined &&
+		isKeywordApplicable(dialectOf(schema, context.dialect), 'propertyNames')
+	) {
 		checks.push(`Schema.isPropertyNames(${generateSchema(schema.propertyNames, context)})`);
 	}
 
@@ -647,6 +680,13 @@ function dependencyChecks(schema: ParsedJSONSchemaObject, context: Context): str
  * as filters that evaluate the subschemas with `Schema.is`.
  */
 function filterChecks(schema: ParsedJSONSchemaObject, context: Context): string[] {
+	if (
+		typeof schema.$ref === 'string' &&
+		dialectOf(schema, context.dialect).refSiblings === 'ignore'
+	) {
+		return [];
+	}
+
 	const checks: string[] = [];
 
 	if (schema.not !== undefined) {
@@ -657,7 +697,7 @@ function filterChecks(schema: ParsedJSONSchemaObject, context: Context): string[
 		);
 	}
 
-	if (schema.if !== undefined) {
+	if (schema.if !== undefined && isKeywordApplicable(context.dialect, 'if')) {
 		const condition = generateSchema(parsed(schema.if), context);
 		const thenBranch = branchCheck(schema.then, 'then', context);
 		const elseBranch = branchCheck(schema.else, 'else', context);
@@ -689,7 +729,8 @@ function parsed(schema: unknown): ParsedJSONSchema {
  * result is a union over all JSON value types, with the matching ones refined.
  */
 function generateUntyped(schema: ParsedJSONSchemaObject, context: Context): string {
-	const constrained = JSON_VALUE_TYPES.filter((type) => appliesTo(schema, type));
+	const dialect = dialectOf(schema, context.dialect);
+	const constrained = JSON_VALUE_TYPES.filter((type) => appliesTo(schema, type, dialect));
 
 	if (constrained.length === 0) {
 		return 'Schema.Json';
@@ -707,34 +748,42 @@ function generateUntyped(schema: ParsedJSONSchemaObject, context: Context): stri
 	return `Schema.Union([${[...new Set(members)].join(', ')}])`;
 }
 
-function appliesTo(schema: ParsedJSONSchemaObject, type: JSONValueType): boolean {
+function appliesTo(schema: ParsedJSONSchemaObject, type: JSONValueType, dialect: Dialect): boolean {
 	const record = schema as unknown as Record<string, unknown>;
+	const anyKeyword = (keywords: string[]) =>
+		keywords.some(
+			(keyword) => record[keyword] !== undefined && isKeywordApplicable(dialect, keyword)
+		);
 
 	switch (type) {
 		case 'string':
-			return ['minLength', 'maxLength', 'pattern'].some((keyword) => record[keyword] !== undefined);
+			return anyKeyword(['minLength', 'maxLength', 'pattern']);
 		case 'number':
-			return ['minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf'].some(
-				(keyword) => record[keyword] !== undefined
-			);
+			return anyKeyword([
+				'minimum',
+				'maximum',
+				'exclusiveMinimum',
+				'exclusiveMaximum',
+				'multipleOf',
+			]);
 		case 'object':
-			return [
+			return anyKeyword([
 				'properties',
 				'required',
 				'additionalProperties',
 				'minProperties',
 				'maxProperties',
 				'propertyNames',
-			].some((keyword) => record[keyword] !== undefined);
+			]);
 		case 'array':
-			return [
+			return anyKeyword([
 				'items',
 				'prefixItems',
 				'additionalItems',
 				'minItems',
 				'maxItems',
 				'uniqueItems',
-			].some((keyword) => record[keyword] !== undefined);
+			]);
 	}
 }
 
@@ -908,11 +957,11 @@ function literalValue(value: unknown): string {
 	);
 }
 
-function assertSupportedKeywords(schema: ParsedJSONSchemaObject): void {
+function assertSupportedKeywords(schema: ParsedJSONSchemaObject, dialect: Dialect): void {
 	const record = schema as unknown as Record<string, unknown>;
 
 	for (const keyword of UNSUPPORTED_KEYWORDS) {
-		if (record[keyword] !== undefined) {
+		if (record[keyword] !== undefined && isKeywordApplicable(dialect, keyword)) {
 			throw new UnsupportedEffectSchemaFeatureError(keyword);
 		}
 	}

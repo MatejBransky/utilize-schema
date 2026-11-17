@@ -1,4 +1,4 @@
-import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
+import type { Dialect, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 export type GeneratorContext = {
 	/** $refs that must be emitted as `z.lazy()` because a getter cannot defer them. */
@@ -9,4 +9,6 @@ export type GeneratorContext = {
 	readOnlyKeyword?: boolean;
 	/** The variable under which a referenced schema is exported. */
 	nameOf(reference: ParsedJSONSchemaObject): string;
+	/** Dialect of the document root, used for synthetic nodes without `Meta`. */
+	dialect: Dialect;
 };

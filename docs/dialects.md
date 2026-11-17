@@ -72,8 +72,8 @@ await compile({
   keep generated code faithful to the declared dialect.
 - `keywordPolicy: 'ignore'` does not report foreign keywords.
 
-The policy only decides how foreign keywords are reported; the parser does not
-remove them, so a generator that supports such a keyword still applies it.
+The policy only decides how foreign keywords are reported. The parser keeps
+them in the schema, and the generators skip them (see [Generation](#generation)).
 Valid keywords that no generator supports yet (`$dynamicRef`, `$recursiveRef`,
 `minContains`, `maxContains`) always fail, whatever the policy.
 
@@ -95,6 +95,23 @@ utilize-effect --fallback-dialect draft-06 schema.yaml
 `$ref` siblings are not an error in dialects that ignore them — the
 specification only says they are ignored. They are reported as
 `ignored-ref-siblings` with the default `keywordPolicy: 'warn'`.
+
+## Generation
+
+Generators read the dialect from each node instead of guessing it from the
+keywords:
+
+- **`$ref` siblings** — draft-04/06/07 emit only the reference and ignore
+  everything next to it. 2019-09/2020-12 intersect the reference with its
+  sibling constraints.
+- **Tuples** — `items[]` + `additionalItems` before 2020-12, `prefixItems` +
+  `items` in 2020-12. The other shape is rejected by `keywordPolicy: 'error'`
+  and ignored by `'warn'` / `'ignore'`.
+- **Keyword applicability** — `const`, `contains`, `propertyNames`,
+  `if`/`then`/`else`, `dependent*`, `minContains`, `maxContains`,
+  `unevaluated*` and `$defs` only take effect in dialects that define them.
+  With `'warn'` or `'ignore'` a foreign keyword is dropped, so the generated
+  schema matches the standard instead of being stricter.
 
 ## Metadata
 

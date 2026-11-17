@@ -1,4 +1,4 @@
-import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
+import { dialectOf, type ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import type { SchemaEdge } from './collectStandaloneSchemas';
 import { generator as arrayGenerator } from './generators/arrayGenerator';
@@ -59,7 +59,11 @@ function isStructuralNode(schema: SchemaNode): boolean {
 		return false;
 	}
 
-	const generator = selectGenerator(schema);
+	const generator = selectGenerator(schema, {
+		dialect: dialectOf(schema),
+		nameOf: () => '',
+		lazyRefs: new Set(),
+	});
 
 	if (
 		generator === objectGenerator ||

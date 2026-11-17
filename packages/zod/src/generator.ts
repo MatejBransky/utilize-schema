@@ -1,4 +1,9 @@
-import { Meta, type ParsedJSONSchema, type ParsedJSONSchemaObject } from '@utilize/json-schema';
+import {
+	dialectOf,
+	Meta,
+	type ParsedJSONSchema,
+	type ParsedJSONSchemaObject,
+} from '@utilize/json-schema';
 import toposort from 'toposort';
 
 import { breakReferenceCycles } from './breakReferenceCycles';
@@ -42,6 +47,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 			nameOf: () => {
 				throw new Error('A primitive schema cannot reference another schema.');
 			},
+			dialect: dialectOf(root),
 		});
 	}
 
@@ -78,9 +84,11 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		lazyRefs: broken.lazyRefs,
 		readOnlyKeyword: options.readOnlyKeyword,
 		nameOf: (schema) => namesOf(schema).schema,
+		dialect: dialectOf(root),
 	};
 
 	const valueTypeContext: ValueTypeContext = {
+		dialect: dialectOf(root),
 		aliasFor: (schema) => {
 			if (!cyclicSchemas.has(schema)) {
 				return undefined;

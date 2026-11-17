@@ -17,6 +17,7 @@ import { generator as recordGenerator } from './recordGenerator';
 import { generator as refGenerator } from './refGenerator';
 import { generator as stringGenerator } from './stringGenerator';
 import { generator as tupleGenerator } from './tupleGenerator';
+import type { GeneratorContext } from './types';
 
 let generators: ExpressionGenerator[] | undefined;
 
@@ -47,8 +48,11 @@ function getGenerators(): ExpressionGenerator[] {
 	return generators;
 }
 
-export function selectGenerator(input: ParsedJSONSchemaObject): ExpressionGenerator {
-	const generator = getGenerators().find(({ predicate }) => predicate(input));
+export function selectGenerator(
+	input: ParsedJSONSchemaObject,
+	context: GeneratorContext
+): ExpressionGenerator {
+	const generator = getGenerators().find(({ predicate }) => predicate(input, context));
 
 	if (!generator) {
 		return anyGenerator;
