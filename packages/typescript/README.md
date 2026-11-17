@@ -107,6 +107,63 @@ runtime validation.
 `$ref` siblings are resolved by the parser before generation, so a reference
 with sibling keywords becomes one merged schema.
 
+## Conformance
+
+The generator is checked against the official
+[JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite)
+(draft-07). A type cannot validate a value, so the runner emits every suite
+instance next to the generated declarations as a typed constant and checks the
+whole set with one `tsc --strict` run: spec-valid instances must be accepted and
+spec-invalid ones rejected.
+
+```sh
+pnpm test       # unit tests, including tsc --strict
+pnpm test:suite # official JSON Schema Test Suite
+```
+
+Current baseline on suite commit `e2a68a1`:
+
+- **164 of 288 cases** pass in both directions.
+- **746 of 813** spec-valid instances are accepted.
+- **210 of 788** spec-invalid instances are rejected.
+- **83 cases** differ only because an invalid instance is accepted. TypeScript
+  cannot express `minimum`, `pattern`, `format`, `uniqueItems`, `dependencies`,
+  `if`/`then`/`else`, and similar value constraints, so these are inherent to
+  the target.
+- **41 cases** are listed in `test/suite/knownGaps.ts`: 10 need `$id`/`$anchor`
+  or boolean-schema `$ref` resolution from the shared parser, and 31 are the
+  inference trade-off described below.
+
+The numbers are recorded in `test/suite/baseline.ts` and the test fails when
+they change, so a regression cannot slip in and an improvement has to update the
+baseline on purpose.
+
+### Inference trade-off
+
+A schema without `type` infers the intended type from its keywords: `properties`
+and `required` mean an object, `items` means an array, `minimum` means a number.
+This is the same choice `json-schema-to-typescript` makes, and it keeps common
+schemas such as `{ properties: { name: { type: 'string' } } }` useful. Strictly
+speaking those keywords only constrain their own JSON type, so a valid `"foo"`
+is also accepted by that schema; the generated type rejects it. Counting those
+instances as failures is why "rejects valid instances" is not zero for either
+project.
+
+### Compared with json-schema-to-typescript
+
+At its own pinned revision (`5caacfc`, suite `3c25e5f`) json-schema-to-typescript
+records 141 of 257 draft-07 groups with no valid instance rejected and no invalid
+one accepted, 24 crashes and 2 invalid TypeScript files. Its instance totals are
+490 of 516 valid accepted and 198 of 342 invalid rejected. The suite revisions
+and case selections differ (257 groups there, 288 runnable cases here; this
+runner skips cases that need external schemas), so the numbers describe two
+different records rather than a score. On the same group metric the TypeScript
+generator is ahead (56.9% vs 54.9%) with no invalid TypeScript and no crashes
+outside the shared parser gaps. Instance-level numbers are not comparable across
+the two revisions: this generator accepts 91.8% of valid instances and rejects
+26.6% of invalid ones, while json-schema-to-typescript reports 95.0% and 57.9%
+on its older selection.
+
 ## Differences from json-schema-to-typescript
 
 - **Same pipeline as the other Utilize generators.** Parsing, `$ref` resolution,

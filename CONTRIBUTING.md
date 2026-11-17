@@ -86,6 +86,10 @@ To set this up on a fork or a new repository:
   ```sh
   pnpm --filter @utilize/effect test:suite
   ```
+- Run it for the TypeScript generator (type-level, one `tsc` pass):
+  ```sh
+  pnpm --filter @utilize/typescript test:suite
+  ```
 
 ## Dependency Versions
 

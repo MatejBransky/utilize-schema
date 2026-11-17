@@ -145,6 +145,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2
+      json-schema-test-suite:
+        specifier: github:json-schema-org/JSON-Schema-Test-Suite#e2a68a15cd490750fd6b95e604e4054d7d978d1f
+        version: https://codeload.github.com/json-schema-org/JSON-Schema-Test-Suite/tar.gz/e2a68a15cd490750fd6b95e604e4054d7d978d1f
       oxfmt:
         specifier: 'catalog:'
         version: 0.78.0
