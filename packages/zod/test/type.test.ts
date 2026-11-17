@@ -135,6 +135,26 @@ describe('type', () => {
     `);
 	});
 
+	test('fixed-length tuple from minItems and maxItems', async () => {
+		await expect(
+			compile({
+				type: 'array',
+				items: [
+					{ type: 'integer', minimum: 0 },
+					{ type: 'integer', minimum: 0 },
+				],
+				minItems: 2,
+				maxItems: 2,
+			})
+		).toMatchCode(ts`
+      export const Root = z.tuple([
+        z.int().min(0),
+        z.int().min(0),
+      ])
+      export type Root = z.infer<typeof Root>;
+    `);
+	});
+
 	test('array with multiple items schemas and additionalItems schema (typle with spread)', async () => {
 		await expect(
 			compile({

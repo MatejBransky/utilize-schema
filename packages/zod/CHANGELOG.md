@@ -1,5 +1,23 @@
 # @utilize/zod
 
+## 0.7.0
+
+### Minor Changes
+
+- 5f724d6: Add `utilize-zod` and `utilize-effect` CLIs that compile a JSON or YAML schema from a file, directory, glob or stdin to a file, a directory or stdout. Generated files now start with a "do not edit" banner by default (`bannerComment: false` to omit it). The parser and both `compile()` functions no longer log progress to stdout.
+- ff39a85: Map 2019-09/2020-12 `unevaluatedProperties` and `unevaluatedItems` to `additionalProperties` and the items rest instead of failing, keep `deprecated` in the generated `.meta()`, and add a `readOnlyKeyword` option that maps `readOnly: true` to `.readonly()`.
+- dbe644b: Compare `const` and `enum` values by deep equality instead of identity: object values become strict objects and array values become exact tuples. Also enforce `oneOf` exactly-one semantics; a value matching several branches is now rejected.
+- 6ad41a2: Intersect keywords next to `allOf`, `anyOf` and `oneOf` instead of dropping them. A schema such as `{ allOf: [...], properties: {...} }` now rejects data the previous output accepted. `$ref` still overrides its siblings, as draft-07 requires.
+
+### Patch Changes
+
+- 6ad41a2: Support `$ref` to a boolean schema instead of throwing. `$ref` to `true` emits `z.any()` and `$ref` to `false` emits `z.never()`.
+- 98f9758: Drop the runtime `lodash` import from `compile()`, make `output` optional in `CompileOptions`, declare `zod` as a peer dependency instead of a regular one, and publish only `dist`.
+- Updated dependencies [6ad41a2]
+- Updated dependencies [5f724d6]
+- Updated dependencies [ff39a85]
+  - @utilize/json-schema@0.3.0
+
 ## 0.6.0
 
 ### Minor Changes
