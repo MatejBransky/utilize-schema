@@ -265,6 +265,27 @@ export const examples: Example[] = [
 			},
 		},
 	}),
+	single('recursive-one-of', 'Recursive oneOf', 'References', {
+		title: 'Filter',
+		oneOf: [
+			{
+				type: 'object',
+				properties: {
+					type: { const: 'Id' },
+					search: { type: 'string' },
+				},
+				required: ['type', 'search'],
+			},
+			{
+				type: 'object',
+				properties: {
+					type: { const: 'And' },
+					filters: { type: 'array', items: { $ref: '#' } },
+				},
+				required: ['type', 'filters'],
+			},
+		],
+	}),
 	single('external-ref', 'External $ref', 'References', {
 		title: 'Release',
 		type: 'object',
