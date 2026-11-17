@@ -18,6 +18,9 @@
 		"url": "git+https://github.com/MatejBransky/utilize-schema.git",
 		"directory": "packages/effect"
 	},
+	"bin": {
+		"utilize-effect": "./dist/cli.mjs"
+	},
 	"files": [
 		"dist"
 	],
@@ -38,7 +41,8 @@
 		"dev": "tsdown --watch"
 	},
 	"dependencies": {
-		"@utilize/json-schema": "workspace:*"
+		"@utilize/json-schema": "workspace:*",
+		"js-yaml": "5.4.2"
 	},
 	"devDependencies": {
 		"@total-typescript/tsconfig": "catalog:",

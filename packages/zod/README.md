@@ -39,6 +39,10 @@ pnpm add zod
   standalone schema.
 - `readOnlyKeyword` — map `readOnly: true` to `.readonly()`. Off by default,
   because it freezes values and changes the inferred type.
+- `bannerComment` — header prepended to written files; `false` disables it.
+
+For custom pipelines, `compileFile()` and `compileSchema()` return the generated
+code without writing anything, and `withBanner()` applies the default header.
 
 ## Output
 
@@ -74,6 +78,19 @@ code.
 - Sorts schemas so the generated file initializes in dependency order
 - Selects the right generator for each schema node
 - Emits Zod code and inferred types
+
+## CLI
+
+```sh
+utilize-zod schema.json schema.generated.ts
+utilize-zod --input 'schemas/**/*.json' --output generated/
+cat schema.yaml | utilize-zod > schema.generated.ts
+```
+
+Input can be a file, a directory or a glob; JSON and YAML are supported. Output
+defaults to stdout. Every generated file starts with a "do not edit" banner
+(`--no-banner` omits it). Pass `--readonly` to map `readOnly: true` to
+`.readonly()`.
 
 ## Testing
 

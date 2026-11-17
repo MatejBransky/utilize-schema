@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
+import { afterAll, describe, expect, test } from 'vitest';
 
 import { DRAFT_7, isCompatible } from './suite/compatibility';
 import { compileToZodSchema } from './suite/compile';
@@ -58,14 +58,7 @@ function skipReason(testCase: SuiteCase): { kind: SkipKind; reason: string } | u
 	return undefined;
 }
 
-beforeAll(() => {
-	// `parse` and generation log progress for every schema.
-	vi.spyOn(console, 'log').mockImplementation(() => {});
-	vi.spyOn(console, 'warn').mockImplementation(() => {});
-});
-
 afterAll(() => {
-	vi.restoreAllMocks();
 	console.log(
 		[
 			'JSON Schema Test Suite (draft-07)',

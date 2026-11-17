@@ -50,7 +50,6 @@ export async function parse(
 			stack: new Set(),
 		});
 	});
-	console.log(`Parsed ${entries.length} schemas from ${rootFileName} at ${cwd}`);
 	const root = $refs.get('#') as unknown as ParsedJSONSchema;
 
 	if (typeof root === 'object' && root !== null && !Object.hasOwnProperty.call(root, Meta)) {
