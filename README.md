@@ -9,6 +9,8 @@ Generate robust, type-safe Zod or Effect Schema codecs — or plain TypeScript t
 - **Pluggable generators:** the parser is generator-agnostic, so a new target only needs a generator. `@utilize/zod`, `@utilize/effect` and `@utilize/typescript` share the same pipeline.
 - **$ref support:** Local, external, and cyclic references. Each generator picks its own strategy: Zod uses getters or typed `z.lazy()`, Effect Schema always emits `Schema.suspend`, and the TypeScript generator emits recursive interfaces.
 - **Standalone schema generation:** Every definition gets its own schema or type.
+- **Configurable names:** rewrite generated Zod and Effect schema variables and types
+  with a callback, e.g. to suffix schemas with `Schema`.
 - **TypeScript-first:** Generates runtime schemas and TypeScript types, including recursive ones. `@utilize/typescript` emits the types alone, with no runtime dependency.
 - **Draft support:** Draft-04/06/07, with normalization for 2019-09 and 2020-12.
 - **Conformance:** all generators are tested against the official [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite) for draft-07 — Zod passes 233 of 271 cases (1,323 of 1,605 assertions), Effect Schema 204 of 269 cases (774 of 939 assertions), and TypeScript 167 of 288 cases at the type level; remaining gaps are tracked per keyword.
