@@ -181,7 +181,7 @@ function renderReference(
 		return renderType(resolved, context, level);
 	}
 
-	const name = context.nameOf(resolved, ref);
+	const name = context.nameOf(resolved as unknown as ParsedJSONSchemaObject, ref);
 	const siblings = referenceSiblings(schema);
 
 	if (siblings === undefined) {

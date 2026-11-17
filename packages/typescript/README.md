@@ -123,7 +123,7 @@ pnpm test:suite # official JSON Schema Test Suite
 
 Current baseline on suite commit `e2a68a1`:
 
-- **166 of 288 cases** pass in both directions.
+- **167 of 288 cases** pass in both directions.
 - **787 of 813** spec-valid instances are accepted.
 - **207 of 788** spec-invalid instances are rejected.
 - **100 cases** differ only because an invalid instance is accepted. TypeScript
