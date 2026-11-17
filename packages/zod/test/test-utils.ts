@@ -5,7 +5,10 @@ import { type z } from 'zod';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { generate } from '../src/generator';
+import { generate, type GenerateOptions } from '../src/generator';
+
+/** Generator options a test can override; the rest keep their test defaults. */
+type TestGenerateOptions = Pick<GenerateOptions, 'schemaName' | 'typeName'>;
 
 /**
  * A tagged template literal function for expected TypeScript code. Code is
@@ -43,7 +46,7 @@ export function withMeta(obj: JSONSchema, meta: Partial<Meta> = {}) {
 	return obj as ParsedJSONSchemaObject;
 }
 
-export interface CompileOptions {
+export interface CompileOptions extends TestGenerateOptions {
 	importZod?: boolean;
 	cwd?: string;
 	fileName?: string;
@@ -58,6 +61,8 @@ export async function compile(schema: JSONSchema, options?: CompileOptions) {
 	const code = generate(parsed.root, {
 		importZod: options?.importZod ?? false,
 		readOnlyKeyword: options?.readOnlyKeyword,
+		schemaName: options?.schemaName,
+		typeName: options?.typeName,
 	});
 	return formatSource(code);
 }

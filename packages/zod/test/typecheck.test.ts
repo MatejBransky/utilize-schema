@@ -6,7 +6,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 
-import { compile } from './test-utils';
+import { compile, type CompileOptions } from './test-utils';
 
 const require = createRequire(import.meta.url);
 const tsc = join(dirname(require.resolve('typescript/package.json')), 'bin/tsc');
@@ -224,15 +224,28 @@ describe('generated recursive schemas type-check', () => {
 			})
 		).resolves.toBeUndefined();
 	});
+
+	test('type-check mapped schema and type names', async () => {
+		await expect(
+			typeCheck(
+				{
+					'Tree.ts': treeSchema,
+					'MutualDefs.ts': mutualDefsSchema,
+					'AllOf.ts': allOfSchema,
+				},
+				{ schemaName: (name) => `${name}Schema` }
+			)
+		).resolves.toBeUndefined();
+	});
 });
 
-async function typeCheck(schemas: Record<string, JSONSchema>) {
+async function typeCheck(schemas: Record<string, JSONSchema>, options: CompileOptions = {}) {
 	const directory = await mkdtemp(join(__dirname, '__generated__-'));
 	const files: string[] = [];
 
 	try {
 		for (const [name, schema] of Object.entries(schemas)) {
-			const code = await compile(schema, { importZod: true });
+			const code = await compile(schema, { importZod: true, ...options });
 			const file = join(directory, name);
 			await writeFile(file, code);
 			files.push(file);

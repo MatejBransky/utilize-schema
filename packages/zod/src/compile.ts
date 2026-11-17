@@ -4,24 +4,27 @@ import { readFileSync, writeFileSync } from 'fs';
 import { load as loadYaml } from 'js-yaml';
 import path from 'path';
 
-import { generate } from './generator';
-import type { CustomNameResolver } from './resolveName';
+import { generate, type GenerateOptions } from './generator';
 
-export interface CompileOptions {
+export interface CompileOptions extends Pick<
+	GenerateOptions,
+	'customNameResolver' | 'schemaName' | 'typeName'
+> {
 	input: string;
 	output?: string;
 	cwd?: string;
-	customNameResolver?: CustomNameResolver;
 	/** Map `readOnly: true` to `.readonly()`; off by default because it changes the value type. */
 	readOnlyKeyword?: boolean;
 	/** Header prepended to the generated file. Pass `false` to omit it. */
 	bannerComment?: string | false;
 }
 
-export interface CompileSchemaOptions {
+export interface CompileSchemaOptions extends Pick<
+	GenerateOptions,
+	'customNameResolver' | 'schemaName' | 'typeName'
+> {
 	cwd: string;
 	fileName: string;
-	customNameResolver?: CustomNameResolver;
 	readOnlyKeyword?: boolean;
 }
 
@@ -42,6 +45,8 @@ export async function compile(userOptions: CompileOptions) {
 
 	const code = await compileFile(inputPath, {
 		customNameResolver: userOptions.customNameResolver,
+		schemaName: userOptions.schemaName,
+		typeName: userOptions.typeName,
 		readOnlyKeyword: userOptions.readOnlyKeyword,
 	});
 
@@ -66,6 +71,8 @@ export async function compileSchema(schema: JSONSchema, options: CompileSchemaOp
 
 	return generate(root, {
 		customNameResolver: options.customNameResolver,
+		schemaName: options.schemaName,
+		typeName: options.typeName,
 		readOnlyKeyword: options.readOnlyKeyword,
 	});
 }
