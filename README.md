@@ -46,10 +46,11 @@ await compileEffect({
 });
 ```
 
-`@utilize/effect` requires `effect` as a peer dependency (`>=4.0.0 <5`):
+Both generators require their runtime as a peer dependency: `zod`
+(`>=4.0.0 <5`) and `effect` (`>=4.0.0 <5`):
 
 ```sh
-pnpm add effect
+pnpm add zod effect
 ```
 
 ## 🧪 Playground

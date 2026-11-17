@@ -18,6 +18,9 @@
 		"url": "git+https://github.com/MatejBransky/utilize-schema.git",
 		"directory": "packages/zod"
 	},
+	"files": [
+		"dist"
+	],
 	"type": "module",
 	"main": "./dist/index.mjs",
 	"module": "./dist/index.mjs",
@@ -39,20 +42,20 @@
 	"dependencies": {
 		"@types/toposort": "2.0.7",
 		"@utilize/json-schema": "workspace:*",
-		"toposort": "2.0.2",
-		"zod": "catalog:"
+		"toposort": "2.0.2"
 	},
 	"devDependencies": {
-		"@apidevtools/json-schema-ref-parser": "catalog:",
 		"@total-typescript/tsconfig": "catalog:",
-		"@types/lodash": "4.17.27",
 		"@types/node": "catalog:",
 		"json-schema-test-suite": "github:json-schema-org/JSON-Schema-Test-Suite#e2a68a15cd490750fd6b95e604e4054d7d978d1f",
-		"lodash": "4.18.1",
 		"oxfmt": "catalog:",
 		"tsdown": "catalog:",
 		"typescript": "catalog:",
-		"vitest": "catalog:"
+		"vitest": "catalog:",
+		"zod": "catalog:"
+	},
+	"peerDependencies": {
+		"zod": ">=4.0.0 <5"
 	},
 	"engines": {
 		"node": ">=22.19.0"

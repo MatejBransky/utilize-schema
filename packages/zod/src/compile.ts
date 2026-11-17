@@ -1,5 +1,4 @@
 import { parse } from '@utilize/json-schema';
-import merge from 'lodash/merge';
 
 import { readFileSync, writeFileSync } from 'fs';
 import path from 'path';
@@ -7,25 +6,21 @@ import path from 'path';
 import { generate } from './generator';
 import type { CustomNameResolver } from './resolveName';
 
-interface CompileOptions {
+export interface CompileOptions {
 	input: string;
-	output: string;
+	output?: string;
 	cwd?: string;
 	customNameResolver?: CustomNameResolver;
 	/** Map `readOnly: true` to `.readonly()`; off by default because it changes the value type. */
 	readOnlyKeyword?: boolean;
 }
 
-const defaultOptions = {
-	output: path.resolve(process.cwd(), 'schema.generated.ts'),
-	cwd: process.cwd(),
-} satisfies Omit<CompileOptions, 'name' | 'input'>;
+const defaultCwd = process.cwd();
 
 export async function compile(userOptions: CompileOptions) {
-	const options = merge({}, defaultOptions, userOptions);
-
-	const inputPath = path.resolve(options.cwd, options.input);
-	const outputPath = path.resolve(options.cwd, options.output);
+	const cwd = userOptions.cwd ?? defaultCwd;
+	const inputPath = path.resolve(cwd, userOptions.input);
+	const outputPath = path.resolve(cwd, userOptions.output ?? 'schema.generated.ts');
 	console.log(`Compiling schema \n from: ${inputPath} \n to: ${outputPath}`);
 
 	const schema = JSON.parse(readFileSync(inputPath, 'utf8'));
@@ -38,8 +33,8 @@ export async function compile(userOptions: CompileOptions) {
 	console.log(`Parsed ${referencedSchemas.length + 1} schemas`);
 
 	const code = generate(root, {
-		customNameResolver: options.customNameResolver,
-		readOnlyKeyword: options.readOnlyKeyword,
+		customNameResolver: userOptions.customNameResolver,
+		readOnlyKeyword: userOptions.readOnlyKeyword,
 	});
 	console.log(`Generated code`);
 

@@ -8,7 +8,6 @@ export default defineConfig({
 	platform: 'node',
 	outExtensions: () => ({ js: '.mjs', dts: '.d.ts' }),
 	deps: {
-		neverBundle: ['json-schema'],
-		onlyBundle: ['lodash'],
+		neverBundle: ['@utilize/json-schema'],
 	},
 });
