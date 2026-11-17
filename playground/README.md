@@ -1,8 +1,8 @@
 # Utilize Schema Playground
 
 A browser playground for the generators in this monorepo: edit several JSON
-Schema files, keep references between them, and see the generated Zod or Effect
-Schema code next to the schemas.
+Schema files, keep references between them, and see the generated Zod, Effect
+Schema or TypeScript code next to the schemas.
 
 ## Features
 
@@ -12,8 +12,9 @@ Schema code next to the schemas.
 - One file is the root; every other file is bundled into its `$defs`
 - Relative `$ref`s between files are rewritten to local refs, so cross-file
   references and cycles work in the browser
-- Live code generation for every available generator (Zod and Effect Schema),
-  selectable from the header and kept in the URL (`?generator=effect`)
+- Live code generation for every available generator (Zod, Effect Schema and
+  TypeScript), selectable from the header and kept in the URL
+  (`?generator=effect`)
 - Generated code is formatted with Prettier at 80 columns, and the Effect target
   adds the real `effect` type declarations to the editor's TypeScript worker
 - Live JSON and JSON Schema validation with AJV (draft-07, 2019-09 and

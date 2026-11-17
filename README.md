@@ -6,10 +6,10 @@ Generate robust, type-safe Zod or Effect Schema codecs and TypeScript types from
 
 ## ✨ Features
 
-- **Pluggable generators:** the parser is generator-agnostic, so a new target only needs a generator. `@utilize/zod` and `@utilize/effect` share the same pipeline.
-- **$ref support:** Local, external, and cyclic references. Each generator picks its own strategy: Zod uses getters or typed `z.lazy()`, Effect Schema always emits `Schema.suspend`.
-- **Standalone schema generation:** Every definition gets its own schema and type.
-- **TypeScript-first:** Generates runtime schemas and TypeScript types, including recursive ones.
+- **Pluggable generators:** the parser is generator-agnostic, so a new target only needs a generator. `@utilize/zod`, `@utilize/effect` and `@utilize/typescript` share the same pipeline.
+- **$ref support:** Local, external, and cyclic references. Each generator picks its own strategy: Zod uses getters or typed `z.lazy()`, Effect Schema always emits `Schema.suspend`, and the TypeScript generator emits recursive interfaces.
+- **Standalone schema generation:** Every definition gets its own schema or type.
+- **TypeScript-first:** Generates runtime schemas and TypeScript types, including recursive ones. `@utilize/typescript` emits the types alone, with no runtime dependency.
 - **Draft support:** Draft-04/06/07, with normalization for 2019-09 and 2020-12.
 - **Conformance:** both generators are tested against the official [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite) for draft-07 — Zod passes 233 of 271 cases (1,323 of 1,605 assertions) and Effect Schema passes 204 of 269 cases (774 of 939 assertions) today; remaining gaps are tracked per keyword.
 
@@ -29,11 +29,16 @@ Generate robust, type-safe Zod or Effect Schema codecs and TypeScript types from
 
 > Effect Schema code generator. Walks the parsed JSON Schema and emits Effect Schema codecs + TypeScript types, with every `$ref` emitted through `Schema.suspend`.
 
+### [`@utilize/typescript`](./packages/typescript)
+
+> TypeScript type generator. Walks the parsed JSON Schema and emits interfaces and type aliases, with no runtime dependency.
+
 ---
 
 ```typescript
 import { compile as compileZod } from '@utilize/zod';
 import { compile as compileEffect } from '@utilize/effect';
+import { compile as compileTypescript } from '@utilize/typescript';
 
 await compileZod({
 	input: './schema.json',
@@ -43,6 +48,11 @@ await compileZod({
 await compileEffect({
 	input: './schema.json',
 	output: './schema.effect.generated.ts',
+});
+
+await compileTypescript({
+	input: './schema.json',
+	output: './schema.generated.ts',
 });
 ```
 
@@ -68,9 +78,9 @@ the package READMEs for the remaining flags.
 ## 🧪 Playground
 
 The [`playground`](./playground) package is a browser app for editing multiple
-JSON Schema files with references, switching between the Zod and Effect Schema
-generators and watching the generated code and schema validation update live. It
-is deployed to GitHub Pages:
+JSON Schema files with references, switching between the Zod, Effect Schema and
+TypeScript generators and watching the generated code and schema validation
+update live. It is deployed to GitHub Pages:
 <https://matejbransky.github.io/utilize-schema/>. Every pull request also gets a
 Vercel preview deployment of the playground.
 
@@ -84,7 +94,8 @@ Vercel preview deployment of the playground.
 4. target specifics: cycle handling and type inference differ per generator — Zod
    breaks cycles with getters/`z.lazy()` and derives value types, Effect Schema
    emits every reference through `Schema.suspend` and annotates only the schemas
-   that take part in a cycle
+   that take part in a cycle, and the TypeScript generator emits recursive
+   interfaces directly (TypeScript needs no annotation)
 
 ---
 
@@ -100,6 +111,11 @@ official JSON Schema Test Suite for draft-07:
   `format-assertion` are skipped because `format` is kept as an annotation.
 
 The remaining gaps are listed in each package's `test/suite/knownFailures.ts`.
+
+The TypeScript generator has no runtime: validation keywords such as
+`minLength`, `pattern` or `uniqueItems` have no type-level equivalent, so they
+are ignored. See [`packages/typescript/README.md`](./packages/typescript/README.md#keyword-coverage)
+for what it emits.
 
 | JSON Schema Keyword                          | Zod | Effect Schema | Notes                                                                       |
 | -------------------------------------------- | --- | ------------- | --------------------------------------------------------------------------- |
@@ -160,7 +176,7 @@ keywords without a generator (`$recursiveRef`, `$dynamicRef`, `minContains`,
 
 ## 🔁 Recursive schemas
 
-Both generators support self-referencing and mutually recursive schemas, but
+The generators support self-referencing and mutually recursive schemas, but
 they express the recursion differently.
 
 **Zod** emits getters for recursion inside object properties:
@@ -202,11 +218,27 @@ export const Tree: Schema.Codec<TreeValue> = Schema.StructWithRest(
 export type Tree = typeof Tree.Type;
 ```
 
+**TypeScript** emits the recursive type directly, because interfaces and
+deferred aliases can refer to themselves:
+
+```ts
+export interface Tree {
+	name: string;
+	children?: Array<Tree>;
+	[key: string]: unknown;
+}
+```
+
+A cycle that only passes through aliases, unions or intersections — for example
+`type A = A | string` — has no type TypeScript can express, so generation fails
+with `UnsupportedCircularTypeError` instead of emitting code that does not
+compile.
+
 ---
 
 ## 🤔 Why Utilize Schema?
 
-- **No more hand-written schemas:** Automate validation and types for Zod or Effect Schema.
+- **No more hand-written schemas:** Automate validation and types for Zod or Effect Schema, or generate TypeScript types alone.
 - **Handles real-world schemas:** Works with complex, modular, and referenced schemas.
 - **Pluggable targets:** The parser and linker are shared, so adding another target only means writing a generator.
 - **Well-tested, well-documented:** Inspired by the best of open-source codegen tools.
@@ -229,4 +261,4 @@ MIT. See [LICENSE](./LICENSE).
 
 ## 🙏 Credits
 
-Inspired by [json-schema-to-typescript](https://github.com/bcherny/json-schema-to-typescript) and the Zod community.
+Inspired by [json-schema-to-typescript](https://github.com/bcherny/json-schema-to-typescript) and the Zod community. [`@utilize/typescript`](./packages/typescript) is a drop-in alternative to it, built on the same parser as the runtime generators.

@@ -108,6 +108,9 @@ export default defineConfig({
 			'@utilize/effect': fileURLToPath(
 				new URL('../packages/effect/src/generator.ts', import.meta.url)
 			),
+			'@utilize/typescript': fileURLToPath(
+				new URL('../packages/typescript/src/generator.ts', import.meta.url)
+			),
 			'@utilize/json-schema': fileURLToPath(
 				new URL('../packages/json-schema/src/index.ts', import.meta.url)
 			),
