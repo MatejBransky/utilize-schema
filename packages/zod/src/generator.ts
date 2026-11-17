@@ -7,7 +7,14 @@ import { unsupportedUnionCycleError } from './errors';
 import { findCyclicSchemas } from './findCyclicSchemas';
 import { generateSchema } from './generators/generateSchema';
 import type { GeneratorContext } from './generators/types';
-import { mapName, resolveName, type CustomNameResolver, type NameMapper } from './resolveName';
+import {
+	allocateName,
+	mapDeclarationNames,
+	resolveName,
+	type CustomNameResolver,
+	type DeclarationNames,
+	type NameMapper,
+} from './resolveName';
 import { NEWLINE, ts } from './utils';
 import { renderValueTypeDeclaration, type ValueTypeContext } from './valueTypes';
 
@@ -24,16 +31,10 @@ export interface GenerateOptions {
 	readOnlyKeyword?: boolean;
 }
 
-interface ResolvedNames {
-	/** Variable that holds the generated schema. */
-	schema: string;
-	/** Type exported for the schema. */
-	type: string;
-}
+/** Names the generated code uses besides the declarations. */
+const RESERVED_NAMES = ['z'];
 
 export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}): string {
-	const usedNames = new Set<string>(['z']);
-
 	if (typeof root !== 'object' || root === null) {
 		return generateSchema(root, {
 			lazyRefs: new Set(),
@@ -57,74 +58,26 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		.filter((schema) => standaloneSchemas.includes(schema))
 		.reverse();
 
-	const nameCache = new Map<ParsedJSONSchemaObject, ResolvedNames>();
+	const { names, typeNames } = nameDeclarations(
+		[...sorted, ...standaloneSchemas.filter((schema) => !sorted.includes(schema))],
+		options
+	);
 	const aliases = new Map<ParsedJSONSchemaObject, string>();
 
-	function allocateName(base: string): string {
-		let name = base;
-		let counter = 1;
+	function namesOf(schema: ParsedJSONSchemaObject): DeclarationNames {
+		const declarationNames = names.get(schema);
 
-		while (usedNames.has(name)) {
-			name = `${base}${counter++}`;
+		if (!declarationNames) {
+			throw new Error('A referenced schema has no generated declaration.');
 		}
 
-		usedNames.add(name);
-		return name;
-	}
-
-	/**
-	 * `resolveName` has already reserved the resolved name, so a mapper that keeps
-	 * it needs no new one.
-	 */
-	function allocateMappedName(
-		defaultName: string,
-		mapper: NameMapper | undefined,
-		sharedName?: string
-	): string {
-		const mapped = mapName(defaultName, mapper);
-
-		if (mapped === sharedName) {
-			return mapped;
-		}
-
-		if (mapped !== defaultName || !usedNames.has(mapped)) {
-			return allocateName(mapped);
-		}
-
-		return mapped;
-	}
-
-	function ensureNames(schema: ParsedJSONSchemaObject): ResolvedNames {
-		const existing = nameCache.get(schema);
-
-		if (existing) {
-			return existing;
-		}
-
-		const defaultName =
-			schema[Meta].resolvedName ??
-			resolveName({
-				schema,
-				usedNames,
-				customResolver: options.customNameResolver,
-			});
-
-		schema[Meta].resolvedName = defaultName;
-
-		const schemaName = allocateMappedName(defaultName, options.schemaName);
-		const names: ResolvedNames = {
-			schema: schemaName,
-			type: allocateMappedName(defaultName, options.typeName, schemaName),
-		};
-
-		nameCache.set(schema, names);
-		return names;
+		return declarationNames;
 	}
 
 	const context: GeneratorContext = {
 		lazyRefs: broken.lazyRefs,
 		readOnlyKeyword: options.readOnlyKeyword,
-		nameOf: (schema) => ensureNames(schema).schema,
+		nameOf: (schema) => namesOf(schema).schema,
 	};
 
 	const valueTypeContext: ValueTypeContext = {
@@ -136,13 +89,13 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 			let alias = aliases.get(schema);
 
 			if (!alias) {
-				alias = allocateName(`${ensureNames(schema).schema}Value`);
+				alias = allocateName(`${namesOf(schema).schema}Value`, typeNames);
 				aliases.set(schema, alias);
 			}
 
 			return alias;
 		},
-		typeNameFor: (schema) => ensureNames(schema).type,
+		typeNameFor: (schema) => namesOf(schema).type,
 		readOnlyKeyword: options.readOnlyKeyword,
 	};
 
@@ -152,7 +105,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 	}
 
 	for (const schema of sorted) {
-		const { schema: schemaName, type: typeName } = ensureNames(schema);
+		const { schema: schemaName, type: typeName } = namesOf(schema);
 		const alias = valueTypeContext.aliasFor(schema);
 		const zodExpression = generateSchema(schema, context);
 
@@ -172,6 +125,38 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 	}
 
 	return code.join(NEWLINE);
+}
+
+/**
+ * Names every standalone schema in two passes: first the resolved names, which
+ * stay unique among themselves, then the mapped names, which are allocated only
+ * once every resolved name is known. A mapped name therefore never depends on
+ * the order in which schemas are generated.
+ */
+function nameDeclarations(schemas: ParsedJSONSchemaObject[], options: GenerateOptions) {
+	const usedResolvedNames = new Set(RESERVED_NAMES);
+	const resolvedNames = schemas.map((schema) => {
+		const resolvedName =
+			schema[Meta].resolvedName ??
+			resolveName({
+				schema,
+				usedNames: usedResolvedNames,
+				customResolver: options.customNameResolver,
+			});
+
+		schema[Meta].resolvedName = resolvedName;
+		return resolvedName;
+	});
+	const mapped = mapDeclarationNames(resolvedNames, {
+		schemaName: options.schemaName,
+		typeName: options.typeName,
+		reservedNames: RESERVED_NAMES,
+	});
+
+	return {
+		names: new Map(schemas.map((schema, index) => [schema, mapped.names[index]!])),
+		typeNames: mapped.typeNames,
+	};
 }
 
 const ONE_OF_HELPER = ts`function oneOfSchema<T extends z.ZodType>(
