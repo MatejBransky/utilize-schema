@@ -11,7 +11,7 @@ Generate robust, type-safe Zod or Effect Schema codecs and TypeScript types from
 - **Standalone schema generation:** Every definition gets its own schema and type.
 - **TypeScript-first:** Generates runtime schemas and TypeScript types, including recursive ones.
 - **Draft support:** Draft-04/06/07, with normalization for 2019-09 and 2020-12.
-- **Conformance:** the Zod generator is tested against the official [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite) — 233 of 271 draft-07 cases (1,323 of 1,605 assertions) pass today; remaining gaps are tracked per keyword.
+- **Conformance:** both generators are tested against the official [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite) for draft-07 — Zod passes 233 of 271 cases (1,323 of 1,605 assertions) and Effect Schema passes 204 of 269 cases (774 of 939 assertions) today; remaining gaps are tracked per keyword.
 
 ---
 
@@ -92,10 +92,14 @@ Vercel preview deployment of the playground.
 
 Both generators accept the same input and are checked against each other by a
 differential test suite (`packages/effect/test/parity.test.ts`), so the table
-below is kept honest by CI. The Zod generator is also checked against the
-official JSON Schema Test Suite for draft-07: **233 of 271 cases (1,323 of 1,605
-assertions)** pass; the remaining gaps are listed in
-`packages/zod/test/suite/knownFailures.ts`.
+below is kept honest by CI. Both generators are also checked against the
+official JSON Schema Test Suite for draft-07:
+
+- **Zod:** 233 of 271 cases (1,323 of 1,605 assertions) pass.
+- **Effect Schema:** 204 of 269 cases (774 of 939 assertions) pass. Cases tagged
+  `format-assertion` are skipped because `format` is kept as an annotation.
+
+The remaining gaps are listed in each package's `test/suite/knownFailures.ts`.
 
 | JSON Schema Keyword                          | Zod | Effect Schema | Notes                                                                       |
 | -------------------------------------------- | --- | ------------- | --------------------------------------------------------------------------- |

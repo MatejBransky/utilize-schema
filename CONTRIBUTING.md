@@ -81,6 +81,10 @@ To set this up on a fork or a new repository:
   ```sh
   pnpm --filter @utilize/zod test:suite
   ```
+- Run the official JSON Schema Test Suite for the Effect generator:
+  ```sh
+  pnpm --filter @utilize/effect test:suite
+  ```
 
 ## Dependency Versions
 
