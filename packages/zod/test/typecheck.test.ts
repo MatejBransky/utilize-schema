@@ -173,6 +173,26 @@ const draft04ExclusiveSchema = {
 	exclusiveMinimum: true,
 } as unknown as JSONSchema;
 
+const siblingAllOfSchema: JSONSchema = {
+	allOf: [{ type: 'object', properties: { a: { type: 'string' } }, required: ['a'] }],
+	properties: { b: { type: 'number' } },
+	required: ['b'],
+};
+
+const siblingAnyOfSchema: JSONSchema = {
+	type: 'string',
+	anyOf: [{ minLength: 2 }, { maxLength: 4 }],
+};
+
+const booleanRefSchema = {
+	type: 'object',
+	properties: {
+		allowed: { $ref: '#/$defs/allowed' },
+		denied: { $ref: '#/$defs/denied' },
+	},
+	$defs: { allowed: true, denied: false },
+} as unknown as JSONSchema;
+
 describe('generated recursive schemas type-check', () => {
 	test('infer recursive value types with TypeScript', async () => {
 		await expect(
@@ -198,6 +218,9 @@ describe('generated recursive schemas type-check', () => {
 				'PrefixItems.ts': prefixItemsSchema,
 				'DependentRequired.ts': dependentRequiredSchema,
 				'Draft04Exclusive.ts': draft04ExclusiveSchema,
+				'SiblingAllOf.ts': siblingAllOfSchema,
+				'SiblingAnyOf.ts': siblingAnyOfSchema,
+				'BooleanRef.ts': booleanRefSchema,
 			})
 		).resolves.toBeUndefined();
 	});

@@ -97,6 +97,15 @@ const contains: TestSchema = {
 	uniqueItems: true,
 };
 
+const booleanRefs = {
+	type: 'object',
+	properties: {
+		allowed: { $ref: '#/$defs/allowed' },
+		denied: { $ref: '#/$defs/denied' },
+	},
+	$defs: { allowed: true, denied: false },
+} as unknown as TestSchema;
+
 const nested: TestSchema = {
 	type: 'object',
 	properties: {
@@ -129,6 +138,7 @@ describe('generated schemas type-check', () => {
 				'Filters.ts': filters,
 				'Contains.ts': contains,
 				'Nested.ts': nested,
+				'BooleanRefs.ts': booleanRefs,
 			})
 		).resolves.toBeUndefined();
 	});
