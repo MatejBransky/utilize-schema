@@ -7,6 +7,8 @@ Schema code next to the schemas.
 ## Features
 
 - Multiple schema files in tabs, each with an editable name
+- Drop JSON Schema files or folders onto the editor to open them as tabs, adding
+  to the current files or starting from the dropped ones
 - One file is the root; every other file is bundled into its `$defs`
 - Relative `$ref`s between files are rewritten to local refs, so cross-file
   references and cycles work in the browser

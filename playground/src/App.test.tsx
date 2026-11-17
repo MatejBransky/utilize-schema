@@ -3,6 +3,8 @@ import { beforeEach, expect, test, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 
 import App from './App';
+import type { SchemaFile } from './bundle';
+import './polyfills';
 
 vi.mock('./monaco/format', () => ({
 	formatTypeScript: async (source: string) => source,
@@ -38,6 +40,138 @@ function tabNames(): string[] {
 	return Array.from(document.querySelectorAll('[role="tab"]')).map((tab) => tab.textContent ?? '');
 }
 
+interface DropFile {
+	name: string;
+	content: string;
+}
+
+const droppedSchemas: DropFile[] = [
+	{
+		name: 'person.json',
+		content: JSON.stringify({
+			$schema: 'http://json-schema.org/draft-07/schema#',
+			type: 'object',
+			properties: { name: { type: 'string' }, address: { $ref: './address.json' } },
+			required: ['name', 'address'],
+		}),
+	},
+	{
+		name: 'address.json',
+		content: JSON.stringify({
+			$schema: 'http://json-schema.org/draft-07/schema#',
+			type: 'object',
+			properties: { city: { type: 'string' } },
+			required: ['city'],
+		}),
+	},
+];
+
+function fileDrag(type: string, files: DropFile[]): DragEvent {
+	const dataTransfer = new DataTransfer();
+
+	for (const file of files) {
+		dataTransfer.items.add(new File([file.content], file.name, { type: 'application/json' }));
+	}
+
+	return new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer });
+}
+
+async function dragIn(files: DropFile[]) {
+	window.dispatchEvent(fileDrag('dragenter', files));
+	await vi.waitFor(() => expect(document.querySelector('[data-drop-mode="add"]')).not.toBeNull());
+}
+
+async function dropFiles(mode: 'add' | 'replace', files: DropFile[]) {
+	const target = document.querySelector(`[data-drop-mode="${mode}"]`);
+
+	expect(target).not.toBeNull();
+	target!.dispatchEvent(fileDrag('drop', files));
+}
+
+function savedFiles(): SchemaFile[] {
+	return JSON.parse(localStorage.getItem('utilize-schema-playground') ?? '{"files":[]}').files;
+}
+
+test('dragging JSON files over the editor shows the add and replace targets', async () => {
+	const screen = await render(<App />);
+
+	await dragIn(droppedSchemas);
+
+	await expect.element(screen.getByTestId('file-drop-overlay')).toBeVisible();
+	await expect.element(screen.getByText('Add to this workspace')).toBeVisible();
+	await expect.element(screen.getByText('Start from the dropped files')).toBeVisible();
+});
+
+test('the highlighted drop target follows the pointer', async () => {
+	await render(<App />);
+
+	await dragIn(droppedSchemas);
+
+	const add = document.querySelector('[data-drop-mode="add"]')!;
+	const replace = document.querySelector('[data-drop-mode="replace"]')!;
+
+	add.dispatchEvent(fileDrag('dragover', droppedSchemas));
+	await vi.waitFor(() => expect(add.getAttribute('data-active')).toBe('true'));
+	expect(replace.hasAttribute('data-active')).toBe(false);
+
+	replace.dispatchEvent(fileDrag('dragover', droppedSchemas));
+	await vi.waitFor(() => expect(replace.getAttribute('data-active')).toBe('true'));
+	expect(add.hasAttribute('data-active')).toBe(false);
+
+	document.querySelector('header')!.dispatchEvent(fileDrag('dragover', droppedSchemas));
+	await vi.waitFor(() => expect(document.querySelector('[data-active]')).toBeNull());
+});
+
+test('dropping files on the replace target opens them as tabs', async () => {
+	const screen = await render(<App />);
+
+	await dragIn(droppedSchemas);
+	await dropFiles('replace', droppedSchemas);
+
+	await vi.waitFor(() =>
+		expect(savedFiles().map((file) => file.name)).toEqual(['person.json', 'address.json'])
+	);
+	expect(savedFiles()[0]!.content).toContain('./address.json');
+	expect(tabNames()).toHaveLength(2);
+	expect(tabNames()[0]).toContain('person.json');
+	expect(tabNames()[1]).toContain('address.json');
+	await expect.element(screen.getByTestId('file-drop-overlay')).not.toBeInTheDocument();
+});
+
+test('dropping files on the add target keeps the open files', async () => {
+	await render(<App />);
+
+	const before = tabNames().length;
+
+	await dragIn([{ name: 'extra.json', content: '{"type":"string"}' }]);
+	await dropFiles('add', [{ name: 'extra.json', content: '{"type":"string"}' }]);
+
+	await vi.waitFor(() => expect(tabNames()).toHaveLength(before + 1));
+	expect(tabNames().some((name) => name.includes('person.json'))).toBe(true);
+	expect(tabNames().at(-1)).toContain('extra.json');
+});
+
+test('the copy button resets when the schema changes', async () => {
+	Object.defineProperty(navigator, 'clipboard', {
+		configurable: true,
+		value: { writeText: async () => {} },
+	});
+
+	const screen = await render(<App />);
+	const copy = screen.getByRole('button', { name: 'Copy code' });
+
+	await vi.waitFor(() => expect((copy.element() as HTMLButtonElement).disabled).toBe(false));
+	await copy.click();
+	await expect.element(screen.getByRole('button', { name: 'Copied' })).toBeVisible();
+
+	await screen.getByLabelText('Rename person.json').click();
+	await screen.getByLabelText('File name').fill('contact.json');
+	await screen.getByLabelText('Confirm rename').click();
+
+	await expect.element(screen.getByRole('button', { name: 'Copy code' })).toBeVisible();
+	await expect.element(screen.getByRole('button', { name: 'Copied' })).not.toBeInTheDocument();
+});
+
 test('an agent can find and change the playground controls', async () => {
 	let approve = false;
 	const agent = createAgent({ allow: (step) => !step.confirm || approve });
@@ -59,7 +193,6 @@ test('an agent can find and change the playground controls', async () => {
 		'Schema files',
 		'Add file',
 		'Format schema',
-		'Format code',
 		'Copy code',
 		'Share',
 		'GitHub',

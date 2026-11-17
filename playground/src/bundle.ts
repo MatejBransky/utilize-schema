@@ -195,6 +195,105 @@ export function buildBundle(parsedFiles: ParsedFile[], rootId: string): BundleRe
 	};
 }
 
+const ROOT_FILE_NAMES = new Set(['index.json', 'schema.json', 'root.json']);
+
+export function detectRootId(files: SchemaFile[]): string | null {
+	if (files.length === 0) {
+		return null;
+	}
+
+	const schemas = new Map<string, unknown>();
+
+	for (const file of files) {
+		try {
+			schemas.set(normalizeName(file.name), JSON.parse(file.content));
+		} catch {
+			// A file without valid JSON cannot declare references.
+		}
+	}
+
+	const outgoing = new Map<string, number>();
+	const referenced = new Set<string>();
+
+	for (const [name, schema] of schemas) {
+		const refs = collectRefs(schema);
+
+		outgoing.set(name, refs.length);
+
+		for (const ref of refs) {
+			const target = localRefTarget(name, ref);
+
+			if (target) {
+				referenced.add(target);
+			}
+		}
+	}
+
+	const unreferenced = files.filter((file) => !referenced.has(normalizeName(file.name)));
+	const candidates = unreferenced.length > 0 ? unreferenced : files;
+
+	return candidates
+		.map((file) => ({ file, score: rootScore(file, schemas, outgoing) }))
+		.toSorted((a, b) => b.score - a.score)[0]!.file.id;
+}
+
+function rootScore(
+	file: SchemaFile,
+	schemas: Map<string, unknown>,
+	outgoing: Map<string, number>
+): number {
+	const name = normalizeName(file.name);
+	const schema = schemas.get(name);
+	const base = name.split('/').at(-1)?.toLowerCase() ?? '';
+	let score = 0;
+
+	if (ROOT_FILE_NAMES.has(base)) {
+		score += 100;
+	}
+	if (!name.includes('/')) {
+		score += 20;
+	}
+	if (isPlainObject(schema) && '$schema' in schema) {
+		score += 20;
+	}
+	if (schema !== undefined) {
+		score += 1;
+	}
+
+	return score + Math.min(outgoing.get(name) ?? 0, 9);
+}
+
+function collectRefs(value: unknown): string[] {
+	if (Array.isArray(value)) {
+		return value.flatMap(collectRefs);
+	}
+
+	if (!isPlainObject(value)) {
+		return [];
+	}
+
+	const refs = typeof value.$ref === 'string' ? [value.$ref] : [];
+
+	for (const [key, child] of Object.entries(value)) {
+		if (key !== '$ref') {
+			refs.push(...collectRefs(child));
+		}
+	}
+
+	return refs;
+}
+
+function localRefTarget(name: string, ref: string): string | null {
+	if (ref.startsWith('#') || /^(https?:)?\/\//.test(ref)) {
+		return null;
+	}
+
+	const hashIndex = ref.indexOf('#');
+	const path = hashIndex === -1 ? ref : ref.slice(0, hashIndex);
+
+	return path ? resolveRefPath(name, path) : null;
+}
+
 interface RewriteContext {
 	rootId: string;
 	keyByFile: Map<string, string>;
