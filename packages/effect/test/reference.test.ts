@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { compile, compileModule, compileToSchema, decode, ts } from './test-utils';
+import { compile, compileModule, compileToSchema, decode, type TestSchema, ts } from './test-utils';
 
 describe('references', () => {
 	test('emits a definition per referenced schema and suspends every $ref', async () => {
@@ -129,5 +129,25 @@ describe('references', () => {
 
 		expect(module).toHaveProperty('PropertyA');
 		expect(module).toHaveProperty('PropertyB');
+	});
+});
+
+describe('boolean references', () => {
+	test('$ref to true and false schemas', async () => {
+		const Root = await compileToSchema({
+			type: 'object',
+			properties: {
+				allowed: { $ref: '#/definitions/allowed' },
+				denied: { $ref: '#/definitions/denied' },
+			},
+			definitions: {
+				allowed: true,
+				denied: false,
+			},
+		} as unknown as TestSchema);
+
+		expect(decode(Root, { allowed: 'anything' })).toEqual({ allowed: 'anything' });
+		expect(decode(Root, { denied: 'anything' })).toBeUndefined();
+		expect(decode(Root, {})).toEqual({});
 	});
 });

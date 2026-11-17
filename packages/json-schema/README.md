@@ -6,7 +6,7 @@ node with metadata.
 
 ## Features
 
-- Resolves local and external `$ref` references
+- Resolves local and external `$ref` references, including `$ref` to boolean schemas
 - Links recursive graphs without expanding them infinitely
 - Annotates every schema node with metadata for downstream generators
 - No code generation – just robust schema preparation
@@ -23,7 +23,7 @@ const meta = root[Meta];
 console.log(meta);
 // {
 //   parent,        // Reference to the parent schema node
-//   reference,     // Referenced schema (when the node is a $ref)
+//   reference,     // Referenced schema (when the node is a $ref); a boolean for boolean schemas
 //   isCircular,    // $ref target is already on this file's stack
 //   fileName,      // Name of the JSON file
 //   filePath,      // Path to the schema file

@@ -810,8 +810,12 @@ function reference(schema: ParsedJSONSchemaObject, context: Context): string {
 	const ref = schema.$ref ?? '#';
 	const resolved = schema[Meta]?.reference;
 
-	if (resolved === undefined) {
+	if (resolved === undefined || resolved === null) {
 		throw new UnresolvedReferenceError(ref);
+	}
+
+	if (typeof resolved === 'boolean') {
+		return resolved ? 'Schema.Json' : 'Schema.Never';
 	}
 
 	return `Schema.suspend(() => ${context.nameOf(resolved, ref)})`;

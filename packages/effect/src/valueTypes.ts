@@ -98,8 +98,12 @@ export function renderValueType(
 	if (typeof schema.$ref === 'string') {
 		const reference = schema[Meta]?.reference;
 
-		if (reference === undefined) {
+		if (reference === undefined || reference === null) {
 			return 'Schema.Json';
+		}
+
+		if (typeof reference === 'boolean') {
+			return reference ? 'Schema.Json' : 'never';
 		}
 
 		const alias = context.aliasFor(reference);

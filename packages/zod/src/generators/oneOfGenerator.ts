@@ -1,7 +1,9 @@
 import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
-import { generateSchema } from './generateSchema';
+import { composedSchemaParts, generateSchema } from './generateSchema';
+import { generator as objectGenerator } from './objectGenerator';
+import { selectGenerator } from './selectGenerator';
 
 import { ts } from '../utils';
 
@@ -15,7 +17,15 @@ export const generator = createGenerator<
 	(schema, context) => {
 		const subschemas = schema.oneOf.map((subschema) => generateSchema(subschema, context));
 
-		if (schema.discriminator) {
+		const discriminable = schema.oneOf.every(
+			(subschema) =>
+				typeof subschema === 'object' &&
+				subschema !== null &&
+				selectGenerator(subschema) === objectGenerator &&
+				composedSchemaParts(subschema) === undefined
+		);
+
+		if (schema.discriminator && discriminable) {
 			return ts`z.discriminatedUnion('${schema.discriminator}', [${subschemas.join(', ')}])`;
 		}
 

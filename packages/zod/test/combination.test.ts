@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { compile, ts } from './test-utils';
+import { compile, compileToZod, ts } from './test-utils';
 
 describe('schema combinations', () => {
 	describe('allOf (AND)', () => {
@@ -208,5 +208,70 @@ type SchemaArrayValue = SchemaValue[];
 export const SchemaArray: z.ZodType<SchemaArrayValue> = z.array(Schema).min(1);
 export type SchemaArray = z.infer<typeof SchemaArray>;
 `);
+	});
+});
+
+describe('sibling keywords', () => {
+	test('keywords next to allOf still apply', async () => {
+		const Root = await compileToZod({
+			properties: { bar: { type: 'integer' } },
+			required: ['bar'],
+			allOf: [{ properties: { foo: { type: 'string' } }, required: ['foo'] }],
+		});
+
+		expect(Root.safeParse({ foo: 'x', bar: 1 }).success).toBe(true);
+		expect(Root.safeParse({ foo: 'x' }).success).toBe(false);
+		expect(Root.safeParse({ bar: 1 }).success).toBe(false);
+	});
+
+	test('type next to anyOf still applies', async () => {
+		const Root = await compileToZod({
+			type: 'string',
+			anyOf: [{ minLength: 2 }, { maxLength: 4 }],
+		});
+
+		expect(Root.safeParse('abc').success).toBe(true);
+		expect(Root.safeParse(123).success).toBe(false);
+	});
+
+	test('sibling keywords stay type-scoped', async () => {
+		const Root = await compileToZod({
+			anyOf: [{ type: 'string' }, { type: 'number' }],
+			minLength: 2,
+		});
+
+		expect(Root.safeParse(1).success).toBe(true);
+		expect(Root.safeParse('a').success).toBe(false);
+	});
+
+	test('a $ref ignores its siblings, as draft-07 requires', async () => {
+		const Root = await compileToZod({
+			$defs: { text: { type: 'string' } },
+			type: 'object',
+			properties: { value: { $ref: '#/$defs/text', maxLength: 2 } },
+		});
+
+		expect(Root.safeParse({ value: 'longer than two' }).success).toBe(true);
+	});
+});
+
+describe('discriminated unions', () => {
+	test('falls back to a union when a branch has sibling keywords', async () => {
+		const Root = await compileToZod({
+			discriminator: 'kind',
+			oneOf: [
+				{
+					allOf: [{ type: 'object', properties: { kind: { const: 'a' } }, required: ['kind'] }],
+					type: 'object',
+					properties: { extra: { type: 'number' } },
+					required: ['extra'],
+				},
+				{ type: 'object', properties: { kind: { const: 'b' } }, required: ['kind'] },
+			],
+		});
+
+		expect(Root.safeParse({ kind: 'a', extra: 1 }).success).toBe(true);
+		expect(Root.safeParse({ kind: 'a' }).success).toBe(false);
+		expect(Root.safeParse({ kind: 'b' }).success).toBe(true);
 	});
 });

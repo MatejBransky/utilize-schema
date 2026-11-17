@@ -177,3 +177,22 @@ test('circular references', async () => {
 		}
 	`);
 });
+
+test('a $ref to a boolean schema keeps the boolean as its reference', async () => {
+	const schema = {
+		type: 'object',
+		properties: {
+			allowed: { $ref: '#/$defs/allowed' },
+			denied: { $ref: '#/$defs/denied' },
+		},
+		$defs: { allowed: true, denied: false },
+	} as unknown as JSONSchema;
+	const parsed = await parse(schema, {
+		cwd: __dirname + '/',
+		fileName: 'Unknown',
+	});
+
+	assert(typeof parsed.root === 'object' && parsed.root !== null);
+	expect(parsed.root.properties?.allowed?.[Meta].reference).toBe(true);
+	expect(parsed.root.properties?.denied?.[Meta].reference).toBe(false);
+});

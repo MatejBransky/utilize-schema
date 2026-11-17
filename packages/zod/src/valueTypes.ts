@@ -14,6 +14,7 @@ import { generator as objectGenerator } from './generators/objectGenerator';
 import { generator as oneOfGenerator } from './generators/oneOfGenerator';
 import { generator as recordGenerator } from './generators/recordGenerator';
 import { generator as refGenerator } from './generators/refGenerator';
+import { composedSchemaParts } from './generators/generateSchema';
 import { selectGenerator } from './generators/selectGenerator';
 import { generator as stringGenerator } from './generators/stringGenerator';
 import { generator as tupleGenerator, tupleItems, tupleRest } from './generators/tupleGenerator';
@@ -48,13 +49,25 @@ function renderType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): 
 		return schema ? 'unknown' : 'never';
 	}
 
+	const parts = composedSchemaParts(schema);
+
+	if (parts) {
+		return `${parenthesize(renderType(parts.main, context))} & ${parenthesize(
+			renderType(parts.rest, context)
+		)}`;
+	}
+
 	const generator = selectGenerator(schema);
 
 	if (generator === refGenerator) {
 		const reference = schema[Meta]?.reference;
 
-		if (!reference) {
+		if (reference === undefined || reference === null) {
 			return 'unknown';
+		}
+
+		if (typeof reference !== 'object') {
+			return reference ? 'unknown' : 'never';
 		}
 
 		return context.aliasFor(reference) ?? context.typeNameFor(reference);
