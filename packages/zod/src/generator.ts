@@ -112,5 +112,40 @@ export function generate(
 		code.push(NEWLINE);
 	}
 
+	if (context.usesOneOf) {
+		code.splice((options?.importZod ?? true) ? 1 : 0, 0, ONE_OF_HELPER + NEWLINE);
+	}
+
 	return code.join(NEWLINE);
 }
+
+const ONE_OF_HELPER = ts`function oneOfSchema<T extends z.ZodType>(
+  options: readonly T[]
+): z.ZodType<z.output<T>, z.input<T>> {
+  return z.any().transform((value, ctx) => {
+    const matches: z.output<T>[] = [];
+
+    for (const option of options) {
+      const result = option.safeParse(value);
+
+      if (result.success) {
+        matches.push(result.data);
+
+        if (matches.length > 1) {
+          break;
+        }
+      }
+    }
+
+    if (matches.length !== 1) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Value must match exactly one "oneOf" schema.',
+      });
+
+      return z.NEVER;
+    }
+
+    return matches[0]!;
+  }) as z.ZodType<z.output<T>, z.input<T>>;
+}`;

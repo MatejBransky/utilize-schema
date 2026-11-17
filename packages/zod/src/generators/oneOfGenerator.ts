@@ -29,6 +29,19 @@ export const generator = createGenerator<
 			return ts`z.discriminatedUnion('${schema.discriminator}', [${subschemas.join(', ')}])`;
 		}
 
-		return ts`z.union([${subschemas.join(', ')}])`;
+		if (subschemas.length === 0) {
+			return ts`z.never()`;
+		}
+
+		if (subschemas.length === 1) {
+			return subschemas[0]!;
+		}
+
+		// `oneOf` matches exactly one branch, while `z.union()` accepts a value
+		// that matches several. The helper parses every branch once, on the
+		// original input, and returns the winning result.
+		context.usesOneOf = true;
+
+		return ts`oneOfSchema([${subschemas.join(', ')}])`;
 	}
 );

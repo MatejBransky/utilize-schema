@@ -134,3 +134,73 @@ function makeTreeSchema(options: { title?: string; childRef?: string } = {}): JS
 		required: ['name'],
 	};
 }
+
+describe('literal values', () => {
+	test('compares const and enum values by deep equality', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: {
+				config: { const: { a: 1, b: [true, null] } },
+				mode: { enum: [{ kind: 'x' }, [1, 2], 'plain'] },
+			},
+		});
+
+		expect(Root.safeParse({ config: { b: [true, null], a: 1 } }).success).toBe(true);
+		expect(Root.safeParse({ config: { a: 1, b: [true, null], extra: 1 } }).success).toBe(false);
+		expect(Root.safeParse({ config: { a: 1, b: [true, 0] } }).success).toBe(false);
+
+		expect(Root.safeParse({ mode: { kind: 'x' } }).success).toBe(true);
+		expect(Root.safeParse({ mode: { kind: 'x', extra: 1 } }).success).toBe(false);
+		expect(Root.safeParse({ mode: [1, 2] }).success).toBe(true);
+		expect(Root.safeParse({ mode: [1, 2, 3] }).success).toBe(false);
+		expect(Root.safeParse({ mode: 'plain' }).success).toBe(true);
+	});
+
+	test('requires exactly one oneOf branch to match', async () => {
+		const Root = await compileToZod({
+			type: 'number',
+			oneOf: [{ multipleOf: 2 }, { multipleOf: 3 }],
+		});
+
+		expect(Root.safeParse(2).success).toBe(true);
+		expect(Root.safeParse(3).success).toBe(true);
+		expect(Root.safeParse(6).success).toBe(false);
+		expect(Root.safeParse(5).success).toBe(false);
+	});
+});
+
+describe('sibling constraints on literals', () => {
+	test('combines const and enum with their siblings', async () => {
+		const Const = await compileToZod({ const: 'ok', minLength: 3 });
+		expect(Const.safeParse('ok').success).toBe(false);
+		expect(Const.safeParse('long').success).toBe(false);
+
+		const Enum = await compileToZod({ type: 'string', enum: ['ok', { a: 1 }] });
+		expect(Enum.safeParse('ok').success).toBe(true);
+		expect(Enum.safeParse({ a: 1 }).success).toBe(false);
+		expect(Enum.safeParse('other').success).toBe(false);
+
+		const ObjectEnum = await compileToZod({
+			type: 'object',
+			properties: { a: {} },
+			enum: [{ a: 'x' }, { a: 1 }],
+		});
+		expect(ObjectEnum.safeParse({ a: 'x' }).success).toBe(true);
+		expect(ObjectEnum.safeParse({ a: 1 }).success).toBe(true);
+		expect(ObjectEnum.safeParse({ a: 2 }).success).toBe(false);
+		expect(ObjectEnum.safeParse({ b: 1 }).success).toBe(false);
+	});
+
+	test('counts oneOf matches on the original input', async () => {
+		const Root = await compileToZod({
+			oneOf: [
+				{ type: 'object', properties: { a: { type: 'string' } }, required: ['a'] },
+				{ type: 'object', properties: { b: { type: 'number' } }, required: ['b'] },
+			],
+		});
+
+		expect(Root.safeParse({ a: 'x' }).success).toBe(true);
+		expect(Root.safeParse({ b: 1 }).success).toBe(true);
+		expect(Root.safeParse({ a: 'x', b: 1 }).success).toBe(false);
+	});
+});

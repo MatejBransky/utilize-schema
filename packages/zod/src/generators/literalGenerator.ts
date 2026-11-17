@@ -1,10 +1,9 @@
 import { createGenerator } from './createGenerator';
-
-import { ts } from '../utils';
+import { renderLiteral } from './renderLiteral';
 
 export const generator = createGenerator<{ const: unknown }>(
 	(schema) => schema.const !== undefined,
 	(schema) => {
-		return ts`z.literal(${JSON.stringify(schema.const)})`;
+		return renderLiteral(schema.const);
 	}
 );

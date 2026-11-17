@@ -72,7 +72,7 @@ export type Tree = typeof Tree.Type;
 
 Supported keywords:
 
-- `type` (including unions of types), `const`, `enum`
+- `type` (including unions of types), `const`, `enum` (primitives only for `const`/`enum`)
 - `string`: `minLength`, `maxLength`, `pattern`, `format` (annotation)
 - `number`/`integer`: `minimum`, `maximum`, `exclusiveMinimum`,
   `exclusiveMaximum`, `multipleOf`
