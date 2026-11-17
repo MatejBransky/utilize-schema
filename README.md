@@ -11,7 +11,7 @@ Generate robust, type-safe Zod or Effect Schema codecs and TypeScript types from
 - **Standalone schema generation:** Every definition gets its own schema or type.
 - **TypeScript-first:** Generates runtime schemas and TypeScript types, including recursive ones. `@utilize/typescript` emits the types alone, with no runtime dependency.
 - **Draft support:** Draft-04/06/07, with normalization for 2019-09 and 2020-12.
-- **Conformance:** all generators are tested against the official [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite) for draft-07 — Zod passes 233 of 271 cases (1,323 of 1,605 assertions), Effect Schema 204 of 269 cases (774 of 939 assertions), and TypeScript 164 of 288 cases at the type level; remaining gaps are tracked per keyword.
+- **Conformance:** all generators are tested against the official [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite) for draft-07 — Zod passes 233 of 271 cases (1,323 of 1,605 assertions), Effect Schema 204 of 269 cases (774 of 939 assertions), and TypeScript 166 of 288 cases at the type level; remaining gaps are tracked per keyword.
 
 ---
 
@@ -114,7 +114,7 @@ The remaining gaps are listed in each package's `test/suite/knownFailures.ts`.
 
 The TypeScript generator has no runtime: validation keywords such as
 `minLength`, `pattern` or `uniqueItems` have no type-level equivalent, so they
-are ignored. It is checked against the same suite at the type level — **164 of
+are ignored. It is checked against the same suite at the type level — **166 of
 288 draft-07 cases** accept every valid instance and reject every invalid one;
 the rest are type-only gaps, the inference trade-off shared with
 json-schema-to-typescript, or shared parser gaps. See

@@ -34,35 +34,9 @@ const TYPE_KEYWORDS = new Set([
 	'additionalItems',
 ]);
 
-const OBJECT_KEYWORDS = [
-	'properties',
-	'required',
-	'additionalProperties',
-	'patternProperties',
-	'minProperties',
-	'maxProperties',
-	'propertyNames',
-	'dependencies',
-];
+const OBJECT_KEYWORDS = ['properties', 'patternProperties', 'additionalProperties', 'required'];
 
-const ARRAY_KEYWORDS = [
-	'items',
-	'prefixItems',
-	'additionalItems',
-	'minItems',
-	'maxItems',
-	'uniqueItems',
-	'contains',
-];
-
-const STRING_KEYWORDS = ['minLength', 'maxLength', 'pattern'];
-const NUMBER_KEYWORDS = [
-	'minimum',
-	'maximum',
-	'exclusiveMinimum',
-	'exclusiveMaximum',
-	'multipleOf',
-];
+const ARRAY_KEYWORDS = ['items', 'prefixItems'];
 
 const INDENT = '\t';
 
@@ -149,12 +123,6 @@ function renderTyped(schema: ParsedJSONSchemaObject, context: TypeContext, level
 	}
 }
 
-/**
- * A schema without `type` still constrains one JSON value type through its
- * keywords. JSON Schema keywords only apply to their own type, so the closest
- * TypeScript type is the family the keywords belong to. Object keywords win
- * over array and scalar keywords, mirroring `json-schema-to-typescript`.
- */
 function renderUntyped(
 	schema: ParsedJSONSchemaObject,
 	context: TypeContext,
@@ -162,23 +130,29 @@ function renderUntyped(
 ): string {
 	const family = inferFamily(schema);
 
-	switch (family) {
-		case 'object':
-			return renderObject(schema, context, level);
-		case 'array':
-			return renderArray(schema, context, level);
-		case 'string':
-			return 'string';
-		case 'number':
-			return 'number';
-		default:
-			return 'unknown';
+	if (family === 'object') {
+		return renderObject(schema, context, level);
 	}
+
+	if (family === 'array') {
+		return renderArray(schema, context, level);
+	}
+
+	return 'unknown';
 }
 
-function inferFamily(
-	schema: ParsedJSONSchemaObject
-): 'object' | 'array' | 'string' | 'number' | undefined {
+/**
+ * A schema without `type` can still have a shape: `properties`, `required` and
+ * `patternProperties` describe an object, `items` and `prefixItems` describe an
+ * array. Those keywords infer the emitted type, mirroring
+ * `json-schema-to-typescript`.
+ *
+ * Scalar constraints do not infer anything. `maximum` only applies to numbers,
+ * so `{ maximum: 3 }` also accepts `"foo"`; typing it as `number` would reject a
+ * spec-valid instance. A schema that only bounds values therefore stays
+ * `unknown`.
+ */
+function inferFamily(schema: ParsedJSONSchemaObject): 'object' | 'array' | undefined {
 	const record = schema as unknown as Record<string, unknown>;
 
 	if (OBJECT_KEYWORDS.some((keyword) => record[keyword] !== undefined)) {
@@ -186,12 +160,6 @@ function inferFamily(
 	}
 	if (ARRAY_KEYWORDS.some((keyword) => record[keyword] !== undefined)) {
 		return 'array';
-	}
-	if (STRING_KEYWORDS.some((keyword) => record[keyword] !== undefined)) {
-		return 'string';
-	}
-	if (NUMBER_KEYWORDS.some((keyword) => record[keyword] !== undefined)) {
-		return 'number';
 	}
 
 	return undefined;

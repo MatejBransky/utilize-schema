@@ -16,7 +16,7 @@ const parserId =
 const parserBooleanRef = '$ref to a boolean schema is rejected by the shared parser';
 
 const inference =
-	'a schema without `type` infers the intended type from its keywords, so instances of other JSON types are rejected';
+	'object and array keywords give an untyped schema its inferred type, so valid instances of other JSON types are rejected';
 
 export const knownGaps: Record<string, string> = {
 	// Shared parser: $id/$anchor and URN resolution.
@@ -37,33 +37,14 @@ export const knownGaps: Record<string, string> = {
 	// Untyped schemas: object and array keywords infer an object or an array.
 	'additionalProperties.json :: additionalProperties being false does not allow other properties':
 		inference,
-	'contains.json :: contains keyword validation': inference,
-	'contains.json :: contains keyword with boolean schema false': inference,
-	'dependentRequired.json :: single dependency (dependencies)': inference,
-	'dependentRequired.json :: empty dependents (dependencies)': inference,
 	'id.json :: simple URN base URI with $ref via the URN': inference,
 	'id.json :: simple tag URI base URI with $ref via the tag URI': inference,
 	'id.json :: simple base URI using an arbitrary URI scheme with $ref to that URI': inference,
 	'items.json :: a schema given for items': inference,
 	'items.json :: an array of schemas for items': inference,
-	'items.json :: additionalItems as false without items': inference,
-	'maxItems.json :: maxItems validation': inference,
-	'maxLength.json :: maxLength validation': inference,
-	'maxProperties.json :: maxProperties validation': inference,
-	'maximum.json :: maximum validation': inference,
-	'maximum.json :: exclusiveMaximum validation': inference,
-	'minItems.json :: minItems validation': inference,
-	'minLength.json :: minLength validation': inference,
-	'minProperties.json :: minProperties validation': inference,
-	'minimum.json :: minimum validation': inference,
-	'minimum.json :: minimum validation with signed integer': inference,
-	'minimum.json :: exclusiveMinimum validation': inference,
-	'multipleOf.json :: multipleOf int': inference,
-	'pattern.json :: pattern validation': inference,
 	'patternProperties.json :: patternProperties validates properties matching a regex': inference,
 	'properties.json :: object properties validation': inference,
 	'properties.json :: properties whose names are Javascript object property names': inference,
-	'propertyNames.json :: propertyNames validation': inference,
 	'ref.json :: root pointer ref': inference,
 	'required.json :: required validation': inference,
 	'required.json :: required properties whose names are Javascript object property names':

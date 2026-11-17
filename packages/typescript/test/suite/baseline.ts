@@ -13,6 +13,6 @@
  * request. The test fails on any change.
  */
 export const baseline = {
-	conformant: 164,
-	typeGaps: 83,
+	conformant: 166,
+	typeGaps: 100,
 };
