@@ -84,7 +84,6 @@ export const Tree = Schema.StructWithRest(
 export type Tree = typeof Tree.Type;
 ```
 
-
 Each standalone schema gets the name resolved from `$id`, `title`, the `$defs`
 key or the file name, and its type uses the same name. Pass `schemaName` or
 `typeName` to rewrite one of them. Both callbacks receive the resolved name, so
@@ -140,8 +139,6 @@ pnpm --filter @utilize/effect update:suite-baseline
 ```
 
 The script reads the built `dist/`, so build the package first.
-
-
 
 ## Keyword coverage
 
