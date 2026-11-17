@@ -113,11 +113,17 @@ Cases the generator does not handle yet are listed in
 so the suite fails and the baseline has to be refreshed:
 
 ```sh
+pnpm --filter @utilize/zod build
 pnpm --filter @utilize/zod update:suite-baseline
 ```
 
+The script reads the built `dist/`, so build the package first.
+
 Review the diff: a shrinking set is progress, a growing one is a regression.
 The runner prints the current totals at the end of every run.
+
+See [`docs/conformance.md`](../../docs/conformance.md) for how these numbers
+relate to json-schema-to-typescript.
 
 ## When to use
 

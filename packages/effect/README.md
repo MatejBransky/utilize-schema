@@ -84,6 +84,30 @@ export const Tree = Schema.StructWithRest(
 export type Tree = typeof Tree.Type;
 ```
 
+## Testing
+
+```sh
+pnpm test          # unit tests
+pnpm test:suite    # official JSON Schema Test Suite (draft-07)
+```
+
+The generator is checked against the official
+[JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
+Today it passes **204 of 269 draft-07 cases (774 of 939 assertions)**. Cases
+tagged `format-assertion` are skipped because `format` is kept as an annotation;
+cases that need external schemas are not wired up yet.
+
+Known gaps live in `test/suite/knownFailures.ts` and
+`test/suite/knownFailureInstances.ts`. Refresh the baseline after a fix or a
+regression:
+
+```sh
+pnpm --filter @utilize/effect build
+pnpm --filter @utilize/effect update:suite-baseline
+```
+
+The script reads the built `dist/`, so build the package first.
+
 ## Keyword coverage
 
 Supported keywords:
