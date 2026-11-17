@@ -76,10 +76,16 @@ run through `safeParse`.
 Today it passes **206 of 271 draft-07 cases (1,289 of 1,605 assertions)**.
 
 Cases the generator does not handle yet are listed in
-`test/suite/knownFailures.ts` and run as expected failures. When one starts
-passing, Vitest reports it, and the entry should be removed. The runner prints
-the current totals at the end of every run, so the list doubles as the
-conformance baseline.
+`test/suite/knownFailures.ts`, together with the exact instances that fail in
+`test/suite/knownFailureInstances.ts`. A fix or a regression changes that set,
+so the suite fails and the baseline has to be refreshed:
+
+```sh
+pnpm --filter @utilize/zod update:suite-baseline
+```
+
+Review the diff: a shrinking set is progress, a growing one is a regression.
+The runner prints the current totals at the end of every run.
 
 ## When to use
 

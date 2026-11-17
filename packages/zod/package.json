@@ -32,6 +32,7 @@
 		"check:types": "tsc --noEmit",
 		"test": "vitest",
 		"test:suite": "vitest run test/jsonSchemaTestSuite.test.ts",
+		"update:suite-baseline": "node scripts/update-suite-baseline.mjs",
 		"ci:test": "vitest run",
 		"dev": "tsdown --watch"
 	},

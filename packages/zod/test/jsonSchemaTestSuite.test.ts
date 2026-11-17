@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 
 import { DRAFT_7, isCompatible } from './suite/compatibility';
 import { compileToZodSchema } from './suite/compile';
+import { knownFailureInstances } from './suite/knownFailureInstances';
 import { knownFailures } from './suite/knownFailures';
 import { loadSuiteFiles, type SuiteCase, suiteCaseKey } from './suite/loadSuite';
 
@@ -118,7 +119,39 @@ for (const file of files) {
 			const key = suiteCaseKey(file, testCase);
 			const gap = knownFailures[key];
 
-			const run = async () => {
+			if (gap) {
+				stats.knownGaps++;
+				const expected = knownFailureInstances[key];
+
+				test(`${testCase.description} — known gap: ${gap}`, async () => {
+					if (expected === 'compile') {
+						stats.failedAssertions += testCase.tests.length;
+						await expect(compileToZodSchema(testCase.schema)).rejects.toThrow();
+						return;
+					}
+
+					expect(
+						expected,
+						`No recorded failing instances for "${key}"; run the baseline update script`
+					).toBeDefined();
+					expect(
+						(expected as string[]).length,
+						`"${key}" no longer fails; remove the entry`
+					).toBeGreaterThan(0);
+
+					const zodSchema = await compileToZodSchema(testCase.schema);
+					const failures = testCase.tests
+						.filter((suiteTest) => zodSchema.safeParse(suiteTest.data).success !== suiteTest.valid)
+						.map((suiteTest) => suiteTest.description);
+
+					stats.failedAssertions += failures.length;
+
+					expect([...failures].sort()).toEqual([...(expected as string[])].sort());
+				});
+				continue;
+			}
+
+			test(testCase.description, async () => {
 				let failures: string[];
 
 				try {
@@ -140,14 +173,7 @@ for (const file of files) {
 				stats.failedAssertions += failures.length;
 
 				expect(failures).toEqual([]);
-			};
-
-			if (gap) {
-				stats.knownGaps++;
-				test.fails(`${testCase.description} — known gap: ${gap}`, run);
-			} else {
-				test(testCase.description, run);
-			}
+			});
 		}
 	});
 }
@@ -174,6 +200,16 @@ describe('known failures', () => {
 
 			if (reason) {
 				problems.push(`${key}: skipped because ${reason}`);
+			}
+
+			if (!(key in knownFailureInstances)) {
+				problems.push(`${key}: no recorded failing instances`);
+			}
+		}
+
+		for (const key of Object.keys(knownFailureInstances)) {
+			if (!(key in knownFailures)) {
+				problems.push(`${key}: recorded instances without a known-failure entry`);
 			}
 		}
 

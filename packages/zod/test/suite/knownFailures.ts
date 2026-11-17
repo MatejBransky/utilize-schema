@@ -3,9 +3,11 @@
  * does not handle yet. Every entry turns its case into an expected failure, so
  * CI stays green while the gap stays visible.
  *
- * When a gap is fixed the case starts passing and Vitest reports "expected test
- * to fail, but it passed". Remove the entry then, and check the matching item
- * off in the parity issue.
+ * The failing instances of every case below are recorded in
+ * `knownFailureInstances.ts`. A fix or a regression changes that set, which
+ * makes the suite test fail. Re-run `pnpm --filter @utilize/zod
+ * update:suite-baseline`, review the diff, and remove entries whose list is
+ * empty.
  */
 
 const patternProperties = 'patternProperties is not generated yet';
