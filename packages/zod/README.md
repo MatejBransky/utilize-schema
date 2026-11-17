@@ -97,10 +97,13 @@ export const PersonSchema = z.object({ ... });
 export type Person = z.infer<typeof PersonSchema>;
 ```
 
-Mapped names are sanitized into valid identifiers and kept unique, and `$ref`s
-point at the renamed variable. The option belongs to the generator instead of
-the shared parser, because a target that emits only types has no schema
-variable to name.
+A mapped name that is already a valid identifier is used as it is, so a
+callback can pick its own casing, e.g. `personSchema`. Anything else is turned
+into an identifier. Names are mapped only once every schema's name is resolved,
+and schema variables and types are kept unique separately, so a mapped name
+never takes the name of another schema. `$ref`s point at the renamed variable.
+The option belongs to the generator instead of the shared parser, because a
+target that emits only types has no schema variable to name.
 
 ## How it works
 
