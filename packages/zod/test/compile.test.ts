@@ -51,4 +51,25 @@ describe('compile', () => {
 		});
 		expect(await readFile(join(directory, 'absolute.ts'), 'utf8')).toContain('z.string()');
 	});
+
+	test('writes the default banner and can omit it', async () => {
+		vi.spyOn(console, 'log').mockImplementation(() => {});
+		const directory = await makeDirectory();
+		await writeFile(join(directory, 'schema.json'), JSON.stringify({ type: 'string' }));
+
+		await compile({ input: 'schema.json', cwd: directory });
+		expect(await readFile(join(directory, 'schema.generated.ts'), 'utf8')).toContain(
+			'DO NOT MODIFY IT BY HAND'
+		);
+
+		await compile({
+			input: 'schema.json',
+			cwd: directory,
+			output: 'no-banner.ts',
+			bannerComment: false,
+		});
+		expect(await readFile(join(directory, 'no-banner.ts'), 'utf8')).not.toContain(
+			'DO NOT MODIFY IT BY HAND'
+		);
+	});
 });
