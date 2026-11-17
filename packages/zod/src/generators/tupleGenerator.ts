@@ -14,23 +14,34 @@ export const generator = createGenerator(
 		return tupleItems(schema) !== undefined;
 	},
 	(schema, context) => {
-		const itemsPart = tupleItems(schema)!.map(
-			(item) => ts`${generateSchema(item, context)}.optional()`
-		);
+		const items = tupleItems(schema)!;
+		const minItems = schema.minItems ?? 0;
 		const rest = tupleRest(schema);
-		const restPart =
-			rest === false
-				? ''
-				: ts`.rest(${rest === undefined || rest === true ? ts`z.unknown()` : generateSchema(rest, context)})`;
+		// The tuple's own maximum is `items.length` when there is no rest schema.
+		const noRest =
+			rest === false || (schema.maxItems !== undefined && schema.maxItems === items.length);
+
+		// An item is required when the minimum length reaches it; the rest stay
+		// optional, which keeps `z.infer` precise for fixed-length tuples.
+		const itemsPart = items.map((item, index) =>
+			index < minItems
+				? generateSchema(item, context)
+				: ts`${generateSchema(item, context)}.optional()`
+		);
+		const restPart = noRest
+			? ''
+			: ts`.rest(${rest === undefined || rest === true ? ts`z.unknown()` : generateSchema(rest, context)})`;
 		let expression = ts`z.tuple([
     ${itemsPart.join(`,${NEWLINE}`)}
   ])${restPart}`;
 		const checks: string[] = [];
 
-		if (schema.minItems !== undefined) {
-			checks.push(`value.length >= ${schema.minItems}`);
+		// Required items already enforce a minimum up to `items.length`.
+		if (minItems > items.length) {
+			checks.push(`value.length >= ${minItems}`);
 		}
-		if (schema.maxItems !== undefined) {
+		// Without a rest schema the tuple itself caps the length at `items.length`.
+		if (schema.maxItems !== undefined && (noRest ? schema.maxItems < items.length : true)) {
 			checks.push(`value.length <= ${schema.maxItems}`);
 		}
 		if (checks.length > 0) {
