@@ -119,22 +119,22 @@ function normalizeNode(node: Record<string, unknown>, version: SchemaVersion): v
 	// `additionalProperties` / `additionalItems` cover the common case, where the
 	// schema does not rely on properties evaluated by applicators. That mapping
 	// is best effort; the full `unevaluated*` semantics need evaluation tracking.
+	//
+	// The original keywords are kept so `$ref`s such as
+	// `#/unevaluatedProperties` still resolve after normalization; generators
+	// ignore them once the mapped keyword is present.
 	if (node.unevaluatedProperties !== undefined) {
 		if (node.additionalProperties === undefined) {
 			node.additionalProperties = node.unevaluatedProperties;
 		}
-
-		delete node.unevaluatedProperties;
 	}
 
 	if (node.unevaluatedItems !== undefined) {
-		if (Array.isArray(node.prefixItems) && node.items === undefined) {
+		if (node.items === undefined) {
 			node.items = node.unevaluatedItems;
-		} else if (node.additionalItems === undefined) {
+		} else if (Array.isArray(node.items) && node.additionalItems === undefined) {
 			node.additionalItems = node.unevaluatedItems;
 		}
-
-		delete node.unevaluatedItems;
 	}
 
 	if (version !== '2019-09' && version !== '2020-12') {

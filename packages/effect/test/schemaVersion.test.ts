@@ -132,6 +132,25 @@ describe('$schema versions', () => {
 		expect(decode(Root, { a: 'x', b: 1 })).toBeUndefined();
 	});
 
+	test('$ref to unevaluatedProperties still resolves', async () => {
+		const Root = await compileToSchema({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'object',
+			properties: { a: { $ref: '#/unevaluatedProperties' } },
+			unevaluatedProperties: { type: 'string' },
+		});
+
+		expect(decode(Root, { a: 'x' })).toEqual({ a: 'x' });
+		expect(decode(Root, { a: 1 })).toBeUndefined();
+	});
+
+	test('unevaluatedItems without items allows only empty arrays', async () => {
+		const Root = await compileToSchema({ type: 'array', unevaluatedItems: false });
+
+		expect(decode(Root, [])).toEqual([]);
+		expect(decode(Root, [1])).toBeUndefined();
+	});
+
 	test('2020-12 unevaluatedItems maps to the items rest', async () => {
 		const Root = await compileToSchema({
 			$schema: 'https://json-schema.org/draft/2020-12/schema',

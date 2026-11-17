@@ -98,6 +98,7 @@ export function generate(
 			return alias;
 		},
 		typeNameFor: (schema) => ensureName(schema),
+		readOnlyKeyword: options?.readOnlyKeyword,
 	};
 
 	const code: string[] = [];

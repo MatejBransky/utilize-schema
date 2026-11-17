@@ -38,6 +38,15 @@ void ok;
 `,
 	},
 	{
+		file: 'RecursiveReadOnly.ts',
+		schema: { type: 'array', readOnly: true, items: { $ref: '#' } } as JSONSchema,
+		options: { readOnlyKeyword: true },
+		assertions: `
+const empty: Root = [];
+void empty;
+`,
+	},
+	{
 		file: 'Unevaluated.ts',
 		schema: unevaluatedSchema,
 		options: {},

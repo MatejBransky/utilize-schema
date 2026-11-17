@@ -141,6 +141,26 @@ describe('$schema versions', () => {
 		expect(Root.safeParse({ a: 'x', b: 1 }).success).toBe(false);
 	});
 
+	test('$ref to unevaluatedProperties still resolves', async () => {
+		const Root = await compileToZod({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'object',
+			properties: { a: { $ref: '#/unevaluatedProperties' } },
+			unevaluatedProperties: { type: 'string' },
+		});
+
+		expect(Root.safeParse({ a: 'x' }).success).toBe(true);
+		expect(Root.safeParse({ a: 1 }).success).toBe(false);
+		expect(Root.safeParse({ b: 1 }).success).toBe(false);
+	});
+
+	test('unevaluatedItems without items allows only empty arrays', async () => {
+		const Root = await compileToZod({ type: 'array', unevaluatedItems: false });
+
+		expect(Root.safeParse([]).success).toBe(true);
+		expect(Root.safeParse([1]).success).toBe(false);
+	});
+
 	test('2020-12 unevaluatedItems maps to the items rest', async () => {
 		const Root = await compileToZod({
 			$schema: 'https://json-schema.org/draft/2020-12/schema',
