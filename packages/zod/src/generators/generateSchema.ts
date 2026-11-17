@@ -82,7 +82,7 @@ export function composedSchemaParts(
 	};
 }
 
-type CombinatorKeyword = 'allOf' | 'anyOf' | 'oneOf';
+type CombinatorKeyword = 'allOf' | 'anyOf' | 'oneOf' | 'const' | 'enum';
 
 /**
  * The keyword whose generator ignores the rest of the schema. `$ref` takes
@@ -106,6 +106,14 @@ function pickCombinatorKeyword(schema: ParsedJSONSchemaObject): CombinatorKeywor
 		return 'oneOf';
 	}
 
+	if (schema.const !== undefined) {
+		return 'const';
+	}
+
+	if (schema.enum !== undefined) {
+		return 'enum';
+	}
+
 	return undefined;
 }
 
@@ -113,9 +121,9 @@ const structuralKeywords = new Set<string>([
 	'allOf',
 	'anyOf',
 	'oneOf',
-	'type',
-	'enum',
 	'const',
+	'enum',
+	'type',
 	'properties',
 	'required',
 	'additionalProperties',

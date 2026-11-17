@@ -168,3 +168,39 @@ describe('literal values', () => {
 		expect(Root.safeParse(5).success).toBe(false);
 	});
 });
+
+describe('sibling constraints on literals', () => {
+	test('combines const and enum with their siblings', async () => {
+		const Const = await compileToZod({ const: 'ok', minLength: 3 });
+		expect(Const.safeParse('ok').success).toBe(false);
+		expect(Const.safeParse('long').success).toBe(false);
+
+		const Enum = await compileToZod({ type: 'string', enum: ['ok', { a: 1 }] });
+		expect(Enum.safeParse('ok').success).toBe(true);
+		expect(Enum.safeParse({ a: 1 }).success).toBe(false);
+		expect(Enum.safeParse('other').success).toBe(false);
+
+		const ObjectEnum = await compileToZod({
+			type: 'object',
+			properties: { a: {} },
+			enum: [{ a: 'x' }, { a: 1 }],
+		});
+		expect(ObjectEnum.safeParse({ a: 'x' }).success).toBe(true);
+		expect(ObjectEnum.safeParse({ a: 1 }).success).toBe(true);
+		expect(ObjectEnum.safeParse({ a: 2 }).success).toBe(false);
+		expect(ObjectEnum.safeParse({ b: 1 }).success).toBe(false);
+	});
+
+	test('counts oneOf matches on the original input', async () => {
+		const Root = await compileToZod({
+			oneOf: [
+				{ type: 'object', properties: { a: { type: 'string' } }, required: ['a'] },
+				{ type: 'object', properties: { b: { type: 'number' } }, required: ['b'] },
+			],
+		});
+
+		expect(Root.safeParse({ a: 'x' }).success).toBe(true);
+		expect(Root.safeParse({ b: 1 }).success).toBe(true);
+		expect(Root.safeParse({ a: 'x', b: 1 }).success).toBe(false);
+	});
+});

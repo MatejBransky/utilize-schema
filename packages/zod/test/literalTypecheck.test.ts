@@ -47,6 +47,19 @@ void badItem;
 `,
 	},
 	{
+		file: 'OneOf.ts',
+		schema: { title: 'Value', oneOf: [{ type: 'string' }, { type: 'number' }] },
+		assertions: `
+const text: Value = 'a';
+const number: Value = 1;
+// @ts-expect-error the union is string | number
+const flag: Value = true;
+void text;
+void number;
+void flag;
+`,
+	},
+	{
 		file: 'EnumComposite.ts',
 		schema: { title: 'Mode', enum: [{ kind: 'a' }, [1, 2], 'plain'] },
 		assertions: `

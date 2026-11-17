@@ -38,19 +38,10 @@ export const generator = createGenerator<
 		}
 
 		// `oneOf` matches exactly one branch, while `z.union()` accepts a value
-		// that matches several. The branches are repeated to count the matches.
-		const options = `[${subschemas.join(', ')}]`;
+		// that matches several. The helper parses every branch once, on the
+		// original input, and returns the winning result.
+		context.usesOneOf = true;
 
-		return ts`z.union(${options}).superRefine((value, ctx) => {
-  const matches = ${options}.filter((option) => option.safeParse(value).success).length;
-
-  if (matches !== 1) {
-    ctx.addIssue({
-      code: 'custom',
-      message: 'Value must match exactly one "oneOf" schema.',
-      path: [],
-    });
-  }
-})`;
+		return ts`oneOfSchema([${subschemas.join(', ')}])`;
 	}
 );
