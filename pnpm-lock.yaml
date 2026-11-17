@@ -154,6 +154,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2
+      json-schema-test-suite:
+        specifier: github:json-schema-org/JSON-Schema-Test-Suite#e2a68a15cd490750fd6b95e604e4054d7d978d1f
+        version: https://codeload.github.com/json-schema-org/JSON-Schema-Test-Suite/tar.gz/e2a68a15cd490750fd6b95e604e4054d7d978d1f
       lodash:
         specifier: 4.18.1
         version: 4.18.1
@@ -1482,6 +1485,10 @@ packages:
   js-yaml@5.5.0:
     resolution: {integrity: sha512-paNr4LFIFPjeeSmwNYdrb8FafLLG/Cr2Af3GjbsHJ5CxIjH4r0c2emlmRdAtpPAieP1gRVzk6buBbVP5gBMGAg==}
     hasBin: true
+
+  json-schema-test-suite@https://codeload.github.com/json-schema-org/JSON-Schema-Test-Suite/tar.gz/e2a68a15cd490750fd6b95e604e4054d7d978d1f:
+    resolution: {gitHosted: true, integrity: sha512-mfHQ7V87iCoJEFGJddCDtg/7zZcrYPpY2sdZAtZTZfdBS5+p1/oTjqhF1cKPhpCq+zKD+ifsHnOGcTnYJLB09Q==, tarball: https://codeload.github.com/json-schema-org/JSON-Schema-Test-Suite/tar.gz/e2a68a15cd490750fd6b95e604e4054d7d978d1f}
+    version: 0.1.0
 
   json-schema-traverse@1.0.0:
     resolution: {integrity: sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug==}
@@ -2836,6 +2843,8 @@ snapshots:
   js-yaml@5.5.0:
     dependencies:
       argparse: 3.0.4
+
+  json-schema-test-suite@https://codeload.github.com/json-schema-org/JSON-Schema-Test-Suite/tar.gz/e2a68a15cd490750fd6b95e604e4054d7d978d1f: {}
 
   json-schema-traverse@1.0.0: {}
 
