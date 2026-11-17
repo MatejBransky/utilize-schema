@@ -97,6 +97,13 @@ const contains: TestSchema = {
 	uniqueItems: true,
 };
 
+const unevaluated = {
+	$schema: 'https://json-schema.org/draft/2020-12/schema',
+	type: 'object',
+	properties: { name: { type: 'string' } },
+	unevaluatedProperties: false,
+} as TestSchema;
+
 const booleanRefs = {
 	type: 'object',
 	properties: {
@@ -139,6 +146,7 @@ describe('generated schemas type-check', () => {
 				'Contains.ts': contains,
 				'Nested.ts': nested,
 				'BooleanRefs.ts': booleanRefs,
+				'Unevaluated.ts': unevaluated,
 			})
 		).resolves.toBeUndefined();
 	});
