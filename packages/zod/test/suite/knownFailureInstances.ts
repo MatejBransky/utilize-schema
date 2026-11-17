@@ -30,22 +30,9 @@ export const knownFailureInstances: KnownFailureInstances = {
 		'patternProperty invalidates property',
 		'patternProperty validates nonproperty',
 	],
-	'additionalProperties.json :: additionalProperties does not look in applicators': [
-		'properties defined in allOf are not examined',
-	],
-	'allOf.json :: allOf combined with anyOf, oneOf': [
-		'allOf: false, anyOf: true, oneOf: false',
-		'allOf: false, anyOf: true, oneOf: true',
-		'allOf: true, anyOf: true, oneOf: false',
-	],
-	'allOf.json :: allOf with base schema': ['mismatch base schema'],
-	'anyOf.json :: anyOf with base schema': ['mismatch base schema'],
-	'items.json :: additionalItems does not look in applicators, invalid case': [
-		'items defined in allOf are not examined',
-	],
 	'oneOf.json :: oneOf': ['both oneOf valid'],
 	'oneOf.json :: oneOf complex types': ['both oneOf valid (complex)'],
-	'oneOf.json :: oneOf with base schema': ['mismatch base schema', 'both oneOf valid'],
+	'oneOf.json :: oneOf with base schema': ['both oneOf valid'],
 	'oneOf.json :: oneOf with boolean schemas, all true': ['any value is invalid'],
 	'oneOf.json :: oneOf with boolean schemas, more than one true': ['any value is invalid'],
 	'oneOf.json :: oneOf with empty schema': ['both valid - invalid'],
@@ -375,7 +362,5 @@ export const knownFailureInstances: KnownFailureInstances = {
 	'required.json :: required properties whose names are Javascript object property names': [
 		'all present',
 	],
-	'ref-legacy.json :: $ref to boolean schema false': ['any value is invalid'],
-	'ref-legacy.json :: $ref to boolean schema true': 'compile',
 	'ref.json :: root pointer ref': 'compile',
 };

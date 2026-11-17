@@ -40,20 +40,46 @@ export const generateSchema = (schema: ParsedJSONSchema, context: GeneratorConte
  * siblings are intersected with it, matching JSON Schema semantics.
  */
 function generateCore(schema: ParsedJSONSchemaObject, context: GeneratorContext): string {
-	const keyword = pickCombinatorKeyword(schema);
+	const parts = composedSchemaParts(schema);
 
-	if (keyword) {
-		const rest = withoutKeys(schema, [keyword, ...ownAnnotationKeywords, ...refinementKeywords]);
-
-		if (hasStructuralKeywords(rest)) {
-			return ts`z.intersection(${generateCombinator(schema, keyword, context)},${NEWLINE}${generateSchema(
-				rest,
-				context
-			)})`;
-		}
+	if (parts) {
+		return ts`z.intersection(${generateCore(parts.main, context)},${NEWLINE}${generateSchema(
+			parts.rest,
+			context
+		)})`;
 	}
 
 	return selectGenerator(schema).generate(schema, context);
+}
+
+/**
+ * Splits a schema that combines a combinator with sibling constraints into the
+ * combinator alone and the remaining structural keywords. Returns `undefined`
+ * when there is nothing to intersect. The value-type renderer mirrors this
+ * split, so generated types match runtime validation.
+ */
+export function composedSchemaParts(
+	schema: ParsedJSONSchemaObject
+): { main: ParsedJSONSchemaObject; rest: ParsedJSONSchemaObject } | undefined {
+	const keyword = pickCombinatorKeyword(schema);
+
+	if (!keyword) {
+		return undefined;
+	}
+
+	const rest = withoutKeys(schema, [keyword, ...ownAnnotationKeywords, ...refinementKeywords]);
+
+	if (!hasStructuralKeywords(rest)) {
+		return undefined;
+	}
+
+	return {
+		main: {
+			[keyword]: schema[keyword],
+			discriminator: schema.discriminator,
+		} as unknown as ParsedJSONSchemaObject,
+		rest,
+	};
 }
 
 type CombinatorKeyword = 'allOf' | 'anyOf' | 'oneOf';
@@ -81,21 +107,6 @@ function pickCombinatorKeyword(schema: ParsedJSONSchemaObject): CombinatorKeywor
 	}
 
 	return undefined;
-}
-
-function generateCombinator(
-	schema: ParsedJSONSchemaObject,
-	keyword: CombinatorKeyword,
-	context: GeneratorContext
-): string {
-	// Generate from a clone that holds only the combinator, otherwise the
-	// selected generator could be a different one and drop the combinator.
-	const combinatorOnly = {
-		[keyword]: schema[keyword],
-		discriminator: schema.discriminator,
-	} as unknown as ParsedJSONSchemaObject;
-
-	return selectGenerator(combinatorOnly).generate(combinatorOnly, context);
 }
 
 const structuralKeywords = new Set<string>([

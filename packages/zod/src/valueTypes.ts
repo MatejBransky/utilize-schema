@@ -14,6 +14,7 @@ import { generator as objectGenerator } from './generators/objectGenerator';
 import { generator as oneOfGenerator } from './generators/oneOfGenerator';
 import { generator as recordGenerator } from './generators/recordGenerator';
 import { generator as refGenerator } from './generators/refGenerator';
+import { composedSchemaParts } from './generators/generateSchema';
 import { selectGenerator } from './generators/selectGenerator';
 import { generator as stringGenerator } from './generators/stringGenerator';
 import { generator as tupleGenerator, tupleItems, tupleRest } from './generators/tupleGenerator';
@@ -46,6 +47,14 @@ export function renderValueTypeDeclaration(
 function renderType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): string {
 	if (typeof schema !== 'object' || schema === null) {
 		return schema ? 'unknown' : 'never';
+	}
+
+	const parts = composedSchemaParts(schema);
+
+	if (parts) {
+		return `${parenthesize(renderType(parts.main, context))} & ${parenthesize(
+			renderType(parts.rest, context)
+		)}`;
 	}
 
 	const generator = selectGenerator(schema);

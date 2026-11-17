@@ -254,3 +254,24 @@ describe('sibling keywords', () => {
 		expect(Root.safeParse({ value: 'longer than two' }).success).toBe(true);
 	});
 });
+
+describe('discriminated unions', () => {
+	test('falls back to a union when a branch has sibling keywords', async () => {
+		const Root = await compileToZod({
+			discriminator: 'kind',
+			oneOf: [
+				{
+					allOf: [{ type: 'object', properties: { kind: { const: 'a' } }, required: ['kind'] }],
+					type: 'object',
+					properties: { extra: { type: 'number' } },
+					required: ['extra'],
+				},
+				{ type: 'object', properties: { kind: { const: 'b' } }, required: ['kind'] },
+			],
+		});
+
+		expect(Root.safeParse({ kind: 'a', extra: 1 }).success).toBe(true);
+		expect(Root.safeParse({ kind: 'a' }).success).toBe(false);
+		expect(Root.safeParse({ kind: 'b' }).success).toBe(true);
+	});
+});
