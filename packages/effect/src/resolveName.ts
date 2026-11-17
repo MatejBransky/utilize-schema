@@ -12,16 +12,84 @@ export type CustomNameResolver = (
  */
 export type NameMapper = (defaultName: string) => string;
 
+const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
+
 /**
- * Applies a name mapper and keeps the result usable as an identifier. An empty
- * result falls back to the resolved name.
+ * Applies a name mapper. A result that is already an identifier is kept as it
+ * is, so a mapper can choose its own casing; anything else is turned into one.
+ * A result with no usable characters falls back to the resolved name.
  */
 export function mapName(defaultName: string, mapper?: NameMapper): string {
 	if (!mapper) {
 		return defaultName;
 	}
 
-	return toSafeString(mapper(defaultName)) || defaultName;
+	const mapped = mapper(defaultName);
+
+	if (IDENTIFIER.test(mapped)) {
+		return mapped;
+	}
+
+	return toSafeString(mapped) || defaultName;
+}
+
+/** Names under which a standalone schema is exported. */
+export interface DeclarationNames {
+	/** Variable that holds the generated schema. */
+	schema: string;
+	/** Type exported for the schema. */
+	type: string;
+}
+
+export interface MapDeclarationNamesOptions {
+	schemaName?: NameMapper;
+	typeName?: NameMapper;
+	/** Names the generated code already uses, such as the library import. */
+	reservedNames: readonly string[];
+}
+
+export interface MappedDeclarationNames {
+	/** One entry per resolved name, in the same order. */
+	names: DeclarationNames[];
+	/** Every value name in use, to allocate further values from. */
+	valueNames: Set<string>;
+	/** Every type name in use, to allocate further types from. */
+	typeNames: Set<string>;
+}
+
+/**
+ * Maps the resolved names of all standalone schemas at once, after every one
+ * of them is known. Values and types live in separate TypeScript namespaces, so
+ * each gets its own pool: a mapped name only competes with other names of the
+ * same kind and never takes the name another schema resolved to. Both pools are
+ * filled in the same order, so mappers that agree give a schema and its type
+ * the same name.
+ */
+export function mapDeclarationNames(
+	resolvedNames: readonly string[],
+	{ schemaName, typeName, reservedNames }: MapDeclarationNamesOptions
+): MappedDeclarationNames {
+	const valueNames = new Set(reservedNames);
+	const typeNames = new Set(reservedNames);
+	const names = resolvedNames.map((resolvedName) => ({
+		schema: allocateName(mapName(resolvedName, schemaName), valueNames),
+		type: allocateName(mapName(resolvedName, typeName), typeNames),
+	}));
+
+	return { names, valueNames, typeNames };
+}
+
+/** Reserves `base`, or `base` with the first free numeric suffix. */
+export function allocateName(base: string, usedNames: Set<string>): string {
+	let name = base;
+	let counter = 1;
+
+	while (usedNames.has(name)) {
+		name = `${base}${counter++}`;
+	}
+
+	usedNames.add(name);
+	return name;
 }
 
 interface ResolveNameOptions {
