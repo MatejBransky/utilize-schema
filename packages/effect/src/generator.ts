@@ -8,7 +8,13 @@ import {
 import { collectStandaloneSchemas, type SchemaEdge } from './collectStandaloneSchemas';
 import { UnresolvedReferenceError, UnsupportedEffectSchemaFeatureError } from './errors';
 import { findCyclicSchemas } from './findCyclicSchemas';
-import { generateName, resolveName, type CustomNameResolver } from './resolveName';
+import {
+	generateName,
+	mapName,
+	resolveName,
+	type CustomNameResolver,
+	type NameMapper,
+} from './resolveName';
 import { renderValueTypeDeclaration, type ValueTypeContext } from './valueTypes';
 
 export interface GenerateOptions {
@@ -16,6 +22,17 @@ export interface GenerateOptions {
 	importEffect?: boolean;
 	/** Overrides the name allocated for a standalone schema. */
 	customNameResolver?: CustomNameResolver;
+	/** Rewrites the variable that holds each generated schema. Receives the resolved name. */
+	schemaName?: NameMapper;
+	/** Rewrites the type exported for each generated schema. Receives the resolved name. */
+	typeName?: NameMapper;
+}
+
+interface ResolvedNames {
+	/** Variable that holds the generated schema. */
+	schema: string;
+	/** Type exported for the schema. */
+	type: string;
 }
 
 type Context = {
@@ -67,7 +84,7 @@ type JSONValueType = (typeof JSON_VALUE_TYPES)[number];
  */
 export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}): string {
 	const usedNames = new Set<string>(['Schema']);
-	const names = new Map<ParsedJSONSchemaObject, string>();
+	const nameCache = new Map<ParsedJSONSchemaObject, ResolvedNames>();
 	const objectRoot = isPlainObject(root) ? (root as ParsedJSONSchemaObject) : undefined;
 	const collected = objectRoot
 		? collectStandaloneSchemas(objectRoot)
@@ -76,29 +93,29 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 	const cyclic = findCyclicSchemas(collected.edges, collected.schemas);
 	const valueAliases = new Map<ParsedJSONSchemaObject, string>();
 
-	const rootName = objectRoot ? ensureName(objectRoot) : 'Root';
+	const rootNames = objectRoot ? ensureNames(objectRoot) : mapNames('Root');
 	const definitions = standalone.map((schema) => ({
 		schema,
-		name: ensureName(schema),
+		names: ensureNames(schema),
 	}));
 	const valueTypeContext: ValueTypeContext = {
 		aliasFor(schema) {
 			return cyclic.has(schema) ? aliasOf(schema) : undefined;
 		},
 		typeNameFor(schema) {
-			return ensureName(schema);
+			return ensureNames(schema).type;
 		},
 	};
 
 	const context: Context = {
 		nameOf(schema, ref) {
-			const name = names.get(schema);
+			const names = nameCache.get(schema);
 
-			if (name === undefined) {
+			if (names === undefined) {
 				throw new UnresolvedReferenceError(ref);
 			}
 
-			return name;
+			return names.schema;
 		},
 	};
 
@@ -108,29 +125,31 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		parts.push("import { Schema } from 'effect';");
 	}
 
-	for (const { schema, name } of definitions) {
-		parts.push(renderDeclaration(name, schema));
+	for (const { schema, names } of definitions) {
+		parts.push(renderDeclaration(names, schema));
 	}
 
-	parts.push(renderDeclaration(rootName, root));
+	parts.push(renderDeclaration(rootNames, root));
 
 	return `${parts.join('\n\n')}\n`;
 
-	function renderDeclaration(name: string, schema: ParsedJSONSchema): string {
+	function renderDeclaration(names: ResolvedNames, schema: ParsedJSONSchema): string {
 		const alias = isPlainObject(schema)
 			? valueTypeContext.aliasFor(schema as ParsedJSONSchemaObject)
 			: undefined;
 		const expression = generateSchema(schema, context);
 		const declaration =
 			alias === undefined
-				? `export const ${name} = ${expression};`
-				: `export const ${name}: Schema.Codec<${alias}> = ${expression};`;
+				? `export const ${names.schema} = ${expression};`
+				: `export const ${names.schema}: Schema.Codec<${alias}> = ${expression};`;
 		const lines =
 			alias === undefined
 				? []
 				: [renderValueTypeDeclaration(alias, schema as ParsedJSONSchemaObject, valueTypeContext)];
 
-		return [...lines, declaration, `export type ${name} = typeof ${name}.Type;`].join('\n\n');
+		return [...lines, declaration, `export type ${names.type} = typeof ${names.schema}.Type;`].join(
+			'\n\n'
+		);
 	}
 
 	function aliasOf(schema: ParsedJSONSchemaObject): string {
@@ -140,20 +159,63 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 			return existing;
 		}
 
-		const alias = generateName(`${ensureName(schema)}Value`, usedNames);
+		const alias = generateName(`${ensureNames(schema).schema}Value`, usedNames);
 
 		valueAliases.set(schema, alias);
 		return alias;
 	}
 
-	function ensureName(schema: ParsedJSONSchemaObject): string {
-		const existing = names.get(schema);
+	function allocateName(base: string): string {
+		let name = base;
+		let counter = 1;
+
+		while (usedNames.has(name)) {
+			name = `${base}${counter++}`;
+		}
+
+		usedNames.add(name);
+		return name;
+	}
+
+	/**
+	 * `resolveName` has already reserved the resolved name, so a mapper that keeps
+	 * it needs no new one.
+	 */
+	function allocateMappedName(
+		defaultName: string,
+		mapper: NameMapper | undefined,
+		sharedName?: string
+	): string {
+		const mapped = mapName(defaultName, mapper);
+
+		if (mapped === sharedName) {
+			return mapped;
+		}
+
+		if (mapped !== defaultName || !usedNames.has(mapped)) {
+			return allocateName(mapped);
+		}
+
+		return mapped;
+	}
+
+	function mapNames(defaultName: string): ResolvedNames {
+		const schemaName = allocateMappedName(defaultName, options.schemaName);
+
+		return {
+			schema: schemaName,
+			type: allocateMappedName(defaultName, options.typeName, schemaName),
+		};
+	}
+
+	function ensureNames(schema: ParsedJSONSchemaObject): ResolvedNames {
+		const existing = nameCache.get(schema);
 
 		if (existing !== undefined) {
 			return existing;
 		}
 
-		const name =
+		const defaultName =
 			schema[Meta]?.resolvedName ??
 			resolveName({
 				schema,
@@ -162,11 +224,13 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 			});
 
 		if (schema[Meta] !== undefined) {
-			schema[Meta].resolvedName = name;
+			schema[Meta].resolvedName = defaultName;
 		}
 
-		names.set(schema, name);
-		return name;
+		const names = mapNames(defaultName);
+
+		nameCache.set(schema, names);
+		return names;
 	}
 }
 

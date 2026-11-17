@@ -5,7 +5,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 
-import { compile, type TestSchema } from './test-utils';
+import { compile, type CompileOptions, type TestSchema } from './test-utils';
 
 const require = createRequire(import.meta.url);
 const tsc = join(dirname(require.resolve('typescript/package.json')), 'bin/tsc');
@@ -150,15 +150,28 @@ describe('generated schemas type-check', () => {
 			})
 		).resolves.toBeUndefined();
 	});
+
+	test('type-check mapped schema and type names', async () => {
+		await expect(
+			typeCheck(
+				{
+					'Tree.ts': tree,
+					'MutualDefinitions.ts': mutualDefinitions,
+					'Nested.ts': nested,
+				},
+				{ schemaName: (name) => `${name}Schema` }
+			)
+		).resolves.toBeUndefined();
+	});
 });
 
-async function typeCheck(schemas: Record<string, TestSchema>) {
+async function typeCheck(schemas: Record<string, TestSchema>, options: CompileOptions = {}) {
 	const directory = await mkdtemp(join(__dirname, '__generated__-'));
 	const files: string[] = [];
 
 	try {
 		for (const [name, schema] of Object.entries(schemas)) {
-			const code = await compile(schema, { importEffect: true });
+			const code = await compile(schema, { importEffect: true, ...options });
 			const file = join(directory, name);
 
 			await writeFile(file, code);

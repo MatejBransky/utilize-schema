@@ -36,7 +36,6 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 
 	if (typeof root !== 'object' || root === null) {
 		return generateSchema(root, {
-			usedNames,
 			lazyRefs: new Set(),
 			readOnlyKeyword: options.readOnlyKeyword,
 			nameOf: () => {
@@ -123,7 +122,6 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 	}
 
 	const context: GeneratorContext = {
-		usedNames,
 		lazyRefs: broken.lazyRefs,
 		readOnlyKeyword: options.readOnlyKeyword,
 		nameOf: (schema) => ensureNames(schema).schema,

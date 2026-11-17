@@ -5,6 +5,25 @@ export type CustomNameResolver = (
 	usedNames: Set<string>
 ) => string | void;
 
+/**
+ * Rewrites the name of a generated declaration, e.g. to append a `Schema`
+ * suffix. The generator passes the name it resolved for the schema, so a mapper
+ * only has to describe the difference.
+ */
+export type NameMapper = (defaultName: string) => string;
+
+/**
+ * Applies a name mapper and keeps the result usable as an identifier. An empty
+ * result falls back to the resolved name.
+ */
+export function mapName(defaultName: string, mapper?: NameMapper): string {
+	if (!mapper) {
+		return defaultName;
+	}
+
+	return toSafeString(mapper(defaultName)) || defaultName;
+}
+
 interface ResolveNameOptions {
 	schema: ParsedJSONSchemaObject;
 	usedNames?: Set<string>;

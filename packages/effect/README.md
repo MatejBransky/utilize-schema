@@ -84,6 +84,39 @@ export const Tree = Schema.StructWithRest(
 export type Tree = typeof Tree.Type;
 ```
 
+
+Each standalone schema gets the name resolved from `$id`, `title`, the `$defs`
+key or the file name, and its type uses the same name. Pass `schemaName` or
+`typeName` to rewrite one of them. Both callbacks receive the resolved name, so
+a suffix only has to describe the difference:
+
+```ts
+await compile({
+	input: './schema.json',
+	output: './schema.generated.ts',
+	schemaName: (name) => `${name}Schema`,
+	typeName: (name) => `${name}Schema`,
+});
+```
+
+```ts
+export const PersonSchema = Schema.Struct({ ... });
+export type PersonSchema = typeof PersonSchema.Type;
+```
+
+The callbacks are independent and default to the resolved name, so mapping only
+`schemaName` keeps the type at `Person`:
+
+```ts
+export const PersonSchema = Schema.Struct({ ... });
+export type Person = typeof PersonSchema.Type;
+```
+
+Mapped names are sanitized into valid identifiers and kept unique, and every
+`$ref` suspends the renamed variable. The option belongs to the generator
+instead of the shared parser, because a target that emits only types has no
+schema variable to name.
+
 ## Testing
 
 ```sh
@@ -107,6 +140,8 @@ pnpm --filter @utilize/effect update:suite-baseline
 ```
 
 The script reads the built `dist/`, so build the package first.
+
+
 
 ## Keyword coverage
 
