@@ -19,12 +19,22 @@ export const generateSchema = (schema: ParsedJSONSchema, context: GeneratorConte
 
 	expression = applyRefinements(expression, schema, context, generateSchema);
 
-	if (schema.$id || schema.title || schema.description || schema.examples !== undefined) {
+	if (
+		schema.$id ||
+		schema.title ||
+		schema.description ||
+		schema.examples !== undefined ||
+		schema.deprecated !== undefined
+	) {
 		expression = withMetadata(expression, schema);
 	}
 
 	if (schema.default !== undefined) {
 		expression = withDefault(expression, schema.default, schema);
+	}
+
+	if (context.readOnlyKeyword && schema.readOnly === true) {
+		expression = ts`${expression}.readonly()`;
 	}
 
 	return expression;
@@ -206,9 +216,9 @@ const refinementKeywords = [
 
 function withMetadata(
 	expression: string,
-	{ $id, title, description, examples }: ParsedJSONSchemaObject
+	{ $id, title, description, examples, deprecated }: ParsedJSONSchemaObject
 ) {
-	return ts`${expression}.meta(${JSON.stringify({ id: $id, title, description, examples })})`;
+	return ts`${expression}.meta(${JSON.stringify({ id: $id, title, description, examples, deprecated })})`;
 }
 
 function withDefault(expression: string, defaultValue: unknown, schema: ParsedJSONSchemaObject) {

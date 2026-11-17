@@ -33,7 +33,7 @@ describe('annotations', () => {
 		expect(decode(module.Root!, { theme: 'dark' })).toEqual({ theme: 'dark' });
 	});
 
-	test('examples, $id, format and readOnly are annotations', async () => {
+	test('examples, $id, format, readOnly and deprecated are annotations', async () => {
 		const result = await compile({
 			type: 'string',
 			$id: 'https://example.com/name',
@@ -41,6 +41,7 @@ describe('annotations', () => {
 			format: 'email',
 			readOnly: true,
 			writeOnly: false,
+			deprecated: true,
 		});
 
 		await expect(result).toMatchCode(ts`
@@ -50,6 +51,7 @@ describe('annotations', () => {
 				format: 'email',
 				readOnly: true,
 				writeOnly: false,
+				deprecated: true,
 			});
 
 			export type Name = typeof Name.Type;

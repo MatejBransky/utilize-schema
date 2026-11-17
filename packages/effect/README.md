@@ -84,7 +84,7 @@ Supported keywords:
 - `not`, `if`/`then`/`else`, `contains`, `dependencies` (applied as filters)
 - `$ref`, `$defs`, `definitions`
 - `title`, `description`, `default`, `examples`, `$id`, `readOnly`,
-  `writeOnly` as annotations
+  `writeOnly`, `deprecated` as annotations
 
 Effect has no schema constructor for negation, conditionals or "contains", so
 `not`, `if`/`then`/`else`, `contains` and `dependencies` are emitted as
@@ -92,9 +92,13 @@ Effect has no schema constructor for negation, conditionals or "contains", so
 `dependentRequired` and `dependentSchemas` are normalized to `dependencies`
 before generation.
 
+`unevaluatedProperties` and `unevaluatedItems` are normalized to
+`additionalProperties` and the items rest before generation, as a best effort
+for schemas that do not rely on properties evaluated by applicators.
+
 Unsupported keywords throw `UnsupportedEffectSchemaFeatureError`:
-`patternProperties`, `minContains`, `maxContains`, `unevaluatedProperties`,
-`unevaluatedItems`, and a `$ref` combined with constraint siblings.
+`patternProperties`, `minContains`, `maxContains`, and a `$ref` combined with
+constraint siblings.
 
 Effect has no generic intersection, so `allOf` is limited to merging object
 subschemas that do not declare the same property.

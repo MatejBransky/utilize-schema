@@ -38,3 +38,31 @@ describe('meta', () => {
     `);
 	});
 });
+
+describe('annotations', () => {
+	test('deprecated', async () => {
+		await expect(
+			compile({
+				type: 'string',
+				deprecated: true,
+			})
+		).toMatchCode(ts`
+      export const Root = z.string().meta({ deprecated: true })
+      export type Root = z.infer<typeof Root>;
+    `);
+	});
+
+	test('readOnly is emitted only when the option is enabled', async () => {
+		const schema = { type: 'string', readOnly: true } as const;
+
+		await expect(compile(schema)).toMatchCode(ts`
+      export const Root = z.string()
+      export type Root = z.infer<typeof Root>;
+    `);
+
+		await expect(compile(schema, { readOnlyKeyword: true })).toMatchCode(ts`
+      export const Root = z.string().readonly()
+      export type Root = z.infer<typeof Root>;
+    `);
+	});
+});

@@ -25,6 +25,15 @@ await compile({
 });
 ```
 
+## Options
+
+`compile()` accepts the following options:
+
+- `customNameResolver(schema, usedNames)` — override the name allocated for a
+  standalone schema.
+- `readOnlyKeyword` — map `readOnly: true` to `.readonly()`. Off by default,
+  because it freezes values and changes the inferred type.
+
 ## Output
 
 For each standalone schema (root, `$defs`, `definitions`, referenced):

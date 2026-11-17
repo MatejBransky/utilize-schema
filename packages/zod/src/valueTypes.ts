@@ -24,6 +24,8 @@ export interface ValueTypeContext {
 	aliasFor(schema: ParsedJSONSchemaObject): string | undefined;
 	/** The exported type alias of a schema, for schemas outside of a cycle. */
 	typeNameFor(schema: ParsedJSONSchemaObject): string;
+	/** Mirror `readOnlyKeyword` in the value types. */
+	readOnlyKeyword?: boolean;
 }
 
 /**
@@ -35,6 +37,10 @@ export function renderValueTypeDeclaration(
 	schema: ParsedJSONSchemaObject,
 	context: ValueTypeContext
 ): string {
+	if (context.readOnlyKeyword && schema.readOnly === true) {
+		return `type ${name} = ${renderType(schema, context)};`;
+	}
+
 	const interfaceBody = renderInterfaceBody(schema, context);
 
 	if (interfaceBody) {
@@ -47,6 +53,10 @@ export function renderValueTypeDeclaration(
 function renderType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): string {
 	if (typeof schema !== 'object' || schema === null) {
 		return schema ? 'unknown' : 'never';
+	}
+
+	if (context.readOnlyKeyword && schema.readOnly === true && !('$ref' in schema)) {
+		return renderReadOnlyType(schema, context);
 	}
 
 	const parts = composedSchemaParts(schema);
@@ -171,6 +181,33 @@ function renderType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): 
 	}
 
 	return 'unknown';
+}
+
+function renderReadOnlyType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): string {
+	const generator = selectGenerator(schema);
+
+	if (generator === arrayGenerator) {
+		const items = schema.items
+			? renderType(schema.items as ParsedJSONSchemaObject, context)
+			: 'unknown';
+
+		return `ReadonlyArray<${parenthesize(items)}>`;
+	}
+
+	const inner = renderType(
+		{ ...schema, readOnly: undefined } as unknown as ParsedJSONSchemaObject,
+		context
+	);
+
+	if (
+		generator === objectGenerator ||
+		generator === recordGenerator ||
+		generator === tupleGenerator
+	) {
+		return `Readonly<${inner}>`;
+	}
+
+	return inner;
 }
 
 function renderInterfaceBody(

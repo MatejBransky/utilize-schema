@@ -90,7 +90,8 @@ assertions)** pass; the remaining gaps are listed in
 | `enum`                                       | ✅  | ✅            | Zod deep-equals composites; Effect supports primitives only                 |
 | `const`                                      | ✅  | ✅            | Zod deep-equals composites; Effect supports primitives only                 |
 | `default`                                    | ✅  | ✅            | Zod decodes with `.default()`; Effect stores it as an annotation            |
-| `description` / `title`                      | ✅  | ✅            | Zod `.meta({})`, Effect `.annotate({})`                                     |
+| `description` / `title` / `deprecated`       | ✅  | ✅            | Zod `.meta({})`, Effect `.annotate({})`                                     |
+| `readOnly`                                   | ✅  | —             | Zod `.readonly()` with `readOnlyKeyword`; Effect keeps it as an annotation  |
 | `minimum` / `maximum`                        | ✅  | ✅            | Supported                                                                   |
 | `exclusiveMinimum` / `exclusiveMaximum`      | ✅  | ✅            | Supported (boolean draft-04 form included)                                  |
 | `multipleOf`                                 | ✅  | ✅            | Supported                                                                   |
@@ -121,14 +122,22 @@ assertions)** pass; the remaining gaps are listed in
 | `$id`                                        | ✅  | ✅            | Kept as metadata                                                            |
 | `examples`                                   | ✅  | ✅            | Kept as metadata                                                            |
 | `$schema`                                    | ✅  | ✅            | Detects draft-04/06/07/2019-09/2020-12 and normalizes newer keywords        |
-| `unevaluatedProperties` / `unevaluatedItems` | ❌  | ❌            | Rejected by the normalizer                                                  |
+| `unevaluatedProperties` / `unevaluatedItems` | ✅  | ✅            | Mapped to `additionalProperties` / the items rest (best effort)             |
 
 `✅` supported, `❌` rejected with a clear error, `—` accepted but only kept as
 an annotation.
 
 Schemas that omit `type` infer it from a single keyword family (object, array,
-string or number), so constraints such as `{ pattern }` or `{ required }` are not
-silently dropped. Unknown `$schema` values fall back to draft-07.
+string or number), so constraints such as `{ pattern }` or `{ required }`
+are not silently dropped.
+
+2020-12 `prefixItems` maps to the tuple form of `items`, and
+`dependentRequired`/`dependentSchemas` map to `dependencies`. `unevaluatedProperties`
+and `unevaluatedItems` map to `additionalProperties` / the items rest when those
+are not set, which covers schemas that do not rely on properties evaluated by
+applicators. Unknown `$schema` values fall back to draft-07. 2019-09/2020-12
+keywords without a generator (`$recursiveRef`, `$dynamicRef`, `minContains`,
+`maxContains`) fail with `UnsupportedSchemaFeatureError`.
 
 ---
 

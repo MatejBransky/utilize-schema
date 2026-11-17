@@ -45,7 +45,7 @@ const customVersionSchema = {
 const unsupportedFeatureSchema = {
 	$schema: 'https://json-schema.org/draft/2020-12/schema',
 	type: 'object',
-	unevaluatedProperties: false,
+	properties: { value: { $dynamicRef: '#meta' } },
 } as unknown as JSONSchema;
 
 describe('$schema versions', () => {
@@ -114,7 +114,62 @@ describe('$schema versions', () => {
 
 	test('unsupported 2020-12 features fail loudly', async () => {
 		await expect(compile(unsupportedFeatureSchema)).rejects.toThrow(
-			/"unevaluatedProperties" is not supported/
+			/"\$dynamicRef" is not supported/
 		);
+	});
+
+	test('2020-12 unevaluatedProperties maps to additionalProperties', async () => {
+		const Root = await compileToZod({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'object',
+			properties: { a: { type: 'string' } },
+			unevaluatedProperties: false,
+		});
+
+		expect(Root.safeParse({ a: 'x' }).success).toBe(true);
+		expect(Root.safeParse({ a: 'x', b: 1 }).success).toBe(false);
+	});
+
+	test('unevaluatedProperties maps without $schema', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: { a: { type: 'string' } },
+			unevaluatedProperties: false,
+		});
+
+		expect(Root.safeParse({ a: 'x' }).success).toBe(true);
+		expect(Root.safeParse({ a: 'x', b: 1 }).success).toBe(false);
+	});
+
+	test('$ref to unevaluatedProperties still resolves', async () => {
+		const Root = await compileToZod({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'object',
+			properties: { a: { $ref: '#/unevaluatedProperties' } },
+			unevaluatedProperties: { type: 'string' },
+		});
+
+		expect(Root.safeParse({ a: 'x' }).success).toBe(true);
+		expect(Root.safeParse({ a: 1 }).success).toBe(false);
+		expect(Root.safeParse({ b: 1 }).success).toBe(false);
+	});
+
+	test('unevaluatedItems without items allows only empty arrays', async () => {
+		const Root = await compileToZod({ type: 'array', unevaluatedItems: false });
+
+		expect(Root.safeParse([]).success).toBe(true);
+		expect(Root.safeParse([1]).success).toBe(false);
+	});
+
+	test('2020-12 unevaluatedItems maps to the items rest', async () => {
+		const Root = await compileToZod({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'array',
+			prefixItems: [{ type: 'string' }],
+			unevaluatedItems: false,
+		});
+
+		expect(Root.safeParse(['a']).success).toBe(true);
+		expect(Root.safeParse(['a', 1]).success).toBe(false);
 	});
 });

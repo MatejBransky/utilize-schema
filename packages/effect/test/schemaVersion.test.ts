@@ -36,11 +36,11 @@ const unknownVersionSchema: TestSchema = {
 	type: 'string',
 };
 
-const unsupportedFeatureSchema: TestSchema = {
+const unsupportedFeatureSchema = {
 	$schema: 'https://json-schema.org/draft/2020-12/schema',
 	type: 'object',
-	unevaluatedProperties: false,
-};
+	properties: { value: { $dynamicRef: '#meta' } },
+} as unknown as TestSchema;
 
 describe('$schema versions', () => {
 	test('2020-12 prefixItems and items', async () => {
@@ -106,6 +106,60 @@ describe('$schema versions', () => {
 	});
 
 	test('unsupported 2020-12 features fail loudly', async () => {
-		await expect(compile(unsupportedFeatureSchema)).rejects.toThrow(/unevaluatedProperties/);
+		await expect(compile(unsupportedFeatureSchema)).rejects.toThrow(/\$dynamicRef/);
+	});
+
+	test('2020-12 unevaluatedProperties maps to additionalProperties', async () => {
+		const Root = await compileToSchema({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'object',
+			properties: { a: { type: 'string' } },
+			unevaluatedProperties: false,
+		});
+
+		expect(decode(Root, { a: 'x' })).toEqual({ a: 'x' });
+		expect(decode(Root, { a: 'x', b: 1 })).toBeUndefined();
+	});
+
+	test('unevaluatedProperties maps without $schema', async () => {
+		const Root = await compileToSchema({
+			type: 'object',
+			properties: { a: { type: 'string' } },
+			unevaluatedProperties: false,
+		});
+
+		expect(decode(Root, { a: 'x' })).toEqual({ a: 'x' });
+		expect(decode(Root, { a: 'x', b: 1 })).toBeUndefined();
+	});
+
+	test('$ref to unevaluatedProperties still resolves', async () => {
+		const Root = await compileToSchema({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'object',
+			properties: { a: { $ref: '#/unevaluatedProperties' } },
+			unevaluatedProperties: { type: 'string' },
+		});
+
+		expect(decode(Root, { a: 'x' })).toEqual({ a: 'x' });
+		expect(decode(Root, { a: 1 })).toBeUndefined();
+	});
+
+	test('unevaluatedItems without items allows only empty arrays', async () => {
+		const Root = await compileToSchema({ type: 'array', unevaluatedItems: false });
+
+		expect(decode(Root, [])).toEqual([]);
+		expect(decode(Root, [1])).toBeUndefined();
+	});
+
+	test('2020-12 unevaluatedItems maps to the items rest', async () => {
+		const Root = await compileToSchema({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'array',
+			prefixItems: [{ type: 'string' }],
+			unevaluatedItems: false,
+		});
+
+		expect(decode(Root, ['a'])).toEqual(['a']);
+		expect(decode(Root, ['a', 1])).toBeUndefined();
 	});
 });

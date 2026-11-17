@@ -7,8 +7,6 @@ const unsupported: Array<[string, TestSchema]> = [
 	['minContains', { type: 'array', contains: { type: 'string' }, minContains: 1 }],
 	['maxContains', { type: 'array', contains: { type: 'string' }, maxContains: 2 }],
 	['patternProperties', { type: 'object', patternProperties: { '^a': { type: 'string' } } }],
-	['unevaluatedProperties', { type: 'object', unevaluatedProperties: false }],
-	['unevaluatedItems', { type: 'array', unevaluatedItems: false }],
 ];
 
 describe('unsupported keywords', () => {
