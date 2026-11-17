@@ -31,4 +31,24 @@ describe('compile', () => {
 
 		expect(await readFile(join(directory, 'schema.generated.ts'), 'utf8')).toContain('z.string()');
 	});
+
+	test('keeps defaults when optional paths are explicitly undefined', async () => {
+		vi.spyOn(console, 'log').mockImplementation(() => {});
+		const directory = await makeDirectory();
+		await writeFile(join(directory, 'schema.json'), JSON.stringify({ type: 'string' }));
+
+		await compile({
+			input: 'schema.json',
+			cwd: directory,
+			output: undefined as string | undefined,
+		});
+		expect(await readFile(join(directory, 'schema.generated.ts'), 'utf8')).toContain('z.string()');
+
+		await compile({
+			input: join(directory, 'schema.json'),
+			cwd: undefined,
+			output: join(directory, 'absolute.ts'),
+		});
+		expect(await readFile(join(directory, 'absolute.ts'), 'utf8')).toContain('z.string()');
+	});
 });
