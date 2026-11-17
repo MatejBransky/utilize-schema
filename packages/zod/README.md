@@ -119,6 +119,9 @@ pnpm --filter @utilize/zod update:suite-baseline
 Review the diff: a shrinking set is progress, a growing one is a regression.
 The runner prints the current totals at the end of every run.
 
+See [`docs/conformance.md`](../../docs/conformance.md) for how these numbers
+relate to json-schema-to-typescript.
+
 ## When to use
 
 Use this package to automate Zod schema and TypeScript type generation from
