@@ -25,6 +25,22 @@ Change the input in `src/main.ts` to `{ name: 1 }` and run `start`. The generate
 
 Content mappers are a TypeScript 7.1 language-server feature. The editor must run TypeScript 7.1 and allow content mappers / external code.
 
+The extension cannot be `.json` or `*.json`: TypeScript rejects every built-in JSON extension. Map `.jsonschema` to JSON in the editor to keep JSON syntax, jsonls and schema suggestions.
+
+Neovim:
+
+```lua
+vim.filetype.add({ extension = { jsonschema = "json" } })
+```
+
+VS Code:
+
+```jsonc
+{
+	"files.associations": { "*.jsonschema": "json" },
+}
+```
+
 ### Neovim
 
 Use the native TypeScript server, not `ts_ls` or `vtsls`:
