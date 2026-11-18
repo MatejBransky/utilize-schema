@@ -1,5 +1,6 @@
 import { generate as generateEffect } from '@utilize/effect';
 import { parse, type ParsedJSONSchema } from '@utilize/json-schema';
+import { generate as generateTypeScript } from '@utilize/typescript';
 import { generate as generateZod } from '@utilize/zod';
 import { Button } from '@ui-sdk/react/button';
 import { Input } from '@ui-sdk/react/input';
@@ -903,6 +904,8 @@ function generateCodeFor(target: TargetId, root: ParsedJSONSchema): string {
 	switch (target) {
 		case 'effect':
 			return generateEffect(root, { importEffect: true });
+		case 'typescript':
+			return generateTypeScript(root);
 		case 'zod':
 			return generateZod(root, { importZod: true });
 		default:

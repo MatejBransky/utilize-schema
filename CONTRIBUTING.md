@@ -30,13 +30,15 @@ pinned in `package.json#packageManager`; Corepack can install it for you.
 - `packages/json-schema`: Core JSON Schema utilities and parser.
 - `packages/zod`: Zod code generator and related logic.
 - `packages/effect`: Effect Schema code generator and related logic.
-- `playground`: Browser app for editing multi-file schemas and previewing the generated Zod or Effect Schema code.
+- `packages/typescript`: TypeScript type generator (no runtime dependency).
+- `playground`: Browser app for editing multi-file schemas and previewing the generated Zod, Effect Schema or TypeScript code.
 
 Generators are pluggable: `packages/json-schema` owns parsing, linking and
 normalization, and each target package only maps the parsed tree to its own
-schema API. A new target follows the shape of `packages/effect` — a `generate`
-function that returns a module with one const and one type per standalone
-schema, plus a `compile` helper for the CLI. See the
+schema API. A new target follows the shape of `packages/typescript` — a
+`generate` function that returns a module with one declaration per standalone
+schema, plus a `compile` helper that reads a schema file and writes the
+generated module. See the
 [playground README](./playground/README.md#adding-a-generator) for the wiring a
 target needs to show up in the UI.
 
@@ -90,6 +92,10 @@ To set this up on a fork or a new repository:
 - Run the official JSON Schema Test Suite for the Effect generator:
   ```sh
   pnpm --filter @utilize/effect test:suite
+  ```
+- Run it for the TypeScript generator (type-level, one `tsc` pass):
+  ```sh
+  pnpm --filter @utilize/typescript test:suite
   ```
 
 ## Dependency Versions

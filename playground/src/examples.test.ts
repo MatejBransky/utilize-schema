@@ -1,5 +1,6 @@
 import { generate as generateEffect } from '@utilize/effect';
 import { parse, type ParsedJSONSchema } from '@utilize/json-schema';
+import { generate as generateTypeScript } from '@utilize/typescript';
 import { generate as generateZod } from '@utilize/zod';
 import { expect, test } from 'vitest';
 
@@ -10,10 +11,24 @@ import { examples } from './examples';
 
 const generators: Array<{
 	name: string;
+	marker: string;
 	generate: (root: ParsedJSONSchema) => string;
 }> = [
-	{ name: 'Zod', generate: (root) => generateZod(root, { importZod: true }) },
-	{ name: 'Effect Schema', generate: (root) => generateEffect(root, { importEffect: true }) },
+	{
+		name: 'Zod',
+		marker: 'export const',
+		generate: (root) => generateZod(root, { importZod: true }),
+	},
+	{
+		name: 'Effect Schema',
+		marker: 'export const',
+		generate: (root) => generateEffect(root, { importEffect: true }),
+	},
+	{
+		name: 'TypeScript',
+		marker: 'export ',
+		generate: (root) => generateTypeScript(root),
+	},
 ];
 
 for (const example of examples) {
@@ -34,7 +49,7 @@ for (const example of examples) {
 			});
 			const code = generator.generate(root);
 
-			expect(code).toContain('export const');
+			expect(code).toContain(generator.marker);
 		});
 	}
 }

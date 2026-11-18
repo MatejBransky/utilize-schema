@@ -67,8 +67,8 @@ produced it.
 
 ### npm trusted publishing
 
-For `@utilize/json-schema`, `@utilize/zod` and `@utilize/effect`, configure a
-trusted publisher on npmjs.com:
+For `@utilize/json-schema`, `@utilize/zod`, `@utilize/effect` and
+`@utilize/typescript`, configure a trusted publisher on npmjs.com:
 
 - Provider: GitHub Actions
 - Repository: `MatejBransky/utilize-schema`
