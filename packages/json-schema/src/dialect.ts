@@ -1,3 +1,4 @@
+import { ANNOTATION_KEYWORDS } from './keywords';
 import { Meta, type ParsedJSONSchemaObject, type Path } from './model';
 import { isPlainObject } from './utils';
 
@@ -232,24 +233,6 @@ const DRAFT_2020_KEYWORDS = new Set<string>([
 	'$dynamicAnchor',
 ]);
 
-/** Keywords that do not change validation, so they are accepted in every dialect. */
-const TOLERATED_KEYWORDS = new Set([
-	'$defs',
-	'definitions',
-	'id',
-	'$id',
-	'$anchor',
-	'$vocabulary',
-	'$comment',
-	'examples',
-	'readOnly',
-	'writeOnly',
-	'deprecated',
-	'contentEncoding',
-	'contentMediaType',
-	'contentSchema',
-]);
-
 const keywordsThatNeed: Array<{
 	keyword: string;
 	applies: (dialect: Dialect) => boolean;
@@ -471,8 +454,7 @@ export function keywordIssues(schema: Record<string, unknown>, dialect: Dialect)
 
 	if (dialect.refSiblings === 'ignore' && typeof schema.$ref === 'string') {
 		const siblings = Object.keys(schema).filter(
-			(keyword) =>
-				keyword !== '$ref' && !TOLERATED_KEYWORDS.has(keyword) && !isReferenceAnnotation(keyword)
+			(keyword) => keyword !== '$ref' && !ANNOTATION_KEYWORDS.has(keyword)
 		);
 
 		if (siblings.length > 0) {
@@ -487,16 +469,6 @@ export function keywordIssues(schema: Record<string, unknown>, dialect: Dialect)
 	}
 
 	return issues;
-}
-
-function isReferenceAnnotation(keyword: string): boolean {
-	return (
-		keyword === 'title' ||
-		keyword === 'description' ||
-		keyword === 'default' ||
-		keyword === 'examples' ||
-		keyword === '$schema'
-	);
 }
 
 /** Writes an issue to `console.warn`, for callers that want the default CLI-like output. */

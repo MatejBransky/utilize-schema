@@ -1,4 +1,5 @@
 import {
+	ANNOTATION_KEYWORDS,
 	type Dialect,
 	dialectOf,
 	type ParsedJSONSchema,
@@ -110,7 +111,7 @@ function generateCore(schema: ParsedJSONSchemaObject, context: GeneratorContext)
 export function refSiblingConstraints(
 	schema: ParsedJSONSchemaObject
 ): ParsedJSONSchemaObject | undefined {
-	const rest = withoutKeys(schema, ['$ref', ...ownAnnotationKeywords, ...refinementKeywords]);
+	const rest = withoutKeys(schema, ['$ref', ...ANNOTATION_KEYWORDS, ...refinementKeywords]);
 
 	return hasStructuralKeywords(rest) ? rest : undefined;
 }
@@ -130,7 +131,7 @@ export function composedSchemaParts(
 		return undefined;
 	}
 
-	const rest = withoutKeys(schema, [keyword, ...ownAnnotationKeywords, ...refinementKeywords]);
+	const rest = withoutKeys(schema, [keyword, ...ANNOTATION_KEYWORDS, ...refinementKeywords]);
 
 	if (!hasStructuralKeywords(rest)) {
 		return undefined;
@@ -231,23 +232,6 @@ function withoutKeys(
 
 	return clone as unknown as ParsedJSONSchemaObject;
 }
-
-/**
- * Keywords applied by `generateSchema` itself. They are removed from the
- * intersected part so they are emitted once, on the whole schema.
- */
-const ownAnnotationKeywords = [
-	'$id',
-	'title',
-	'description',
-	'examples',
-	'default',
-	'$comment',
-	'$schema',
-	'deprecated',
-	'readOnly',
-	'writeOnly',
-] as const;
 
 /** Keywords handled by `applyRefinements` on the whole schema. */
 const refinementKeywords = [

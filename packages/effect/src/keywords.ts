@@ -1,25 +1,13 @@
-/** Keywords that only carry metadata, so they can be attached to any schema. */
+import { ANNOTATION_KEYWORDS as SHARED_ANNOTATION_KEYWORDS } from '@utilize/json-schema';
+
+/**
+ * Keywords that only carry metadata, so they can be attached to any schema.
+ * Effect only annotates `format` and `discriminator` instead of validating them.
+ */
 export const ANNOTATION_KEYWORDS: ReadonlySet<string> = new Set([
-	'title',
-	'description',
-	'default',
-	'examples',
-	'$id',
-	'id',
-	'$schema',
-	'$comment',
-	'$anchor',
-	'$vocabulary',
-	'$defs',
-	'definitions',
+	...SHARED_ANNOTATION_KEYWORDS,
 	'format',
-	'readOnly',
-	'writeOnly',
 	'discriminator',
-	'deprecated',
-	'contentEncoding',
-	'contentMediaType',
-	'contentSchema',
 ]);
 
 /**
