@@ -231,6 +231,9 @@ importers:
       effect:
         specifier: 'catalog:'
         version: 4.1.4
+      es-module-lexer:
+        specifier: 2.3.2
+        version: 2.3.2
       monaco-editor:
         specifier: 0.57.0
         version: 0.57.0

@@ -1,16 +1,18 @@
 import { generate as generateEffect } from '@utilize/effect';
-import { type ParsedJSONSchema } from '@utilize/json-schema';
+import { Meta, type ParsedJSONSchema } from '@utilize/json-schema';
 import { generate as generateTypeScript } from '@utilize/typescript';
 import { generate as generateZod } from '@utilize/zod';
 
-import type { TargetId } from './targets';
-
-/** Targets whose generated code is a runtime validator the playground can run. */
-export type RuntimeTargetId = 'zod' | 'effect';
+import type { RuntimeTargetId, TargetId } from './targets';
 
 /** Generated code of one runtime target, or why the generator could not produce it. */
 export type RuntimeSource =
-	| { status: 'generated'; code: string }
+	| {
+			status: 'generated';
+			code: string;
+			/** Export that holds the root schema. Missing for a boolean root schema. */
+			rootName?: string;
+	  }
 	| { status: 'failed'; error: Error };
 
 export type RuntimeCode = Record<RuntimeTargetId, RuntimeSource>;
@@ -50,7 +52,9 @@ export function generateCodeFor(target: TargetId, root: ParsedJSONSchema, runtim
 
 function generateRuntimeSource(root: ParsedJSONSchema, target: RuntimeTargetId): RuntimeSource {
 	try {
-		return { status: 'generated', code: runtimeGenerators[target](root) };
+		const code = runtimeGenerators[target](root);
+
+		return { status: 'generated', code, rootName: rootDeclarationName(root) };
 	} catch (error) {
 		return { status: 'failed', error: error instanceof Error ? error : new Error(String(error)) };
 	}
@@ -62,4 +66,12 @@ function generatedCode(source: RuntimeSource): string {
 	}
 
 	return source.code;
+}
+
+/**
+ * The generators record the name they declare each standalone schema under in
+ * its `resolvedName`, and the root is always a standalone schema.
+ */
+export function rootDeclarationName(root: ParsedJSONSchema): string | undefined {
+	return typeof root === 'object' && root !== null ? root[Meta].resolvedName : undefined;
 }

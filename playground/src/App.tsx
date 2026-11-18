@@ -36,8 +36,8 @@ import {
 import { formatTypeScript } from './monaco/format';
 import { MonacoEditor, type MonacoEditorHandle } from './monaco/MonacoEditor';
 import { compileModule } from './monaco/transpile';
-import { validate, type RuntimeResult } from './runtime';
-import { defaultTarget, isTargetId, targets, type TargetId } from './targets';
+import { validateModule } from './runtime';
+import { defaultTarget, isTargetId, targets, type RuntimeTargetId, type TargetId } from './targets';
 import { loadColorMode, THEME_STORAGE_KEY, type ColorMode } from './theme';
 import { Header } from './ui/Header';
 import { CheckIcon, CloseIcon, PencilIcon, PlusIcon } from './ui/icons';
@@ -237,26 +237,14 @@ export default function App() {
 
 		const timer = setTimeout(async () => {
 			try {
-				const [zodModule, effectModule] = await Promise.all([
-					runtimeCode.zod.status === 'generated'
-						? compileModule(runtimeCode.zod.code)
-						: Promise.resolve({}),
-					runtimeCode.effect.status === 'generated'
-						? compileModule(runtimeCode.effect.code)
-						: Promise.resolve({}),
+				const [zod, effect] = await Promise.all([
+					runValidator('zod', runtimeCode.zod, parsed),
+					runValidator('effect', runtimeCode.effect, parsed),
 				]);
 
-				if (cancelled) {
-					return;
+				if (!cancelled) {
+					setValidation({ status: 'ready', zod, effect });
 				}
-
-				const results = validate(zodModule, effectModule, parsed);
-
-				setValidation({
-					status: 'ready',
-					zod: outcomeFor(runtimeCode.zod, results.zod),
-					effect: outcomeFor(runtimeCode.effect, results.effect),
-				});
 			} catch (error) {
 				if (!cancelled) {
 					setValidation({
@@ -1051,8 +1039,23 @@ function uniqueName(base: string, files: SchemaFile[]): string {
 	return `${stem}-${counter}${extension}`;
 }
 
-function outcomeFor(source: RuntimeSource, result: RuntimeResult): ValidatorOutcome {
-	return source.status === 'failed'
-		? { status: 'unavailable', reason: source.error.message }
-		: { status: 'checked', result };
+async function runValidator(
+	target: RuntimeTargetId,
+	source: RuntimeSource,
+	data: unknown
+): Promise<ValidatorOutcome> {
+	if (source.status === 'failed') {
+		return { status: 'unavailable', reason: source.error.message };
+	}
+
+	if (!source.rootName) {
+		return { status: 'unavailable', reason: 'A boolean root schema has no declaration to run.' };
+	}
+
+	const module = await compileModule(source.code);
+
+	return {
+		status: 'checked',
+		result: validateModule(target, module, source.rootName, data),
+	};
 }
