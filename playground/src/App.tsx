@@ -1,5 +1,5 @@
 import { generate as generateEffect } from '@utilize/effect';
-import { parse, type ParsedJSONSchema } from '@utilize/json-schema';
+import { parse } from '@utilize/json-schema';
 import { generate as generateTypeScript } from '@utilize/typescript';
 import { generate as generateZod } from '@utilize/zod';
 import { Button } from '@ui-sdk/react/button';
@@ -23,14 +23,23 @@ import {
 	type SchemaFile,
 } from './bundle';
 import { collectDroppedFiles, readDroppedSchemas, type DropMode } from './drop';
-import { defaultExampleId, exampleById, examples } from './examples';
+import {
+	defaultExampleId,
+	exampleById,
+	exampleCaseForData,
+	exampleData,
+	examples,
+} from './examples';
 import { formatTypeScript } from './monaco/format';
 import { MonacoEditor, type MonacoEditorHandle } from './monaco/MonacoEditor';
+import { compileModule } from './monaco/transpile';
+import { validate, type RuntimeCode } from './runtime';
 import { defaultTarget, isTargetId, targets, type TargetId } from './targets';
 import { loadColorMode, THEME_STORAGE_KEY, type ColorMode } from './theme';
 import { Header } from './ui/Header';
 import { CheckIcon, CloseIcon, PencilIcon, PlusIcon } from './ui/icons';
 import { SelectPicker } from './ui/SelectPicker';
+import { ValidatorResults, type ValidationState } from './ui/ValidatorResults';
 import { useFileDrop } from './useFileDrop';
 import { validateSchemas } from './validation';
 
@@ -43,18 +52,23 @@ const GENERATOR_PARAM = 'generator';
 interface AppState {
 	files: SchemaFile[];
 	target: TargetId;
+	/** JSON document validated against the generated schemas. */
+	data: string;
 }
 
 export default function App() {
 	const [initial] = useState(loadState);
 	const [files, setFiles] = useState<SchemaFile[]>(initial.files);
 	const [target, setTarget] = useState<TargetId>(initial.target);
+	const [data, setData] = useState(initial.data);
 	const [activeId, setActiveId] = useState(initial.files[0]?.id ?? '');
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [draftName, setDraftName] = useState('');
 	const [renameError, setRenameError] = useState<string | null>(null);
 	const [code, setCode] = useState('');
 	const [busy, setBusy] = useState(false);
+	const [runtimeCode, setRuntimeCode] = useState<RuntimeCode>({});
+	const [validation, setValidation] = useState<ValidationState>({ status: 'running' });
 	const [generationProblems, setGenerationProblems] = useState<Problem[]>([]);
 	const [cursor, setCursor] = useState({ line: 1, column: 1 });
 	const [pendingPosition, setPendingPosition] = useState<{ line: number; column: number }>();
@@ -65,6 +79,7 @@ export default function App() {
 	const [copied, setCopied] = useState(false);
 	const [shared, setShared] = useState(false);
 	const schemaEditorRef = useRef<MonacoEditorHandle>(null);
+	const dataEditorRef = useRef<MonacoEditorHandle>(null);
 	const codeEditorRef = useRef<MonacoEditorHandle>(null);
 	const { dragging, activeMode, drop } = useFileDrop({ onDrop: handleDrop });
 
@@ -118,6 +133,8 @@ export default function App() {
 	const errorCount = problems.filter((problem) => problem.severity === 'error').length;
 	const warningCount = problems.length - errorCount;
 	const active = files.find((file) => file.id === activeId) ?? files[0];
+	const activeExample = exampleById(exampleId);
+	const activeCase = activeExample ? exampleCaseForData(activeExample, data) : undefined;
 
 	useEffect(() => {
 		if (!files.some((file) => file.id === activeId) && files[0]) {
@@ -127,16 +144,16 @@ export default function App() {
 
 	useEffect(() => {
 		try {
-			localStorage.setItem(STORAGE_KEY, JSON.stringify({ files, target }));
+			localStorage.setItem(STORAGE_KEY, JSON.stringify({ files, target, data }));
 		} catch {
 			// Storage can be full or denied. Keep the workspace in memory.
 		}
-	}, [files, target]);
+	}, [files, target, data]);
 
 	useEffect(() => {
 		setShared(false);
 		setCopied(false);
-	}, [files, target]);
+	}, [files, target, data]);
 
 	useEffect(() => {
 		if (!copied) {
@@ -155,6 +172,7 @@ export default function App() {
 		const timer = setTimeout(async () => {
 			let nextCode = '';
 			const nextProblems: Problem[] = [];
+			let nextRuntime: RuntimeCode = {};
 
 			if (bundle.root !== null) {
 				try {
@@ -163,8 +181,36 @@ export default function App() {
 						fileName: bundle.rootFileName,
 					});
 
-					const rawCode = generateCodeFor(target, root);
+					// The generated validators can be tried out next to the
+					// output, so both runtime targets are generated even when
+					// the editor shows TypeScript or only one of them.
+					let zodCode: string | undefined;
+					let effectCode: string | undefined;
 
+					try {
+						zodCode = generateZod(root, { importZod: true });
+					} catch (error) {
+						if (target === 'zod') {
+							throw error;
+						}
+					}
+
+					try {
+						effectCode = generateEffect(root, { importEffect: true });
+					} catch (error) {
+						if (target === 'effect') {
+							throw error;
+						}
+					}
+
+					const rawCode =
+						target === 'zod'
+							? zodCode!
+							: target === 'effect'
+								? effectCode!
+								: generateTypeScript(root);
+
+					nextRuntime = { zod: zodCode, effect: effectCode };
 					nextCode = cancelled ? nextCode : await formatTypeScript(rawCode).catch(() => rawCode);
 				} catch (error) {
 					nextProblems.push({
@@ -176,6 +222,7 @@ export default function App() {
 
 			if (!cancelled) {
 				setCode(nextCode);
+				setRuntimeCode(nextRuntime);
 				setGenerationProblems(nextProblems);
 				setBusy(false);
 			}
@@ -186,6 +233,62 @@ export default function App() {
 			clearTimeout(timer);
 		};
 	}, [bundle, target]);
+
+	useEffect(() => {
+		if (!runtimeCode.zod && !runtimeCode.effect) {
+			setValidation(busy ? { status: 'running' } : { status: 'unavailable' });
+			return;
+		}
+
+		let parsed: unknown;
+
+		try {
+			parsed = JSON.parse(data);
+		} catch (error) {
+			setValidation({
+				status: 'invalid-json',
+				message: error instanceof Error ? error.message : String(error),
+			});
+			return;
+		}
+
+		let cancelled = false;
+
+		const timer = setTimeout(async () => {
+			try {
+				const [zodModule, effectModule] = await Promise.all([
+					runtimeCode.zod ? compileModule(runtimeCode.zod) : Promise.resolve({}),
+					runtimeCode.effect ? compileModule(runtimeCode.effect) : Promise.resolve({}),
+				]);
+
+				if (cancelled) {
+					return;
+				}
+
+				const results = validate(zodModule, effectModule, parsed);
+
+				setValidation({
+					status: 'ready',
+					zod: runtimeCode.zod ? results.zod : null,
+					effect: runtimeCode.effect ? results.effect : null,
+				});
+			} catch (error) {
+				if (!cancelled) {
+					setValidation({
+						status: 'error',
+						message: `Could not run the generated validators: ${
+							error instanceof Error ? error.message : String(error)
+						}`,
+					});
+				}
+			}
+		}, 200);
+
+		return () => {
+			cancelled = true;
+			clearTimeout(timer);
+		};
+	}, [runtimeCode, data, busy]);
 
 	useEffect(() => {
 		const query = window.matchMedia('(prefers-color-scheme: dark)');
@@ -241,6 +344,7 @@ export default function App() {
 	function applyState(next: AppState) {
 		setFiles(next.files);
 		setTarget(next.target);
+		setData(next.data);
 		setActiveId(next.files[0]?.id ?? '');
 		setEditingId(null);
 	}
@@ -375,6 +479,7 @@ export default function App() {
 
 		setFiles(example.files);
 		setActiveId(example.files[0]?.id ?? '');
+		setData(exampleData(example));
 		setEditingId(null);
 		setExampleUrl(example.id, 'push');
 	}
@@ -429,7 +534,7 @@ export default function App() {
 	}
 
 	async function share() {
-		const encoded = encodeState({ files, target });
+		const encoded = encodeState({ files, target, data });
 		const url = new URL(location.href);
 
 		url.searchParams.delete(EXAMPLE_PARAM);
@@ -729,6 +834,57 @@ export default function App() {
 						)}
 					</div>
 				</section>
+
+				<section className={`${styles.pane} ${styles.dataPane}`}>
+					<div className={styles.outputHeader}>
+						<h2 className={styles.heading}>Test data</h2>
+						<div className={styles.outputActions}>
+							{activeExample ? (
+								<div className={styles.cases} aria-label="Example test data">
+									{activeExample.cases.map((item) => (
+										<Button
+											key={item.label}
+											className={styles.case}
+											data-expect={item.expect}
+											data-selected={item === activeCase ? 'true' : undefined}
+											aria-pressed={item === activeCase}
+											onClick={() => setData(JSON.stringify(item.data, null, 2))}
+										>
+											{item.label}
+										</Button>
+									))}
+								</div>
+							) : null}
+							<Button
+								className={styles.statusButton}
+								onClick={() => dataEditorRef.current?.format()}
+							>
+								Format data
+							</Button>
+						</div>
+					</div>
+					<div className={styles.editorFill}>
+						<MonacoEditor
+							ref={dataEditorRef}
+							testId="data-editor"
+							ariaLabel="Test data JSON"
+							language="json"
+							theme={monacoTheme}
+							value={data}
+							onChange={setData}
+						/>
+					</div>
+				</section>
+
+				<section className={`${styles.pane} ${styles.resultPane}`}>
+					<div className={styles.outputHeader}>
+						<h2 className={styles.heading}>Generated validator results</h2>
+						<span className={styles.muted}>
+							{activeCase ? `Expected: ${activeCase.expect}` : 'Custom test data'}
+						</span>
+					</div>
+					<ValidatorResults state={validation} />
+				</section>
 			</main>
 		</div>
 	);
@@ -740,6 +896,7 @@ function defaultState(): AppState {
 	return {
 		files: example.files,
 		target: defaultTarget,
+		data: exampleData(example),
 	};
 }
 
@@ -765,13 +922,17 @@ function readUrlState(): AppState | null {
 	const example = exampleById(url.searchParams.get(EXAMPLE_PARAM));
 
 	if (example) {
-		return { files: example.files, target: target ?? defaultTarget };
+		return {
+			files: example.files,
+			target: target ?? defaultTarget,
+			data: exampleData(example),
+		};
 	}
 
 	if (target) {
 		const base = loadSavedState() ?? defaultState();
 
-		return { files: base.files, target };
+		return { files: base.files, target, data: base.data };
 	}
 
 	return null;
@@ -822,7 +983,14 @@ function normalizeState(value: unknown): AppState | null {
 	return {
 		files: state.files,
 		target: isAvailableTarget(state.target) ? state.target : defaultTarget,
+		data: typeof state.data === 'string' ? state.data : dataForFiles(state.files),
 	};
+}
+
+function dataForFiles(files: SchemaFile[]): string {
+	const example = exampleById(resolveExampleId(files));
+
+	return example ? exampleData(example) : '{}';
 }
 
 function resolveExampleId(files: SchemaFile[]): string | null {
@@ -896,17 +1064,4 @@ function uniqueName(base: string, files: SchemaFile[]): string {
 	}
 
 	return `${stem}-${counter}${extension}`;
-}
-
-function generateCodeFor(target: TargetId, root: ParsedJSONSchema): string {
-	switch (target) {
-		case 'effect':
-			return generateEffect(root, { importEffect: true });
-		case 'typescript':
-			return generateTypeScript(root);
-		case 'zod':
-			return generateZod(root, { importZod: true });
-		default:
-			throw new Error(`The ${target} generator is not available yet.`);
-	}
 }
