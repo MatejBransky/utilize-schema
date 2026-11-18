@@ -19,6 +19,9 @@
 		"url": "https://github.com/MatejBransky/utilize-schema.git",
 		"directory": "packages/json-schema"
 	},
+	"files": [
+		"dist"
+	],
 	"type": "module",
 	"main": "./dist/index.mjs",
 	"module": "./dist/index.mjs",
@@ -32,6 +35,8 @@
 		"build:dev": "tsdown",
 		"check:types": "tsc --noEmit",
 		"test": "vitest",
+		"prebench": "tsdown",
+		"bench": "node bench/largeSchemas.ts",
 		"ci:test": "vitest run",
 		"dev": "tsdown --watch"
 	},

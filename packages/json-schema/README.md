@@ -6,7 +6,8 @@ node with metadata.
 
 ## Features
 
-- Resolves local and external `$ref` references, including `$ref` to boolean schemas
+- Resolves local, external, `$id` and `$anchor` based `$ref` references, including
+  `$ref` to boolean schemas
 - Links recursive graphs without expanding them infinitely
 - Annotates every schema node with metadata for downstream generators
 - No code generation – just robust schema preparation
@@ -82,6 +83,19 @@ await parse(schema, {
 ```
 
 See [docs/dialects.md](../../docs/dialects.md) for the keyword matrix.
+
+## Benchmarks
+
+`pnpm --filter @utilize/json-schema bench` builds the package and parses two
+generated large fixtures:
+
+- an Azure-deployment-like template with a root schema and 60 linked files;
+- a cyclic FHIR-like bundle with 140 resource definitions.
+
+It runs 20 timed iterations after two warm-ups and prints median, p95, min and
+max. On an Apple Silicon laptop the recorded medians were ~7.5 ms for the
+60-file template and ~13.4 ms for the 140-resource bundle. Treat the numbers as
+a relative baseline on your machine, not a budget.
 
 ## When to use
 
