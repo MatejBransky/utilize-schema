@@ -2,7 +2,6 @@ import { Meta } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
 
-import { resolveName } from '../resolveName';
 import { ts } from '../utils';
 
 export const generator = createGenerator(
@@ -22,14 +21,7 @@ export const generator = createGenerator(
 			return reference ? ts`z.any()` : ts`z.never()`;
 		}
 
-		if (!reference[Meta].resolvedName) {
-			reference[Meta].resolvedName = resolveName({
-				schema: reference,
-				usedNames: context.usedNames,
-			});
-		}
-
-		const name = reference[Meta].resolvedName;
+		const name = context.nameOf(reference);
 
 		if (metadata.isCircular && context.lazyRefs.has(schema)) {
 			return ts`z.lazy(() => ${name})`;

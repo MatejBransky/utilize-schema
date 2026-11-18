@@ -6,6 +6,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { generate } from '../src/generator';
+import type { NameMapper } from '../src/resolveName';
 
 /** JSON Schema 2020-12 keywords that the draft-07 based `JSONSchema` type lacks. */
 export type TestSchema = JSONSchema & {
@@ -60,6 +61,8 @@ export function normalizeCode(code: string): string {
 export interface CompileOptions {
 	importEffect?: boolean;
 	fileName?: string;
+	schemaName?: NameMapper;
+	typeName?: NameMapper;
 }
 
 export async function compile(schema: TestSchema, options: CompileOptions = {}) {
@@ -69,6 +72,8 @@ export async function compile(schema: TestSchema, options: CompileOptions = {}) 
 	});
 	const code = generate(parsed.root, {
 		importEffect: options.importEffect ?? false,
+		schemaName: options.schemaName,
+		typeName: options.typeName,
 	});
 
 	return formatSource(code);

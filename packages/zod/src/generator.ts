@@ -7,26 +7,41 @@ import { unsupportedUnionCycleError } from './errors';
 import { findCyclicSchemas } from './findCyclicSchemas';
 import { generateSchema } from './generators/generateSchema';
 import type { GeneratorContext } from './generators/types';
-import { resolveName, type CustomNameResolver } from './resolveName';
+import {
+	allocateName,
+	mapDeclarationNames,
+	resolveName,
+	type CustomNameResolver,
+	type DeclarationNames,
+	type NameMapper,
+} from './resolveName';
 import { NEWLINE, ts } from './utils';
 import { renderValueTypeDeclaration, type ValueTypeContext } from './valueTypes';
 
-export function generate(
-	root: ParsedJSONSchema,
-	options?: {
-		importZod?: boolean;
-		customNameResolver?: CustomNameResolver;
-		readOnlyKeyword?: boolean;
-	}
-): string {
-	const usedNames = new Set<string>(['z']);
-	const lazyRefs = new Set<ParsedJSONSchemaObject>();
+export interface GenerateOptions {
+	/** Emit `import { z } from 'zod';` at the top of the generated code. */
+	importZod?: boolean;
+	/** Overrides the name resolved from a standalone schema. */
+	customNameResolver?: CustomNameResolver;
+	/** Rewrites the variable that holds each generated schema. Receives the resolved name. */
+	schemaName?: NameMapper;
+	/** Rewrites the type exported for each generated schema. Receives the resolved name. */
+	typeName?: NameMapper;
+	/** Map `readOnly: true` to `.readonly()`; off by default because it changes the value type. */
+	readOnlyKeyword?: boolean;
+}
 
+/** Names the generated code uses besides the declarations. */
+const RESERVED_NAMES = ['z'];
+
+export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}): string {
 	if (typeof root !== 'object' || root === null) {
 		return generateSchema(root, {
-			usedNames,
-			lazyRefs,
-			readOnlyKeyword: options?.readOnlyKeyword,
+			lazyRefs: new Set(),
+			readOnlyKeyword: options.readOnlyKeyword,
+			nameOf: () => {
+				throw new Error('A primitive schema cannot reference another schema.');
+			},
 		});
 	}
 
@@ -43,44 +58,27 @@ export function generate(
 		.filter((schema) => standaloneSchemas.includes(schema))
 		.reverse();
 
-	const context: GeneratorContext = {
-		usedNames,
-		lazyRefs: broken.lazyRefs,
-		readOnlyKeyword: options?.readOnlyKeyword,
-	};
-
+	const { names, typeNames } = nameDeclarations(
+		[...sorted, ...standaloneSchemas.filter((schema) => !sorted.includes(schema))],
+		options
+	);
 	const aliases = new Map<ParsedJSONSchemaObject, string>();
-	const typeNames = new Set<string>(['z']);
 
-	function ensureName(schema: ParsedJSONSchemaObject): string {
-		const existing = schema[Meta].resolvedName;
+	function namesOf(schema: ParsedJSONSchemaObject): DeclarationNames {
+		const declarationNames = names.get(schema);
 
-		if (existing) {
-			return existing;
+		if (!declarationNames) {
+			throw new Error('A referenced schema has no generated declaration.');
 		}
 
-		const name = resolveName({
-			schema,
-			usedNames,
-			customResolver: options?.customNameResolver,
-		});
-
-		schema[Meta].resolvedName = name;
-		return name;
+		return declarationNames;
 	}
 
-	function allocateTypeName(base: string): string {
-		let name = base;
-		let counter = 1;
-
-		while (usedNames.has(name) || typeNames.has(name)) {
-			name = `${base}${counter++}`;
-		}
-
-		typeNames.add(name);
-		usedNames.add(name);
-		return name;
-	}
+	const context: GeneratorContext = {
+		lazyRefs: broken.lazyRefs,
+		readOnlyKeyword: options.readOnlyKeyword,
+		nameOf: (schema) => namesOf(schema).schema,
+	};
 
 	const valueTypeContext: ValueTypeContext = {
 		aliasFor: (schema) => {
@@ -91,34 +89,34 @@ export function generate(
 			let alias = aliases.get(schema);
 
 			if (!alias) {
-				alias = allocateTypeName(`${ensureName(schema)}Value`);
+				alias = allocateName(`${namesOf(schema).schema}Value`, typeNames);
 				aliases.set(schema, alias);
 			}
 
 			return alias;
 		},
-		typeNameFor: (schema) => ensureName(schema),
-		readOnlyKeyword: options?.readOnlyKeyword,
+		typeNameFor: (schema) => namesOf(schema).type,
+		readOnlyKeyword: options.readOnlyKeyword,
 	};
 
 	const code: string[] = [];
-	if (options?.importZod ?? true) {
+	if (options.importZod ?? true) {
 		code.push(ts`import { z } from 'zod';${NEWLINE}`);
 	}
 
 	for (const schema of sorted) {
-		const name = ensureName(schema);
+		const { schema: schemaName, type: typeName } = namesOf(schema);
 		const alias = valueTypeContext.aliasFor(schema);
 		const zodExpression = generateSchema(schema, context);
 
 		if (alias) {
 			code.push(renderValueTypeDeclaration(alias, schema, valueTypeContext));
-			code.push(ts`export const ${name}: z.ZodType<${alias}> = ${zodExpression};`);
+			code.push(ts`export const ${schemaName}: z.ZodType<${alias}> = ${zodExpression};`);
 		} else {
-			code.push(ts`export const ${name} = ${zodExpression};`);
+			code.push(ts`export const ${schemaName} = ${zodExpression};`);
 		}
 
-		code.push(ts`export type ${name} = z.infer<typeof ${name}>;`);
+		code.push(ts`export type ${typeName} = z.infer<typeof ${schemaName}>;`);
 		code.push(NEWLINE);
 	}
 
@@ -127,6 +125,38 @@ export function generate(
 	}
 
 	return code.join(NEWLINE);
+}
+
+/**
+ * Names every standalone schema in two passes: first the resolved names, which
+ * stay unique among themselves, then the mapped names, which are allocated only
+ * once every resolved name is known. A mapped name therefore never depends on
+ * the order in which schemas are generated.
+ */
+function nameDeclarations(schemas: ParsedJSONSchemaObject[], options: GenerateOptions) {
+	const usedResolvedNames = new Set(RESERVED_NAMES);
+	const resolvedNames = schemas.map((schema) => {
+		const resolvedName =
+			schema[Meta].resolvedName ??
+			resolveName({
+				schema,
+				usedNames: usedResolvedNames,
+				customResolver: options.customNameResolver,
+			});
+
+		schema[Meta].resolvedName = resolvedName;
+		return resolvedName;
+	});
+	const mapped = mapDeclarationNames(resolvedNames, {
+		schemaName: options.schemaName,
+		typeName: options.typeName,
+		reservedNames: RESERVED_NAMES,
+	});
+
+	return {
+		names: new Map(schemas.map((schema, index) => [schema, mapped.names[index]!])),
+		typeNames: mapped.typeNames,
+	};
 }
 
 const ONE_OF_HELPER = ts`function oneOfSchema<T extends z.ZodType>(

@@ -68,6 +68,43 @@ export type Tree = z.infer<typeof Tree>;
 The generated `Value` alias is internal; use the exported type in your own
 code.
 
+## Naming
+
+Each standalone schema gets the name resolved from `$id`, `title`, the `$defs`
+key or the file name, and its type uses the same name. Pass `schemaName` or
+`typeName` to rewrite one of them. Both callbacks receive the resolved name, so
+a suffix only has to describe the difference:
+
+```ts
+await compile({
+	input: './schema.json',
+	output: './schema.generated.ts',
+	schemaName: (name) => `${name}Schema`,
+	typeName: (name) => `${name}Schema`,
+});
+```
+
+```ts
+export const PersonSchema = z.object({ ... });
+export type PersonSchema = z.infer<typeof PersonSchema>;
+```
+
+The callbacks are independent and default to the resolved name, so mapping only
+`schemaName` keeps the type at `Person`:
+
+```ts
+export const PersonSchema = z.object({ ... });
+export type Person = z.infer<typeof PersonSchema>;
+```
+
+A mapped name that is already a valid identifier is used as it is, so a
+callback can pick its own casing, e.g. `personSchema`. Anything else is turned
+into an identifier. Names are mapped only once every schema's name is resolved,
+and schema variables and types are kept unique separately, so a mapped name
+never takes the name of another schema. `$ref`s point at the renamed variable.
+The option belongs to the generator instead of the shared parser, because a
+target that emits only types has no schema variable to name.
+
 ## How it works
 
 - Collects all standalone schemas (root, `$defs`, `definitions`, referenced)

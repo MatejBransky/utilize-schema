@@ -5,10 +5,12 @@ import { type JSONSchema, parse } from '@utilize/json-schema';
 
 import { load as loadYaml } from 'js-yaml';
 
-import { generate } from './generator';
-import type { CustomNameResolver } from './resolveName';
+import { generate, type GenerateOptions } from './generator';
 
-export interface CompileOptions {
+export interface CompileOptions extends Pick<
+	GenerateOptions,
+	'customNameResolver' | 'schemaName' | 'typeName'
+> {
 	/** Path of the JSON Schema file, resolved against `cwd`. */
 	input: string;
 	/** Path of the generated file, resolved against `cwd`. */
@@ -17,17 +19,17 @@ export interface CompileOptions {
 	cwd?: string;
 	/** Emit `import { Schema } from 'effect';` at the top of the generated code. */
 	importEffect?: boolean;
-	/** Overrides the name allocated for a standalone schema. */
-	customNameResolver?: CustomNameResolver;
 	/** Header prepended to the generated file. Pass `false` to omit it. */
 	bannerComment?: string | false;
 }
 
-export interface CompileSchemaOptions {
+export interface CompileSchemaOptions extends Pick<
+	GenerateOptions,
+	'customNameResolver' | 'schemaName' | 'typeName'
+> {
 	cwd: string;
 	fileName: string;
 	importEffect?: boolean;
-	customNameResolver?: CustomNameResolver;
 }
 
 export const DEFAULT_BANNER = `/* eslint-disable */
@@ -50,6 +52,8 @@ export async function compile(options: CompileOptions): Promise<void> {
 	const code = await compileFile(inputPath, {
 		importEffect: options.importEffect,
 		customNameResolver: options.customNameResolver,
+		schemaName: options.schemaName,
+		typeName: options.typeName,
 	});
 
 	writeFileSync(outputPath, withBanner(code, options.bannerComment), 'utf8');
@@ -74,6 +78,8 @@ export async function compileSchema(schema: JSONSchema, options: CompileSchemaOp
 	return generate(root, {
 		importEffect: options.importEffect,
 		customNameResolver: options.customNameResolver,
+		schemaName: options.schemaName,
+		typeName: options.typeName,
 	});
 }
 
