@@ -30,8 +30,8 @@ Draft-07 baseline on suite commit `e2a68a1`:
   accepted.
 - 100 cases differ only because an invalid instance is accepted by a keyword a
   type cannot express (`minimum`, `pattern`, `format`, `uniqueItems`, …).
-- 21 cases are listed in `test/suite/knownGaps.ts`: 10 shared parser gaps
-  (`$id`/`$anchor` and URN resolution) and 11 inference gaps.
+- 21 cases are listed in `test/suite/knownGaps.ts`: 9 shared parser gaps
+  (`$id`/`$anchor` and URN resolution) and 12 inference gaps.
 - Across instances it accepts 788 of 814 spec-valid instances and rejects 209 of
   788 spec-invalid ones.
 

@@ -138,9 +138,9 @@ Current baseline on suite commit `e2a68a1`:
   cannot express `minimum`, `pattern`, `format`, `uniqueItems`, `dependencies`,
   `if`/`then`/`else`, and similar value constraints, so these are inherent to
   the target.
-- **21 cases** are listed in `test/suite/knownGaps.ts`: 10 need `$id`/`$anchor`
-  or boolean-schema `$ref` resolution from the shared parser, and 11 are the
-  inference trade-off described below.
+- **21 cases** are listed in `test/suite/knownGaps.ts`: 9 need `$id`/`$anchor`
+  or URN resolution from the shared parser, and 12 are the inference trade-off
+  described below.
 
 The numbers are recorded in `test/suite/baseline.ts` and the test fails when
 they change, so a regression cannot slip in and an improvement has to update the
@@ -174,7 +174,7 @@ runner skips cases that need external schemas), so the numbers describe two
 different records rather than a score. On the same group metric the TypeScript
 generator is ahead (58.0% vs 54.9%), accepts more valid instances (96.8% vs
 95.0%), emits no invalid TypeScript and crashes only where the shared parser has
-the same `$id`/`$anchor` gap (10 cases vs 24). Instance-level invalid rejection
+the same `$id`/`$anchor` gap (9 cases vs 24). Instance-level invalid rejection
 is not comparable across the two revisions: this runner rejects 26.5% of 788
 invalid instances, json-schema-to-typescript 57.9% of its 342, largely because
 the newer suite revision adds many more `format` cases that a type cannot
