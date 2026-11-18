@@ -35,6 +35,16 @@ const inlineCopyCycleSchema: JSONSchema = {
 	},
 };
 
+/** draft-07 ignores the `type` and `const` next to `$ref`, so only `Kind` applies. */
+const refWithIgnoredLiteralSchema: JSONSchema = {
+	type: 'object',
+	properties: {
+		kind: { $ref: '#/definitions/Kind', type: 'string', const: 'a' } as JSONSchema,
+		next: { $ref: '#' },
+	},
+	definitions: { Kind: { type: 'string' } },
+};
+
 const objectArraySchema: JSONSchema = {
 	type: 'object',
 	properties: { list: { $ref: './definitions/ListCycle.json' } },
@@ -252,6 +262,7 @@ describe('generated recursive schemas type-check', () => {
 				'PatternProperties.ts': patternPropertiesSchema,
 				'RecursivePatternProperties.ts': recursivePatternPropertiesSchema,
 				'InlineCopyCycle.ts': inlineCopyCycleSchema,
+				'RefWithIgnoredLiteral.ts': refWithIgnoredLiteralSchema,
 			})
 		).resolves.toBeUndefined();
 	});

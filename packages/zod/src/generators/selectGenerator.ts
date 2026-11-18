@@ -53,8 +53,9 @@ export function selectGenerator(
 	dialect: Dialect
 ): ExpressionGenerator {
 	// The type adds nothing to the listed values, and a type generator (e.g.
-	// for objects) would otherwise ignore the `enum`.
-	if (isTypedLiteral(input, dialect)) {
+	// for objects) would otherwise ignore the `enum`. A `$ref` node keeps the
+	// reference generator, which decides whether the dialect applies siblings.
+	if (!('$ref' in input) && isTypedLiteral(input, dialect)) {
 		return input.const !== undefined ? literalGenerator : enumGenerator;
 	}
 
