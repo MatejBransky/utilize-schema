@@ -4,7 +4,6 @@ import {
 	type DialectIssue,
 	DialectError,
 	Meta,
-	dialects,
 	detectDialect,
 	detectSchemaVersion,
 	type JSONSchema,
@@ -14,6 +13,7 @@ import {
 	readDialectCliOptions,
 	resolveDialect,
 } from '../src';
+import { dialects } from '../src/dialect';
 
 const draft07 = 'http://json-schema.org/draft-07/schema#';
 const twentyTwentyTwelve = 'https://json-schema.org/draft/2020-12/schema';

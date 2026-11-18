@@ -87,7 +87,7 @@ export function prepareSchema(schema: unknown, options: PrepareSchemaOptions = {
 				report(
 					{
 						kind: 'invalid-keyword',
-						message: `${inherited.dialect.label} does not allow boolean schemas.`,
+						message: `${inherited.dialect.id} does not allow boolean schemas.`,
 						path,
 					},
 					inherited

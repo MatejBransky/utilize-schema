@@ -10,28 +10,25 @@ export type SchemaVersion = DialectId;
 export type DialectSource = 'declared' | 'inherited' | 'fallback' | 'forced';
 
 export interface Dialect {
-	id: DialectId;
-	label: string;
+	readonly id: DialectId;
 	/** Meta-schema URIs that select this dialect. */
-	uris: readonly string[];
+	readonly uris: readonly string[];
 	/** Keyword that holds standalone definitions. */
-	definitions: 'definitions' | '$defs';
+	readonly definitions: 'definitions' | '$defs';
 	/** How a tuple is expressed. */
-	tuple: 'items' | 'prefixItems';
+	readonly tuple: 'items' | 'prefixItems';
 	/** draft-04 uses boolean flags, draft-06+ numeric bounds. */
-	exclusiveBounds: 'boolean' | 'numeric';
+	readonly exclusiveBounds: 'boolean' | 'numeric';
 	/** Whether keywords next to `$ref` apply. */
-	refSiblings: 'ignore' | 'apply';
+	readonly refSiblings: 'ignore' | 'apply';
 	/** `dependencies` in draft-07 and older, `dependent*` in 2019-09 and newer. */
-	dependencies: 'dependencies' | 'dependent';
-	/** Default `format` behavior. */
-	format: 'annotation' | 'assertion';
+	readonly dependencies: 'dependencies' | 'dependent';
 	/** `minContains` / `maxContains`. */
-	containsCount: boolean;
+	readonly containsCount: boolean;
 	/** `unevaluatedProperties` / `unevaluatedItems`. */
-	unevaluated: boolean;
+	readonly unevaluated: boolean;
 	/** Keywords the dialect defines. */
-	keywords: ReadonlySet<string>;
+	readonly keywords: ReadonlySet<string>;
 }
 
 export interface DetectedDialect {
@@ -275,52 +272,46 @@ const keywordsThatNeed: Array<{
 	{ keyword: '$dynamicAnchor', applies: (dialect) => dialect.id === '2020-12' },
 ];
 
-export const dialects: Record<DialectId, Dialect> = {
+/** Internal: the public API exposes dialects through `resolveDialect` and `dialectOf`. */
+export const dialects: Readonly<Record<DialectId, Dialect>> = Object.freeze({
 	'draft-04': {
 		id: 'draft-04',
-		label: 'draft-04',
 		uris: ['http://json-schema.org/draft-04/schema#', 'https://json-schema.org/draft-04/schema'],
 		definitions: 'definitions',
 		tuple: 'items',
 		exclusiveBounds: 'boolean',
 		refSiblings: 'ignore',
 		dependencies: 'dependencies',
-		format: 'annotation',
 		containsCount: false,
 		unevaluated: false,
 		keywords: DRAFT_04_KEYWORDS,
 	},
 	'draft-06': {
 		id: 'draft-06',
-		label: 'draft-06',
 		uris: ['http://json-schema.org/draft-06/schema#', 'https://json-schema.org/draft-06/schema'],
 		definitions: 'definitions',
 		tuple: 'items',
 		exclusiveBounds: 'numeric',
 		refSiblings: 'ignore',
 		dependencies: 'dependencies',
-		format: 'annotation',
 		containsCount: false,
 		unevaluated: false,
 		keywords: DRAFT_06_KEYWORDS,
 	},
 	'draft-07': {
 		id: 'draft-07',
-		label: 'draft-07',
 		uris: ['http://json-schema.org/draft-07/schema#', 'https://json-schema.org/draft-07/schema'],
 		definitions: 'definitions',
 		tuple: 'items',
 		exclusiveBounds: 'numeric',
 		refSiblings: 'ignore',
 		dependencies: 'dependencies',
-		format: 'annotation',
 		containsCount: false,
 		unevaluated: false,
 		keywords: DRAFT_07_KEYWORDS,
 	},
 	'2019-09': {
 		id: '2019-09',
-		label: '2019-09',
 		uris: [
 			'https://json-schema.org/draft/2019-09/schema',
 			'http://json-schema.org/draft/2019-09/schema',
@@ -330,14 +321,12 @@ export const dialects: Record<DialectId, Dialect> = {
 		exclusiveBounds: 'numeric',
 		refSiblings: 'apply',
 		dependencies: 'dependent',
-		format: 'annotation',
 		containsCount: true,
 		unevaluated: true,
 		keywords: DRAFT_2019_KEYWORDS,
 	},
 	'2020-12': {
 		id: '2020-12',
-		label: '2020-12',
 		uris: [
 			'https://json-schema.org/draft/2020-12/schema',
 			'http://json-schema.org/draft/2020-12/schema',
@@ -347,12 +336,11 @@ export const dialects: Record<DialectId, Dialect> = {
 		exclusiveBounds: 'numeric',
 		refSiblings: 'apply',
 		dependencies: 'dependent',
-		format: 'annotation',
 		containsCount: true,
 		unevaluated: true,
 		keywords: DRAFT_2020_KEYWORDS,
 	},
-};
+});
 
 const PATTERNS: ReadonlyArray<readonly [RegExp, DialectId]> = [
 	[/draft-04/, 'draft-04'],
@@ -452,7 +440,7 @@ export function keywordIssues(schema: Record<string, unknown>, dialect: Dialect)
 			issues.push({
 				kind: 'unknown-keyword',
 				keyword,
-				message: `"${keyword}" is not part of ${dialect.label}.`,
+				message: `"${keyword}" is not part of ${dialect.id}.`,
 			});
 		}
 	}
@@ -461,7 +449,7 @@ export function keywordIssues(schema: Record<string, unknown>, dialect: Dialect)
 		issues.push({
 			kind: 'invalid-keyword',
 			keyword: 'items',
-			message: `The tuple form of "items" was removed in ${dialect.label}; use "prefixItems".`,
+			message: `The tuple form of "items" was removed in ${dialect.id}; use "prefixItems".`,
 		});
 	}
 
@@ -473,7 +461,7 @@ export function keywordIssues(schema: Record<string, unknown>, dialect: Dialect)
 			issues.push({
 				kind: 'invalid-keyword',
 				keyword,
-				message: `"${keyword}" must be a ${expected} in ${dialect.label}.`,
+				message: `"${keyword}" must be a ${expected} in ${dialect.id}.`,
 			});
 		}
 	}
@@ -488,7 +476,7 @@ export function keywordIssues(schema: Record<string, unknown>, dialect: Dialect)
 			issues.push({
 				kind: 'ignored-ref-siblings',
 				keyword: siblings[0],
-				message: `${dialect.label} ignores keywords next to "$ref": ${siblings
+				message: `${dialect.id} ignores keywords next to "$ref": ${siblings
 					.map((keyword) => `"${keyword}"`)
 					.join(', ')}.`,
 			});
