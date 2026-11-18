@@ -236,3 +236,75 @@ describe('a oneOf whose branches cannot match the same value', () => {
 		expect(Root.safeParse({ type: 'other', value: 1 }).success).toBe(false);
 	});
 });
+
+describe('an inline subschema identical to a named schema', () => {
+	const value: JSONSchema = {
+		oneOf: [
+			{ type: 'object', properties: { int: { type: 'integer' } }, required: ['int'] },
+			{ type: 'object', properties: { text: { type: 'string' } }, required: ['text'] },
+		],
+	};
+
+	test('generates the same code as a $ref to the named schema', async () => {
+		await expect(
+			compile({
+				type: 'object',
+				properties: { value: { $ref: '#/definitions/Value' }, inline: structuredClone(value) },
+				definitions: { Value: value },
+			})
+		).toMatchCode(
+			compile({
+				type: 'object',
+				properties: {
+					value: { $ref: '#/definitions/Value' },
+					inline: { $ref: '#/definitions/Value' },
+				},
+				definitions: { Value: value },
+			})
+		);
+	});
+
+	test('keeps a copy that differs in an annotation', async () => {
+		const code = await compile({
+			type: 'object',
+			properties: { inline: { ...structuredClone(value), description: 'Not quite the same' } },
+			definitions: { Value: value },
+		});
+
+		expect(code).toContain('inline: oneOfSchema([');
+	});
+
+	test('keeps a single keyword such as a type inline', async () => {
+		await expect(
+			compile({
+				type: 'object',
+				properties: { name: { type: 'string' } },
+				definitions: { Name: { type: 'string' } },
+			})
+		).toMatchCode(ts`
+			export const Name = z.string();
+			export type Name = z.infer<typeof Name>;
+
+			export const Root = z.object({ name: z.string().optional() });
+			export type Root = z.infer<typeof Root>;
+		`);
+	});
+
+	test('refers to a recursive schema whose copy closes a new cycle', async () => {
+		const node: JSONSchema = {
+			type: 'object',
+			properties: { next: { $ref: '#/definitions/Wrapper' } },
+		};
+		const Root = await compileToZod({
+			type: 'object',
+			properties: { wrapper: { $ref: '#/definitions/Wrapper' } },
+			definitions: {
+				Node: node,
+				Wrapper: { type: 'object', properties: { node: structuredClone(node) } },
+			},
+		});
+
+		expect(Root.safeParse({ wrapper: { node: { next: { node: {} } } } }).success).toBe(true);
+		expect(Root.safeParse({ wrapper: { node: { next: { node: 1 } } } }).success).toBe(false);
+	});
+});

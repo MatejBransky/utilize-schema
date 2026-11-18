@@ -10,6 +10,7 @@ import { breakReferenceCycles } from './breakReferenceCycles';
 import { collectStandaloneSchemas } from './collectStandaloneSchemas';
 import { unsupportedUnionCycleError } from './errors';
 import { findCyclicSchemas } from './findCyclicSchemas';
+import { findInlineCopies } from './inlineCopies';
 import { generateSchema } from './generators/generateSchema';
 import type { CustomSchemaResolver, FormatMap, GeneratorContext } from './generators/types';
 
@@ -64,14 +65,17 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		});
 	}
 
-	const { schemas: standaloneSchemas, edges } = collectStandaloneSchemas(root);
+	const isOpaque = (schema: ParsedJSONSchemaObject) =>
+		options.customSchemaResolver?.(schema) !== undefined;
+	const copies = findInlineCopies(collectStandaloneSchemas(root).schemas, isOpaque);
+	const { schemas: standaloneSchemas, edges } = collectStandaloneSchemas(root, copies);
 	const { schemas: cyclicSchemas, unsupported } = findCyclicSchemas(edges, standaloneSchemas);
 
 	if (unsupported.length > 0) {
 		throw unsupportedUnionCycleError(unsupported);
 	}
 
-	const broken = breakReferenceCycles(edges, new Set(standaloneSchemas));
+	const broken = breakReferenceCycles(edges, new Set(standaloneSchemas), copies);
 
 	const sorted = (toposort(broken.edges).filter(Boolean) as ParsedJSONSchemaObject[])
 		.filter((schema) => standaloneSchemas.includes(schema))
@@ -98,6 +102,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		readOnlyKeyword: options.readOnlyKeyword,
 		formatMap: options.formatMap,
 		nameOf: (schema) => namesOf(schema).schema,
+		declarationOf: (schema) => copies.get(schema),
 		dialect: dialectOf(root),
 		customSchemaResolver: options.customSchemaResolver,
 	};
@@ -120,6 +125,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 			return alias;
 		},
 		typeNameFor: (schema) => namesOf(schema).type,
+		declarationOf: (schema) => copies.get(schema),
 		readOnlyKeyword: options.readOnlyKeyword,
 	};
 

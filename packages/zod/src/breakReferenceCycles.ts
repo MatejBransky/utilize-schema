@@ -1,6 +1,7 @@
 import { type ParsedJSONSchemaObject, Meta } from '@utilize/json-schema';
 
 import { type SchemaEdge } from './collectStandaloneSchemas';
+import type { InlineCopies } from './inlineCopies';
 import { isPropertyBacked } from './isPropertyBacked';
 
 type SchemaNode = SchemaEdge[0];
@@ -25,9 +26,14 @@ export interface BreakReferenceCyclesResult {
  */
 export function breakReferenceCycles(
 	edges: SchemaEdge[],
-	standaloneSchemas?: Set<ParsedJSONSchemaObject>
+	standaloneSchemas?: Set<ParsedJSONSchemaObject>,
+	copies: InlineCopies = new Map()
 ): BreakReferenceCyclesResult {
-	resetCircularFlags(edges);
+	// An inline copy of a standalone schema is generated as a reference to it.
+	const isReference = (node: SchemaNode): node is ParsedJSONSchemaObject =>
+		isRefNode(node) || (node !== null && copies.has(node));
+
+	resetCircularFlags(edges, isReference);
 	let remaining = edges;
 	const lazyRefs = new Set<ParsedJSONSchemaObject>();
 
@@ -72,7 +78,10 @@ export function breakReferenceCycles(
  * stack. That is only a hint: cycles are re-derived from the whole dependency
  * graph here, so stale flags have to be cleared first.
  */
-function resetCircularFlags(edges: SchemaEdge[]) {
+function resetCircularFlags(
+	edges: SchemaEdge[],
+	isReference: (node: SchemaNode) => node is ParsedJSONSchemaObject
+) {
 	const refs = new Set<ParsedJSONSchemaObject>();
 
 	for (const [source, target] of edges) {
@@ -161,6 +170,6 @@ function groupBySource(edges: SchemaEdge[]) {
 	return edgesBySource;
 }
 
-function isReference(node: SchemaNode): node is ParsedJSONSchemaObject & { $ref: string } {
+function isRefNode(node: SchemaNode): node is ParsedJSONSchemaObject & { $ref: string } {
 	return typeof node === 'object' && node !== null && '$ref' in node;
 }

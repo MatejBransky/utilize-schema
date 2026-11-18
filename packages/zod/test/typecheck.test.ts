@@ -20,6 +20,21 @@ const treeSchema: JSONSchema = {
 	required: ['name'],
 };
 
+const cycleNode: JSONSchema = {
+	type: 'object',
+	properties: { next: { $ref: '#/definitions/Wrapper' } },
+};
+
+/** The inline copy of `Node` becomes a reference that closes a cycle. */
+const inlineCopyCycleSchema: JSONSchema = {
+	type: 'object',
+	properties: { wrapper: { $ref: '#/definitions/Wrapper' } },
+	definitions: {
+		Node: cycleNode,
+		Wrapper: { type: 'object', properties: { node: structuredClone(cycleNode) } },
+	},
+};
+
 const objectArraySchema: JSONSchema = {
 	type: 'object',
 	properties: { list: { $ref: './definitions/ListCycle.json' } },
@@ -236,6 +251,7 @@ describe('generated recursive schemas type-check', () => {
 				'BooleanRef.ts': booleanRefSchema,
 				'PatternProperties.ts': patternPropertiesSchema,
 				'RecursivePatternProperties.ts': recursivePatternPropertiesSchema,
+				'InlineCopyCycle.ts': inlineCopyCycleSchema,
 			})
 		).resolves.toBeUndefined();
 	});

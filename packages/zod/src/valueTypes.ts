@@ -36,6 +36,8 @@ export interface ValueTypeContext {
 	dialect: Dialect;
 	/** The generated value-type alias of a schema in a cycle, when it has one. */
 	aliasFor(schema: ParsedJSONSchemaObject): string | undefined;
+	/** The standalone schema an inline subschema is an identical copy of, if any. */
+	declarationOf?(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject | undefined;
 	/** The exported type alias of a schema, for schemas outside of a cycle. */
 	typeNameFor(schema: ParsedJSONSchemaObject): string;
 	/** Mirror `readOnlyKeyword` in the value types. */
@@ -84,6 +86,12 @@ function renderType(node: ParsedJSONSchemaObject, context: ValueTypeContext): st
 
 	if (isResolvedByCaller(node, context)) {
 		return 'unknown';
+	}
+
+	const declaration = context.declarationOf?.(node);
+
+	if (declaration) {
+		return context.aliasFor(declaration) ?? context.typeNameFor(declaration);
 	}
 
 	const schema = withoutAlwaysValidAnyOf(node);

@@ -1,6 +1,7 @@
-import { Meta } from '@utilize/json-schema';
+import { Meta, type ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
+import type { GeneratorContext } from './types';
 
 import { ts } from '../utils';
 
@@ -21,12 +22,24 @@ export const generator = createGenerator(
 			return reference ? ts`z.any()` : ts`z.never()`;
 		}
 
-		const name = context.nameOf(reference);
-
-		if (metadata.isCircular && context.lazyRefs.has(schema)) {
-			return ts`z.lazy(() => ${name})`;
-		}
-
-		return name;
+		return referenceTo(schema, reference, context);
 	}
 );
+
+/**
+ * The expression that refers to a standalone schema from `node`: a `$ref`, or
+ * an inline copy of the standalone schema.
+ */
+export function referenceTo(
+	node: ParsedJSONSchemaObject,
+	reference: ParsedJSONSchemaObject,
+	context: GeneratorContext
+): string {
+	const name = context.nameOf(reference);
+
+	if (node[Meta].isCircular && context.lazyRefs.has(node)) {
+		return ts`z.lazy(() => ${name})`;
+	}
+
+	return name;
+}

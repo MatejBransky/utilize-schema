@@ -10,7 +10,7 @@ import {
 
 import { withoutAlwaysValidAnyOf } from './alwaysValidAnyOf';
 import { valueHasType } from './jsonValues';
-import { generator as refGenerator } from './refGenerator';
+import { generator as refGenerator, referenceTo } from './refGenerator';
 import { selectGenerator } from './selectGenerator';
 import type { GeneratorContext } from './types';
 
@@ -30,6 +30,12 @@ export const generateSchema = (schema: ParsedJSONSchema | undefined, context: Ge
 
 	if (customExpression !== undefined) {
 		return customExpression;
+	}
+
+	const declaration = context.declarationOf?.(schema);
+
+	if (declaration) {
+		return referenceTo(schema, declaration, context);
 	}
 
 	const dialect = dialectOf(schema, context.dialect);

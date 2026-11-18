@@ -1,5 +1,7 @@
 import { type ParsedJSONSchema, type ParsedJSONSchemaObject, Meta } from '@utilize/json-schema';
 
+import type { InlineCopies } from './inlineCopies';
+
 export type SchemaEdge = [ParsedJSONSchemaObject | null, ParsedJSONSchemaObject];
 
 interface StandaloneSchemasResult {
@@ -7,8 +9,15 @@ interface StandaloneSchemasResult {
 	edges: SchemaEdge[];
 }
 
-// Helper to collect all standalone schemas: referenced and $defs/definitions
-export function collectStandaloneSchemas(root: ParsedJSONSchemaObject): StandaloneSchemasResult {
+/**
+ * Collects all standalone schemas (referenced, `$defs`/`definitions` and the
+ * root) and the dependency edges between them. An inline copy of a standalone
+ * schema counts as a reference to it, so its own subschemas are skipped.
+ */
+export function collectStandaloneSchemas(
+	root: ParsedJSONSchemaObject,
+	copies: InlineCopies = new Map()
+): StandaloneSchemasResult {
 	const standalone = new Set<ParsedJSONSchemaObject>();
 	const seen = new Set<ParsedJSONSchemaObject>();
 	const edges = new Set<[ParsedJSONSchemaObject | null, ParsedJSONSchemaObject]>();
@@ -23,6 +32,14 @@ export function collectStandaloneSchemas(root: ParsedJSONSchemaObject): Standalo
 
 		if (!schema || seen.has(schema)) return;
 		seen.add(schema);
+
+		const declaration = copies.get(schema);
+
+		if (declaration) {
+			standalone.add(declaration);
+			visit(declaration, schema);
+			return;
+		}
 
 		// 1. If schema is referenced by $ref somewhere, mark as standalone
 		const reference = schema[Meta]?.reference;
