@@ -5,19 +5,23 @@
 	min-width: 0;
 }
 
-.picker [data-slot='combobox-label'] {
+.picker [data-slot='select-label'] {
 	font-size: 0.75rem;
 	line-height: 1.2;
 	color: var(--ui-muted-foreground);
 }
 
-.row {
-	display: flex;
+.trigger {
+	width: 100%;
+	min-width: 0;
 }
 
-.input {
+.trigger [data-slot='select-value'] {
 	flex: 1;
 	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .content {

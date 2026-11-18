@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 
+import { createEditorOptions } from './options';
 import { monaco, preloadEffectTypes } from './setup';
 
 import styles from './MonacoEditor.module.css';
@@ -24,9 +25,6 @@ interface MonacoEditorProps {
 	onChange?: (value: string) => void;
 	onCursorChange?: (line: number, column: number) => void;
 }
-
-const FONT_FAMILY =
-	"ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', monospace";
 
 export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(function MonacoEditor(
 	{
@@ -69,31 +67,7 @@ export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(fu
 		);
 		const editor = monaco.editor.create(host, {
 			model,
-			theme,
-			readOnly,
-			ariaLabel,
-			automaticLayout: true,
-			fontFamily: FONT_FAMILY,
-			fontSize: 13,
-			lineHeight: 20,
-			tabSize: 2,
-			insertSpaces: true,
-			detectIndentation: false,
-			minimap: { enabled: false },
-			lineNumbersMinChars: 3,
-			lineDecorationsWidth: 10,
-			glyphMargin: false,
-			folding: true,
-			scrollBeyondLastLine: false,
-			renderLineHighlight: 'line',
-			overviewRulerLanes: 0,
-			hideCursorInOverviewRuler: true,
-			guides: { indentation: false },
-			stickyScroll: { enabled: false },
-			contextmenu: false,
-			fixedOverflowWidgets: true,
-			padding: { top: 10, bottom: 10 },
-			scrollbar: { verticalScrollbarSize: 10, horizontalScrollbarSize: 10 },
+			...createEditorOptions({ readOnly, theme, ariaLabel }),
 		});
 
 		editorRef.current = editor;
@@ -145,7 +119,36 @@ export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(fu
 	}, [value]);
 
 	useEffect(() => {
-		editorRef.current?.updateOptions({ readOnly });
+		const editor = editorRef.current;
+
+		if (!editor) {
+			return;
+		}
+
+		editor.updateOptions({ readOnly, domReadOnly: readOnly });
+	}, [readOnly]);
+
+	useEffect(() => {
+		const host = hostRef.current;
+		const touchDevice =
+			navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches;
+
+		if (!host || !readOnly || !touchDevice) {
+			return;
+		}
+
+		// A tap focuses the edit surface even when the editor is read-only, which
+		// opens the on-screen keyboard on mobile. Keep the read-only editor out of
+		// text input mode; its code can still be copied with the Copy button.
+		const onFocusIn = (event: FocusEvent) => {
+			if (event.target instanceof HTMLElement && host.contains(event.target)) {
+				event.target.blur();
+			}
+		};
+
+		host.addEventListener('focusin', onFocusIn);
+
+		return () => host.removeEventListener('focusin', onFocusIn);
 	}, [readOnly]);
 
 	useEffect(() => {
@@ -165,14 +168,14 @@ export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(fu
 		// The built-in format action is disabled in read-only editors, so unlock
 		// the editor for the duration of the format request.
 		if (wasReadOnly) {
-			editor.updateOptions({ readOnly: false });
+			editor.updateOptions({ readOnly: false, domReadOnly: false });
 		}
 
 		try {
 			await action.run();
 		} finally {
 			if (wasReadOnly) {
-				editor.updateOptions({ readOnly: true });
+				editor.updateOptions({ readOnly: true, domReadOnly: true });
 			}
 		}
 	}

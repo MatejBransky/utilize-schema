@@ -257,6 +257,40 @@ test('an agent can find and change the playground controls', async () => {
 	expect(new URL(location.href).searchParams.get('generator')).toBe('zod');
 });
 
+test('the header pickers are selects rather than text inputs', async () => {
+	const screen = await render(<App />);
+
+	expect(document.querySelector('[data-slot="combobox-input"]')).toBeNull();
+	expect(document.querySelectorAll('[data-slot="select-trigger"]')).toHaveLength(2);
+	await expect.element(screen.getByRole('combobox', { name: 'Generator' })).toBeVisible();
+	await expect.element(screen.getByRole('combobox', { name: 'Example' })).toBeVisible();
+});
+
+test('the generator select offers only implemented generators', async () => {
+	const screen = await render(<App />);
+
+	await screen.getByRole('combobox', { name: 'Generator' }).click();
+
+	await expect.element(screen.getByRole('option', { name: /Zod/ })).toBeVisible();
+	await expect.element(screen.getByRole('option', { name: /Effect Schema/ })).toBeVisible();
+	await expect.element(screen.getByRole('option', { name: /TypeScript/ })).toBeVisible();
+	expect(screen.getByRole('option', { name: /Valibot/ }).query()).toBeNull();
+});
+
+test('choosing a generator from the select updates the generated code', async () => {
+	const screen = await render(<App />);
+
+	await screen.getByRole('combobox', { name: 'Generator' }).click();
+	await screen.getByRole('option', { name: /Effect Schema/ }).click();
+
+	await vi.waitFor(() =>
+		expect(new URL(location.href).searchParams.get('generator')).toBe('effect')
+	);
+	await expect
+		.element(screen.getByRole('combobox', { name: 'Generator' }))
+		.toHaveTextContent('Effect Schema');
+});
+
 test('an example URL loads that example', async () => {
 	history.replaceState(null, '', '/?example=const');
 	const screen = await render(<App />);
