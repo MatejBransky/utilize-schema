@@ -14,7 +14,9 @@ import { generate, type GenerateOptions } from './generator';
 import type { CustomSchemaResolver, FormatMap } from './generators/types';
 
 export interface CompileOptions
-	extends DialectOptions, Pick<GenerateOptions, 'customNameResolver' | 'schemaName' | 'typeName'> {
+	extends
+		DialectOptions,
+		Pick<GenerateOptions, 'customNameResolver' | 'schemaName' | 'typeName' | 'runtimeImport'> {
 	input: string;
 	output?: string;
 	cwd?: string;
@@ -31,7 +33,9 @@ export interface CompileOptions
 }
 
 export interface CompileSchemaOptions
-	extends DialectOptions, Pick<GenerateOptions, 'customNameResolver' | 'schemaName' | 'typeName'> {
+	extends
+		DialectOptions,
+		Pick<GenerateOptions, 'customNameResolver' | 'schemaName' | 'typeName' | 'runtimeImport'> {
 	cwd: string;
 	fileName: string;
 	readOnlyKeyword?: boolean;
@@ -65,6 +69,7 @@ export async function compile(userOptions: CompileOptions) {
 		readOnlyKeyword: userOptions.readOnlyKeyword,
 		formatMap: userOptions.formatMap,
 		customSchemaResolver: userOptions.customSchemaResolver,
+		runtimeImport: userOptions.runtimeImport,
 		format: userOptions.format,
 		...pickDialectOptions(userOptions),
 	});
@@ -98,6 +103,7 @@ export async function compileSchema(schema: JSONSchema, options: CompileSchemaOp
 		readOnlyKeyword: options.readOnlyKeyword,
 		formatMap: options.formatMap,
 		customSchemaResolver: options.customSchemaResolver,
+		runtimeImport: options.runtimeImport,
 	});
 
 	return options.format ? options.format(code) : code;

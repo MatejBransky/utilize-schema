@@ -41,6 +41,9 @@ Options:
   -o, --output <path>   output file or directory
   --cwd <path>          directory used to resolve paths
   --readonly            map readOnly: true to .readonly()
+  --runtime-import <module>
+                        import the oneOf helper from this module
+                        (e.g. @utilize/zod/runtime) instead of declaring it
   --no-banner           omit the generated-file banner
 ${dialectCliHelp}
   -h, --help            show this help
@@ -61,6 +64,7 @@ export async function run(
 				output: { type: 'string', short: 'o' },
 				cwd: { type: 'string' },
 				readonly: { type: 'boolean', default: false },
+				'runtime-import': { type: 'string' },
 				'no-banner': { type: 'boolean', default: false },
 				...dialectCliOptions,
 				help: { type: 'boolean', short: 'h', default: false },
@@ -83,6 +87,7 @@ export async function run(
 	const output = values.output ?? positionals[1];
 	const banner = values['no-banner'] ? false : undefined;
 	const readOnlyKeyword = values.readonly;
+	const runtimeImport = values['runtime-import'];
 	const dialectCli = readDialectCliOptions(values);
 
 	if (!dialectCli.ok) {
@@ -102,6 +107,7 @@ export async function run(
 				cwd,
 				fileName: 'Root.json',
 				readOnlyKeyword,
+				runtimeImport,
 				...dialectOptions,
 			});
 			const content = withBanner(code, banner);
@@ -146,7 +152,11 @@ export async function run(
 		}
 
 		for (const [index, file] of files.entries()) {
-			const code = await compileFile(file.path, { readOnlyKeyword, ...dialectOptions });
+			const code = await compileFile(file.path, {
+				readOnlyKeyword,
+				runtimeImport,
+				...dialectOptions,
+			});
 			const content = withBanner(code, banner);
 
 			if (!output) {

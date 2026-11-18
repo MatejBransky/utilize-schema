@@ -10,6 +10,7 @@ import { breakReferenceCycles } from './breakReferenceCycles';
 import { collectStandaloneSchemas } from './collectStandaloneSchemas';
 import { unsupportedUnionCycleError } from './errors';
 import { findCyclicSchemas } from './findCyclicSchemas';
+import { findInlineCopies } from './inlineCopies';
 import { generateSchema } from './generators/generateSchema';
 import type { CustomSchemaResolver, FormatMap, GeneratorContext } from './generators/types';
 
@@ -17,12 +18,13 @@ export type { CustomSchemaResolver, FormatMap } from './generators/types';
 import {
 	allocateName,
 	mapDeclarationNames,
+	resolveHoistedName,
 	resolveName,
 	type CustomNameResolver,
 	type DeclarationNames,
 	type NameMapper,
 } from './resolveName';
-import { NEWLINE, ts } from './utils';
+import { isResolvedByCaller, NEWLINE, ts } from './utils';
 import { renderValueTypeDeclaration, type ValueTypeContext } from './valueTypes';
 
 export interface GenerateOptions {
@@ -40,6 +42,11 @@ export interface GenerateOptions {
 	formatMap?: FormatMap;
 	/** Emits a caller-provided Zod expression for a matching schema node. */
 	customSchemaResolver?: CustomSchemaResolver;
+	/**
+	 * Module the generated code imports the `oneOfSchema` helper from, e.g.
+	 * `@utilize/zod/runtime`, instead of declaring its own copy in every file.
+	 */
+	runtimeImport?: string;
 }
 
 /** Names the generated code uses besides the declarations. */
@@ -59,21 +66,28 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		});
 	}
 
-	const { schemas: standaloneSchemas, edges } = collectStandaloneSchemas(root);
+	const { copies, hoisted } = findInlineCopies(collectStandaloneSchemas(root).schemas, (schema) =>
+		isResolvedByCaller(options.customSchemaResolver, schema)
+	);
+	const { schemas: standaloneSchemas, edges } = collectStandaloneSchemas(root, copies);
 	const { schemas: cyclicSchemas, unsupported } = findCyclicSchemas(edges, standaloneSchemas);
 
 	if (unsupported.length > 0) {
 		throw unsupportedUnionCycleError(unsupported);
 	}
 
-	const broken = breakReferenceCycles(edges, new Set(standaloneSchemas));
+	const broken = breakReferenceCycles(edges, new Set(standaloneSchemas), copies);
 
 	const sorted = (toposort(broken.edges).filter(Boolean) as ParsedJSONSchemaObject[])
 		.filter((schema) => standaloneSchemas.includes(schema))
 		.reverse();
 
+	const hoistedSet = new Set(hoisted);
 	const { names, typeNames } = nameDeclarations(
-		[...sorted, ...standaloneSchemas.filter((schema) => !sorted.includes(schema))],
+		[...sorted, ...standaloneSchemas.filter((schema) => !sorted.includes(schema))].filter(
+			(schema) => !hoistedSet.has(schema)
+		),
+		hoisted,
 		options
 	);
 	const aliases = new Map<ParsedJSONSchemaObject, string>();
@@ -93,6 +107,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		readOnlyKeyword: options.readOnlyKeyword,
 		formatMap: options.formatMap,
 		nameOf: (schema) => namesOf(schema).schema,
+		declarationOf: (schema) => copies.get(schema),
 		dialect: dialectOf(root),
 		customSchemaResolver: options.customSchemaResolver,
 	};
@@ -115,6 +130,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 			return alias;
 		},
 		typeNameFor: (schema) => namesOf(schema).type,
+		declarationOf: (schema) => copies.get(schema),
 		readOnlyKeyword: options.readOnlyKeyword,
 	};
 
@@ -140,7 +156,11 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 	}
 
 	if (context.usesOneOf) {
-		code.splice((options?.importZod ?? true) ? 1 : 0, 0, ONE_OF_HELPER + NEWLINE);
+		const helper = options.runtimeImport
+			? ts`import { oneOfSchema } from ${singleQuoted(options.runtimeImport)};${NEWLINE}`
+			: ONE_OF_HELPER + NEWLINE;
+
+		code.splice((options.importZod ?? true) ? 1 : 0, 0, helper);
 	}
 
 	return code.join(NEWLINE);
@@ -151,13 +171,22 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
  * stay unique among themselves, then the mapped names, which are allocated only
  * once every resolved name is known. A mapped name therefore never depends on
  * the order in which schemas are generated.
+ *
+ * Hoisted schemas are named last, so a schema the input names keeps its name
+ * and a hoisted one takes the next free name.
  */
-function nameDeclarations(schemas: ParsedJSONSchemaObject[], options: GenerateOptions) {
+function nameDeclarations(
+	namedSchemas: ParsedJSONSchemaObject[],
+	hoistedSchemas: ParsedJSONSchemaObject[],
+	options: GenerateOptions
+) {
 	const usedResolvedNames = new Set(RESERVED_NAMES);
-	const resolvedNames = schemas.map((schema) => {
+	const schemas = [...namedSchemas, ...hoistedSchemas];
+	const resolvedNames = schemas.map((schema, index) => {
+		const resolve = index < namedSchemas.length ? resolveName : resolveHoistedName;
 		const resolvedName =
 			schema[Meta].resolvedName ??
-			resolveName({
+			resolve({
 				schema,
 				usedNames: usedResolvedNames,
 				customResolver: options.customNameResolver,
@@ -178,6 +207,11 @@ function nameDeclarations(schemas: ParsedJSONSchemaObject[], options: GenerateOp
 	};
 }
 
+function singleQuoted(text: string): string {
+	return `'${text.replaceAll('\\', '\\\\').replaceAll("'", "\\'")}'`;
+}
+
+/** Declared in every file that needs it, unless `runtimeImport` is set. A test keeps it identical to `runtime.ts`. */
 const ONE_OF_HELPER = ts`function oneOfSchema<T extends z.ZodType>(
   options: readonly T[]
 ): z.ZodType<z.output<T>, z.input<T>> {

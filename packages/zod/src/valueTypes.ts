@@ -7,6 +7,7 @@ import {
 } from '@utilize/json-schema';
 
 import { generator as allOfGenerator } from './generators/allOfGenerator';
+import { withoutAlwaysValidAnyOf } from './generators/alwaysValidAnyOf';
 import { generator as anyGenerator } from './generators/anyGenerator';
 import { generator as anyOfGenerator } from './generators/anyOfGenerator';
 import { generator as arrayGenerator } from './generators/arrayGenerator';
@@ -19,12 +20,12 @@ import { generator as numberGenerator } from './generators/numberGenerator';
 import { generator as objectGenerator } from './generators/objectGenerator';
 import { generator as oneOfGenerator } from './generators/oneOfGenerator';
 import { generator as recordGenerator } from './generators/recordGenerator';
-import { generator as refGenerator } from './generators/refGenerator';
 import { composedSchemaParts, refSiblingConstraints } from './generators/generateSchema';
 import { selectGenerator } from './generators/selectGenerator';
 import type { CustomSchemaResolver } from './generators/types';
 import { generator as stringGenerator } from './generators/stringGenerator';
 import { generator as tupleGenerator, tupleItems, tupleRest } from './generators/tupleGenerator';
+import { isRefNode, isResolvedByCaller } from './utils';
 
 export interface ValueTypeContext {
 	/**
@@ -35,6 +36,8 @@ export interface ValueTypeContext {
 	dialect: Dialect;
 	/** The generated value-type alias of a schema in a cycle, when it has one. */
 	aliasFor(schema: ParsedJSONSchemaObject): string | undefined;
+	/** The standalone schema an inline subschema is an identical copy of, if any. */
+	declarationOf?(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject | undefined;
 	/** The exported type alias of a schema, for schemas outside of a cycle. */
 	typeNameFor(schema: ParsedJSONSchemaObject): string;
 	/** Mirror `readOnlyKeyword` in the value types. */
@@ -49,12 +52,14 @@ export interface ValueTypeContext {
  */
 export function renderValueTypeDeclaration(
 	name: string,
-	schema: ParsedJSONSchemaObject,
+	declaration: ParsedJSONSchemaObject,
 	context: ValueTypeContext
 ): string {
-	if (isResolvedByCaller(schema, context)) {
+	if (isResolvedByCaller(context.customSchemaResolver, declaration)) {
 		return `type ${name} = unknown;`;
 	}
+
+	const schema = withoutAlwaysValidAnyOf(declaration);
 
 	if (context.readOnlyKeyword && schema.readOnly === true) {
 		return `type ${name} = ${renderType(schema, context)};`;
@@ -69,23 +74,30 @@ export function renderValueTypeDeclaration(
 	return `type ${name} = ${renderType(schema, context)};`;
 }
 
-/** True when `customSchemaResolver` replaces the node with an expression of its own. */
-function isResolvedByCaller(schema: ParsedJSONSchemaObject, context: ValueTypeContext): boolean {
-	return context.customSchemaResolver?.(schema) !== undefined;
-}
-
-function renderType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): string {
-	if (typeof schema !== 'object' || schema === null) {
-		return schema ? 'unknown' : 'never';
+function renderType(node: ParsedJSONSchemaObject, context: ValueTypeContext): string {
+	if (typeof node !== 'object' || node === null) {
+		return node ? 'unknown' : 'never';
 	}
 
-	if (isResolvedByCaller(schema, context)) {
+	if (isResolvedByCaller(context.customSchemaResolver, node)) {
 		return 'unknown';
 	}
 
+	const declaration = context.declarationOf?.(node);
+
+	if (declaration) {
+		return context.aliasFor(declaration) ?? context.typeNameFor(declaration);
+	}
+
+	const schema = withoutAlwaysValidAnyOf(node);
+
 	const dialect = dialectOf(schema, context.dialect);
 
-	if (context.readOnlyKeyword && schema.readOnly === true && !('$ref' in schema)) {
+	if (isRefNode(schema)) {
+		return renderReferenceType(schema, dialect, context);
+	}
+
+	if (context.readOnlyKeyword && schema.readOnly === true) {
 		return renderReadOnlyType(schema, context);
 	}
 
@@ -99,43 +111,8 @@ function renderType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): 
 
 	const generator = selectGenerator(schema, dialect);
 
-	if (generator === refGenerator) {
-		const reference = schema[Meta]?.reference;
-
-		if (reference === undefined || reference === null) {
-			return 'unknown';
-		}
-
-		if (typeof reference !== 'object') {
-			return reference ? 'unknown' : 'never';
-		}
-
-		const referenceType = context.aliasFor(reference) ?? context.typeNameFor(reference);
-		const siblings = dialect.refSiblings === 'apply' ? refSiblingConstraints(schema) : undefined;
-
-		if (siblings) {
-			return `${referenceType} & ${parenthesize(renderType(siblings, context))}`;
-		}
-
-		return referenceType;
-	}
-
 	if (generator === multipleTypeGenerator) {
-		const types = schema.type as unknown as string[];
-
-		return union(
-			types.map((type) =>
-				renderType(
-					{
-						...schema,
-						type,
-						default: undefined,
-						title: undefined,
-					} as ParsedJSONSchemaObject,
-					context
-				)
-			)
-		);
+		return renderTypeList(schema, context);
 	}
 
 	if (generator === anyOfGenerator || generator === oneOfGenerator) {
@@ -220,8 +197,55 @@ function renderType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): 
 	return 'unknown';
 }
 
+/**
+ * Mirrors `generateCore`: the referenced type, intersected with the keywords
+ * next to `$ref` only when the dialect applies them (2019-09 and newer).
+ */
+function renderReferenceType(
+	schema: ParsedJSONSchemaObject,
+	dialect: Dialect,
+	context: ValueTypeContext
+): string {
+	const reference = schema[Meta]?.reference;
+
+	if (reference === undefined || reference === null) {
+		return 'unknown';
+	}
+
+	if (typeof reference !== 'object') {
+		return reference ? 'unknown' : 'never';
+	}
+
+	const referenceType = context.aliasFor(reference) ?? context.typeNameFor(reference);
+	const siblings = dialect.refSiblings === 'apply' ? refSiblingConstraints(schema) : undefined;
+
+	if (siblings) {
+		return `${referenceType} & ${parenthesize(renderType(siblings, context))}`;
+	}
+
+	return referenceType;
+}
+
+/** The union of a `type` list; each branch keeps `readOnly`, like `.readonly()` on the union. */
+function renderTypeList(schema: ParsedJSONSchemaObject, context: ValueTypeContext): string {
+	const types = schema.type as unknown as string[];
+
+	return union(
+		types.map((type) =>
+			renderType(
+				{ ...schema, type, default: undefined, title: undefined } as ParsedJSONSchemaObject,
+				context
+			)
+		)
+	);
+}
+
 function renderReadOnlyType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): string {
 	const generator = selectGenerator(schema, dialectOf(schema, context.dialect));
+
+	if (generator === multipleTypeGenerator) {
+		return renderTypeList(schema, context);
+	}
 
 	if (generator === arrayGenerator) {
 		const items = schema.items

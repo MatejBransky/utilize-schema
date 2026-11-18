@@ -1,6 +1,7 @@
 import { type ParsedJSONSchemaObject, Meta } from '@utilize/json-schema';
 
 import { type SchemaEdge } from './collectStandaloneSchemas';
+import type { InlineCopies } from './inlineCopies';
 import { isPropertyBacked } from './isPropertyBacked';
 
 type SchemaNode = SchemaEdge[0];
@@ -25,9 +26,15 @@ export interface BreakReferenceCyclesResult {
  */
 export function breakReferenceCycles(
 	edges: SchemaEdge[],
-	standaloneSchemas?: Set<ParsedJSONSchemaObject>
+	standaloneSchemas?: Set<ParsedJSONSchemaObject>,
+	copies: InlineCopies = new Map()
 ): BreakReferenceCyclesResult {
-	resetCircularFlags(edges);
+	// An inline copy of a standalone schema is generated as a reference to it,
+	// so it can break a cycle like a `$ref`.
+	const isBreakable = (node: SchemaNode): node is ParsedJSONSchemaObject =>
+		isReference(node) || (node !== null && copies.has(node));
+
+	resetCircularFlags(edges, isBreakable);
 	let remaining = edges;
 	const lazyRefs = new Set<ParsedJSONSchemaObject>();
 
@@ -41,7 +48,7 @@ export function breakReferenceCycles(
 		const backEdge = cycle.at(-1)!;
 		const refs = cycle
 			.map(([source]) => source)
-			.filter(isReference)
+			.filter(isBreakable)
 			.filter((ref, index, all) => all.indexOf(ref) === index);
 
 		if (refs.length === 0) {
@@ -52,13 +59,13 @@ export function breakReferenceCycles(
 		// outright. If it cannot be deferred with a getter, look for any other
 		// $ref on the cycle that can. When none can, fall back to z.lazy().
 		const circularRef =
-			isReference(backEdge[0]) && isPropertyBacked(backEdge[0], standaloneSchemas)
+			isBreakable(backEdge[0]) && isPropertyBacked(backEdge[0], standaloneSchemas, copies)
 				? backEdge[0]
-				: (refs.find((ref) => isPropertyBacked(ref, standaloneSchemas)) ?? refs[0]!);
+				: (refs.find((ref) => isPropertyBacked(ref, standaloneSchemas, copies)) ?? refs[0]!);
 
 		circularRef[Meta].isCircular = true;
 
-		if (!isPropertyBacked(circularRef, standaloneSchemas)) {
+		if (!isPropertyBacked(circularRef, standaloneSchemas, copies)) {
 			lazyRefs.add(circularRef);
 		}
 
@@ -72,14 +79,17 @@ export function breakReferenceCycles(
  * stack. That is only a hint: cycles are re-derived from the whole dependency
  * graph here, so stale flags have to be cleared first.
  */
-function resetCircularFlags(edges: SchemaEdge[]) {
+function resetCircularFlags(
+	edges: SchemaEdge[],
+	isBreakable: (node: SchemaNode) => node is ParsedJSONSchemaObject
+) {
 	const refs = new Set<ParsedJSONSchemaObject>();
 
 	for (const [source, target] of edges) {
-		if (isReference(source)) {
+		if (isBreakable(source)) {
 			refs.add(source);
 		}
-		if (isReference(target)) {
+		if (isBreakable(target)) {
 			refs.add(target);
 		}
 	}

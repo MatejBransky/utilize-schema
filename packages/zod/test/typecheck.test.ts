@@ -20,6 +20,74 @@ const treeSchema: JSONSchema = {
 	required: ['name'],
 };
 
+const cycleNode: JSONSchema = {
+	type: 'object',
+	properties: { next: { $ref: '#/definitions/Wrapper' } },
+};
+
+/** The inline copy of `Node` becomes a reference that closes a cycle. */
+const inlineCopyCycleSchema: JSONSchema = {
+	type: 'object',
+	properties: { wrapper: { $ref: '#/definitions/Wrapper' } },
+	definitions: {
+		Node: cycleNode,
+		Wrapper: { type: 'object', properties: { node: structuredClone(cycleNode) } },
+	},
+};
+
+/** draft-07 ignores the `type` and `const` next to `$ref`, so only `Kind` applies. */
+const refWithIgnoredLiteralSchema: JSONSchema = {
+	type: 'object',
+	properties: {
+		kind: { $ref: '#/definitions/Kind', type: 'string', const: 'a' } as JSONSchema,
+		next: { $ref: '#' },
+	},
+	definitions: { Kind: { type: 'string' } },
+};
+
+/** draft-07 ignores a `const` or `allOf` next to `$ref` with another sibling too (issue 88). */
+const refWithIgnoredCombinatorSchema: JSONSchema = {
+	$schema: 'http://json-schema.org/draft-07/schema#',
+	type: 'object',
+	properties: {
+		kind: { $ref: '#/definitions/Kind', const: 'a', minLength: 1 } as JSONSchema,
+		tag: { $ref: '#/definitions/Kind', allOf: [{ const: 'b' }], type: 'string' } as JSONSchema,
+		next: { $ref: '#' },
+	},
+	definitions: { Kind: { type: 'string' } },
+};
+
+/** 2019-09 applies the keywords next to `$ref`, so the value type keeps them. */
+const refWithAppliedCombinatorSchema = {
+	$schema: 'https://json-schema.org/draft/2019-09/schema',
+	type: 'object',
+	properties: {
+		kind: { $ref: '#/$defs/Kind', const: 'a', minLength: 1 },
+		next: { $ref: '#' },
+	},
+	$defs: { Kind: { type: 'string' } },
+} as unknown as JSONSchema;
+
+/** Both arrays of the recursive schema are hoisted into one declaration. */
+const hoistedCycleSchema: JSONSchema = {
+	type: 'object',
+	properties: {
+		name: { type: 'string' },
+		left: { type: 'array', items: { $ref: '#' } },
+		right: { type: 'array', items: { $ref: '#' } },
+	},
+	required: ['name'],
+};
+
+/** The hoisted arrays sit in records, so the cycle is broken with `z.lazy()`. */
+const hoistedLazyCycleSchema: JSONSchema = {
+	type: 'array',
+	items: [
+		{ type: 'object', additionalProperties: { type: 'array', items: { $ref: '#' } } },
+		{ type: 'object', additionalProperties: { type: 'array', items: { $ref: '#' } } },
+	],
+};
+
 const objectArraySchema: JSONSchema = {
 	type: 'object',
 	properties: { list: { $ref: './definitions/ListCycle.json' } },
@@ -236,6 +304,12 @@ describe('generated recursive schemas type-check', () => {
 				'BooleanRef.ts': booleanRefSchema,
 				'PatternProperties.ts': patternPropertiesSchema,
 				'RecursivePatternProperties.ts': recursivePatternPropertiesSchema,
+				'InlineCopyCycle.ts': inlineCopyCycleSchema,
+				'RefWithIgnoredLiteral.ts': refWithIgnoredLiteralSchema,
+				'RefWithIgnoredCombinator.ts': refWithIgnoredCombinatorSchema,
+				'RefWithAppliedCombinator.ts': refWithAppliedCombinatorSchema,
+				'HoistedCycle.ts': hoistedCycleSchema,
+				'HoistedLazyCycle.ts': hoistedLazyCycleSchema,
 			})
 		).resolves.toBeUndefined();
 	});
@@ -341,6 +415,20 @@ describe('generated recursive schemas type-check', () => {
 				}
 			)
 		).resolves.toBeUndefined();
+	});
+});
+
+describe('value types of $ref siblings', () => {
+	test('draft-07 renders only the reference', async () => {
+		await expect(compile(refWithIgnoredCombinatorSchema)).resolves.toContain(
+			'type RootValue = { kind?: Kind; tag?: Kind; next?: RootValue };'
+		);
+	});
+
+	test('2019-09 intersects the reference with its siblings', async () => {
+		await expect(compile(refWithAppliedCombinatorSchema)).resolves.toContain(
+			"type RootValue = { kind?: Kind & ('a' & unknown); next?: RootValue };"
+		);
 	});
 });
 

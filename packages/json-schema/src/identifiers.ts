@@ -7,11 +7,17 @@ import { isPlainObject } from './utils';
  * Resolves JSON Schema identifiers (`$id`, `$anchor` and legacy fragment-only
  * `$id`) to the schema objects that declare them.
  *
- * `$RefParser` loads external resources and resolves JSON pointers, but it does
- * not treat a plain fragment such as `#name` as an identifier and it resolves
- * `$ref`s against the retrieval URI instead of the nearest `$id`. Bundled
- * schemas rely on both, so the linker asks this index first and falls back to
- * `$RefParser` for everything else.
+ * `$RefParser` loads external resources, but it does not treat a plain fragment
+ * such as `#name` as an identifier and it resolves `$ref`s against the
+ * retrieval URI instead of the nearest `$id`. Bundled schemas rely on both, so
+ * the linker asks this index first. The index also resolves JSON pointer
+ * fragments (`#/definitions/a`) inside the resource the base URI names.
+ *
+ * The linker falls back to `$RefParser` only when the index finds nothing: for
+ * example a pointer that passes through another `$ref` (`$RefParser` follows
+ * it, the index does not), or a `$ref` inside a keyword the index does not
+ * walk, whose base URI is therefore unknown. That fallback resolves against the
+ * containing file, not the nearest `$id`.
  */
 export interface SchemaIndex {
 	/** The resource URI in effect for a schema node. */
@@ -200,10 +206,14 @@ function* schemaChildren(node: Record<string, unknown>): Generator<unknown> {
 	}
 }
 
+/**
+ * Resolves a JSON pointer such as `/definitions/a`. The pointer starts with a
+ * `/`, so the empty token before it is skipped.
+ */
 function resolvePointer(root: JSONSchema | boolean, pointer: string) {
 	let current: unknown = root;
 
-	for (const rawToken of pointer.split('/')) {
+	for (const rawToken of pointer.split('/').slice(1)) {
 		let token: string;
 
 		try {

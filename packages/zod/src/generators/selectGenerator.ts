@@ -7,6 +7,7 @@ import { generator as arrayGenerator } from './arrayGenerator';
 import { generator as booleanGenerator } from './booleanGenerator';
 import type { ExpressionGenerator } from './createGenerator';
 import { generator as enumGenerator } from './enumGenerator';
+import { isTypedLiteral } from './generateSchema';
 import { generator as literalGenerator } from './literalGenerator';
 import { generator as multipleTypeGenerator } from './multipleTypeGenerator';
 import { generator as nullGenerator } from './nullGenerator';
@@ -17,6 +18,8 @@ import { generator as recordGenerator } from './recordGenerator';
 import { generator as refGenerator } from './refGenerator';
 import { generator as stringGenerator } from './stringGenerator';
 import { generator as tupleGenerator } from './tupleGenerator';
+
+import { isRefNode } from '../utils';
 
 let generators: ExpressionGenerator[] | undefined;
 
@@ -51,6 +54,13 @@ export function selectGenerator(
 	input: ParsedJSONSchemaObject,
 	dialect: Dialect
 ): ExpressionGenerator {
+	// The type adds nothing to the listed values, and a type generator (e.g.
+	// for objects) would otherwise ignore the `enum`. A `$ref` node keeps the
+	// reference generator, which decides whether the dialect applies siblings.
+	if (!isRefNode(input) && isTypedLiteral(input, dialect)) {
+		return input.const !== undefined ? literalGenerator : enumGenerator;
+	}
+
 	const generator = getGenerators().find(({ predicate }) => predicate(input, dialect));
 
 	if (!generator) {

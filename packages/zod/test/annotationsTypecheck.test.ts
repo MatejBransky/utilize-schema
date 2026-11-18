@@ -47,6 +47,37 @@ void empty;
 `,
 	},
 	{
+		file: 'NullableReadOnly.ts',
+		schema: {
+			type: ['object', 'null'],
+			readOnly: true,
+			properties: { id: { type: 'string' } },
+			required: ['id'],
+		} as JSONSchema,
+		options: { readOnlyKeyword: true },
+		assertions: `
+const ok: Root = { id: 'x' };
+const none: Root = null;
+// @ts-expect-error the object branch is readonly
+if (ok) ok.id = 'y';
+void none;
+`,
+	},
+	{
+		file: 'RecursiveNullableReadOnly.ts',
+		schema: {
+			type: ['object', 'null'],
+			readOnly: true,
+			properties: { next: { $ref: '#' } },
+		} as JSONSchema,
+		options: { readOnlyKeyword: true },
+		assertions: `
+const chain: Root = { next: { next: null } };
+// @ts-expect-error the object branch is readonly
+if (chain) chain.next = null;
+`,
+	},
+	{
 		file: 'Unevaluated.ts',
 		schema: unevaluatedSchema,
 		options: {},

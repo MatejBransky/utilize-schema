@@ -26,7 +26,7 @@ export const generator = createGenerator(
 				optionalPart = '';
 			}
 
-			if (containsCircularRef(value)) {
+			if (containsCircularRef(value, context)) {
 				return ts`get ${keyLiteral}() {
             return ${generateSchema(value, context)}${optionalPart};
           }`;
@@ -174,16 +174,19 @@ function patternRefinement(
     })`;
 }
 
-function containsCircularRef(schema: ParsedJSONSchemaObject | boolean): boolean {
+function containsCircularRef(
+	schema: ParsedJSONSchemaObject | boolean,
+	context: GeneratorContext
+): boolean {
 	if (typeof schema !== 'object' || schema === null) {
 		return false;
 	}
 
-	if (schema.$ref) {
+	if (schema.$ref || context.declarationOf?.(schema)) {
 		return schema[Meta].isCircular === true;
 	}
 
-	return subschemasOf(schema).some(containsCircularRef);
+	return subschemasOf(schema).some((subschema) => containsCircularRef(subschema, context));
 }
 
 function subschemasOf(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject[] {

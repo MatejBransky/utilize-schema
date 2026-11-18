@@ -23,6 +23,8 @@ export type GeneratorContext = {
 	usesOneOf?: boolean;
 	/** Map `readOnly: true` to `.readonly()`; off by default because it changes the value type. */
 	readOnlyKeyword?: boolean;
+	/** The standalone schema an inline subschema is an identical copy of, if any. */
+	declarationOf?(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject | undefined;
 	/** The variable under which a referenced schema is exported. */
 	nameOf(reference: ParsedJSONSchemaObject): string;
 	/**

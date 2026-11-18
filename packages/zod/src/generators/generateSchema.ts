@@ -2,17 +2,20 @@ import {
 	ANNOTATION_KEYWORDS,
 	type Dialect,
 	dialectOf,
+	isKeywordApplicable,
 	type ParsedJSONSchema,
 	type ParsedJSONSchemaObject,
 	withSourceMeta,
 } from '@utilize/json-schema';
 
-import { generator as refGenerator } from './refGenerator';
+import { withoutAlwaysValidAnyOf } from './alwaysValidAnyOf';
+import { valueHasType } from './jsonValues';
+import { generator as refGenerator, referenceTo } from './refGenerator';
 import { selectGenerator } from './selectGenerator';
 import type { GeneratorContext } from './types';
 
 import { applyRefinements } from '../refinements';
-import { NEWLINE, ts } from '../utils';
+import { isRefNode, NEWLINE, ts } from '../utils';
 
 export const generateSchema = (schema: ParsedJSONSchema | undefined, context: GeneratorContext) => {
 	if (schema === undefined) {
@@ -29,13 +32,20 @@ export const generateSchema = (schema: ParsedJSONSchema | undefined, context: Ge
 		return customExpression;
 	}
 
+	const declaration = context.declarationOf?.(schema);
+
+	if (declaration) {
+		return referenceTo(schema, declaration, context);
+	}
+
 	const dialect = dialectOf(schema, context.dialect);
 	const nodeContext = dialect === context.dialect ? context : { ...context, dialect };
+	const validated = withoutAlwaysValidAnyOf(schema);
 
-	let expression = generateCore(schema, nodeContext);
+	let expression = generateCore(validated, nodeContext);
 
-	if (!ignoresRefSiblings(schema, dialect)) {
-		expression = applyRefinements(expression, schema, nodeContext, generateSchema);
+	if (!ignoresRefSiblings(validated, dialect)) {
+		expression = applyRefinements(expression, validated, nodeContext, generateSchema);
 	}
 
 	if (
@@ -63,8 +73,8 @@ export const generateSchema = (schema: ParsedJSONSchema | undefined, context: Ge
  * True for a `$ref` node in a dialect that ignores every keyword next to the
  * reference (draft-07 and older), so no refinement may be applied to it.
  */
-function ignoresRefSiblings(schema: ParsedJSONSchemaObject, dialect: Dialect): boolean {
-	return typeof schema.$ref === 'string' && dialect.refSiblings === 'ignore';
+export function ignoresRefSiblings(schema: ParsedJSONSchemaObject, dialect: Dialect): boolean {
+	return isRefNode(schema) && dialect.refSiblings === 'ignore';
 }
 
 /**
@@ -83,7 +93,7 @@ function ignoresRefSiblings(schema: ParsedJSONSchemaObject, dialect: Dialect): b
 function generateCore(schema: ParsedJSONSchemaObject, context: GeneratorContext): string {
 	const { dialect } = context;
 
-	if (typeof schema.$ref === 'string') {
+	if (isRefNode(schema)) {
 		const reference = refGenerator.generate(schema, context);
 
 		if (dialect.refSiblings === 'apply') {
@@ -127,6 +137,8 @@ export function refSiblingConstraints(
  * combinator alone and the remaining structural keywords. Returns `undefined`
  * when there is nothing to intersect. The value-type renderer mirrors this
  * split, so generated types match runtime validation.
+ *
+ * Callers handle a `$ref` node first (see `isRefNode`), so it never gets here.
  */
 export function composedSchemaParts(
 	schema: ParsedJSONSchemaObject
@@ -139,7 +151,7 @@ export function composedSchemaParts(
 
 	const rest = withoutKeys(schema, [keyword, ...ANNOTATION_KEYWORDS, ...refinementKeywords]);
 
-	if (!hasStructuralKeywords(rest)) {
+	if (!hasStructuralKeywords(rest) || isTypedLiteral(schema)) {
 		return undefined;
 	}
 
@@ -150,6 +162,42 @@ export function composedSchemaParts(
 		} as unknown as ParsedJSONSchemaObject,
 		rest,
 	};
+}
+
+/**
+ * True when `type` is the only constraint next to a `const` or `enum` and every
+ * listed value already has that type, e.g. `{ type: 'string', const: 'a' }`.
+ * The literal alone validates the same values, so the type is not generated.
+ */
+export function isTypedLiteral(
+	schema: ParsedJSONSchemaObject,
+	dialect: Dialect = dialectOf(schema)
+): boolean {
+	const keyword = pickCombinatorKeyword(schema);
+
+	if (schema.type === undefined || (keyword !== 'const' && keyword !== 'enum')) {
+		return false;
+	}
+
+	if (keyword === 'const' && !isKeywordApplicable(dialect, 'const')) {
+		return false;
+	}
+
+	const rest = withoutKeys(schema, [
+		keyword,
+		'type',
+		...ANNOTATION_KEYWORDS,
+		...refinementKeywords,
+	]);
+
+	if (hasStructuralKeywords(rest)) {
+		return false;
+	}
+
+	const types = [schema.type].flat();
+	const values = keyword === 'const' ? [schema.const] : (schema.enum ?? []);
+
+	return values.every((value) => types.some((type) => valueHasType(value, type)));
 }
 
 type CombinatorKeyword = 'allOf' | 'anyOf' | 'oneOf' | 'const' | 'enum';

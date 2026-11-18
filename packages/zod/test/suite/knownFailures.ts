@@ -42,8 +42,6 @@ export const knownFailures: Record<string, string> = {
 
 	// $id / $anchor resolution
 	'id-legacy.json :: URN ref with nested pointer ref': idRefs,
-	'id-legacy.json :: refs with relative uris and defs': idRefs,
-	'id-legacy.json :: relative refs with absolute uris and defs': idRefs,
 	'id.json :: simple URN base URI with $ref via the URN': idCycle,
 	'id.json :: simple base URI using an arbitrary URI scheme with $ref to that URI': idCycle,
 	'id.json :: simple tag URI base URI with $ref via the tag URI': idCycle,

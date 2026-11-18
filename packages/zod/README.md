@@ -75,6 +75,13 @@ pnpm add zod
   });
   ```
 
+- `runtimeImport` — module to import the `oneOfSchema` helper from, e.g.
+  `'@utilize/zod/runtime'`. By default every generated file that needs the
+  helper declares its own copy; with this option it imports the one exported
+  by `@utilize/zod/runtime` (or your own module exporting `oneOfSchema`).
+  `zod` must then be installed where the generated code runs, as usual. The
+  specifier is written into every file unchanged, so a relative path only
+  works for files in one directory; prefer a package name or path alias.
 - `format(code)` — optional synchronous or asynchronous formatter (for example
   Prettier) applied to the generated code before the banner is prepended. Pass
   `false` or omit it to keep the generator output as-is.
@@ -107,10 +114,27 @@ export type Tree = z.infer<typeof Tree>;
 The generated `Value` alias is internal; use the exported type in your own
 code.
 
+`oneOf` becomes a plain `z.union()` when no value can match two branches:
+different `const` or `enum` values, different types, or objects with a
+different `const` on the same required property. Otherwise it uses the
+`oneOfSchema` helper, which checks that exactly one branch matches (see
+`runtimeImport`). An inline subschema that is identical to a standalone schema
+is generated as a reference to it. An inline subschema with subschemas of its
+own (properties, items, a combinator) that appears more than once without a
+standalone schema is declared once and referenced wherever it appears. An
+`anyOf` with a branch that accepts every
+value, such as `anyOf: [X, {}]`, is left out: it never rejects a value, so
+`.parse()` returns what the rest of the schema keeps.
+
 ## Naming
 
 Each standalone schema gets the name resolved from `$id`, `title`, the `$defs`
-key or the file name, and its type uses the same name. Pass `schemaName` or
+key or the file name, and its type uses the same name. A repeated inline
+subschema that is declared once is named by its `$id` or `title`, else after
+the place it first appears, e.g. `TagsItem` for the items of a `tags` property;
+names of standalone schemas take precedence, so it gets a numeric suffix when
+its name is taken. `customNameResolver`, `schemaName` and `typeName` apply to it
+like to any other declaration. Pass `schemaName` or
 `typeName` to rewrite one of them. Both callbacks receive the resolved name, so
 a suffix only has to describe the difference:
 
@@ -166,7 +190,8 @@ cat schema.yaml | utilize-zod > schema.generated.ts
 Input can be a file, a directory or a glob; JSON and YAML are supported. Output
 defaults to stdout. Every generated file starts with a "do not edit" banner
 (`--no-banner` omits it). Pass `--readonly` to map `readOnly: true` to
-`.readonly()`.
+`.readonly()`, and `--runtime-import @utilize/zod/runtime` to import the
+`oneOf` helper instead of declaring it in every file.
 
 ## Testing
 
@@ -181,7 +206,7 @@ The suite is pinned to a commit and installed as a dev dependency. Each test
 case is compiled to a Zod schema in memory and every instance from the suite is
 run through `safeParse`.
 
-Today it passes **246 of 271 draft-07 cases (1,343 of 1,605 assertions)**.
+Today it passes **248 of 271 draft-07 cases (1,347 of 1,605 assertions)**.
 
 Cases the generator does not handle yet are listed in
 `test/suite/knownFailures.ts`, together with the exact instances that fail in
