@@ -1,26 +1,6 @@
-import { loadModule } from '../runtime';
-
 import { monaco } from './setup';
 
 let modelCounter = 0;
-const modules = new Map<string, Promise<Record<string, unknown>>>();
-
-/**
- * Emits and evaluates the generated module, caching it by source. Editing the
- * test data reuses the compiled validators instead of compiling again.
- */
-export function compileModule(source: string): Promise<Record<string, unknown>> {
-	let module = modules.get(source);
-
-	if (!module) {
-		module = emitJavaScript(source).then(loadModule);
-
-		module.catch(() => modules.delete(source));
-		modules.set(source, module);
-	}
-
-	return module;
-}
 
 /**
  * Uses the TypeScript worker that already powers the generated-code editor to

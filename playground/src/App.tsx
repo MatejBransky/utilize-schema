@@ -37,28 +37,18 @@ import {
 	examples,
 } from './examples';
 import { defaultFormatMode, formatModes, isFormatMode, type FormatMode } from './formatMode';
-import {
-	generateCodeFor,
-	generateRuntimeCode,
-	type RuntimeCode,
-	type RuntimeSource,
-} from './generateCode';
+import { generateCodeFor, generateRuntimeCode, type RuntimeCode } from './generateCode';
 import { formatTypeScript } from './monaco/format';
 import { MonacoEditor, type MonacoEditorHandle } from './monaco/MonacoEditor';
-import { compileModule } from './monaco/transpile';
-import { validateModule } from './runtime';
-import { defaultTarget, isTargetId, targets, type RuntimeTargetId, type TargetId } from './targets';
+import { defaultTarget, isTargetId, targets, type TargetId } from './targets';
 import { loadColorMode, THEME_STORAGE_KEY, type ColorMode } from './theme';
 import { Header } from './ui/Header';
 import { CheckIcon, CloseIcon, PencilIcon, PlusIcon } from './ui/icons';
 import { SelectPicker } from './ui/SelectPicker';
-import {
-	ValidatorResults,
-	type ValidationState,
-	type ValidatorOutcome,
-} from './ui/ValidatorResults';
+import { ValidatorResults } from './ui/ValidatorResults';
 import { useFileDrop } from './useFileDrop';
 import { validateSchemas } from './validation';
+import { useValidatorResults } from './validator/useValidatorResults';
 
 import styles from './App.module.css';
 
@@ -97,7 +87,6 @@ export default function App() {
 	const [code, setCode] = useState('');
 	const [busy, setBusy] = useState(false);
 	const [runtimeCode, setRuntimeCode] = useState<RuntimeCode | null>(null);
-	const [validation, setValidation] = useState<ValidationState>({ status: 'running' });
 	const [generationProblems, setGenerationProblems] = useState<Problem[]>([]);
 	const [cursor, setCursor] = useState({ line: 1, column: 1 });
 	const [pendingPosition, setPendingPosition] = useState<{ line: number; column: number }>();
@@ -110,6 +99,7 @@ export default function App() {
 	const schemaEditorRef = useRef<MonacoEditorHandle>(null);
 	const dataEditorRef = useRef<MonacoEditorHandle>(null);
 	const codeEditorRef = useRef<MonacoEditorHandle>(null);
+	const validation = useValidatorResults(runtimeCode, data, busy);
 	const { dragging, activeMode, drop } = useFileDrop({ onDrop: handleDrop });
 
 	const resolvedTheme = colorMode === 'auto' ? (systemDark ? 'dark' : 'light') : colorMode;
@@ -263,54 +253,6 @@ export default function App() {
 			clearTimeout(timer);
 		};
 	}, [bundle, exampleId, target, keywordPolicy, formatMode]);
-
-	useEffect(() => {
-		if (!runtimeCode) {
-			setValidation(busy ? { status: 'running' } : { status: 'unavailable' });
-			return;
-		}
-
-		let parsed: unknown;
-
-		try {
-			parsed = JSON.parse(data);
-		} catch (error) {
-			setValidation({
-				status: 'invalid-json',
-				message: error instanceof Error ? error.message : String(error),
-			});
-			return;
-		}
-
-		let cancelled = false;
-
-		const timer = setTimeout(async () => {
-			try {
-				const [zod, effect] = await Promise.all([
-					runValidator('zod', runtimeCode.zod, parsed),
-					runValidator('effect', runtimeCode.effect, parsed),
-				]);
-
-				if (!cancelled) {
-					setValidation({ status: 'ready', zod, effect });
-				}
-			} catch (error) {
-				if (!cancelled) {
-					setValidation({
-						status: 'error',
-						message: `Could not run the generated validators: ${
-							error instanceof Error ? error.message : String(error)
-						}`,
-					});
-				}
-			}
-		}, 200);
-
-		return () => {
-			cancelled = true;
-			clearTimeout(timer);
-		};
-	}, [runtimeCode, data, busy]);
 
 	useEffect(() => {
 		const query = window.matchMedia('(prefers-color-scheme: dark)');
@@ -1191,25 +1133,4 @@ function uniqueName(base: string, files: SchemaFile[]): string {
 	}
 
 	return `${stem}-${counter}${extension}`;
-}
-
-async function runValidator(
-	target: RuntimeTargetId,
-	source: RuntimeSource,
-	data: unknown
-): Promise<ValidatorOutcome> {
-	if (source.status === 'failed') {
-		return { status: 'unavailable', reason: source.error.message };
-	}
-
-	if (!source.rootName) {
-		return { status: 'unavailable', reason: 'A boolean root schema has no declaration to run.' };
-	}
-
-	const module = await compileModule(source.code);
-
-	return {
-		status: 'checked',
-		result: validateModule(target, module, source.rootName, data),
-	};
 }
