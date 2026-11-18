@@ -1,5 +1,8 @@
 import { Result, Schema, SchemaIssue } from 'effect';
+import { init as initLexer, parse as parseImports } from 'es-module-lexer';
 import { z } from 'zod';
+
+import type { RuntimeTargetId } from './targets';
 
 export interface RuntimeIssue {
 	/** JSON path of the value that failed, for example `$.items[0].sku`. */
@@ -16,49 +19,62 @@ export interface RuntimeResult {
 	error?: string;
 }
 
-export interface RuntimeCode {
-	zod?: string;
-	effect?: string;
-}
-
-export interface RuntimeResults {
-	zod: RuntimeResult;
-	effect: RuntimeResult;
-}
+/** Exports the playground supplies for each package the generated code imports. */
+const runtimePackages = new Map<string, Record<string, unknown>>([
+	['zod', { z }],
+	['effect', { Schema }],
+]);
+const PACKAGES_GLOBAL = '__utilizePlaygroundPackages';
+const packageUrls = new Map<string, string>();
 
 /**
- * Evaluates the JavaScript emitted from the generated TypeScript module.
+ * Loads the JavaScript emitted for a generated module as a real ES module.
  *
- * The generators emit one `export const` per standalone schema and declare the
- * root schema last, so the returned object is ordered and its last entry is the
- * validator for the edited schema. The emitted module only imports `z` from
- * `zod` or `Schema` from `effect`, which are supplied by this function.
+ * Only the import specifiers are rewritten, at the positions `es-module-lexer`
+ * reports: each package is swapped for a small module that re-exports what the
+ * playground supplies. Everything else, including how the module exports its
+ * declarations, keeps its ES module meaning.
  */
-export function evaluateModule(source: string): Record<string, unknown> {
-	const names = Array.from(
-		source.matchAll(/^[ \t]*export[ \t]+(?:const|let|var|function|class)[ \t]+([\w$]+)/gm),
-		(name) => name[1]!
-	);
+export async function loadModule(javascript: string): Promise<Record<string, unknown>> {
+	await initLexer;
 
-	if (names.length === 0) {
-		throw new Error('The generated module does not export a schema.');
+	const [imports] = parseImports(javascript);
+	let source = '';
+	let position = 0;
+
+	for (const entry of imports) {
+		if (entry.d !== -1 || entry.n === undefined) {
+			throw new Error(
+				'The generated module uses a dynamic import, which the playground does not run.'
+			);
+		}
+
+		source += javascript.slice(position, entry.s) + packageUrl(entry.n);
+		position = entry.e;
 	}
 
-	const body = source
-		.replace(/^[ \t]*import\b[\s\S]*?from[ \t]*['"][^'"]+['"][ \t]*;?[ \t]*$/gm, '')
-		.replace(/^[ \t]*export[ \t]+(?=(?:const|let|var|function|class)\b)/gm, '');
+	source += javascript.slice(position);
 
-	// The generated code comes from the generators in this repository, but it
-	// still runs as code in the page: only feed it strings from those generators.
-	const factory = new Function('z', 'Schema', `${body}\nreturn { ${names.join(', ')} };`);
-
-	return factory(z, Schema) as Record<string, unknown>;
+	return (await import(/* @vite-ignore */ moduleUrl(source))) as Record<string, unknown>;
 }
 
-export function rootValidator(module: Record<string, unknown>): unknown {
-	const names = Object.keys(module);
+/** The generators export the root schema under its resolved name. */
+export function rootValidator(module: Record<string, unknown>, rootName: string): unknown {
+	if (!Object.hasOwn(module, rootName)) {
+		throw new Error(`The generated module does not export the root schema "${rootName}".`);
+	}
 
-	return names.length > 0 ? module[names.at(-1)!] : undefined;
+	return module[rootName];
+}
+
+/** Runs the root schema of a loaded module on the data. Never throws. */
+export function validateModule(
+	target: RuntimeTargetId,
+	module: Record<string, unknown>,
+	rootName: string,
+	data: unknown
+): RuntimeResult {
+	return safely(() => validators[target](rootValidator(module, rootName), data));
 }
 
 export function validateWithZod(schema: unknown, data: unknown): RuntimeResult {
@@ -92,17 +108,6 @@ export function validateWithEffect(schema: unknown, data: unknown): RuntimeResul
 			path: formatPath(issue.path),
 			message: issue.message,
 		})),
-	};
-}
-
-export function validate(
-	zodModule: Record<string, unknown>,
-	effectModule: Record<string, unknown>,
-	data: unknown
-): RuntimeResults {
-	return {
-		zod: safely(() => validateWithZod(rootValidator(zodModule), data)),
-		effect: safely(() => validateWithEffect(rootValidator(effectModule), data)),
 	};
 }
 
@@ -142,4 +147,44 @@ type PathSegment = PropertyKey | { readonly key: PropertyKey };
 
 function isPathKey(segment: PathSegment): segment is { readonly key: PropertyKey } {
 	return typeof segment === 'object' && segment !== null && 'key' in segment;
+}
+
+const validators: Record<RuntimeTargetId, (schema: unknown, data: unknown) => RuntimeResult> = {
+	zod: validateWithZod,
+	effect: validateWithEffect,
+};
+
+function packageUrl(name: string): string {
+	const exports = runtimePackages.get(name);
+
+	if (!exports) {
+		throw new Error(
+			`The generated module imports "${name}", which the playground does not provide.`
+		);
+	}
+
+	let url = packageUrls.get(name);
+
+	if (!url) {
+		Object.assign(globalThis, { [PACKAGES_GLOBAL]: Object.fromEntries(runtimePackages) });
+
+		const source = Object.keys(exports)
+			.map(
+				(exportName) =>
+					`export const ${exportName} = globalThis.${PACKAGES_GLOBAL}[${JSON.stringify(name)}].${exportName};`
+			)
+			.join('\n');
+
+		url = moduleUrl(source);
+		packageUrls.set(name, url);
+	}
+
+	return url;
+}
+
+/** A `data:` URL works for `import()` in browsers, workers and Node alike. */
+function moduleUrl(source: string): string {
+	// The URL replaces a specifier inside its original quotes, so no quote may
+	// stay unescaped. `encodeURIComponent` leaves `'` as it is.
+	return `data:text/javascript;charset=utf-8,${encodeURIComponent(source).replaceAll("'", '%27')}`;
 }
