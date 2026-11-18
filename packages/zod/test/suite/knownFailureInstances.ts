@@ -2,34 +2,6 @@
 export type KnownFailureInstances = Record<string, string[] | 'compile'>;
 
 export const knownFailureInstances: KnownFailureInstances = {
-	'additionalProperties.json :: additionalProperties being false does not allow other properties': [
-		'patternProperties are not additional properties',
-	],
-	'additionalProperties.json :: non-ASCII pattern with additionalProperties': [
-		'matching the pattern is valid',
-	],
-	'patternProperties.json :: multiple simultaneous patternProperties are validated': [
-		'an invalid due to one is invalid',
-		'an invalid due to the other is invalid',
-		'an invalid due to both is invalid',
-	],
-	'patternProperties.json :: patternProperties validates properties matching a regex': [
-		'a single invalid match is invalid',
-		'multiple invalid matches is invalid',
-	],
-	'patternProperties.json :: patternProperties with boolean schemas': [
-		'object with property matching schema false is invalid',
-		'object with both properties is invalid',
-		'object with a property matching both true and false is invalid',
-	],
-	'patternProperties.json :: regexes are not anchored by default and are case sensitive': [
-		'recognized members are accounted for',
-		'regexes are case sensitive, 2',
-	],
-	'properties.json :: properties, patternProperties, additionalProperties interaction': [
-		'patternProperty invalidates property',
-		'patternProperty validates nonproperty',
-	],
 	'format-date-time.json :: validation of date-time strings': [
 		'a valid date-time string with plus offset',
 		'a valid date-time string with minus offset',
@@ -306,17 +278,7 @@ export const knownFailureInstances: KnownFailureInstances = {
 		'square brackets are not allowed in a path segment',
 		'a trailing newline after a valid URI is invalid',
 	],
-	'anchor-legacy.json :: Location-independent identifier': ['mismatch'],
-	'anchor-legacy.json :: Location-independent identifier with base URI change in subschema': [
-		'mismatch',
-	],
-	'anchor-legacy.json :: Reference an anchor with a non-relative URI': ['mismatch'],
-	'anchor-legacy.json :: URN base URI with URN and anchor ref': ['a non-string is invalid'],
-	'id-legacy.json :: $ref prevents a sibling $id from changing the base uri': [
-		'$ref resolves to /definitions/base_foo, data does not validate',
-	],
 	'id-legacy.json :: URN ref with nested pointer ref': 'compile',
-	'id-legacy.json :: ref with absolute-path-reference': ['an integer is invalid'],
 	'id-legacy.json :: refs with relative uris and defs': [
 		'invalid on inner field',
 		'invalid on outer field',

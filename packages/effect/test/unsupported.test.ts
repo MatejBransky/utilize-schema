@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'vitest';
 
-import { UnsupportedEffectSchemaFeatureError } from '../src';
 import { compile, type TestSchema } from './test-utils';
 
 const twentyTwentyTwelve = 'https://json-schema.org/draft/2020-12/schema';
@@ -17,18 +16,9 @@ const unsupportedByDialect: Array<[string, TestSchema]> = [
 	],
 ];
 
-/** Keywords that are part of the dialect but have no Effect Schema equivalent. */
-const unsupportedByEffect: Array<[string, TestSchema]> = [
-	['patternProperties', { type: 'object', patternProperties: { '^a': { type: 'string' } } }],
-];
-
 describe('unsupported keywords', () => {
 	test.each(unsupportedByDialect)('rejects %s', async (keyword, schema) => {
 		await expect(compile(schema)).rejects.toThrow(new RegExp(keyword));
-	});
-
-	test.each(unsupportedByEffect)('rejects %s', async (_name, schema) => {
-		await expect(compile(schema)).rejects.toBeInstanceOf(UnsupportedEffectSchemaFeatureError);
 	});
 
 	test('ignores $ref siblings in draft-07', async () => {

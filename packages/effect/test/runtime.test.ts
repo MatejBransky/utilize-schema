@@ -38,6 +38,39 @@ describe('objects', () => {
 		expect(decode(Root, { a: 'x', b: 1.5 })).toBeUndefined();
 	});
 
+	test('validates patternProperties and lets unmatched keys use additionalProperties', async () => {
+		const Root = await compileToSchema({
+			type: 'object',
+			properties: { id: { type: 'string' } },
+			patternProperties: {
+				'^S_': { type: 'string' },
+				'^I_': { type: 'integer' },
+			},
+			additionalProperties: { type: 'boolean' },
+		});
+
+		expect(decode(Root, { id: 'x', S_name: 'a', I_count: 2, flag: true })).toEqual({
+			id: 'x',
+			S_name: 'a',
+			I_count: 2,
+			flag: true,
+		});
+		expect(decode(Root, { S_name: 1 })).toBeUndefined();
+		expect(decode(Root, { I_count: 'a' })).toBeUndefined();
+		expect(decode(Root, { other: 'a' })).toBeUndefined();
+	});
+
+	test('rejects unmatched keys when patternProperties closes the object', async () => {
+		const Root = await compileToSchema({
+			type: 'object',
+			patternProperties: { '^S_': { type: 'string' } },
+			additionalProperties: false,
+		});
+
+		expect(decode(Root, { S_name: 'a' })).toEqual({ S_name: 'a' });
+		expect(decode(Root, { other: 'a' })).toBeUndefined();
+	});
+
 	test('applies propertyNames, minProperties and maxProperties', async () => {
 		const Root = await compileToSchema({
 			type: 'object',

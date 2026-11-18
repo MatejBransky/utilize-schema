@@ -130,6 +130,33 @@ const nested: TestSchema = {
 	required: ['id'],
 };
 
+const patternProperties: TestSchema = {
+	type: 'object',
+	patternProperties: { '^a': { type: 'string' }, '^b': { type: 'integer' } },
+	additionalProperties: false,
+};
+
+const patternPropertiesWithRequired: TestSchema = {
+	type: 'object',
+	required: ['a'],
+	patternProperties: { '^a': { type: 'string' } },
+	additionalProperties: { type: 'integer' },
+};
+
+const recursivePatternRecord: TestSchema = {
+	type: 'object',
+	patternProperties: { '^x-': { $ref: '#' } },
+	additionalProperties: { type: 'integer' },
+};
+
+const closedRecursivePatternObject: TestSchema = {
+	type: 'object',
+	properties: { name: { type: 'string' } },
+	required: ['x-child'],
+	patternProperties: { '^x-': { $ref: '#' } },
+	additionalProperties: false,
+};
+
 describe('generated schemas type-check', () => {
 	test('annotate recursive schemas with a value type', async () => {
 		await expect(
@@ -149,6 +176,10 @@ describe('generated schemas type-check', () => {
 				'Nested.ts': nested,
 				'BooleanRefs.ts': booleanRefs,
 				'Unevaluated.ts': unevaluated,
+				'PatternProperties.ts': patternProperties,
+				'PatternPropertiesWithRequired.ts': patternPropertiesWithRequired,
+				'RecursivePatternRecord.ts': recursivePatternRecord,
+				'ClosedRecursivePatternObject.ts': closedRecursivePatternObject,
 			})
 		).resolves.toBeUndefined();
 	});
