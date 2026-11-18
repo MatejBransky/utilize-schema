@@ -3,10 +3,13 @@
 	"version": "0.2.0",
 	"description": "Effect Schema generator for JSON Schema.",
 	"keywords": [
+		"codegen",
 		"effect",
+		"effect-schema",
 		"generator",
 		"json-schema",
-		"schema"
+		"schema",
+		"typescript"
 	],
 	"license": "MIT",
 	"author": {

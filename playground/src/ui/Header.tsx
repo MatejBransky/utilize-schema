@@ -27,7 +27,7 @@ export function Header({ colorMode, onColorModeChange, onShare, shared, children
 				</span>
 				<div className={styles.brandText}>
 					<h1 className={styles.title}>Utilize JSON Schema</h1>
-					<p className={styles.subtitle}>Generate to Zod, Effect Schema and more</p>
+					<p className={styles.subtitle}>Generate Zod, Effect Schema or TypeScript</p>
 				</div>
 			</div>
 

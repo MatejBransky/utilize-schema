@@ -1,6 +1,6 @@
 # Utilize Schema Monorepo
 
-Generate robust, type-safe Zod or Effect Schema codecs and TypeScript types from JSON Schema — with first-class support for references, standalone definitions, and modern validation features.
+Generate robust, type-safe Zod or Effect Schema codecs — or plain TypeScript types — from JSON Schema, with first-class support for references, standalone definitions, and modern validation features.
 
 ---
 
@@ -64,13 +64,13 @@ dependency:
 pnpm add zod effect
 ```
 
-The `@utilize/zod` and `@utilize/effect` packages also ship a CLI that accepts a
-file, directory or glob, reads JSON and YAML, and writes to a file, a directory
-or stdout:
+All three generators ship a CLI that accepts a file, directory or glob, reads
+JSON and YAML, and writes to a file, a directory or stdout:
 
 ```sh
 utilize-zod schema.json schema.generated.ts
 utilize-effect --input 'schemas/**/*.json' --output generated/
+utilize-typescript --input 'schemas/**/*.yaml' --output generated/
 cat schema.yaml | utilize-zod > schema.generated.ts
 ```
 

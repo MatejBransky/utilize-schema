@@ -1,12 +1,17 @@
 {
 	"name": "@utilize/zod",
 	"version": "0.7.1",
-	"description": "Zod utilities for working with JSON Schema.",
+	"description": "Zod schema generator for JSON Schema.",
 	"keywords": [
 		"ast",
+		"codegen",
 		"generator",
+		"json-schema",
+		"json-schema-to-zod",
 		"optimizer",
-		"parser"
+		"parser",
+		"typescript",
+		"zod"
 	],
 	"license": "MIT",
 	"author": {
