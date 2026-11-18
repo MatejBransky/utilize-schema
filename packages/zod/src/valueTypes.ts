@@ -26,6 +26,7 @@ import { selectGenerator } from './generators/selectGenerator';
 import type { CustomSchemaResolver } from './generators/types';
 import { generator as stringGenerator } from './generators/stringGenerator';
 import { generator as tupleGenerator, tupleItems, tupleRest } from './generators/tupleGenerator';
+import { isResolvedByCaller } from './utils';
 
 export interface ValueTypeContext {
 	/**
@@ -55,7 +56,7 @@ export function renderValueTypeDeclaration(
 	declaration: ParsedJSONSchemaObject,
 	context: ValueTypeContext
 ): string {
-	if (isResolvedByCaller(declaration, context)) {
+	if (isResolvedByCaller(context.customSchemaResolver, declaration)) {
 		return `type ${name} = unknown;`;
 	}
 
@@ -74,17 +75,12 @@ export function renderValueTypeDeclaration(
 	return `type ${name} = ${renderType(schema, context)};`;
 }
 
-/** True when `customSchemaResolver` replaces the node with an expression of its own. */
-function isResolvedByCaller(schema: ParsedJSONSchemaObject, context: ValueTypeContext): boolean {
-	return context.customSchemaResolver?.(schema) !== undefined;
-}
-
 function renderType(node: ParsedJSONSchemaObject, context: ValueTypeContext): string {
 	if (typeof node !== 'object' || node === null) {
 		return node ? 'unknown' : 'never';
 	}
 
-	if (isResolvedByCaller(node, context)) {
+	if (isResolvedByCaller(context.customSchemaResolver, node)) {
 		return 'unknown';
 	}
 

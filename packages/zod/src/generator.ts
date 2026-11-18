@@ -23,7 +23,7 @@ import {
 	type DeclarationNames,
 	type NameMapper,
 } from './resolveName';
-import { NEWLINE, ts } from './utils';
+import { isResolvedByCaller, NEWLINE, ts } from './utils';
 import { renderValueTypeDeclaration, type ValueTypeContext } from './valueTypes';
 
 export interface GenerateOptions {
@@ -65,9 +65,9 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		});
 	}
 
-	const isOpaque = (schema: ParsedJSONSchemaObject) =>
-		options.customSchemaResolver?.(schema) !== undefined;
-	const copies = findInlineCopies(collectStandaloneSchemas(root).schemas, isOpaque);
+	const copies = findInlineCopies(collectStandaloneSchemas(root).schemas, (schema) =>
+		isResolvedByCaller(options.customSchemaResolver, schema)
+	);
 	const { schemas: standaloneSchemas, edges } = collectStandaloneSchemas(root, copies);
 	const { schemas: cyclicSchemas, unsupported } = findCyclicSchemas(edges, standaloneSchemas);
 

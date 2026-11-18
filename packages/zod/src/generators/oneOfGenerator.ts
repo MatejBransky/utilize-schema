@@ -6,7 +6,7 @@ import { composedSchemaParts, generateSchema } from './generateSchema';
 import { generator as objectGenerator } from './objectGenerator';
 import { selectGenerator } from './selectGenerator';
 
-import { ts } from '../utils';
+import { isResolvedByCaller, ts } from '../utils';
 
 export const generator = createGenerator<
 	ParsedJSONSchemaObject & {
@@ -40,7 +40,7 @@ export const generator = createGenerator<
 
 		const exclusive = areMutuallyExclusive(schema.oneOf, {
 			dialect: context.dialect,
-			isOpaque: (node) => context.customSchemaResolver?.(node) !== undefined,
+			isOpaque: (node) => isResolvedByCaller(context.customSchemaResolver, node),
 		});
 
 		if (exclusive) {
