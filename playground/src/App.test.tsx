@@ -351,7 +351,12 @@ test('the keyword policy shows foreign keywords as errors or warnings', async ()
 
 	await vi.waitFor(() => expect(problemsText()).toContain('0 errors, 1 warnings'));
 	expect(problemsText()).toContain('"prefixItems" is not part of draft-07');
-	expect(JSON.parse(localStorage.getItem('utilize-schema-playground')!).keywordPolicy).toBe('warn');
+	// The workspace is saved in an effect, which can run after the panel updates.
+	await vi.waitFor(() =>
+		expect(JSON.parse(localStorage.getItem('utilize-schema-playground')!).keywordPolicy).toBe(
+			'warn'
+		)
+	);
 	expect(new URL(location.href).searchParams.get('keyword-policy')).toBe('warn');
 });
 
