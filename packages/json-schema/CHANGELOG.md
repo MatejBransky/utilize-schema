@@ -1,5 +1,31 @@
 # @utilize/json-schema
 
+## 0.4.0
+
+### Minor Changes
+
+- 8fc5c59: Resolve and validate the JSON Schema dialect per resource.
+
+  `$schema` is now read at every schema resource (the document root and every
+  subschema with a non-fragment `$id`), and the resolved dialect is copied into
+  `Meta.dialect` / `Meta.dialectSource`. Keywords that do not belong to the
+  node's dialect are reported as warnings by default. `parse()` and `compile()`
+  accept `dialect`, `fallbackDialect`, `unknownDialect`, `keywordPolicy` and
+  `onDialectIssue`; `keywordPolicy: 'error'` fails on such keywords and `'ignore'`
+  does not report them. `parse()` also returns the reported issues, and the core
+  library no longer writes them to the console; the zod and effect `compile()`
+  functions and CLIs still print them. An unrecognized `$schema` falls back to
+  `fallbackDialect`; pass `unknownDialect: 'error'` to reject it. The
+  `utilize-zod` and `utilize-effect` CLIs expose the same options.
+
+- 3e62e0e: Export `withSourceMeta` and `ANNOTATION_KEYWORDS` for generators.
+
+  `withSourceMeta(source, copy)` keeps the `Meta` of a node, and with it the
+  node's dialect, on a shallow copy made while generating code. `ANNOTATION_KEYWORDS`
+  lists the keywords that never constrain a value; the parser uses it to decide
+  which `$ref` siblings to report, and the generators use it to split a node's
+  constraints from its annotations.
+
 ## 0.3.0
 
 ### Minor Changes
