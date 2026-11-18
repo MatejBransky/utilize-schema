@@ -9,6 +9,7 @@ import { collectStandaloneSchemas, type BooleanDefinition } from './collectStand
 import { findUnsupportedCycles } from './cycles';
 import { UnresolvedReferenceError, UnsupportedCircularTypeError } from './errors';
 import {
+	type CustomSchemaResolver,
 	isObjectDeclaration,
 	RENDERED_GLOBAL_TYPES,
 	renderJsDoc,
@@ -18,9 +19,13 @@ import {
 } from './renderType';
 import { resolveName, type CustomNameResolver } from './resolveName';
 
+export type { CustomSchemaResolver } from './renderType';
+
 export interface GenerateOptions {
 	/** Overrides the name allocated for a standalone schema. */
 	customNameResolver?: CustomNameResolver;
+	/** Emits a caller-provided TypeScript type for a matching schema node. */
+	customSchemaResolver?: CustomSchemaResolver;
 }
 
 /**
@@ -46,6 +51,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 
 			return name;
 		},
+		customSchemaResolver: options.customSchemaResolver,
 	};
 
 	if (!isPlainObject(root)) {
@@ -119,6 +125,12 @@ function renderDeclaration(
 	context: TypeContext
 ): string {
 	const doc = renderJsDoc(schema, 0, name);
+	const customType = context.customSchemaResolver?.(schema);
+
+	if (customType !== undefined) {
+		return [...doc, `export type ${name} = ${customType};`].join('\n');
+	}
+
 	const body = isObjectDeclaration(schema) ? renderObjectBody(schema, context, 1) : undefined;
 
 	return body === undefined

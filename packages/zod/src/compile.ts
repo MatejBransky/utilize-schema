@@ -11,7 +11,7 @@ import { load as loadYaml } from 'js-yaml';
 import path from 'path';
 
 import { generate, type GenerateOptions } from './generator';
-import type { FormatMap } from './generators/types';
+import type { CustomSchemaResolver, FormatMap } from './generators/types';
 
 export interface CompileOptions
 	extends DialectOptions, Pick<GenerateOptions, 'customNameResolver' | 'schemaName' | 'typeName'> {
@@ -22,6 +22,8 @@ export interface CompileOptions
 	readOnlyKeyword?: boolean;
 	/** Overrides the built-in `format` to Zod mapping per format; unlisted formats keep it. */
 	formatMap?: FormatMap;
+	/** Emits a caller-provided Zod expression for a matching schema node. */
+	customSchemaResolver?: CustomSchemaResolver;
 	/** Header prepended to the generated file. Pass `false` to omit it. */
 	bannerComment?: string | false;
 }
@@ -32,6 +34,7 @@ export interface CompileSchemaOptions
 	fileName: string;
 	readOnlyKeyword?: boolean;
 	formatMap?: FormatMap;
+	customSchemaResolver?: CustomSchemaResolver;
 }
 
 const defaultCwd = process.cwd();
@@ -55,6 +58,7 @@ export async function compile(userOptions: CompileOptions) {
 		typeName: userOptions.typeName,
 		readOnlyKeyword: userOptions.readOnlyKeyword,
 		formatMap: userOptions.formatMap,
+		customSchemaResolver: userOptions.customSchemaResolver,
 		...pickDialectOptions(userOptions),
 	});
 
@@ -86,6 +90,7 @@ export async function compileSchema(schema: JSONSchema, options: CompileSchemaOp
 		typeName: options.typeName,
 		readOnlyKeyword: options.readOnlyKeyword,
 		formatMap: options.formatMap,
+		customSchemaResolver: options.customSchemaResolver,
 	});
 }
 

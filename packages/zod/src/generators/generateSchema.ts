@@ -23,6 +23,12 @@ export const generateSchema = (schema: ParsedJSONSchema | undefined, context: Ge
 		return schema === true ? ts`z.any()` : schema === false ? ts`z.never()` : ts`z.unknown()`;
 	}
 
+	const customExpression = context.customSchemaResolver?.(schema);
+
+	if (customExpression !== undefined) {
+		return customExpression;
+	}
+
 	const dialect = dialectOf(schema, context.dialect);
 	const nodeContext = dialect === context.dialect ? context : { ...context, dialect };
 

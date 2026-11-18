@@ -992,9 +992,9 @@ function generateCodeFor(
 ): string {
 	switch (target) {
 		case 'effect':
-			return generateEffect(root, { importEffect: true });
+			return generateEffect(root, { importEffect: true, ...options?.effect });
 		case 'typescript':
-			return generateTypeScript(root);
+			return generateTypeScript(root, { ...options?.typescript });
 		case 'zod':
 			return generateZod(root, { importZod: true, ...options?.zod });
 		default:

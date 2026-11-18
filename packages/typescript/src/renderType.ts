@@ -11,7 +11,16 @@ import { toSafeString } from './resolveName';
 export interface TypeContext {
 	/** Name of an already declared standalone schema. */
 	nameOf(schema: ParsedJSONSchemaObject, ref: string): string;
+	/** Emits a caller-provided TypeScript type for a matching schema node. */
+	customSchemaResolver?: CustomSchemaResolver;
 }
+
+/**
+ * Returns a TypeScript type for a schema node, or `undefined` to use the
+ * renderer. Called for every object node, `$ref` nodes and generated copies
+ * included. The type replaces the node's type; its JSDoc comment is kept.
+ */
+export type CustomSchemaResolver = (schema: ParsedJSONSchemaObject) => string | undefined;
 
 /**
  * Keywords that change the rendered type. Everything else — validation
@@ -62,6 +71,12 @@ export function renderType(schema: ParsedJSONSchema, context: TypeContext, level
 
 	if (!isPlainObject(schema)) {
 		return 'unknown';
+	}
+
+	const customType = context.customSchemaResolver?.(schema);
+
+	if (customType !== undefined) {
+		return customType;
 	}
 
 	if (typeof schema.$ref === 'string') {

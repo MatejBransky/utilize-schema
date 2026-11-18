@@ -58,6 +58,23 @@ pnpm add zod
   });
   ```
 
+- `customSchemaResolver(schema)` — return a Zod expression for a schema node,
+  or `undefined` to let the generator handle it. It is called for every object
+  node (including `$ref` nodes and the per-type copies of a `type` list, never
+  boolean schemas) before `formatMap` and the built-in generators. The returned
+  expression replaces the whole node: its `.meta()`, `.default()` and
+  `.readonly()` are not added, while `.optional()` for a non-required property
+  still is. Inside a recursive schema the hand-written value type types the
+  node as `unknown`, because the generator cannot know your expression's type:
+
+  ```ts
+  await compile({
+  	input: './schema.json',
+  	customSchemaResolver: (schema) =>
+  		schema.format === 'date-time' ? 'z.iso.datetime({ offset: true })' : undefined,
+  });
+  ```
+
 - `bannerComment` — header prepended to written files; `false` disables it.
 
 For custom pipelines, `compileFile()` and `compileSchema()` return the generated

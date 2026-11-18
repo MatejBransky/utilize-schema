@@ -8,6 +8,7 @@ import {
 	type ParsedJSONSchemaObject,
 } from '@utilize/json-schema';
 
+import type { CustomSchemaResolver } from './generator';
 import { planReferenceSiblings } from './refSiblings';
 
 export interface ValueTypeContext {
@@ -21,6 +22,8 @@ export interface ValueTypeContext {
 	aliasFor(schema: ParsedJSONSchemaObject): string | undefined;
 	/** The exported type alias of a schema outside of a cycle. */
 	typeNameFor(schema: ParsedJSONSchemaObject): string;
+	/** Nodes it replaces hold caller code of an unknown type, so they render as `unknown`. */
+	customSchemaResolver?: CustomSchemaResolver;
 }
 
 /**
@@ -34,6 +37,10 @@ export function renderValueTypeDeclaration(
 	schema: ParsedJSONSchemaObject,
 	context: ValueTypeContext
 ): string {
+	if (isResolvedByCaller(schema, context)) {
+		return `type ${name} = unknown;`;
+	}
+
 	const record = renderRecordInterface(schema, context, name);
 
 	if (record !== undefined) {
@@ -41,6 +48,11 @@ export function renderValueTypeDeclaration(
 	}
 
 	return `type ${name} = ${renderValueType(schema, context, name, false)};`;
+}
+
+/** True when `customSchemaResolver` replaces the node with an expression of its own. */
+function isResolvedByCaller(schema: ParsedJSONSchemaObject, context: ValueTypeContext): boolean {
+	return context.customSchemaResolver?.(schema) !== undefined;
 }
 
 /**
@@ -105,6 +117,10 @@ export function renderValueType(
 
 	if (!isPlainObject(schema)) {
 		return 'Schema.Json';
+	}
+
+	if (isResolvedByCaller(schema, context)) {
+		return 'unknown';
 	}
 
 	const dialect = dialectOf(schema, context.dialect);

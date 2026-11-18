@@ -13,7 +13,12 @@ import { load as loadYaml } from 'js-yaml';
 import { generate, type GenerateOptions } from './generator';
 
 export interface CompileOptions
-	extends DialectOptions, Pick<GenerateOptions, 'customNameResolver' | 'schemaName' | 'typeName'> {
+	extends
+		DialectOptions,
+		Pick<
+			GenerateOptions,
+			'customNameResolver' | 'customSchemaResolver' | 'schemaName' | 'typeName'
+		> {
 	/** Path of the JSON Schema file, resolved against `cwd`. */
 	input: string;
 	/** Path of the generated file, resolved against `cwd`. */
@@ -27,7 +32,12 @@ export interface CompileOptions
 }
 
 export interface CompileSchemaOptions
-	extends DialectOptions, Pick<GenerateOptions, 'customNameResolver' | 'schemaName' | 'typeName'> {
+	extends
+		DialectOptions,
+		Pick<
+			GenerateOptions,
+			'customNameResolver' | 'customSchemaResolver' | 'schemaName' | 'typeName'
+		> {
 	cwd: string;
 	fileName: string;
 	importEffect?: boolean;
@@ -55,6 +65,7 @@ export async function compile(options: CompileOptions): Promise<void> {
 		customNameResolver: options.customNameResolver,
 		schemaName: options.schemaName,
 		typeName: options.typeName,
+		customSchemaResolver: options.customSchemaResolver,
 		...pickDialectOptions(options),
 	});
 
@@ -85,6 +96,7 @@ export async function compileSchema(schema: JSONSchema, options: CompileSchemaOp
 		customNameResolver: options.customNameResolver,
 		schemaName: options.schemaName,
 		typeName: options.typeName,
+		customSchemaResolver: options.customSchemaResolver,
 	});
 }
 

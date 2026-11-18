@@ -32,7 +32,17 @@ export interface GenerateOptions {
 	schemaName?: NameMapper;
 	/** Rewrites the type exported for each generated schema. Receives the resolved name. */
 	typeName?: NameMapper;
+	/** Emits a caller-provided Effect Schema expression for a matching schema node. */
+	customSchemaResolver?: CustomSchemaResolver;
 }
+
+/**
+ * Returns an Effect Schema expression for a schema node, or `undefined` to use
+ * the generator. Called for every object node, `$ref` nodes and generated
+ * copies included. The expression replaces the whole node, so no
+ * `.annotate()` is added to it.
+ */
+export type CustomSchemaResolver = (schema: ParsedJSONSchemaObject) => string | undefined;
 
 type Context = {
 	/** Name of an already declared standalone schema. */
@@ -45,6 +55,7 @@ type Context = {
 	 * without `Meta` read it from here instead of resolving it again.
 	 */
 	dialect: Dialect;
+	customSchemaResolver?: CustomSchemaResolver;
 };
 
 /** Keywords that have no Effect Schema equivalent and are rejected instead of ignored. */
@@ -82,6 +93,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 	);
 	const valueTypeContext: ValueTypeContext = {
 		dialect: dialectOf(root),
+		customSchemaResolver: options.customSchemaResolver,
 		aliasFor(schema) {
 			return cyclic.has(schema) ? aliasOf(schema) : undefined;
 		},
@@ -104,6 +116,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 			return cyclic.has(schema);
 		},
 		dialect: dialectOf(root),
+		customSchemaResolver: options.customSchemaResolver,
 	};
 
 	const parts: string[] = [];
@@ -210,6 +223,12 @@ function generateSchema(schema: ParsedJSONSchema, context: Context): string {
 
 	if (!isPlainObject(schema)) {
 		return 'Schema.Json';
+	}
+
+	const customExpression = context.customSchemaResolver?.(schema);
+
+	if (customExpression !== undefined) {
+		return customExpression;
 	}
 
 	const dialect = dialectOf(schema, context.dialect);
@@ -327,9 +346,11 @@ function generateType(schema: ParsedJSONSchemaObject, context: Context): string 
 	if (Array.isArray(schema.type)) {
 		const members = [
 			...new Set(
-				schema.type.map((type) =>
-					generateType(schemaWithType(schema, type as ParsedJSONSchemaObject['type']), context)
-				)
+				schema.type.map((type) => {
+					const branch = schemaWithType(schema, type as ParsedJSONSchemaObject['type']);
+
+					return context.customSchemaResolver?.(branch) ?? generateType(branch, context);
+				})
 			),
 		];
 
