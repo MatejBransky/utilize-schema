@@ -1,40 +1,32 @@
 import { useEffect, useRef, useState } from 'react';
 
-import type { RuntimeCode, RuntimeSource } from '../generateCode';
+import type { RuntimeSource } from '../generateCode';
 import { emitJavaScript } from '../monaco/transpile';
-import type { RuntimeTargetId } from '../targets';
+import { isRuntimeTarget, targets, type RuntimeTargetId, type TargetId } from '../targets';
 import type { ValidatorReport, ValidatorSource } from './protocol';
 import { ValidatorClient } from './ValidatorClient';
 
-/** What happened to one generated validator. */
-export type ValidatorOutcome =
-	| { status: 'unavailable'; reason: string }
-	| { status: 'checked'; result: ValidatorReport };
-
+/** What happened to the validator of the selected generator. */
 export type ValidationState =
 	| { status: 'running' }
-	| { status: 'unavailable' }
+	| { status: 'unavailable'; reason: string }
 	| { status: 'invalid-json'; message: string }
 	| { status: 'error'; message: string }
-	| {
-			status: 'ready';
-			zod: ValidatorOutcome;
-			effect: ValidatorOutcome;
-	  };
+	| { status: 'ready'; result: ValidatorReport };
 
 type EmitCache = Map<RuntimeTargetId, { code: string; javascript: Promise<string> }>;
 
-const runtimeTargets: RuntimeTargetId[] = ['zod', 'effect'];
-
 /**
- * Runs the generated runtime validators on the test data in a worker and
- * reports the outcome of each target.
+ * Runs the generated runtime validator of the selected target on the test data
+ * in a worker.
  *
- * @param runtimeCode The generated validators, or `null` when there is no schema.
+ * @param target The generator selected in the playground.
+ * @param runtime The generated validator, or `null` when the target has none.
  * @param busy Whether new code is being generated.
  */
 export function useValidatorResults(
-	runtimeCode: RuntimeCode | null,
+	target: TargetId,
+	runtime: RuntimeSource | null,
 	data: string,
 	busy: boolean
 ): ValidationState {
@@ -51,8 +43,37 @@ export function useValidatorResults(
 	);
 
 	useEffect(() => {
-		if (!runtimeCode) {
-			setState(busy ? { status: 'running' } : { status: 'unavailable' });
+		if (busy) {
+			setState({ status: 'running' });
+			return;
+		}
+
+		if (!isRuntimeTarget(target)) {
+			setState({
+				status: 'unavailable',
+				reason: `The ${targetLabel(target)} generator emits types only, so there is no runtime validator to run.`,
+			});
+			return;
+		}
+
+		if (!runtime) {
+			setState({
+				status: 'unavailable',
+				reason: 'The schema does not produce a runtime validator for this data.',
+			});
+			return;
+		}
+
+		if (runtime.status === 'failed') {
+			setState({ status: 'unavailable', reason: runtime.error.message });
+			return;
+		}
+
+		if (!runtime.rootName) {
+			setState({
+				status: 'unavailable',
+				reason: 'A boolean root schema has no declaration to run.',
+			});
 			return;
 		}
 
@@ -65,26 +86,31 @@ export function useValidatorResults(
 			return;
 		}
 
+		const { code, rootName } = runtime;
 		let cancelled = false;
 
 		const timer = setTimeout(async () => {
 			try {
-				const sources = await emitSources(runtimeCode, emitCacheRef.current);
+				const source = await emitSource(target, code, rootName, emitCacheRef.current);
 				const client = (clientRef.current ??= new ValidatorClient());
-				const reports = await client.run(parsed, sources);
+				const reports = await client.run(parsed, { [target]: source });
+				const report = reports[target];
 
 				if (!cancelled) {
-					setState({
-						status: 'ready',
-						zod: outcomeFor(runtimeCode.zod, reports.zod),
-						effect: outcomeFor(runtimeCode.effect, reports.effect),
-					});
+					setState(
+						report
+							? { status: 'ready', result: report }
+							: {
+									status: 'error',
+									message: `The validator worker returned no ${targetLabel(target)} result.`,
+								}
+					);
 				}
 			} catch (error) {
 				if (!cancelled) {
 					setState({
 						status: 'error',
-						message: `Could not run the generated validators: ${messageOf(error)}`,
+						message: `Could not run the ${targetLabel(target)} validator: ${messageOf(error)}`,
 					});
 				}
 			}
@@ -94,37 +120,23 @@ export function useValidatorResults(
 			cancelled = true;
 			clearTimeout(timer);
 		};
-	}, [runtimeCode, data, busy]);
+	}, [target, runtime, data, busy]);
 
 	return state;
 }
 
-async function emitSources(
-	runtimeCode: RuntimeCode,
+async function emitSource(
+	target: RuntimeTargetId,
+	code: string,
+	rootName: string,
 	cache: EmitCache
-): Promise<Partial<Record<RuntimeTargetId, ValidatorSource>>> {
-	const entries = await Promise.all(
-		runtimeTargets.flatMap((target) => {
-			const source = runtimeCode[target];
+): Promise<ValidatorSource> {
+	const javascript = await emitLatest(cache, target, code);
 
-			if (source.status !== 'generated' || !source.rootName) {
-				return [];
-			}
-
-			const { code, rootName } = source;
-
-			return [
-				emitLatest(cache, target, code).then(
-					(javascript) => [target, { javascript, rootName }] as const
-				),
-			];
-		})
-	);
-
-	return Object.fromEntries(entries);
+	return { javascript, rootName };
 }
 
-/** Emits each target's latest code once, so editing the test data reuses it. */
+/** Emits the target's latest code once, so editing the test data reuses it. */
 function emitLatest(cache: EmitCache, target: RuntimeTargetId, code: string): Promise<string> {
 	const cached = cache.get(target);
 
@@ -144,18 +156,8 @@ function emitLatest(cache: EmitCache, target: RuntimeTargetId, code: string): Pr
 	return javascript;
 }
 
-function outcomeFor(source: RuntimeSource, report: ValidatorReport | undefined): ValidatorOutcome {
-	if (source.status === 'failed') {
-		return { status: 'unavailable', reason: source.error.message };
-	}
-
-	if (!source.rootName) {
-		return { status: 'unavailable', reason: 'A boolean root schema has no declaration to run.' };
-	}
-
-	return report
-		? { status: 'checked', result: report }
-		: { status: 'unavailable', reason: 'The validator worker returned no result.' };
+function targetLabel(target: TargetId): string {
+	return targets.find((item) => item.value === target)?.label ?? target;
 }
 
 function messageOf(error: unknown): string {

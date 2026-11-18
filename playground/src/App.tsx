@@ -37,7 +37,7 @@ import {
 	examples,
 } from './examples';
 import { defaultFormatMode, formatModes, isFormatMode, type FormatMode } from './formatMode';
-import { generateCodeFor, generateRuntimeCode, type RuntimeCode } from './generateCode';
+import { generateCodeFor, type RuntimeSource } from './generateCode';
 import { formatTypeScript } from './monaco/format';
 import { MonacoEditor, type MonacoEditorHandle } from './monaco/MonacoEditor';
 import { defaultTarget, isTargetId, targets, type TargetId } from './targets';
@@ -86,7 +86,7 @@ export default function App() {
 	const [renameError, setRenameError] = useState<string | null>(null);
 	const [code, setCode] = useState('');
 	const [busy, setBusy] = useState(false);
-	const [runtimeCode, setRuntimeCode] = useState<RuntimeCode | null>(null);
+	const [runtime, setRuntime] = useState<RuntimeSource | null>(null);
 	const [generationProblems, setGenerationProblems] = useState<Problem[]>([]);
 	const [cursor, setCursor] = useState({ line: 1, column: 1 });
 	const [pendingPosition, setPendingPosition] = useState<{ line: number; column: number }>();
@@ -99,7 +99,7 @@ export default function App() {
 	const schemaEditorRef = useRef<MonacoEditorHandle>(null);
 	const dataEditorRef = useRef<MonacoEditorHandle>(null);
 	const codeEditorRef = useRef<MonacoEditorHandle>(null);
-	const validation = useValidatorResults(runtimeCode, data, busy);
+	const validation = useValidatorResults(target, runtime, data, busy);
 	const { dragging, activeMode, drop } = useFileDrop({ onDrop: handleDrop });
 
 	const resolvedTheme = colorMode === 'auto' ? (systemDark ? 'dark' : 'light') : colorMode;
@@ -205,11 +205,13 @@ export default function App() {
 		const timer = setTimeout(async () => {
 			let nextCode = '';
 			const nextProblems: Problem[] = [];
-			let nextRuntime: RuntimeCode | null = null;
+			let nextRuntime: RuntimeSource | null = null;
 
 			if (bundle.root !== null) {
 				try {
-					const { root } = await parse(bundle.root as never, {
+					// `parse` resolves the schema in place, so every run gets a copy;
+					// otherwise switching targets reuses names chosen for the previous one.
+					const { root } = await parse(structuredClone(bundle.root) as never, {
 						cwd: '/',
 						fileName: bundle.rootFileName,
 						keywordPolicy,
@@ -217,15 +219,12 @@ export default function App() {
 					});
 
 					const generatorOptions = exampleId ? exampleGeneratorOptions[exampleId] : undefined;
-					nextRuntime = generateRuntimeCode(root, formatMode, generatorOptions);
 
-					const rawCode = generateCodeFor(
-						target,
-						root,
-						nextRuntime,
-						formatMode,
-						generatorOptions
-					);
+					const generated = generateCodeFor(target, root, formatMode, generatorOptions);
+
+					nextRuntime = generated.runtime;
+
+					const rawCode = generated.code;
 
 					const formatCode =
 						generatorOptions?.format ??
@@ -242,7 +241,7 @@ export default function App() {
 
 			if (!cancelled) {
 				setCode(nextCode);
-				setRuntimeCode(nextRuntime);
+				setRuntime(nextRuntime);
 				setGenerationProblems(nextProblems);
 				setBusy(false);
 			}
@@ -919,7 +918,7 @@ export default function App() {
 							{activeCase ? `Expected: ${activeCase.expect}` : 'Custom test data'}
 						</span>
 					</div>
-					<ValidatorResults state={validation} />
+					<ValidatorResults target={target} state={validation} />
 				</section>
 			</main>
 		</div>
