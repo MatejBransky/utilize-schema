@@ -15,7 +15,11 @@ export interface TypeContext {
 	customSchemaResolver?: CustomSchemaResolver;
 }
 
-/** Returns a TypeScript type for a schema node, or `undefined`. */
+/**
+ * Returns a TypeScript type for a schema node, or `undefined` to use the
+ * renderer. Called for every object node, `$ref` nodes and generated copies
+ * included. The type replaces the node's type; its JSDoc comment is kept.
+ */
 export type CustomSchemaResolver = (schema: ParsedJSONSchemaObject) => string | undefined;
 
 /**

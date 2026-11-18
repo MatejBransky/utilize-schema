@@ -35,8 +35,15 @@ Options:
 - `customNameResolver(schema, usedNames)` — override the name allocated for a
   standalone schema.
 - `customSchemaResolver(schema)` — return an Effect Schema expression for a
-  schema node, or `undefined` to let the generator handle it. It runs before
-  the built-in generator, so it can replace unsupported keywords.
+  schema node, or `undefined` to let the generator handle it. It is called for
+  every object node (including `$ref` nodes and the per-type copies of a `type`
+  list, never boolean schemas) before the built-in generator, so it can also
+  replace a node the generator rejects, such as an `allOf` of non-object
+  schemas. Keywords the parser rejects never reach it. The returned
+  expression replaces the whole node, including its `.annotate({ … })`, while
+  `Schema.optionalKey` for a non-required property is still added. Inside a
+  recursive schema the value type types the node as `unknown`, because the
+  generator cannot know your expression's type.
 - `importEffect` — emit `import { Schema } from 'effect';`; on by default.
 
 ## CLI

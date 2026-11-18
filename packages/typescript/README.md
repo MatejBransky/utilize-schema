@@ -45,8 +45,10 @@ await compile({
 
 `compile()` accepts `customNameResolver(schema, usedNames)` to rename a
 declaration and `customSchemaResolver(schema)` to return a TypeScript type for a
-schema node. The schema resolver runs before the built-in renderer, so it can
-replace nodes the generator would otherwise infer:
+schema node. The schema resolver is called for every object node (including
+`$ref` nodes and the per-type copies of a `type` list, never boolean schemas)
+before the built-in renderer. The returned type replaces the node's type, while
+its JSDoc comment and the `?` of a non-required property are kept:
 
 ```ts
 await compile({

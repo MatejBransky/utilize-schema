@@ -36,7 +36,12 @@ export interface GenerateOptions {
 	customSchemaResolver?: CustomSchemaResolver;
 }
 
-/** Returns an Effect Schema expression for a schema node, or `undefined`. */
+/**
+ * Returns an Effect Schema expression for a schema node, or `undefined` to use
+ * the generator. Called for every object node, `$ref` nodes and generated
+ * copies included. The expression replaces the whole node, so no
+ * `.annotate()` is added to it.
+ */
 export type CustomSchemaResolver = (schema: ParsedJSONSchemaObject) => string | undefined;
 
 type Context = {

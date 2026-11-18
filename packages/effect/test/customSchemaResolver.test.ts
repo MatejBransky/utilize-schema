@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { compile as compileToFile, type CustomSchemaResolver } from '../src';
-import { compile, ts } from './test-utils';
+import { compile, ts, type TestSchema } from './test-utils';
 
 describe('customSchemaResolver', () => {
 	test('replaces a matching schema node with a custom Effect Schema expression', async () => {
@@ -74,6 +74,21 @@ describe('customSchemaResolver', () => {
 			)
 		).toMatchCode(ts`
       export const Root = Schema.Union([Schema.Finite, Schema.Null]).annotate({ format: 'date-time' });
+
+      export type Root = typeof Root.Type;
+    `);
+	});
+
+	test('replaces a node the generator rejects', async () => {
+		const schema: TestSchema = { allOf: [{ type: 'string' }, { minLength: 2 }] };
+
+		await expect(compile(schema)).rejects.toThrow(/allOf/);
+		await expect(
+			compile(schema, {
+				customSchemaResolver: (node) => (Array.isArray(node.allOf) ? 'Schema.String' : undefined),
+			})
+		).toMatchCode(ts`
+      export const Root = Schema.String;
 
       export type Root = typeof Root.Type;
     `);

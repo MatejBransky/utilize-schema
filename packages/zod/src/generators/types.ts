@@ -8,7 +8,12 @@ import type { Dialect, ParsedJSONSchemaObject } from '@utilize/json-schema';
  */
 export type FormatMap = Record<string, string>;
 
-/** Returns a Zod expression for a schema node, or `undefined` to use the generator. */
+/**
+ * Returns a Zod expression for a schema node, or `undefined` to use the
+ * generator. Called for every object node, `$ref` nodes and generated copies
+ * included, before `formatMap`. The expression replaces the whole node, so no
+ * `.meta()`, `.default()` or `.readonly()` is added to it.
+ */
 export type CustomSchemaResolver = (schema: ParsedJSONSchemaObject) => string | undefined;
 
 export type GeneratorContext = {
