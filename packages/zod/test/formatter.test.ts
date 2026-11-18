@@ -33,6 +33,14 @@ describe('format hook', () => {
 		expect(code).toContain('z.string().max(5)');
 	});
 
+	test('keeps the generated code as-is when format is false', async () => {
+		const options = { cwd: __dirname, fileName: 'schema.json' };
+
+		expect(await compileSchema({ type: 'string' }, { ...options, format: false })).toBe(
+			await compileSchema({ type: 'string' }, options)
+		);
+	});
+
 	test('is passed on by compile() and runs before the banner is prepended', async () => {
 		const directory = await mkdtemp(join(tmpdir(), 'utilize-zod-format-'));
 		const formatterInputs: string[] = [];

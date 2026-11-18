@@ -30,11 +30,19 @@ describe('format hook', () => {
 			{
 				cwd: __dirname,
 				fileName: 'Root.json',
-				format: async (generated) => generated.trim(),
+				format: async (generated) => `// formatted asynchronously\n${generated}`,
 			}
 		);
 
-		expect(code.trim()).toBe('export type Root = string;');
+		expect(code).toMatch(/^\/\/ formatted asynchronously\n/);
+	});
+
+	test('keeps the generated code as-is when format is false', async () => {
+		const options = { cwd: __dirname, fileName: 'Root.json' };
+
+		expect(await compileSchema({ type: 'string' }, { ...options, format: false })).toBe(
+			await compileSchema({ type: 'string' }, options)
+		);
 	});
 
 	test('is passed on by compile() and runs before the banner is prepended', async () => {
