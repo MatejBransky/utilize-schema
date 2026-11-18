@@ -170,6 +170,9 @@ for the full numbers and methodology.
 `✅` supported, `❌` rejected with a clear error, `—` accepted but only kept as
 an annotation.
 
+The table covers the two runtime generators; keyword coverage for the TypeScript
+generator is in its README (`packages/typescript/README.md#keyword-coverage`).
+
 Zod and Effect Schema infer `type` from a single keyword family (object, array,
 string or number), so constraints such as `{ pattern }` or `{ required }`
 are not silently dropped.

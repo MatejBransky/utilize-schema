@@ -7,7 +7,7 @@ the project this repository started from. Read it as **a description of what
 each project measures**, not as a ranking: the tools emit different artifacts
 and their numbers are not directly comparable.
 
-Both projects run the official
+Every project here runs the official
 [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
 
 ## How each project measures conformance
@@ -72,11 +72,11 @@ commit `3c25e5f`):
 
 ## What a fair comparison would need
 
-Run both tools against the same suite revision, keep only the cases whose outcome
-a TypeScript type can express, and compare the same metric.
-`@utilize/typescript` already does this at its pinned revision; its README
-records the numbers next to json-schema-to-typescript's. Until the revisions
-match, read the numbers above as different records, not as a score.
+Run every tool against the same suite revision, keep only the cases whose
+outcome a TypeScript type can express, and compare the same metric.
+`@utilize/typescript` is that comparison for the type-level metric at its pinned
+revision; its README records both numbers. Until the revisions match, read the
+numbers above as different records, not as a score.
 
 ## Reproducing
 
