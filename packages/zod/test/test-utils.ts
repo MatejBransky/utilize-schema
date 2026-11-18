@@ -15,7 +15,7 @@ import { generate, type GenerateOptions } from '../src/generator';
 import type { CustomSchemaResolver, FormatMap } from '../src/generators/types';
 
 /** Generator options a test can override; the rest keep their test defaults. */
-type TestGenerateOptions = Pick<GenerateOptions, 'schemaName' | 'typeName'>;
+type TestGenerateOptions = Pick<GenerateOptions, 'schemaName' | 'typeName' | 'runtimeImport'>;
 
 /**
  * A tagged template literal function for expected TypeScript code. Code is
@@ -79,6 +79,7 @@ export async function compile(schema: JSONSchema, options?: CompileOptions & Dia
 		typeName: options?.typeName,
 		formatMap: options?.formatMap,
 		customSchemaResolver: options?.customSchemaResolver,
+		runtimeImport: options?.runtimeImport,
 	});
 	return formatSource(code);
 }

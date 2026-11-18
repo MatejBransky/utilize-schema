@@ -40,6 +40,11 @@ export interface GenerateOptions {
 	formatMap?: FormatMap;
 	/** Emits a caller-provided Zod expression for a matching schema node. */
 	customSchemaResolver?: CustomSchemaResolver;
+	/**
+	 * Module the generated code imports the `oneOfSchema` helper from, e.g.
+	 * `@utilize/zod/runtime`, instead of declaring its own copy in every file.
+	 */
+	runtimeImport?: string;
 }
 
 /** Names the generated code uses besides the declarations. */
@@ -140,7 +145,11 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 	}
 
 	if (context.usesOneOf) {
-		code.splice((options?.importZod ?? true) ? 1 : 0, 0, ONE_OF_HELPER + NEWLINE);
+		const helper = options.runtimeImport
+			? ts`import { oneOfSchema } from ${singleQuoted(options.runtimeImport)};${NEWLINE}`
+			: ONE_OF_HELPER + NEWLINE;
+
+		code.splice((options.importZod ?? true) ? 1 : 0, 0, helper);
 	}
 
 	return code.join(NEWLINE);
@@ -178,6 +187,11 @@ function nameDeclarations(schemas: ParsedJSONSchemaObject[], options: GenerateOp
 	};
 }
 
+function singleQuoted(text: string): string {
+	return `'${text.replaceAll('\\', '\\\\').replaceAll("'", "\\'")}'`;
+}
+
+/** Declared in every file that needs it, unless `runtimeImport` is set. Keep in sync with `runtime.ts`. */
 const ONE_OF_HELPER = ts`function oneOfSchema<T extends z.ZodType>(
   options: readonly T[]
 ): z.ZodType<z.output<T>, z.input<T>> {
