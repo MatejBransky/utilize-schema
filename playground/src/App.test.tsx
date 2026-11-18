@@ -92,6 +92,16 @@ function savedFiles(): SchemaFile[] {
 	return JSON.parse(localStorage.getItem('utilize-schema-playground') ?? '{"files":[]}').files;
 }
 
+function savedData(): string {
+	return JSON.parse(localStorage.getItem('utilize-schema-playground') ?? '{"data":""}').data;
+}
+
+function resultStatus(target: 'zod' | 'effect'): string | null {
+	return (
+		document.querySelector(`[data-testid="result-${target}"]`)?.getAttribute('data-status') ?? null
+	);
+}
+
 test('dragging JSON files over the editor shows the add and replace targets', async () => {
 	const screen = await render(<App />);
 
@@ -517,4 +527,62 @@ test('rejects renaming to an existing file name', async () => {
 
 	await expect.element(screen.getByText('A file with this name already exists.')).toBeVisible();
 	expect(screen.getByLabelText('File name')).toBeInTheDocument();
+});
+
+test('the test data is validated by the generated Zod and Effect schemas', async () => {
+	const screen = await render(<App />);
+
+	await expect.element(screen.getByTestId('data-editor')).toBeVisible();
+	await expect.element(screen.getByTestId('validator-results')).toBeVisible();
+
+	await vi.waitFor(
+		() => {
+			expect(resultStatus('zod')).toBe('valid');
+			expect(resultStatus('effect')).toBe('valid');
+		},
+		{ timeout: 15_000 }
+	);
+	expect(savedData()).toContain('"firstName": "Ada"');
+
+	await screen.getByRole('button', { name: 'Invalid' }).click();
+
+	await vi.waitFor(
+		() => {
+			expect(resultStatus('zod')).toBe('invalid');
+			expect(resultStatus('effect')).toBe('invalid');
+		},
+		{ timeout: 15_000 }
+	);
+
+	const zodCard = document.querySelector('[data-testid="result-zod"]');
+
+	expect(zodCard?.textContent).toContain('$.address.zip');
+	expect(savedData()).toContain('"zip": "12"');
+});
+
+test('switching examples loads their test data', async () => {
+	const screen = await render(<App />);
+
+	await screen.getByRole('combobox', { name: 'Example' }).click();
+	await screen.getByRole('option', { name: /Enum/ }).click();
+
+	await vi.waitFor(() => expect(savedData()).toBe('"green"'));
+	await vi.waitFor(
+		() => {
+			expect(resultStatus('zod')).toBe('valid');
+			expect(resultStatus('effect')).toBe('valid');
+		},
+		{ timeout: 15_000 }
+	);
+
+	await screen.getByRole('button', { name: 'Invalid' }).click();
+
+	await vi.waitFor(
+		() => {
+			expect(resultStatus('zod')).toBe('invalid');
+			expect(resultStatus('effect')).toBe('invalid');
+		},
+		{ timeout: 15_000 }
+	);
+	expect(savedData()).toBe('"purple"');
 });
