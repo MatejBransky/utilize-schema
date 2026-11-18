@@ -18,12 +18,13 @@ export const generator = createGenerator(
 
 		return false;
 	},
-	(schema) => {
-		const format = schema.format && formatToZodMethod[schema.format];
+	(schema, context) => {
+		const format =
+			schema.format && (context.formatMap?.[schema.format] ?? formatExpression(schema.format));
 		let expression: string;
 
 		if (format) {
-			expression = ts`z${format}`;
+			expression = format;
 		} else {
 			expression = ts`z.string()`;
 		}
@@ -33,6 +34,12 @@ export const generator = createGenerator(
 		return expression;
 	}
 );
+
+function formatExpression(format: string) {
+	const method = formatToZodMethod[format];
+
+	return method ? ts`z${method}` : undefined;
+}
 
 interface StringConstraints {
 	expression: string;

@@ -11,7 +11,7 @@ import { collectStandaloneSchemas } from './collectStandaloneSchemas';
 import { unsupportedUnionCycleError } from './errors';
 import { findCyclicSchemas } from './findCyclicSchemas';
 import { generateSchema } from './generators/generateSchema';
-import type { GeneratorContext } from './generators/types';
+import type { FormatMap, GeneratorContext } from './generators/types';
 import {
 	allocateName,
 	mapDeclarationNames,
@@ -34,6 +34,8 @@ export interface GenerateOptions {
 	typeName?: NameMapper;
 	/** Map `readOnly: true` to `.readonly()`; off by default because it changes the value type. */
 	readOnlyKeyword?: boolean;
+	/** Replaces the built-in `format` to Zod mapping. */
+	formatMap?: FormatMap;
 }
 
 /** Names the generated code uses besides the declarations. */
@@ -44,6 +46,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		return generateSchema(root, {
 			lazyRefs: new Set(),
 			readOnlyKeyword: options.readOnlyKeyword,
+			formatMap: options.formatMap,
 			nameOf: () => {
 				throw new Error('A primitive schema cannot reference another schema.');
 			},
@@ -83,6 +86,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 	const context: GeneratorContext = {
 		lazyRefs: broken.lazyRefs,
 		readOnlyKeyword: options.readOnlyKeyword,
+		formatMap: options.formatMap,
 		nameOf: (schema) => namesOf(schema).schema,
 		dialect: dialectOf(root),
 	};

@@ -1,5 +1,12 @@
 import type { Dialect, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
+/**
+ * Maps a JSON Schema `format` name to a Zod string expression. The expression
+ * replaces the built-in mapping and string constraints are appended to it, so
+ * it has to be a string schema.
+ */
+export type FormatMap = Record<string, string>;
+
 export type GeneratorContext = {
 	/** $refs that must be emitted as `z.lazy()` because a getter cannot defer them. */
 	lazyRefs: Set<ParsedJSONSchemaObject>;
@@ -15,4 +22,6 @@ export type GeneratorContext = {
 	 * without `Meta` read it from here instead of resolving it again.
 	 */
 	dialect: Dialect;
+	/** Replaces the built-in `format` to Zod mapping. */
+	formatMap?: FormatMap;
 };
