@@ -1,7 +1,4 @@
-import { generate as generateEffect } from '@utilize/effect';
 import { type KeywordPolicy, parse } from '@utilize/json-schema';
-import { generate as generateTypeScript } from '@utilize/typescript';
-import { generate as generateZod } from '@utilize/zod';
 import { Button } from '@ui-sdk/react/button';
 import { Input } from '@ui-sdk/react/input';
 import {
@@ -40,16 +37,26 @@ import {
 	examples,
 } from './examples';
 import { defaultFormatMode, formatModes, isFormatMode, type FormatMode } from './formatMode';
+import {
+	generateCodeFor,
+	generateRuntimeCode,
+	type RuntimeCode,
+	type RuntimeSource,
+} from './generateCode';
 import { formatTypeScript } from './monaco/format';
 import { MonacoEditor, type MonacoEditorHandle } from './monaco/MonacoEditor';
 import { compileModule } from './monaco/transpile';
-import { validate, type RuntimeCode } from './runtime';
+import { validate, type RuntimeResult } from './runtime';
 import { defaultTarget, isTargetId, targets, type TargetId } from './targets';
 import { loadColorMode, THEME_STORAGE_KEY, type ColorMode } from './theme';
 import { Header } from './ui/Header';
 import { CheckIcon, CloseIcon, PencilIcon, PlusIcon } from './ui/icons';
 import { SelectPicker } from './ui/SelectPicker';
-import { ValidatorResults, type ValidationState } from './ui/ValidatorResults';
+import {
+	ValidatorResults,
+	type ValidationState,
+	type ValidatorOutcome,
+} from './ui/ValidatorResults';
 import { useFileDrop } from './useFileDrop';
 import { validateSchemas } from './validation';
 
@@ -89,7 +96,7 @@ export default function App() {
 	const [renameError, setRenameError] = useState<string | null>(null);
 	const [code, setCode] = useState('');
 	const [busy, setBusy] = useState(false);
-	const [runtimeCode, setRuntimeCode] = useState<RuntimeCode>({});
+	const [runtimeCode, setRuntimeCode] = useState<RuntimeCode | null>(null);
 	const [validation, setValidation] = useState<ValidationState>({ status: 'running' });
 	const [generationProblems, setGenerationProblems] = useState<Problem[]>([]);
 	const [cursor, setCursor] = useState({ line: 1, column: 1 });
@@ -208,7 +215,7 @@ export default function App() {
 		const timer = setTimeout(async () => {
 			let nextCode = '';
 			const nextProblems: Problem[] = [];
-			let nextRuntime: RuntimeCode = {};
+			let nextRuntime: RuntimeCode | null = null;
 
 			if (bundle.root !== null) {
 				try {
@@ -220,44 +227,15 @@ export default function App() {
 					});
 
 					const generatorOptions = exampleId ? exampleGeneratorOptions[exampleId] : undefined;
-					// The generated validators can be tried out next to the
-					// output, so both runtime targets are generated even when
-					// the editor shows TypeScript or only one of them.
-					let zodCode: string | undefined;
-					let effectCode: string | undefined;
+					nextRuntime = generateRuntimeCode(root, formatMode, generatorOptions);
 
-					try {
-						zodCode = generateZod(root, {
-							importZod: true,
-							formatMode,
-							...generatorOptions?.zod,
-						});
-					} catch (error) {
-						if (target === 'zod') {
-							throw error;
-						}
-					}
-
-					try {
-						effectCode = generateEffect(root, {
-							importEffect: true,
-							formatMode,
-							...generatorOptions?.effect,
-						});
-					} catch (error) {
-						if (target === 'effect') {
-							throw error;
-						}
-					}
-
-					const rawCode =
-						target === 'zod'
-							? zodCode!
-							: target === 'effect'
-								? effectCode!
-								: generateTypeScript(root, { ...generatorOptions?.typescript });
-
-					nextRuntime = { zod: zodCode, effect: effectCode };
+					const rawCode = generateCodeFor(
+						target,
+						root,
+						nextRuntime,
+						formatMode,
+						generatorOptions
+					);
 
 					const formatCode =
 						generatorOptions?.format ??
@@ -287,7 +265,7 @@ export default function App() {
 	}, [bundle, exampleId, target, keywordPolicy, formatMode]);
 
 	useEffect(() => {
-		if (!runtimeCode.zod && !runtimeCode.effect) {
+		if (!runtimeCode) {
 			setValidation(busy ? { status: 'running' } : { status: 'unavailable' });
 			return;
 		}
@@ -309,8 +287,12 @@ export default function App() {
 		const timer = setTimeout(async () => {
 			try {
 				const [zodModule, effectModule] = await Promise.all([
-					runtimeCode.zod ? compileModule(runtimeCode.zod) : Promise.resolve({}),
-					runtimeCode.effect ? compileModule(runtimeCode.effect) : Promise.resolve({}),
+					runtimeCode.zod.status === 'generated'
+						? compileModule(runtimeCode.zod.code)
+						: Promise.resolve({}),
+					runtimeCode.effect.status === 'generated'
+						? compileModule(runtimeCode.effect.code)
+						: Promise.resolve({}),
 				]);
 
 				if (cancelled) {
@@ -321,8 +303,8 @@ export default function App() {
 
 				setValidation({
 					status: 'ready',
-					zod: runtimeCode.zod ? results.zod : null,
-					effect: runtimeCode.effect ? results.effect : null,
+					zod: outcomeFor(runtimeCode.zod, results.zod),
+					effect: outcomeFor(runtimeCode.effect, results.effect),
 				});
 			} catch (error) {
 				if (!cancelled) {
@@ -1223,3 +1205,8 @@ function uniqueName(base: string, files: SchemaFile[]): string {
 	return `${stem}-${counter}${extension}`;
 }
 
+function outcomeFor(source: RuntimeSource, result: RuntimeResult): ValidatorOutcome {
+	return source.status === 'failed'
+		? { status: 'unavailable', reason: source.error.message }
+		: { status: 'checked', result };
+}
