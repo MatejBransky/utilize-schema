@@ -341,9 +341,11 @@ function generateType(schema: ParsedJSONSchemaObject, context: Context): string 
 	if (Array.isArray(schema.type)) {
 		const members = [
 			...new Set(
-				schema.type.map((type) =>
-					generateType(schemaWithType(schema, type as ParsedJSONSchemaObject['type']), context)
-				)
+				schema.type.map((type) => {
+					const branch = schemaWithType(schema, type as ParsedJSONSchemaObject['type']);
+
+					return context.customSchemaResolver?.(branch) ?? generateType(branch, context);
+				})
 			),
 		];
 

@@ -58,6 +58,24 @@ describe('customSchemaResolver', () => {
     `);
 	});
 
+	test('replaces a single type of a type list, like the Zod generator', async () => {
+		await expect(
+			compile(
+				{ type: ['string', 'null'], format: 'date-time' },
+				{
+					customSchemaResolver: (schema) =>
+						schema.type === 'string' && schema.format === 'date-time'
+							? 'Schema.Finite'
+							: undefined,
+				}
+			)
+		).toMatchCode(ts`
+      export const Root = Schema.Union([Schema.Finite, Schema.Null]).annotate({ format: 'date-time' });
+
+      export type Root = typeof Root.Type;
+    `);
+	});
+
 	test('leaves unmatched nodes to the generator', async () => {
 		await expect(compile({ type: 'string' }, { customSchemaResolver: () => undefined }))
 			.toMatchCode(ts`
