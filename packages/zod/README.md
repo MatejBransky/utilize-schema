@@ -79,7 +79,9 @@ pnpm add zod
   `'@utilize/zod/runtime'`. By default every generated file that needs the
   helper declares its own copy; with this option it imports the one exported
   by `@utilize/zod/runtime` (or your own module exporting `oneOfSchema`).
-  `zod` must then be installed where the generated code runs, as usual.
+  `zod` must then be installed where the generated code runs, as usual. The
+  specifier is written into every file unchanged, so a relative path only
+  works for files in one directory; prefer a package name or path alias.
 - `format(code)` — optional synchronous or asynchronous formatter (for example
   Prettier) applied to the generated code before the banner is prepended. Pass
   `false` or omit it to keep the generator output as-is.
@@ -117,7 +119,9 @@ different `const` or `enum` values, different types, or objects with a
 different `const` on the same required property. Otherwise it uses the
 `oneOfSchema` helper, which checks that exactly one branch matches (see
 `runtimeImport`). An inline subschema that is identical to a standalone schema
-is generated as a reference to it.
+is generated as a reference to it. An `anyOf` with a branch that accepts every
+value, such as `anyOf: [X, {}]`, is left out: it never rejects a value, so
+`.parse()` returns what the rest of the schema keeps.
 
 ## Naming
 
