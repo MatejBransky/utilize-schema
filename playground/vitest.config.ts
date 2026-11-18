@@ -10,7 +10,12 @@ const isGitHubActions = process.env.GITHUB_ACTIONS === 'true';
  * the Monaco TypeScript worker, and drag and drop (`DataTransfer`). Everything
  * else runs in Node, so CI only pays the Chromium startup for this project.
  */
-const browserTests = ['src/**/*.test.tsx', 'src/drop.test.ts', 'src/monaco/types.test.ts'];
+const browserTests = [
+	'src/**/*.test.tsx',
+	'src/drop.test.ts',
+	'src/monaco/transpile.test.ts',
+	'src/monaco/types.test.ts',
+];
 
 export default mergeConfig(
 	viteConfig,

@@ -20,6 +20,12 @@ Schema or TypeScript code next to the schemas.
 - Live JSON and JSON Schema validation with AJV (draft-07, 2019-09 and
   2020-12 meta-schemas)
 - Unresolved `$ref`s and remote refs are reported
+- A test-data editor below the schemas runs the generated Zod and Effect Schema
+  validators in the browser and shows the decoded value or every validation
+  issue for both targets next to the data
+- Every example ships with valid and invalid test documents, so its generated
+  validators can be tried immediately; `src/examples.test.ts` asserts that the
+  generated validators accept and reject those documents as expected
 - The whole workspace is saved to `localStorage` and can be shared through a
   URL hash
 
