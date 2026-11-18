@@ -12,6 +12,8 @@ import { unsupportedUnionCycleError } from './errors';
 import { findCyclicSchemas } from './findCyclicSchemas';
 import { generateSchema } from './generators/generateSchema';
 import type { FormatMap, GeneratorContext } from './generators/types';
+
+export type { FormatMap } from './generators/types';
 import {
 	allocateName,
 	mapDeclarationNames,

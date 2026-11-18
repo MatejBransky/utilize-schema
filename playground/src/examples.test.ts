@@ -7,17 +7,18 @@ import { expect, test } from 'vitest';
 import './polyfills';
 
 import { buildBundle, parseJsonFile } from './bundle';
+import { exampleGeneratorOptions, type ExampleGeneratorOptions } from './exampleOptions';
 import { examples } from './examples';
 
 const generators: Array<{
 	name: string;
 	marker: string;
-	generate: (root: ParsedJSONSchema) => string;
+	generate: (root: ParsedJSONSchema, options?: ExampleGeneratorOptions) => string;
 }> = [
 	{
 		name: 'Zod',
 		marker: 'export const',
-		generate: (root) => generateZod(root, { importZod: true }),
+		generate: (root, options) => generateZod(root, { importZod: true, ...options?.zod }),
 	},
 	{
 		name: 'Effect Schema',
@@ -47,7 +48,7 @@ for (const example of examples) {
 				cwd: '/',
 				fileName: bundle.rootFileName,
 			});
-			const code = generator.generate(root);
+			const code = generator.generate(root, exampleGeneratorOptions[example.id]);
 
 			expect(code).toContain(generator.marker);
 		});
