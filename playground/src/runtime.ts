@@ -94,7 +94,8 @@ export function validateWithZod(schema: unknown, data: unknown): RuntimeResult {
 }
 
 export function validateWithEffect(schema: unknown, data: unknown): RuntimeResult {
-	const result = Schema.decodeUnknownResult(schema as never)(data);
+	// The default, `"first"`, stops at the first issue and hides the rest.
+	const result = Schema.decodeUnknownResult(schema as never, { errors: 'all' })(data);
 
 	if (Result.isSuccess(result)) {
 		return { ok: true, value: result.success, issues: [] };
