@@ -10,6 +10,8 @@ const person = Person.parse(input);
 
 > Requires TypeScript 7.1 beta and Node 24.
 
+The content mapper plus runtime loader shape is inspired by [Reylo](https://reylo.dev/) and [Motherload](https://motherload.dev/).
+
 ## Setup
 
 ```jsonc
