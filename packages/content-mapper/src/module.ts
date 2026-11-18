@@ -1,4 +1,4 @@
-import { basename, dirname } from 'node:path';
+import { basename, dirname, isAbsolute, resolve } from 'node:path';
 
 import { generate as generateEffect } from '@utilize/effect';
 import { Meta, parse, type JSONSchema, type ParsedJSONSchema } from '@utilize/json-schema';
@@ -24,6 +24,8 @@ export interface MapperDiagnostic {
 export interface SchemaModule {
 	text: string;
 	diagnostics?: MapperDiagnostic[];
+	/** Files read while resolving `$ref`s. Bundlers should watch them. */
+	dependencies?: string[];
 }
 
 const targets = new Set<Target>(['zod', 'effect', 'typescript']);
@@ -59,17 +61,47 @@ export async function schemaModule(
 	}
 
 	try {
-		const { root } = await parse(schema, {
+		const { root, referencedSchemas } = await parse(schema, {
 			cwd: dirname(fileName),
 			fileName: basename(fileName),
 		});
-		return generate(root, target);
+
+		// `issues` holds dialect warnings (`keywordPolicy: 'warn'`). The protocol
+		// has no warning channel, and turning them into diagnostics would report
+		// errors for schemas the CLI accepts with only a warning.
+		return withDependencies(generate(root, target), referencedSchemas, dirname(fileName));
 	} catch (error) {
 		return {
 			text: 'export {};\n',
 			diagnostics: [diagnostic(messageOf(error), content, 0, 0)],
 		};
 	}
+}
+
+/**
+ * Records the external files `parse` read, so a bundler can watch them. Their
+ * `filePath` meta is relative to the schema file (absolute when the referenced
+ * file lives outside that directory).
+ */
+function withDependencies(
+	generated: SchemaModule,
+	referencedSchemas: readonly ParsedJSONSchema[],
+	cwd: string
+): SchemaModule {
+	const files = new Set<string>();
+
+	for (const schema of referencedSchemas) {
+		const filePath =
+			typeof schema === 'object' && schema !== null ? schema[Meta]?.filePath : undefined;
+
+		if (!filePath || filePath === '#') {
+			continue;
+		}
+
+		files.add(isAbsolute(filePath) ? filePath : resolve(cwd, filePath));
+	}
+
+	return files.size > 0 ? { ...generated, dependencies: [...files] } : generated;
 }
 
 function generate(root: ParsedJSONSchema, target: Target): SchemaModule {
@@ -118,10 +150,16 @@ function diagnostic(
 	start: number,
 	length: number
 ): MapperDiagnostic {
+	// TypeScript rejects the whole transform when a diagnostic ends past the
+	// content, which is exactly what a parse error at the end of the file
+	// reports (for example an unterminated object while typing).
+	const total = Buffer.byteLength(content, 'utf8');
+	const safeStart = Math.min(start, total);
+
 	return {
 		messageText: message,
-		start: Math.min(start, Buffer.byteLength(content, 'utf8')),
-		length,
+		start: safeStart,
+		length: Math.min(length, total - safeStart),
 		code: 1,
 	};
 }
