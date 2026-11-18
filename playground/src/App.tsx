@@ -200,7 +200,12 @@ export default function App() {
 						exampleId ? exampleGeneratorOptions[exampleId] : undefined
 					);
 
-					nextCode = cancelled ? nextCode : await formatTypeScript(rawCode).catch(() => rawCode);
+					const exampleOptions = exampleId ? exampleGeneratorOptions[exampleId] : undefined;
+					const formatted = exampleOptions?.format
+						? await exampleOptions.format(rawCode)
+						: await formatTypeScript(rawCode).catch(() => rawCode);
+
+					nextCode = cancelled ? nextCode : formatted;
 				} catch (error) {
 					nextProblems.push({
 						severity: 'error',
