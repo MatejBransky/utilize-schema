@@ -1,4 +1,5 @@
 import {
+	type Dialect,
 	dialectOf,
 	type ParsedJSONSchema,
 	type ParsedJSONSchemaObject,
@@ -25,7 +26,9 @@ export const generateSchema = (schema: ParsedJSONSchema | undefined, context: Ge
 
 	let expression = generateCore(schema, nodeContext);
 
-	expression = applyRefinements(expression, schema, nodeContext, generateSchema);
+	if (!ignoresRefSiblings(schema, dialect)) {
+		expression = applyRefinements(expression, schema, nodeContext, generateSchema);
+	}
 
 	if (
 		schema.$id ||
@@ -47,6 +50,14 @@ export const generateSchema = (schema: ParsedJSONSchema | undefined, context: Ge
 
 	return expression;
 };
+
+/**
+ * True for a `$ref` node in a dialect that ignores every keyword next to the
+ * reference (draft-07 and older), so no refinement may be applied to it.
+ */
+function ignoresRefSiblings(schema: ParsedJSONSchemaObject, dialect: Dialect): boolean {
+	return typeof schema.$ref === 'string' && dialect.refSiblings === 'ignore';
+}
 
 /**
  * Generates the schema without applying refinements or metadata, and combines

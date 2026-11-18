@@ -68,6 +68,40 @@ describe('$ref siblings', () => {
 		expect(Root.safeParse({ value: 'a' }).success).toBe(false);
 	});
 
+	test('draft-07 ignores filter siblings', async () => {
+		const schema = {
+			$schema: draft07,
+			$defs: { Name: { type: 'string' }, List: { type: 'array' } },
+			type: 'object',
+			properties: {
+				name: { $ref: '#/$defs/Name', not: { const: 'x' } },
+				list: { $ref: '#/$defs/List', uniqueItems: true },
+			},
+		} as unknown as JSONSchema;
+
+		const Root = await compileToZod(schema);
+
+		expect(Root.safeParse({ name: 'x', list: [1, 1] }).success).toBe(true);
+	});
+
+	test('2020-12 applies filter siblings', async () => {
+		const schema = {
+			$schema: twentyTwentyTwelve,
+			$defs: { Name: { type: 'string' }, List: { type: 'array' } },
+			type: 'object',
+			properties: {
+				name: { $ref: '#/$defs/Name', not: { const: 'x' } },
+				list: { $ref: '#/$defs/List', uniqueItems: true },
+			},
+		} as unknown as JSONSchema;
+
+		const Root = await compileToZod(schema);
+
+		expect(Root.safeParse({ name: 'y', list: [1, 2] }).success).toBe(true);
+		expect(Root.safeParse({ name: 'x' }).success).toBe(false);
+		expect(Root.safeParse({ list: [1, 1] }).success).toBe(false);
+	});
+
 	test('2020-12 generates an intersection', async () => {
 		await expect(compile(refWithSiblings(twentyTwentyTwelve))).resolves.toContain('.intersection(');
 		await expect(compile(refWithSiblings(draft07))).resolves.not.toContain('.intersection(');
