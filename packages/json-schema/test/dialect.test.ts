@@ -297,6 +297,40 @@ describe('parse metadata', () => {
 		expect((root as { [Meta]: { dialectSource: string } })[Meta].dialectSource).toBe('declared');
 	});
 
+	test('gives nodes outside the visited keywords the dialect of their parent', async () => {
+		const schema = {
+			$schema: twentyTwentyTwelve,
+			type: 'object',
+			properties: { name: { type: 'string' } },
+		} as JSONSchema;
+		const parsed = await parse(schema, {
+			cwd: __dirname + '/',
+			fileName: 'Root.json',
+			dialect: '2019-09',
+		});
+		const properties = (parsed.root as unknown as { properties: { [Meta]: Meta } }).properties;
+
+		expect(properties[Meta]).toMatchObject({ dialect: '2019-09', dialectSource: 'forced' });
+	});
+
+	test('resolves the dialect inside unevaluatedItems', async () => {
+		const schema = {
+			$schema: twentyTwentyTwelve,
+			type: 'array',
+			items: { type: 'string' },
+			unevaluatedItems: { type: 'object', dependentRequired: { a: ['b'] } },
+		} as JSONSchema;
+		const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Root.json' });
+		const unevaluated = (parsed.root as unknown as { unevaluatedItems: Record<string, unknown> })
+			.unevaluatedItems;
+
+		expect((unevaluated as { [Meta]: Meta })[Meta]).toMatchObject({
+			dialect: '2020-12',
+			dialectSource: 'declared',
+		});
+		expect(unevaluated.dependencies).toEqual({ a: ['b'] });
+	});
+
 	test('marks a schema without $schema as a fallback', async () => {
 		const parsed = await parse({ type: 'string' } as JSONSchema, {
 			cwd: __dirname + '/',

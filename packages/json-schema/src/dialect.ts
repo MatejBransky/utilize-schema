@@ -410,15 +410,6 @@ export function resolveDialect(schema: unknown, options: DialectOptions = {}): R
 	return { dialect: fallback, source: 'fallback' };
 }
 
-/** Resolves a dialect for a node that is not annotated yet. */
-export function dialectFor(schema: unknown, fallback: DialectId = 'draft-07'): ResolvedDialect {
-	const detected = detectDialect(schema);
-
-	return detected
-		? { dialect: detected.dialect, source: 'declared' }
-		: { dialect: dialects[fallback], source: 'fallback' };
-}
-
 /** Returns the dialect stored on a linked node, or `fallback`. */
 export function dialectOf(
 	schema: ParsedJSONSchemaObject | unknown,

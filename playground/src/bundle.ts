@@ -339,6 +339,9 @@ const MAP_KEYWORDS = new Set([
 const SINGLE_SCHEMA_KEYWORDS = new Set([
 	'additionalProperties',
 	'additionalItems',
+	'unevaluatedProperties',
+	'unevaluatedItems',
+	'contentSchema',
 	'contains',
 	'propertyNames',
 	'if',

@@ -2,7 +2,7 @@ import type { $Refs } from '@apidevtools/json-schema-ref-parser';
 
 import { join as pathJoin, dirname } from 'path';
 
-import { dialectFor } from './dialect';
+import { resolveDialect } from './dialect';
 import {
 	Meta,
 	type JSONSchema,
@@ -21,7 +21,10 @@ export interface LinkNodeOptions {
 	$refs: $Refs;
 	stack: Set<JSONSchema>;
 	fileName: string;
-	/** Dialects resolved by `prepareSchema`. Missing nodes fall back to draft-07. */
+	/**
+	 * Dialects resolved by `prepareSchema`. A node it did not visit inherits
+	 * the dialect of its parent.
+	 */
 	dialects?: DialectMap;
 }
 
@@ -79,15 +82,12 @@ export function link({
 		return schema as unknown as ParsedJSONSchemaObject;
 	}
 
-	const resolvedDialect = dialects?.get(schema) ?? dialectFor(schema);
-
 	const meta: Meta = {
 		filePath,
 		fileName,
 		path,
 		parent: parent as ParsedJSONSchemaObject,
-		dialect: resolvedDialect.dialect.id,
-		dialectSource: resolvedDialect.source,
+		...dialectMeta(schema, parent, dialects),
 	};
 
 	if (ref && $refs.exists(pointer, {})) {
@@ -166,4 +166,26 @@ export function link({
 	stack.delete(schema);
 
 	return schema as unknown as ParsedJSONSchemaObject;
+}
+
+function dialectMeta(
+	schema: JSONSchema,
+	parent: JSONSchema | null,
+	dialects: DialectMap | undefined
+): Pick<Meta, 'dialect' | 'dialectSource'> {
+	const prepared = dialects?.get(schema);
+
+	if (prepared) {
+		return { dialect: prepared.dialect.id, dialectSource: prepared.source };
+	}
+
+	const parentMeta = (parent as ParsedJSONSchemaObject | null)?.[Meta];
+
+	if (parentMeta) {
+		return { dialect: parentMeta.dialect, dialectSource: parentMeta.dialectSource };
+	}
+
+	const resolved = resolveDialect(schema);
+
+	return { dialect: resolved.dialect.id, dialectSource: resolved.source };
 }
