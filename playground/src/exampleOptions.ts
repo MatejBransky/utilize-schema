@@ -14,6 +14,8 @@ export interface ExampleGeneratorOptions {
 	typescript?: {
 		customSchemaResolver?: TypeScriptCustomSchemaResolver;
 	};
+	/** Applied after generation, like the `format` hook on `compile()`. */
+	format?: (code: string) => string | Promise<string>;
 }
 
 export const exampleGeneratorOptions: Record<string, ExampleGeneratorOptions> = {
@@ -23,6 +25,9 @@ export const exampleGeneratorOptions: Record<string, ExampleGeneratorOptions> = 
 				'phone-number': String.raw`z.string().regex(/^\d{3}-\d{4}$/)`,
 			},
 		},
+	},
+	'formatter-hook': {
+		format: (code) => `// formatted by the example format hook\n${code.trim()}\n`,
 	},
 	'custom-resolver': {
 		zod: {

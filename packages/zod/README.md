@@ -75,6 +75,9 @@ pnpm add zod
   });
   ```
 
+- `format(code)` — optional synchronous or asynchronous formatter (for example
+  Prettier) applied to the generated code before the banner is prepended. Pass
+  `false` or omit it to keep the generator output as-is.
 - `bannerComment` — header prepended to written files; `false` disables it.
 
 For custom pipelines, `compileFile()` and `compileSchema()` return the generated

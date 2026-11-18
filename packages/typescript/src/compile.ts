@@ -19,6 +19,8 @@ export interface CompileOptions {
 	customNameResolver?: CustomNameResolver;
 	/** Emits a caller-provided TypeScript type for a matching schema node. */
 	customSchemaResolver?: CustomSchemaResolver;
+	/** Runs a formatter (for example Prettier) over the generated code. */
+	format?: CodeFormatter | false;
 	/** Header prepended to the generated file. Pass `false` to omit it. */
 	bannerComment?: string | false;
 }
@@ -28,7 +30,11 @@ export interface CompileSchemaOptions {
 	fileName: string;
 	customNameResolver?: CustomNameResolver;
 	customSchemaResolver?: CustomSchemaResolver;
+	format?: CodeFormatter | false;
 }
+
+/** A synchronous or asynchronous formatter applied to generated code. */
+export type CodeFormatter = (code: string) => string | Promise<string>;
 
 export const DEFAULT_BANNER = `/* eslint-disable */
 /**
@@ -50,6 +56,7 @@ export async function compile(options: CompileOptions): Promise<void> {
 	const code = await compileFile(inputPath, {
 		customNameResolver: options.customNameResolver,
 		customSchemaResolver: options.customSchemaResolver,
+		format: options.format,
 	});
 
 	writeFileSync(outputPath, withBanner(code, options.bannerComment), 'utf8');
@@ -71,10 +78,12 @@ export async function compileSchema(schema: JSONSchema, options: CompileSchemaOp
 		fileName: options.fileName,
 	});
 
-	return generate(root, {
+	const code = generate(root, {
 		customNameResolver: options.customNameResolver,
 		customSchemaResolver: options.customSchemaResolver,
 	});
+
+	return options.format ? options.format(code) : code;
 }
 
 export function readSchema(filePath: string): JSONSchema {

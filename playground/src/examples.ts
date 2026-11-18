@@ -326,6 +326,13 @@ export const examples: Example[] = [
 		type: 'string',
 		format: 'phone-number',
 	}),
+	single('formatter-hook', 'Formatter hook', 'Advanced', {
+		title: 'Formatted',
+		type: 'object',
+		properties: {
+			name: { type: 'string' },
+		},
+	}),
 	single('custom-resolver', 'Custom schema resolver', 'Advanced', {
 		title: 'Timestamp',
 		type: 'string',

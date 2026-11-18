@@ -44,6 +44,8 @@ Options:
   `Schema.optionalKey` for a non-required property is still added. Inside a
   recursive schema the value type types the node as `unknown`, because the
   generator cannot know your expression's type.
+- `format(code)` — optional synchronous or asynchronous formatter (for example
+  Prettier) applied to the generated code before the banner is prepended.
 - `importEffect` — emit `import { Schema } from 'effect';`; on by default.
 
 ## CLI

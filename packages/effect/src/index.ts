@@ -5,6 +5,7 @@ export {
 	DEFAULT_BANNER,
 	readSchema,
 	withBanner,
+	type CodeFormatter,
 	type CompileOptions,
 	type CompileSchemaOptions,
 } from './compile';
