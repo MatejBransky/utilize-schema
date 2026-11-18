@@ -16,7 +16,12 @@ export type RuntimeSource =
 	  }
 	| { status: 'failed'; error: Error };
 
-export type RuntimeCode = Record<RuntimeTargetId, RuntimeSource>;
+/** The code shown in the editor and, for a runtime target, the validator it produced. */
+export interface GeneratedCode {
+	code: string;
+	/** `null` for targets, such as TypeScript, that do not generate a runtime validator. */
+	runtime: RuntimeSource | null;
+}
 
 const runtimeGenerators: Record<
 	RuntimeTargetId,
@@ -26,34 +31,21 @@ const runtimeGenerators: Record<
 	effect: (root, options) => generateEffect(root, { importEffect: true, ...options?.effect }),
 };
 
-/**
- * Generates both runtime validators, so they can be tried out next to the
- * output even when the editor shows TypeScript or only one of them. A failing
- * generator does not stop the other one.
- */
-export function generateRuntimeCode(
-	root: ParsedJSONSchema,
-	options?: ExampleGeneratorOptions
-): RuntimeCode {
-	return {
-		zod: generateRuntimeSource(root, 'zod', options),
-		effect: generateRuntimeSource(root, 'effect', options),
-	};
-}
-
-/** Code shown in the output editor for the selected target. */
+/** Generates the code and runtime validator of the selected target only. */
 export function generateCodeFor(
 	target: TargetId,
 	root: ParsedJSONSchema,
-	runtime: RuntimeCode,
 	options?: ExampleGeneratorOptions
-) {
+): GeneratedCode {
 	switch (target) {
 		case 'zod':
-		case 'effect':
-			return generatedCode(runtime[target]);
+		case 'effect': {
+			const runtime = generateRuntimeSource(root, target, options);
+
+			return { code: generatedCode(runtime), runtime };
+		}
 		case 'typescript':
-			return generateTypeScript(root, { ...options?.typescript });
+			return { code: generateTypeScript(root, { ...options?.typescript }), runtime: null };
 		default: {
 			const unknownTarget: never = target;
 

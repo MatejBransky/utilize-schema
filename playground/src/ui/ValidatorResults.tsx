@@ -1,16 +1,18 @@
-import type { ValidationState, ValidatorOutcome } from '../validator/useValidatorResults';
+import { targets, type TargetId } from '../targets';
+import type { ValidationState } from '../validator/useValidatorResults';
 
 import styles from './ValidatorResults.module.css';
 
 interface ValidatorResultsProps {
+	target: TargetId;
 	state: ValidationState;
 }
 
-export function ValidatorResults({ state }: ValidatorResultsProps) {
+export function ValidatorResults({ target, state }: ValidatorResultsProps) {
 	if (state.status === 'unavailable') {
 		return (
 			<p className={styles.message} role="status">
-				The schema does not produce a runtime validator for this data.
+				{state.reason}
 			</p>
 		);
 	}
@@ -31,12 +33,9 @@ export function ValidatorResults({ state }: ValidatorResultsProps) {
 		);
 	}
 
-	const ready = state.status === 'ready';
-
 	return (
 		<div className={styles.results} data-testid="validator-results">
-			<ValidatorCard id="zod" name="Zod" outcome={ready ? state.zod : undefined} />
-			<ValidatorCard id="effect" name="Effect Schema" outcome={ready ? state.effect : undefined} />
+			<ValidatorCard id={target} name={targetLabel(target)} state={state} />
 		</div>
 	);
 }
@@ -44,19 +43,12 @@ export function ValidatorResults({ state }: ValidatorResultsProps) {
 interface ValidatorCardProps {
 	id: string;
 	name: string;
-	/** Missing while the validators are still running. */
-	outcome: ValidatorOutcome | undefined;
+	state: Extract<ValidationState, { status: 'running' | 'ready' }>;
 }
 
-function ValidatorCard({ id, name, outcome }: ValidatorCardProps) {
-	const result = outcome?.status === 'checked' ? outcome.result : undefined;
-	const status = !outcome
-		? 'running'
-		: outcome.status === 'unavailable'
-			? 'unavailable'
-			: outcome.result.ok
-				? 'valid'
-				: 'invalid';
+function ValidatorCard({ id, name, state }: ValidatorCardProps) {
+	const result = state.status === 'ready' ? state.result : undefined;
+	const status = !result ? 'running' : result.ok ? 'valid' : 'invalid';
 
 	return (
 		<section
@@ -68,21 +60,10 @@ function ValidatorCard({ id, name, outcome }: ValidatorCardProps) {
 			<div className={styles.cardHeader}>
 				<h3 className={styles.name}>{name}</h3>
 				<span className={styles.badge}>
-					{status === 'running'
-						? 'Running…'
-						: status === 'unavailable'
-							? 'Unavailable'
-							: status === 'valid'
-								? 'Valid'
-								: 'Invalid'}
+					{status === 'running' ? 'Running…' : status === 'valid' ? 'Valid' : 'Invalid'}
 				</span>
 			</div>
-			{outcome?.status === 'unavailable' ? (
-				<>
-					<p className={styles.note}>The generator did not produce a runtime schema.</p>
-					<p className={styles.message}>{outcome.reason}</p>
-				</>
-			) : status === 'running' ? (
+			{status === 'running' ? (
 				<p className={styles.note}>Compiling the generated schema…</p>
 			) : result?.ok ? (
 				<>
@@ -114,4 +95,8 @@ function ValidatorCard({ id, name, outcome }: ValidatorCardProps) {
 			)}
 		</section>
 	);
+}
+
+function targetLabel(target: TargetId): string {
+	return targets.find((item) => item.value === target)?.label ?? target;
 }
