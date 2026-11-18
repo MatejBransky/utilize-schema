@@ -193,6 +193,19 @@ const booleanRefSchema = {
 	$defs: { allowed: true, denied: false },
 } as unknown as JSONSchema;
 
+const patternPropertiesSchema: JSONSchema = {
+	type: 'object',
+	patternProperties: { '^a': { type: 'string' } },
+	additionalProperties: false,
+};
+
+const recursivePatternPropertiesSchema: JSONSchema = {
+	type: 'object',
+	properties: { name: { type: 'string' } },
+	patternProperties: { '^x-': { $ref: '#' } },
+	additionalProperties: { type: 'integer' },
+};
+
 describe('generated recursive schemas type-check', () => {
 	test('infer recursive value types with TypeScript', async () => {
 		await expect(
@@ -221,6 +234,8 @@ describe('generated recursive schemas type-check', () => {
 				'SiblingAllOf.ts': siblingAllOfSchema,
 				'SiblingAnyOf.ts': siblingAnyOfSchema,
 				'BooleanRef.ts': booleanRefSchema,
+				'PatternProperties.ts': patternPropertiesSchema,
+				'RecursivePatternProperties.ts': recursivePatternPropertiesSchema,
 			})
 		).resolves.toBeUndefined();
 	});

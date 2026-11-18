@@ -111,6 +111,10 @@ function patternRefinement(
 	context: GeneratorContext
 ): string {
 	const declared = Object.keys(schema.properties ?? {});
+	// An empty array literal is typed `never[]`, so `[].includes(key)` would not
+	// type-check in the generated code.
+	const isKnownKey =
+		declared.length > 0 ? `matched || ${JSON.stringify(declared)}.includes(key)` : 'matched';
 	const additionalProperties = schema.additionalProperties;
 	const additionalCheck = isSchemaObject<ParsedJSONSchemaObject>(additionalProperties)
 		? ts`
@@ -161,7 +165,7 @@ function patternRefinement(
 
         ${checks}
 
-        if (matched || ${JSON.stringify(declared)}.includes(key)) {
+        if (${isKnownKey}) {
           continue;
         }
 
