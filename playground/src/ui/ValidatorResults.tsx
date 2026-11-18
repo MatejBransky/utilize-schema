@@ -1,22 +1,6 @@
-import type { RuntimeResult } from '../runtime';
+import type { ValidationState, ValidatorOutcome } from '../validator/useValidatorResults';
 
 import styles from './ValidatorResults.module.css';
-
-/** What happened to one generated validator. */
-export type ValidatorOutcome =
-	| { status: 'unavailable'; reason: string }
-	| { status: 'checked'; result: RuntimeResult };
-
-export type ValidationState =
-	| { status: 'running' }
-	| { status: 'unavailable' }
-	| { status: 'invalid-json'; message: string }
-	| { status: 'error'; message: string }
-	| {
-			status: 'ready';
-			zod: ValidatorOutcome;
-			effect: ValidatorOutcome;
-	  };
 
 interface ValidatorResultsProps {
 	state: ValidationState;
@@ -103,7 +87,7 @@ function ValidatorCard({ id, name, outcome }: ValidatorCardProps) {
 			) : result?.ok ? (
 				<>
 					<p className={styles.note}>Decoded value</p>
-					<pre className={styles.value}>{formatValue(result.value)}</pre>
+					<pre className={styles.value}>{result.value}</pre>
 				</>
 			) : (
 				<>
@@ -130,16 +114,4 @@ function ValidatorCard({ id, name, outcome }: ValidatorCardProps) {
 			)}
 		</section>
 	);
-}
-
-function formatValue(value: unknown): string {
-	if (value === undefined) {
-		return 'undefined';
-	}
-
-	try {
-		return JSON.stringify(value, null, 2) ?? String(value);
-	} catch {
-		return String(value);
-	}
 }

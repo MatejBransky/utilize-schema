@@ -21,7 +21,7 @@ Schema or TypeScript code next to the schemas.
   2020-12 meta-schemas)
 - Unresolved `$ref`s and remote refs are reported
 - A test-data editor below the schemas runs the generated Zod and Effect Schema
-  validators in the browser and shows the decoded value or every validation
+  validators in a Web Worker and shows the decoded value or every validation
   issue for both targets next to the data
 - Every example ships with valid and invalid test documents, so its generated
   validators can be tried immediately; `src/examples.test.ts` asserts that the
