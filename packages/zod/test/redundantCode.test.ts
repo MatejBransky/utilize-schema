@@ -96,6 +96,18 @@ describe('a type array with annotations', () => {
 			export type Root = z.infer<typeof Root>;
 		`);
 	});
+
+	test('puts .readonly() on the union only', async () => {
+		await expect(
+			compile(
+				{ type: ['array', 'null'], items: { type: 'string' }, readOnly: true },
+				{ readOnlyKeyword: true }
+			)
+		).toMatchCode(ts`
+			export const Root = z.union([z.array(z.string()), z.null()]).readonly();
+			export type Root = z.infer<typeof Root>;
+		`);
+	});
 });
 
 describe('an anyOf with a branch that accepts every value', () => {

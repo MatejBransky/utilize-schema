@@ -10,8 +10,8 @@ import { generateSchema } from './generateSchema';
 import { NEWLINE, ts } from '../utils';
 
 /**
- * `generateSchema` adds the metadata and the default to the whole union, so
- * the branch for each type must not repeat them.
+ * `generateSchema` adds the metadata, the default and `.readonly()` to the
+ * whole union, so the branch for each type must not repeat them.
  */
 const withoutUnionAnnotations = {
 	$id: undefined,
@@ -20,6 +20,7 @@ const withoutUnionAnnotations = {
 	examples: undefined,
 	deprecated: undefined,
 	default: undefined,
+	readOnly: undefined,
 };
 
 export const generator = createGenerator<
