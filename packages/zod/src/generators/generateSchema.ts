@@ -2,6 +2,9 @@ import {
 	ANNOTATION_KEYWORDS,
 	type Dialect,
 	dialectOf,
+	isKeywordApplicable,
+	isPlainObject,
+	type JSONSchemaTypeName,
 	type ParsedJSONSchema,
 	type ParsedJSONSchemaObject,
 	withSourceMeta,
@@ -139,7 +142,7 @@ export function composedSchemaParts(
 
 	const rest = withoutKeys(schema, [keyword, ...ANNOTATION_KEYWORDS, ...refinementKeywords]);
 
-	if (!hasStructuralKeywords(rest)) {
+	if (!hasStructuralKeywords(rest) || isTypedLiteral(schema)) {
 		return undefined;
 	}
 
@@ -150,6 +153,54 @@ export function composedSchemaParts(
 		} as unknown as ParsedJSONSchemaObject,
 		rest,
 	};
+}
+
+/**
+ * True when `type` is the only constraint next to a `const` or `enum` and every
+ * listed value already has that type, e.g. `{ type: 'string', const: 'a' }`.
+ * The literal alone validates the same values, so the type is not generated.
+ */
+export function isTypedLiteral(schema: ParsedJSONSchemaObject): boolean {
+	const keyword = pickCombinatorKeyword(schema);
+
+	if (schema.type === undefined || (keyword !== 'const' && keyword !== 'enum')) {
+		return false;
+	}
+
+	if (keyword === 'const' && !isKeywordApplicable(dialectOf(schema), 'const')) {
+		return false;
+	}
+
+	const rest = withoutKeys(schema, [
+		keyword,
+		'type',
+		...ANNOTATION_KEYWORDS,
+		...refinementKeywords,
+	]);
+
+	if (hasStructuralKeywords(rest)) {
+		return false;
+	}
+
+	const types = [schema.type].flat();
+	const values = keyword === 'const' ? [schema.const] : (schema.enum ?? []);
+
+	return values.every((value) => types.some((type) => valueHasType(value, type)));
+}
+
+function valueHasType(value: unknown, type: JSONSchemaTypeName): boolean {
+	switch (type) {
+		case 'null':
+			return value === null;
+		case 'array':
+			return Array.isArray(value);
+		case 'object':
+			return isPlainObject(value);
+		case 'integer':
+			return Number.isInteger(value);
+		default:
+			return typeof value === type;
+	}
 }
 
 type CombinatorKeyword = 'allOf' | 'anyOf' | 'oneOf' | 'const' | 'enum';

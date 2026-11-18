@@ -5,7 +5,7 @@ import {
 } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
-import { generateSchema } from './generateSchema';
+import { generateSchema, isTypedLiteral } from './generateSchema';
 
 import { NEWLINE, ts } from '../utils';
 
@@ -14,7 +14,7 @@ export const generator = createGenerator<
 		type: JSONSchemaTypeName[];
 	}
 >(
-	(schema) => Array.isArray(schema.type),
+	(schema) => Array.isArray(schema.type) && !isTypedLiteral(schema),
 	(schema, context) => {
 		const subschemas = schema.type.map((type) =>
 			generateSchema(
