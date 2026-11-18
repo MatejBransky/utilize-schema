@@ -82,6 +82,54 @@ test('generates a root schema that only contains a $ref', async () => {
 	expect(code).toContain('export const');
 });
 
+test('reports foreign keywords as errors by default', () => {
+	const root = file('root', 'root.json', {
+		$schema: 'http://json-schema.org/draft-07/schema#',
+		type: 'array',
+		prefixItems: [{ type: 'string' }],
+	});
+
+	const bundle = buildBundle([parseJsonFile(root)], 'root');
+
+	expect(bundle.problems).toContainEqual(
+		expect.objectContaining({
+			fileId: 'root',
+			severity: 'error',
+			message: expect.stringContaining('"prefixItems" is not part of draft-07'),
+		})
+	);
+});
+
+test('reports foreign keywords as warnings with keywordPolicy warn', () => {
+	const root = file('root', 'root.json', {
+		$schema: 'http://json-schema.org/draft-07/schema#',
+		type: 'array',
+		prefixItems: [{ type: 'string' }],
+	});
+
+	const bundle = buildBundle([parseJsonFile(root)], 'root', 'warn');
+
+	expect(bundle.problems).toEqual([
+		{
+			fileId: 'root',
+			severity: 'warning',
+			message: expect.stringContaining('"prefixItems" is not part of draft-07'),
+		},
+	]);
+});
+
+test('silently ignores foreign keywords with keywordPolicy ignore', () => {
+	const root = file('root', 'root.json', {
+		$schema: 'http://json-schema.org/draft-07/schema#',
+		type: 'array',
+		prefixItems: [{ type: 'string' }],
+	});
+
+	const bundle = buildBundle([parseJsonFile(root)], 'root', 'ignore');
+
+	expect(bundle.problems).toEqual([]);
+});
+
 test('detectRootId picks the file that no other file references', () => {
 	const files = [
 		file('address', 'address.json', { type: 'object' }),

@@ -1,5 +1,5 @@
 import { generate as generateEffect } from '@utilize/effect';
-import { parse, type ParsedJSONSchema } from '@utilize/json-schema';
+import { type KeywordPolicy, parse, type ParsedJSONSchema } from '@utilize/json-schema';
 import { generate as generateTypeScript } from '@utilize/typescript';
 import { generate as generateZod } from '@utilize/zod';
 import { Button } from '@ui-sdk/react/button';
@@ -11,6 +11,14 @@ import {
 	ScrollAreaThumb,
 	ScrollAreaViewport,
 } from '@ui-sdk/react/scroll-area';
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectLabel,
+	SelectTrigger,
+	SelectValue,
+} from '@ui-sdk/react/select';
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@ui-sdk/react/tabs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -43,12 +51,20 @@ const GENERATOR_PARAM = 'generator';
 interface AppState {
 	files: SchemaFile[];
 	target: TargetId;
+	keywordPolicy: KeywordPolicy;
 }
+
+const keywordPolicyOptions: Array<{ value: KeywordPolicy; label: string; hint: string }> = [
+	{ value: 'error', label: 'Error', hint: 'Reject keywords outside the dialect' },
+	{ value: 'warn', label: 'Warning', hint: 'Report and ignore them' },
+	{ value: 'ignore', label: 'Ignore', hint: 'Silently ignore them' },
+];
 
 export default function App() {
 	const [initial] = useState(loadState);
 	const [files, setFiles] = useState<SchemaFile[]>(initial.files);
 	const [target, setTarget] = useState<TargetId>(initial.target);
+	const [keywordPolicy, setKeywordPolicy] = useState<KeywordPolicy>(initial.keywordPolicy);
 	const [activeId, setActiveId] = useState(initial.files[0]?.id ?? '');
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [draftName, setDraftName] = useState('');
@@ -75,10 +91,21 @@ export default function App() {
 	const exampleId = useMemo(() => resolveExampleId(files), [files]);
 	const parsedFiles = useMemo(() => files.map(parseJsonFile), [files]);
 	const schemaProblems = useMemo(() => validateSchemas(parsedFiles), [parsedFiles]);
-	const bundle = useMemo(() => buildBundle(parsedFiles, rootId), [parsedFiles, rootId]);
+	const bundle = useMemo(
+		() => buildBundle(parsedFiles, rootId, keywordPolicy),
+		[parsedFiles, rootId, keywordPolicy]
+	);
 
 	const problems = useMemo(() => {
-		const all = [...schemaProblems, ...bundle.problems, ...generationProblems];
+		const generation = generationProblems.filter(
+			(problem) =>
+				!bundle.problems.some(
+					(existing) =>
+						existing.severity === problem.severity &&
+						issueText(existing.message) === issueText(problem.message)
+				)
+		);
+		const all = [...schemaProblems, ...bundle.problems, ...generation];
 		const seen = new Set<string>();
 
 		return all.filter((problem) => {
@@ -127,16 +154,16 @@ export default function App() {
 
 	useEffect(() => {
 		try {
-			localStorage.setItem(STORAGE_KEY, JSON.stringify({ files, target }));
+			localStorage.setItem(STORAGE_KEY, JSON.stringify({ files, target, keywordPolicy }));
 		} catch {
 			// Storage can be full or denied. Keep the workspace in memory.
 		}
-	}, [files, target]);
+	}, [files, target, keywordPolicy]);
 
 	useEffect(() => {
 		setShared(false);
 		setCopied(false);
-	}, [files, target]);
+	}, [files, target, keywordPolicy]);
 
 	useEffect(() => {
 		if (!copied) {
@@ -161,6 +188,8 @@ export default function App() {
 					const { root } = await parse(bundle.root as never, {
 						cwd: '/',
 						fileName: bundle.rootFileName,
+						keywordPolicy,
+						onDialectIssue: () => {},
 					});
 
 					const rawCode = generateCodeFor(target, root);
@@ -185,7 +214,7 @@ export default function App() {
 			cancelled = true;
 			clearTimeout(timer);
 		};
-	}, [bundle, target]);
+	}, [bundle, target, keywordPolicy]);
 
 	useEffect(() => {
 		const query = window.matchMedia('(prefers-color-scheme: dark)');
@@ -241,6 +270,7 @@ export default function App() {
 	function applyState(next: AppState) {
 		setFiles(next.files);
 		setTarget(next.target);
+		setKeywordPolicy(next.keywordPolicy);
 		setActiveId(next.files[0]?.id ?? '');
 		setEditingId(null);
 	}
@@ -429,7 +459,7 @@ export default function App() {
 	}
 
 	async function share() {
-		const encoded = encodeState({ files, target });
+		const encoded = encodeState({ files, target, keywordPolicy });
 		const url = new URL(location.href);
 
 		url.searchParams.delete(EXAMPLE_PARAM);
@@ -489,6 +519,29 @@ export default function App() {
 						options={exampleOptions}
 						onChange={applyExample}
 					/>
+				</div>
+				<div className={styles.policyPicker}>
+					<Select
+						items={keywordPolicyOptions.map(({ value, label }) => ({ value, label }))}
+						value={keywordPolicy}
+						onValueChange={(value) => {
+							if (isKeywordPolicy(value)) {
+								setKeywordPolicy(value);
+							}
+						}}
+					>
+						<SelectLabel>Keyword policy</SelectLabel>
+						<SelectTrigger>
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent className={styles.policyContent}>
+							{keywordPolicyOptions.map((option) => (
+								<SelectItem key={option.value} value={option.value} title={option.hint}>
+									{option.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
 				</div>
 			</Header>
 
@@ -740,6 +793,7 @@ function defaultState(): AppState {
 	return {
 		files: example.files,
 		target: defaultTarget,
+		keywordPolicy: 'error',
 	};
 }
 
@@ -763,15 +817,18 @@ function readUrlState(): AppState | null {
 	const url = new URL(location.href);
 	const target = readGeneratorParam();
 	const example = exampleById(url.searchParams.get(EXAMPLE_PARAM));
+	const base = loadSavedState() ?? defaultState();
 
 	if (example) {
-		return { files: example.files, target: target ?? defaultTarget };
+		return {
+			files: example.files,
+			target: target ?? defaultTarget,
+			keywordPolicy: base.keywordPolicy,
+		};
 	}
 
 	if (target) {
-		const base = loadSavedState() ?? defaultState();
-
-		return { files: base.files, target };
+		return { files: base.files, target, keywordPolicy: base.keywordPolicy };
 	}
 
 	return null;
@@ -808,6 +865,14 @@ function isAvailableTarget(value: unknown): value is TargetId {
 	return isTargetId(value) && targets.some((target) => target.value === value && !target.disabled);
 }
 
+function isKeywordPolicy(value: unknown): value is KeywordPolicy {
+	return value === 'error' || value === 'warn' || value === 'ignore';
+}
+
+function issueText(message: string): string {
+	return message.replace(/\s+\([^()]*\)$/, '');
+}
+
 function normalizeState(value: unknown): AppState | null {
 	if (!value || typeof value !== 'object') {
 		return null;
@@ -822,6 +887,7 @@ function normalizeState(value: unknown): AppState | null {
 	return {
 		files: state.files,
 		target: isAvailableTarget(state.target) ? state.target : defaultTarget,
+		keywordPolicy: isKeywordPolicy(state.keywordPolicy) ? state.keywordPolicy : 'error',
 	};
 }
 

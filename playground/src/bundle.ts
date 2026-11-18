@@ -1,4 +1,10 @@
-import { isPlainObject, prepareSchema, resolveDialect } from '@utilize/json-schema';
+import {
+	formatIssue,
+	isPlainObject,
+	type KeywordPolicy,
+	prepareSchema,
+	resolveDialect,
+} from '@utilize/json-schema';
 
 export interface SchemaFile {
 	id: string;
@@ -63,7 +69,11 @@ export function parseJsonFile(file: SchemaFile): ParsedFile {
 	}
 }
 
-export function buildBundle(parsedFiles: ParsedFile[], rootId: string): BundleResult {
+export function buildBundle(
+	parsedFiles: ParsedFile[],
+	rootId: string,
+	keywordPolicy: KeywordPolicy = 'error'
+): BundleResult {
 	const problems = parsedFiles.flatMap((parsed) => parsed.problems);
 	const rootParsed = parsedFiles.find((parsed) => parsed.file.id === rootId) ?? parsedFiles[0];
 
@@ -89,6 +99,14 @@ export function buildBundle(parsedFiles: ParsedFile[], rootId: string): BundleRe
 			prepareSchema(parsed.schema, {
 				filePath: parsed.file.name,
 				fallbackDialect: rootDialect,
+				keywordPolicy,
+				onDialectIssue: (issue) => {
+					problems.push({
+						fileId: parsed.file.id,
+						severity: 'warning',
+						message: formatIssue(issue),
+					});
+				},
 			});
 		} catch (error) {
 			problems.push({

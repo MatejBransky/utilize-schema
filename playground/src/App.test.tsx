@@ -189,6 +189,7 @@ test('an agent can find and change the playground controls', async () => {
 	for (const label of [
 		'Generator',
 		'Example',
+		'Keyword policy',
 		'Color mode',
 		'Schema files',
 		'Add file',
@@ -312,6 +313,44 @@ test('an agent can switch the generator', async () => {
 	await vi.waitFor(() =>
 		expect(new URL(location.href).searchParams.get('generator')).toBe('effect')
 	);
+});
+
+test('the keyword policy shows foreign keywords as errors or warnings', async () => {
+	localStorage.setItem(
+		'utilize-schema-playground',
+		JSON.stringify({
+			files: [
+				{
+					id: 'root',
+					name: 'root.json',
+					content: JSON.stringify({
+						$schema: 'http://json-schema.org/draft-07/schema#',
+						type: 'array',
+						prefixItems: [{ type: 'string' }],
+					}),
+				},
+			],
+			target: 'zod',
+			keywordPolicy: 'error',
+		})
+	);
+	const agent = createAgent({ allow: () => true });
+	await render(<App />);
+
+	const problemsText = () => document.querySelector('[data-testid="problems"]')?.textContent ?? '';
+
+	await vi.waitFor(() => expect(problemsText()).toContain('"prefixItems" is not part of draft-07'));
+	expect(problemsText()).toContain('1 errors, 0 warnings');
+	expect(problemsText()).toContain('Error');
+
+	const result = await agent.act({
+		steps: [{ ref: 'Keyword policy', action: 'setValue', args: ['Warning'] }],
+	});
+	expect(result.ok, result.error?.message).toBe(true);
+
+	await vi.waitFor(() => expect(problemsText()).toContain('0 errors, 1 warnings'));
+	expect(problemsText()).toContain('"prefixItems" is not part of draft-07');
+	expect(JSON.parse(localStorage.getItem('utilize-schema-playground')!).keywordPolicy).toBe('warn');
 });
 
 test('clicking outside the rename input cancels the rename', async () => {
