@@ -14,5 +14,5 @@
 			"options": { "target": "zod" }
 		}
 	],
-	"include": ["main.ts"]
+	"include": ["main.ts", "exports.ts"]
 }

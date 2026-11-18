@@ -21,10 +21,22 @@
 	"module": "./dist/index.mjs",
 	"types": "./dist/index.d.ts",
 	"exports": {
-		".": "./dist/index.mjs",
-		"./mapper": "./dist/mapper.mjs",
-		"./register": "./dist/register.mjs",
-		"./vite": "./dist/vite.mjs"
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.mjs"
+		},
+		"./mapper": {
+			"types": "./dist/mapper.d.ts",
+			"default": "./dist/mapper.mjs"
+		},
+		"./register": {
+			"types": "./dist/register.d.ts",
+			"default": "./dist/register.mjs"
+		},
+		"./vite": {
+			"types": "./dist/vite.d.ts",
+			"default": "./dist/vite.mjs"
+		}
 	},
 	"scripts": {
 		"build": "tsdown",
