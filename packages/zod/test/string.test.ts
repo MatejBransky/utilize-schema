@@ -88,6 +88,19 @@ describe('string constraints', () => {
       `);
 		});
 
+		test.each(['constructor', 'toString'])(
+			'treats the inherited object key %s as an unknown format',
+			async (format) => {
+				const expected = ts`
+          export const Root = z.string();
+          export type Root = z.infer<typeof Root>;
+        `;
+
+				await expect(compile({ type: 'string', format })).toMatchCode(expected);
+				await expect(compile({ type: 'string', format }, { formatMap: {} })).toMatchCode(expected);
+			}
+		);
+
 		test('lets formatMap override a built-in format and keeps string constraints', async () => {
 			await expect(
 				compile(
