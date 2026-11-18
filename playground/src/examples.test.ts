@@ -6,6 +6,7 @@ import { generate as generateZod } from '@utilize/zod';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { transformWithOxc } from 'vite';
 import { afterAll, expect, test } from 'vitest';
 
 import './polyfills';
@@ -13,8 +14,14 @@ import './polyfills';
 import { buildBundle, parseJsonFile } from './bundle';
 import { exampleGeneratorOptions, type ExampleGeneratorOptions } from './exampleOptions';
 import { examples, type Example } from './examples';
-import { rootDeclarationName } from './generateCode';
-import { rootValidator, validateWithEffect, validateWithZod } from './runtime';
+import { generateRuntimeCode, rootDeclarationName } from './generateCode';
+import {
+	loadModule,
+	rootValidator,
+	validateModule,
+	validateWithEffect,
+	validateWithZod,
+} from './runtime';
 
 const directories: string[] = [];
 
@@ -112,4 +119,29 @@ for (const example of examples) {
 		}
 	});
 
+	test(`example "${example.name}" runs its test data the way the playground does`, async () => {
+		const runtime = generateRuntimeCode(await parseExample(example));
+
+		for (const target of ['zod', 'effect'] as const) {
+			const source = runtime[target];
+
+			if (source.status !== 'generated' || !source.rootName) {
+				throw new Error(`${example.name}: the ${target} validator was not generated.`);
+			}
+
+			// The page emits JavaScript with the Monaco TypeScript worker, which
+			// `src/monaco/transpile.test.ts` covers. Node strips the types instead.
+			const { code: javascript } = await transformWithOxc(source.code, 'schema.ts');
+			const module = await loadModule(javascript);
+
+			for (const item of example.cases) {
+				const result = validateModule(target, module, source.rootName, item.data);
+
+				expect(result.error, `${example.name} / ${item.label} (${target})`).toBeUndefined();
+				expect(result.ok, `${example.name} / ${item.label} (${target})`).toBe(
+					item.expect === 'valid'
+				);
+			}
+		}
+	});
 }
