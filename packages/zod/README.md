@@ -75,6 +75,11 @@ pnpm add zod
   });
   ```
 
+- `runtimeImport` — module to import the `oneOfSchema` helper from, e.g.
+  `'@utilize/zod/runtime'`. By default every generated file that needs the
+  helper declares its own copy; with this option it imports the one exported
+  by `@utilize/zod/runtime` (or your own module exporting `oneOfSchema`).
+  `zod` must then be installed where the generated code runs, as usual.
 - `format(code)` — optional synchronous or asynchronous formatter (for example
   Prettier) applied to the generated code before the banner is prepended. Pass
   `false` or omit it to keep the generator output as-is.
@@ -106,6 +111,13 @@ export type Tree = z.infer<typeof Tree>;
 
 The generated `Value` alias is internal; use the exported type in your own
 code.
+
+`oneOf` becomes a plain `z.union()` when no value can match two branches:
+different `const` or `enum` values, different types, or objects with a
+different `const` on the same required property. Otherwise it uses the
+`oneOfSchema` helper, which checks that exactly one branch matches (see
+`runtimeImport`). An inline subschema that is identical to a standalone schema
+is generated as a reference to it.
 
 ## Naming
 
@@ -166,7 +178,8 @@ cat schema.yaml | utilize-zod > schema.generated.ts
 Input can be a file, a directory or a glob; JSON and YAML are supported. Output
 defaults to stdout. Every generated file starts with a "do not edit" banner
 (`--no-banner` omits it). Pass `--readonly` to map `readOnly: true` to
-`.readonly()`.
+`.readonly()`, and `--runtime-import @utilize/zod/runtime` to import the
+`oneOf` helper instead of declaring it in every file.
 
 ## Testing
 
