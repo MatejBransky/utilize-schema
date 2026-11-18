@@ -6,13 +6,13 @@ import {
 	Meta,
 	type ParsedJSONSchema,
 	type ParsedJSONSchemaObject,
-	withSourceMeta,
 } from '@utilize/json-schema';
 
 import { collectStandaloneSchemas, type SchemaEdge } from './collectStandaloneSchemas';
 import { UnresolvedReferenceError, UnsupportedEffectSchemaFeatureError } from './errors';
 import { findCyclicSchemas } from './findCyclicSchemas';
-import { referenceConstraints } from './refSiblings';
+import { mergeObjectSchemas } from './mergeObjects';
+import { planReferenceSiblings } from './refSiblings';
 import {
 	allocateName,
 	mapDeclarationNames,
@@ -37,41 +37,14 @@ export interface GenerateOptions {
 type Context = {
 	/** Name of an already declared standalone schema. */
 	nameOf(schema: ParsedJSONSchemaObject, ref: string): string;
+	/** Whether a standalone schema is part of a reference cycle. */
+	isCyclic(schema: ParsedJSONSchemaObject): boolean;
 	/** Dialect of the document root, used for synthetic nodes without `Meta`. */
 	dialect: Dialect;
 };
 
 /** Keywords that have no Effect Schema equivalent and are rejected instead of ignored. */
 const UNSUPPORTED_KEYWORDS = ['patternProperties', 'minContains', 'maxContains'] as const;
-
-/**
- * Keywords applied as filters on top of a generated schema. `dependentRequired`
- * and `dependentSchemas` are merged into `dependencies` by the normalizer.
- */
-const FILTER_KEYWORDS = new Set(['not', 'if', 'then', 'else']);
-
-/** Keywords that only carry metadata, so they can be attached to any schema. */
-const ANNOTATION_KEYWORDS = new Set([
-	'title',
-	'description',
-	'default',
-	'examples',
-	'$id',
-	'$schema',
-	'$comment',
-	'$anchor',
-	'$vocabulary',
-	'$defs',
-	'definitions',
-	'format',
-	'readOnly',
-	'writeOnly',
-	'discriminator',
-	'deprecated',
-	'contentEncoding',
-	'contentMediaType',
-	'contentSchema',
-]);
 
 /** Names the generated code uses besides the declarations. */
 const RESERVED_NAMES = ['Schema'];
@@ -122,6 +95,9 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 			}
 
 			return names.schema;
+		},
+		isCyclic(schema) {
+			return cyclic.has(schema);
 		},
 		dialect: dialectOf(root),
 	};
@@ -237,51 +213,17 @@ function generateSchema(schema: ParsedJSONSchema, context: Context): string {
 
 	assertSupportedKeywords(schema, dialect);
 
-	const expression = applyChecks(
-		generateExpression(schema, nodeContext),
-		filterChecks(schema, nodeContext)
-	);
+	const filters = filterChecks(schema, nodeContext);
+	const expression =
+		typeof schema.$ref === 'string'
+			? generateReference(schema, filters, nodeContext)
+			: applyChecks(generateExpression(schema, nodeContext), filters);
 
 	return applyAnnotations(expression, schema);
 }
 
 function generateExpression(schema: ParsedJSONSchemaObject, context: Context): string {
 	const dialect = dialectOf(schema, context.dialect);
-
-	if (typeof schema.$ref === 'string') {
-		if (dialect.refSiblings === 'ignore') {
-			return reference(schema, context);
-		}
-
-		if (constraintKeywords(schema).length === 0) {
-			if (schema.not !== undefined || schema.if !== undefined) {
-				throw new UnsupportedEffectSchemaFeatureError(
-					'$ref siblings',
-					'a reference cannot be combined with not/if/then/else'
-				);
-			}
-
-			return reference(schema, context);
-		}
-
-		const target = dereference(schema);
-
-		if (!isPlainObject(target)) {
-			throw new UnsupportedEffectSchemaFeatureError(
-				'$ref siblings',
-				'a reference with sibling keywords must resolve to an object schema'
-			);
-		}
-
-		const rest = referenceConstraints(schema);
-		const branches = [
-			target as ParsedJSONSchemaObject,
-			...(Array.isArray(rest.allOf) ? rest.allOf : []),
-			withSourceMeta(schema, { ...rest, allOf: undefined }) as unknown as ParsedJSONSchemaObject,
-		];
-
-		return generateIntersection(branches, context);
-	}
 
 	if (Object.hasOwn(schema, 'const') && isKeywordApplicable(dialect, 'const')) {
 		return literal(schema.const);
@@ -306,6 +248,55 @@ function generateExpression(schema: ParsedJSONSchemaObject, context: Context): s
 	}
 
 	return generateType(schema, context);
+}
+
+/**
+ * A `$ref` with the keywords next to it (see `planReferenceSiblings`) and the
+ * node's filter checks (`not`, `if`, ...).
+ */
+function generateReference(
+	schema: ParsedJSONSchemaObject,
+	filters: string[],
+	context: Context
+): string {
+	const siblings = planReferenceSiblings(schema, context.dialect, context.isCyclic);
+
+	switch (siblings.kind) {
+		case 'none':
+			return checkedReference(schema, filters, context);
+		case 'merge':
+			return applyChecks(
+				siblings.merged === false ? 'Schema.Never' : generateObject(siblings.merged, context),
+				filters
+			);
+		case 'check': {
+			const constraints = generateSchema(siblings.constraints, context);
+
+			return checkedReference(
+				schema,
+				[
+					`Schema.makeFilter((value) => Schema.is(${constraints})(value) ? undefined : 'Value does not match the keywords next to "$ref"')`,
+					...filters,
+				],
+				context
+			);
+		}
+	}
+}
+
+/**
+ * Effect cannot attach checks to `Schema.suspend`, so a checked reference is
+ * wrapped in a single-member union. The union keeps the reference's type and
+ * its declaration stays shared, which also works for recursive schemas.
+ */
+function checkedReference(
+	schema: ParsedJSONSchemaObject,
+	checks: string[],
+	context: Context
+): string {
+	const expression = reference(schema, context);
+
+	return checks.length === 0 ? expression : applyChecks(`Schema.Union([${expression}])`, checks);
 }
 
 function generateUnion(
@@ -794,100 +785,13 @@ function appliesTo(schema: ParsedJSONSchemaObject, type: JSONValueType, dialect:
  * can be combined.
  */
 function generateIntersection(schemas: ParsedJSONSchema[], context: Context): string {
-	const properties: Record<string, ParsedJSONSchema> = {};
-	const required = new Set<string>();
-	let additionalProperties: ParsedJSONSchemaObject['additionalProperties'];
-	let additionalDeclared = false;
+	const result = mergeObjectSchemas(schemas);
 
-	for (const raw of schemas) {
-		const dereferenced = dereference(raw);
-
-		if (dereferenced === false) {
-			return 'Schema.Never';
-		}
-
-		if (!isPlainObject(dereferenced)) {
-			throw new UnsupportedEffectSchemaFeatureError(
-				'allOf',
-				'only object subschemas can be merged'
-			);
-		}
-
-		const resolved = dereferenced as ParsedJSONSchemaObject;
-
-		assertIntersectable(resolved);
-
-		for (const [key, property] of Object.entries(
-			(resolved.properties ?? {}) as Record<string, ParsedJSONSchema>
-		)) {
-			if (Object.hasOwn(properties, key)) {
-				throw new UnsupportedEffectSchemaFeatureError(
-					'allOf',
-					`property ${JSON.stringify(key)} is declared by more than one subschema`
-				);
-			}
-
-			properties[key] = property;
-		}
-
-		for (const key of resolved.required ?? []) {
-			if (typeof key === 'string') {
-				required.add(key);
-			}
-		}
-
-		const additional = resolved.additionalProperties;
-
-		if (additional !== undefined && additional !== true) {
-			if (additionalDeclared && additionalProperties !== additional) {
-				throw new UnsupportedEffectSchemaFeatureError(
-					'allOf',
-					'every subschema would have to declare the same "additionalProperties"'
-				);
-			}
-
-			additionalProperties = additional;
-			additionalDeclared = true;
-		}
+	if (result.merged === undefined) {
+		throw new UnsupportedEffectSchemaFeatureError('allOf', result.reason);
 	}
 
-	const merged: Record<string, unknown> = {
-		type: 'object',
-		properties,
-		required: [...required],
-	};
-
-	if (additionalDeclared) {
-		merged.additionalProperties = additionalProperties;
-	}
-
-	return generateObject(merged as unknown as ParsedJSONSchemaObject, context);
-}
-
-function assertIntersectable(schema: ParsedJSONSchemaObject): void {
-	if (schema.type !== undefined && schema.type !== 'object') {
-		throw new UnsupportedEffectSchemaFeatureError('allOf', 'only object subschemas can be merged');
-	}
-	if (schema.$ref !== undefined) {
-		throw new UnsupportedEffectSchemaFeatureError('allOf', 'nested references cannot be merged');
-	}
-
-	const allowed = new Set(['type', 'properties', 'required', 'additionalProperties']);
-	const record = schema as unknown as Record<string, unknown>;
-
-	for (const keyword of Object.keys(schema)) {
-		if (record[keyword] === undefined) {
-			continue;
-		}
-		if (ANNOTATION_KEYWORDS.has(keyword) || allowed.has(keyword)) {
-			continue;
-		}
-
-		throw new UnsupportedEffectSchemaFeatureError(
-			'allOf',
-			`${JSON.stringify(keyword)} cannot be merged`
-		);
-	}
+	return result.merged === false ? 'Schema.Never' : generateObject(result.merged, context);
 }
 
 function reference(schema: ParsedJSONSchemaObject, context: Context): string {
@@ -903,20 +807,6 @@ function reference(schema: ParsedJSONSchemaObject, context: Context): string {
 	}
 
 	return `Schema.suspend(() => ${context.nameOf(resolved, ref)})`;
-}
-
-function dereference(schema: ParsedJSONSchema): ParsedJSONSchema {
-	if (!isPlainObject(schema) || typeof schema.$ref !== 'string') {
-		return schema;
-	}
-
-	const resolved = (schema as ParsedJSONSchemaObject)[Meta]?.reference;
-
-	if (resolved === undefined) {
-		throw new UnresolvedReferenceError(schema.$ref);
-	}
-
-	return resolved;
 }
 
 function literal(value: unknown): string {
@@ -966,14 +856,6 @@ function assertSupportedKeywords(schema: ParsedJSONSchemaObject, dialect: Dialec
 			throw new UnsupportedEffectSchemaFeatureError(keyword);
 		}
 	}
-}
-
-/** Constraint keywords, i.e. everything that is not only metadata. */
-function constraintKeywords(schema: ParsedJSONSchemaObject): string[] {
-	return Object.keys(schema).filter(
-		(keyword) =>
-			keyword !== '$ref' && !ANNOTATION_KEYWORDS.has(keyword) && !FILTER_KEYWORDS.has(keyword)
-	);
 }
 
 function applyChecks(expression: string, checks: string[]): string {

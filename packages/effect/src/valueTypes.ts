@@ -8,7 +8,7 @@ import {
 	type ParsedJSONSchemaObject,
 } from '@utilize/json-schema';
 
-import { referenceConstraints } from './refSiblings';
+import { planReferenceSiblings } from './refSiblings';
 
 export interface ValueTypeContext {
 	/** Dialect of the document root, used for synthetic nodes without `Meta`. */
@@ -122,10 +122,17 @@ export function renderValueType(
 				: alias === self && !deferred
 					? 'Schema.Json'
 					: alias;
-		const siblings = dialect.refSiblings === 'apply' ? referenceConstraints(schema) : undefined;
+		const siblings = planReferenceSiblings(
+			schema,
+			dialect,
+			(target) => context.aliasFor(target) !== undefined
+		);
 
-		if (siblings && Object.keys(siblings).length > 0) {
-			return intersection([referenceType, renderValueType(siblings, context, self, deferred)]);
+		// A `merge` generates the merged object, so its value type is rendered from
+		// the same schema. A `check` keeps the reference's type: a filter does not
+		// change it.
+		if (siblings.kind === 'merge') {
+			return renderValueType(siblings.merged, context, self, deferred);
 		}
 
 		return referenceType;

@@ -54,7 +54,7 @@ describe('$ref siblings', () => {
 		expect(decode(Root, { value: 'x' })).toEqual({ value: 'x' });
 	});
 
-	test('2020-12 rejects filter siblings on a reference', async () => {
+	test('2020-12 applies filter siblings on a reference', async () => {
 		const schema = {
 			$schema: twentyTwentyTwelve,
 			$defs: { Name: { type: 'string' } },
@@ -62,7 +62,47 @@ describe('$ref siblings', () => {
 			properties: { value: { $ref: '#/$defs/Name', not: { const: 'x' } } },
 		} as unknown as TestSchema;
 
-		await expect(compile(schema)).rejects.toThrow(/cannot be combined with not/);
+		const Root = await compileToSchema(schema);
+
+		expect(decode(Root, { value: 'y' })).toEqual({ value: 'y' });
+		expect(decode(Root, { value: 'x' })).toBeUndefined();
+	});
+
+	test('2020-12 checks siblings of a reference to a non-object schema', async () => {
+		const schema = {
+			$schema: twentyTwentyTwelve,
+			$defs: { Name: { type: 'string' } },
+			type: 'object',
+			properties: { value: { $ref: '#/$defs/Name', minLength: 3, not: { const: 'abcd' } } },
+		} as unknown as TestSchema;
+
+		const Root = await compileToSchema(schema);
+
+		expect(decode(Root, { value: 'abc' })).toEqual({ value: 'abc' });
+		expect(decode(Root, { value: 'a' })).toBeUndefined();
+		expect(decode(Root, { value: 'abcd' })).toBeUndefined();
+	});
+
+	test('2020-12 checks siblings of a recursive reference without inlining it', async () => {
+		const schema = {
+			$schema: twentyTwentyTwelve,
+			$defs: {
+				Node: {
+					type: 'object',
+					properties: {
+						next: { $ref: '#/$defs/Node', properties: { tag: { type: 'string' } } },
+					},
+				},
+			},
+			$ref: '#/$defs/Node',
+		} as unknown as TestSchema;
+
+		const Root = await compileToSchema(schema);
+
+		expect(decode(Root, { next: { tag: 'a', next: {} } })).toEqual({
+			next: { tag: 'a', next: {} },
+		});
+		expect(decode(Root, { next: { tag: 1 } })).toBeUndefined();
 	});
 });
 

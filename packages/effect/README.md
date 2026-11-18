@@ -175,8 +175,9 @@ Unsupported keywords throw `UnsupportedEffectSchemaFeatureError`:
 `patternProperties`, `minContains`, `maxContains`.
 
 `$ref` siblings follow the dialect: draft-07 and older ignore them, 2019-09 and
-newer merge disjoint object siblings, and sibling combinations Effect cannot
-express throw.
+newer merge disjoint object siblings into one struct. Other siblings (a
+non-object or recursive target, `not`, `if`, ...) are checked with a filter on
+the reference, which keeps the reference's type.
 
 Effect has no generic intersection, so `allOf` is limited to merging object
 subschemas that do not declare the same property.
