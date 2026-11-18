@@ -3,6 +3,7 @@
 	"version": "0.3.0",
 	"description": "Utilities for working with JSON Schema.",
 	"keywords": [
+		"json-schema",
 		"linker",
 		"normalizer",
 		"optimizer",
