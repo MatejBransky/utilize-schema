@@ -1,7 +1,3 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-
 import { assert, expect, test } from 'vitest';
 
 import RefProperties from './RefProperties.json';
@@ -388,41 +384,26 @@ test('resolves a JSON pointer after an $id URI', async () => {
 });
 
 test('resolves a JSON pointer relative to the referenced file that contains it', async () => {
-	const directory = await mkdtemp(join(tmpdir(), 'utilize-pointer-'));
+	const schema = {
+		properties: {
+			item: { $ref: './resources/item.json' },
+		},
+	} as JSONSchema;
+	const parsed = await parse(schema, {
+		cwd: __dirname + '/CrossFilePointer/',
+		fileName: 'root.json',
+	});
 
-	try {
-		await mkdir(join(directory, 'resources'));
-		await mkdir(join(directory, 'common'));
-		await writeFile(
-			join(directory, 'common', 'types.json'),
-			JSON.stringify({ definitions: { location: { type: 'string' } } })
-		);
-		await writeFile(
-			join(directory, 'resources', 'item.json'),
-			JSON.stringify({
-				properties: {
-					location: { $ref: '../common/types.json#/definitions/location' },
-				},
-			})
-		);
-		const schema = {
-			properties: {
-				item: { $ref: './resources/item.json' },
-			},
-		} as JSONSchema;
-		const parsed = await parse(schema, { cwd: directory + '/', fileName: 'root.json' });
+	assert(typeof parsed.root === 'object' && parsed.root !== null);
+	const item = parsed.root.properties?.item?.[Meta].reference;
 
-		assert(typeof parsed.root === 'object' && parsed.root !== null);
-		const item = parsed.root.properties?.item?.[Meta].reference;
+	assert(typeof item === 'object' && item !== null);
+	const types = parsed.referencedSchemas.find(
+		(referenced) => typeof referenced === 'object' && referenced !== null && referenced !== item
+	);
 
-		assert(typeof item === 'object' && item !== null);
-		const reference = item.properties?.location?.[Meta].reference;
-
-		assert(typeof reference === 'object' && reference !== null);
-		expect(reference.type).toBe('string');
-	} finally {
-		await rm(directory, { recursive: true, force: true });
-	}
+	assert(typeof types === 'object' && types !== null);
+	expect(item.properties?.location?.[Meta].reference).toBe(types.definitions?.location);
 });
 
 test('a $ref to a boolean schema keeps the boolean as its reference', async () => {
