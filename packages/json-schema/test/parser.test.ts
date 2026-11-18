@@ -267,6 +267,73 @@ test('resolves a URN reference to its resource', async () => {
 	expect(parsed.root.allOf?.[0]?.[Meta].reference).toBe(parsed.root);
 });
 
+test('resolves a $ref against a sibling $id in 2020-12', async () => {
+	const schema = {
+		$schema: 'https://json-schema.org/draft/2020-12/schema',
+		$id: 'http://example.com/root.json',
+		properties: {
+			value: { $id: 'http://example.com/nested/', $ref: 'item.json' },
+		},
+		$defs: {
+			root: { $id: 'http://example.com/item.json', type: 'string' },
+			nested: { $id: 'http://example.com/nested/item.json', type: 'integer' },
+		},
+	} as JSONSchema;
+	const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Unknown' });
+
+	assert(typeof parsed.root === 'object' && parsed.root !== null);
+	const reference = parsed.root.properties?.value?.[Meta].reference;
+
+	assert(typeof reference === 'object' && reference !== null);
+	expect(reference.type).toBe('integer');
+});
+
+test('ignores a sibling $id of a $ref in draft-07', async () => {
+	const schema = {
+		$schema: 'http://json-schema.org/draft-07/schema#',
+		$id: 'http://example.com/root.json',
+		properties: {
+			value: { $id: 'http://example.com/nested/', $ref: 'item.json' },
+		},
+		definitions: {
+			root: { $id: 'http://example.com/item.json', type: 'string' },
+			nested: { $id: 'http://example.com/nested/item.json', type: 'integer' },
+		},
+	} as JSONSchema;
+	const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Unknown' });
+
+	assert(typeof parsed.root === 'object' && parsed.root !== null);
+	const reference = parsed.root.properties?.value?.[Meta].reference;
+
+	assert(typeof reference === 'object' && reference !== null);
+	expect(reference.type).toBe('string');
+});
+
+test('resolves draft-04 id identifiers', async () => {
+	const schema = {
+		$schema: 'http://json-schema.org/draft-04/schema#',
+		id: 'http://example.com/root.json',
+		properties: {
+			byUri: { $ref: 'item.json' },
+			byFragment: { $ref: '#flag' },
+		},
+		definitions: {
+			item: { id: 'item.json', type: 'integer' },
+			flag: { id: '#flag', type: 'boolean' },
+		},
+	} as JSONSchema;
+	const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Unknown' });
+
+	assert(typeof parsed.root === 'object' && parsed.root !== null);
+	const byUri = parsed.root.properties?.byUri?.[Meta].reference;
+	const byFragment = parsed.root.properties?.byFragment?.[Meta].reference;
+
+	assert(typeof byUri === 'object' && byUri !== null);
+	assert(typeof byFragment === 'object' && byFragment !== null);
+	expect(byUri.type).toBe('integer');
+	expect(byFragment.type).toBe('boolean');
+});
+
 test('a $ref to a boolean schema keeps the boolean as its reference', async () => {
 	const schema = {
 		type: 'object',

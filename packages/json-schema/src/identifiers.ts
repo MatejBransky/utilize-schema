@@ -1,4 +1,6 @@
+import { type Dialect, dialects } from './dialect';
 import type { JSONSchema } from './model';
+import type { DialectMap } from './normalize';
 import { isPlainObject } from './utils';
 
 /**
@@ -19,25 +21,34 @@ export interface SchemaIndex {
 }
 
 export function createSchemaIndex(): SchemaIndex & {
-	addDocument(retrievalUri: string, root: JSONSchema): void;
+	/**
+	 * Indexes a document. `nodeDialects` comes from `prepareSchema`; without it
+	 * every node is read as draft-07.
+	 */
+	addDocument(retrievalUri: string, root: JSONSchema, nodeDialects?: DialectMap): void;
 } {
 	const resources = new Map<string, JSONSchema | boolean>();
 	const anchors = new Map<string, JSONSchema | boolean>();
 	const bases = new WeakMap<object, string>();
 
-	function addDocument(retrievalUri: string, root: JSONSchema) {
+	function addDocument(retrievalUri: string, root: JSONSchema, nodeDialects?: DialectMap) {
 		if (typeof root === 'object' && root !== null) {
 			resources.set(retrievalUri, root);
 			bases.set(root, retrievalUri);
 		}
 
-		walk(root, retrievalUri);
+		walk(root, retrievalUri, dialects['draft-07'], nodeDialects);
 	}
 
-	function walk(node: unknown, baseUri: string) {
+	function walk(
+		node: unknown,
+		baseUri: string,
+		inheritedDialect: Dialect,
+		nodeDialects: DialectMap | undefined
+	) {
 		if (Array.isArray(node)) {
 			for (const item of node) {
-				walk(item, baseUri);
+				walk(item, baseUri, inheritedDialect, nodeDialects);
 			}
 			return;
 		}
@@ -46,13 +57,15 @@ export function createSchemaIndex(): SchemaIndex & {
 			return;
 		}
 
+		const dialect = nodeDialects?.get(node)?.dialect ?? inheritedDialect;
 		let nextBase = baseUri;
-		// In draft-07 `$ref` replaces the rest of the schema, including a
-		// sibling `$id` or `$anchor`, so it must not change the base URI that the
-		// reference itself is resolved against.
-		const hasRef = typeof node.$ref === 'string';
+		// In draft-07 and older `$ref` replaces the rest of the schema, including
+		// a sibling `$id` or `$anchor`, so it must not change the base URI that the
+		// reference itself is resolved against. 2019-09 and newer apply them.
+		const ignoresSiblings = typeof node.$ref === 'string' && dialect.refSiblings === 'ignore';
+		const rawId = node[idKeyword(dialect)];
 		const id =
-			!hasRef && typeof node.$id === 'string' && node.$id.length > 0 ? node.$id : undefined;
+			!ignoresSiblings && typeof rawId === 'string' && rawId.length > 0 ? rawId : undefined;
 
 		if (id) {
 			const hashIndex = id.indexOf('#');
@@ -64,21 +77,22 @@ export function createSchemaIndex(): SchemaIndex & {
 				resources.set(nextBase, node);
 			}
 
-			// A non-empty fragment in `$id` is the draft-07 way to declare a
-			// location-independent identifier; `$anchor` is the 2019-09+ form.
+			// A non-empty fragment in `$id` (`id` in draft-04) is the draft-07 way
+			// to declare a location-independent identifier; `$anchor` is the
+			// 2019-09+ form.
 			if (fragment) {
 				anchors.set(`${nextBase}#${fragment}`, node);
 			}
 		}
 
-		if (!hasRef && typeof node.$anchor === 'string' && node.$anchor.length > 0) {
+		if (!ignoresSiblings && typeof node.$anchor === 'string' && node.$anchor.length > 0) {
 			anchors.set(`${nextBase}#${node.$anchor}`, node);
 		}
 
 		bases.set(node, nextBase);
 
 		for (const child of schemaChildren(node)) {
-			walk(child, nextBase);
+			walk(child, nextBase, dialect, nodeDialects);
 		}
 	}
 
@@ -118,6 +132,11 @@ export function createSchemaIndex(): SchemaIndex & {
 		baseUriOf: (node) => (typeof node === 'object' && node !== null ? bases.get(node) : undefined),
 		resolve,
 	};
+}
+
+/** draft-04 names the identifier `id`; draft-06 renamed it to `$id`. */
+function idKeyword(dialect: Dialect): 'id' | '$id' {
+	return dialect.keywords.has('$id') ? '$id' : 'id';
 }
 
 const MAP_KEYWORDS = new Set([

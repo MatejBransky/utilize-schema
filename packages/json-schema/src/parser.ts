@@ -73,7 +73,7 @@ export async function parse(
 			rootDialects = dialects;
 		}
 
-		identifiers.addDocument(filePath, entrySchema);
+		identifiers.addDocument(filePath, entrySchema, dialects);
 
 		return { entrySchema, prefixPath, fileName, dialects };
 	});
