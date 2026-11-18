@@ -1,4 +1,10 @@
-import { type JSONSchema, Meta, parse, type ParsedJSONSchemaObject } from '@utilize/json-schema';
+import {
+	type DialectOptions,
+	type JSONSchema,
+	Meta,
+	parse,
+	type ParsedJSONSchemaObject,
+} from '@utilize/json-schema';
 import { format as formatCode } from 'oxfmt';
 import { type z } from 'zod';
 
@@ -53,10 +59,15 @@ export interface CompileOptions extends TestGenerateOptions {
 	readOnlyKeyword?: boolean;
 }
 
-export async function compile(schema: JSONSchema, options?: CompileOptions) {
+export async function compile(schema: JSONSchema, options?: CompileOptions & DialectOptions) {
 	const parsed = await parse(schema, {
 		cwd: options?.cwd ?? __dirname + '/',
 		fileName: options?.fileName ?? 'Root.json',
+		dialect: options?.dialect,
+		fallbackDialect: options?.fallbackDialect,
+		unknownDialect: options?.unknownDialect,
+		keywordPolicy: options?.keywordPolicy,
+		onDialectIssue: options?.onDialectIssue,
 	});
 	const code = generate(parsed.root, {
 		importZod: options?.importZod ?? false,

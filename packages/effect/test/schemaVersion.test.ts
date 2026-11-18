@@ -98,11 +98,16 @@ describe('$schema versions', () => {
 		expect(decode(Root, 0)).toBeUndefined();
 	});
 
-	test('unknown $schema falls back to draft-07', async () => {
-		const Root = await compileToSchema(unknownVersionSchema);
+	test('unknown $schema falls back to draft-07 by default', async () => {
+		await expect(compile(unknownVersionSchema)).resolves.toContain(
+			'export const Root = Schema.String;'
+		);
+	});
 
-		expect(decode(Root, 'value')).toBe('value');
-		expect(decode(Root, 1)).toBeUndefined();
+	test('unknown $schema can fail with unknownDialect error', async () => {
+		await expect(compile(unknownVersionSchema, { unknownDialect: 'error' })).rejects.toThrow(
+			/Unknown dialect/
+		);
 	});
 
 	test('unsupported 2020-12 features fail loudly', async () => {

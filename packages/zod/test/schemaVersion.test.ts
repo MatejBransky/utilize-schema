@@ -105,11 +105,16 @@ describe('$schema versions', () => {
 		expect(Root.safeParse(0).success).toBe(false);
 	});
 
-	test('unknown $schema falls back to draft-07', async () => {
-		const Root = await compileToZod(customVersionSchema);
+	test('unknown $schema falls back to draft-07 by default', async () => {
+		await expect(compile(customVersionSchema)).resolves.toContain(
+			'export const Root = z.string();'
+		);
+	});
 
-		expect(Root.safeParse('value').success).toBe(true);
-		expect(Root.safeParse(1).success).toBe(false);
+	test('unknown $schema can fail with unknownDialect error', async () => {
+		await expect(compile(customVersionSchema, { unknownDialect: 'error' })).rejects.toThrow(
+			/Unknown dialect/
+		);
 	});
 
 	test('unsupported 2020-12 features fail loudly', async () => {

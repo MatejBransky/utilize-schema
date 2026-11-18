@@ -4,7 +4,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
-import { type JSONSchema } from '@utilize/json-schema';
+import {
+	dialectCliHelp,
+	type DialectIssue,
+	dialectCliOptions,
+	formatIssue,
+	type JSONSchema,
+	readDialectCliOptions,
+} from '@utilize/json-schema';
 
 import { load as loadYaml } from 'js-yaml';
 
@@ -34,6 +41,7 @@ Options:
   -o, --output <path>   output file or directory
   --cwd <path>          directory used to resolve paths
   --no-banner           omit the generated-file banner
+${dialectCliHelp}
   -h, --help            show this help
 `;
 
@@ -52,6 +60,7 @@ export async function run(
 				output: { type: 'string', short: 'o' },
 				cwd: { type: 'string' },
 				'no-banner': { type: 'boolean', default: false },
+				...dialectCliOptions,
 				help: { type: 'boolean', short: 'h', default: false },
 			},
 		});
@@ -71,6 +80,17 @@ export async function run(
 	const input = values.input ?? positionals[0];
 	const output = values.output ?? positionals[1];
 	const banner = values['no-banner'] ? false : undefined;
+	const dialectCli = readDialectCliOptions(values);
+
+	if (!dialectCli.ok) {
+		io.stderr.write(`${dialectCli.error}\n`);
+		return 1;
+	}
+
+	const dialectOptions = {
+		...dialectCli.options,
+		onDialectIssue: (issue: DialectIssue) => io.stderr.write(`${formatIssue(issue)}\n`),
+	};
 
 	try {
 		if (!input) {
@@ -78,6 +98,7 @@ export async function run(
 			const code = await compileSchema(parseSchema(source), {
 				cwd,
 				fileName: 'Root.json',
+				...dialectOptions,
 			});
 			const content = withBanner(code, banner);
 
@@ -121,7 +142,7 @@ export async function run(
 		}
 
 		for (const [index, file] of files.entries()) {
-			const code = await compileFile(file.path);
+			const code = await compileFile(file.path, { ...dialectOptions });
 			const content = withBanner(code, banner);
 
 			if (!output) {

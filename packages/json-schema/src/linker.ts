@@ -2,6 +2,7 @@ import type { $Refs } from '@apidevtools/json-schema-ref-parser';
 
 import { join as pathJoin, dirname } from 'path';
 
+import { resolveDialect } from './dialect';
 import {
 	Meta,
 	type JSONSchema,
@@ -9,6 +10,7 @@ import {
 	type ParsedJSONSchemaObject,
 	type Path,
 } from './model';
+import type { DialectMap } from './normalize';
 import { isPlainObject } from './utils';
 
 export interface LinkNodeOptions {
@@ -19,6 +21,11 @@ export interface LinkNodeOptions {
 	$refs: $Refs;
 	stack: Set<JSONSchema>;
 	fileName: string;
+	/**
+	 * Dialects resolved by `prepareSchema`. A node it did not visit inherits
+	 * the dialect of its parent.
+	 */
+	dialects?: DialectMap;
 }
 
 export function link({
@@ -29,6 +36,7 @@ export function link({
 	stack,
 	filePath,
 	fileName,
+	dialects,
 }: LinkNodeOptions): ParsedJSONSchemaObject {
 	let pointer = [filePath, ...path].join('/');
 	let reference = undefined;
@@ -49,7 +57,7 @@ export function link({
 		}
 
 		if ($refs.exists(pointer, {})) {
-			reference = $refs.get(pointer) as unknown as ParsedJSONSchemaObject;
+			reference = $refs.get(pointer) as unknown as ParsedJSONSchema;
 			if (reference === undefined) {
 				throw new Error(`Reference not found: ${pointer}`);
 			}
@@ -79,6 +87,7 @@ export function link({
 		fileName,
 		path,
 		parent: parent as ParsedJSONSchemaObject,
+		...dialectMeta(schema, parent, dialects),
 	};
 
 	if (ref && $refs.exists(pointer, {})) {
@@ -109,6 +118,7 @@ export function link({
 				$refs,
 				stack,
 				fileName,
+				dialects,
 			});
 		}
 
@@ -135,6 +145,7 @@ export function link({
 				$refs,
 				stack,
 				fileName,
+				dialects,
 			})
 		);
 	}
@@ -148,10 +159,33 @@ export function link({
 			$refs,
 			stack,
 			fileName,
+			dialects,
 		});
 	}
 
 	stack.delete(schema);
 
 	return schema as unknown as ParsedJSONSchemaObject;
+}
+
+function dialectMeta(
+	schema: JSONSchema,
+	parent: JSONSchema | null,
+	dialects: DialectMap | undefined
+): Pick<Meta, 'dialect' | 'dialectSource'> {
+	const prepared = dialects?.get(schema);
+
+	if (prepared) {
+		return { dialect: prepared.dialect.id, dialectSource: prepared.source };
+	}
+
+	const parentMeta = (parent as ParsedJSONSchemaObject | null)?.[Meta];
+
+	if (parentMeta) {
+		return { dialect: parentMeta.dialect, dialectSource: parentMeta.dialectSource };
+	}
+
+	const resolved = resolveDialect(schema);
+
+	return { dialect: resolved.dialect.id, dialectSource: resolved.source };
 }

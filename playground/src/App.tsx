@@ -1,5 +1,5 @@
 import { generate as generateEffect } from '@utilize/effect';
-import { parse, type ParsedJSONSchema } from '@utilize/json-schema';
+import { type KeywordPolicy, parse, type ParsedJSONSchema } from '@utilize/json-schema';
 import { generate as generateTypeScript } from '@utilize/typescript';
 import { generate as generateZod } from '@utilize/zod';
 import { Button } from '@ui-sdk/react/button';
@@ -11,6 +11,14 @@ import {
 	ScrollAreaThumb,
 	ScrollAreaViewport,
 } from '@ui-sdk/react/scroll-area';
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectLabel,
+	SelectTrigger,
+	SelectValue,
+} from '@ui-sdk/react/select';
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@ui-sdk/react/tabs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -39,16 +47,25 @@ import styles from './App.module.css';
 const STORAGE_KEY = 'utilize-schema-playground';
 const EXAMPLE_PARAM = 'example';
 const GENERATOR_PARAM = 'generator';
+const KEYWORD_POLICY_PARAM = 'keyword-policy';
 
 interface AppState {
 	files: SchemaFile[];
 	target: TargetId;
+	keywordPolicy: KeywordPolicy;
 }
+
+const keywordPolicyOptions: Array<{ value: KeywordPolicy; label: string; hint: string }> = [
+	{ value: 'error', label: 'Error', hint: 'Reject keywords outside the dialect' },
+	{ value: 'warn', label: 'Warning', hint: 'Report them as warnings' },
+	{ value: 'ignore', label: 'Ignore', hint: 'Do not report them' },
+];
 
 export default function App() {
 	const [initial] = useState(loadState);
 	const [files, setFiles] = useState<SchemaFile[]>(initial.files);
 	const [target, setTarget] = useState<TargetId>(initial.target);
+	const [keywordPolicy, setKeywordPolicy] = useState<KeywordPolicy>(initial.keywordPolicy);
 	const [activeId, setActiveId] = useState(initial.files[0]?.id ?? '');
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [draftName, setDraftName] = useState('');
@@ -75,10 +92,21 @@ export default function App() {
 	const exampleId = useMemo(() => resolveExampleId(files), [files]);
 	const parsedFiles = useMemo(() => files.map(parseJsonFile), [files]);
 	const schemaProblems = useMemo(() => validateSchemas(parsedFiles), [parsedFiles]);
-	const bundle = useMemo(() => buildBundle(parsedFiles, rootId), [parsedFiles, rootId]);
+	const bundle = useMemo(
+		() => buildBundle(parsedFiles, rootId, keywordPolicy),
+		[parsedFiles, rootId, keywordPolicy]
+	);
 
 	const problems = useMemo(() => {
-		const all = [...schemaProblems, ...bundle.problems, ...generationProblems];
+		const generation = generationProblems.filter(
+			(problem) =>
+				!bundle.problems.some(
+					(existing) =>
+						existing.severity === problem.severity &&
+						issueText(existing.message) === issueText(problem.message)
+				)
+		);
+		const all = [...schemaProblems, ...bundle.problems, ...generation];
 		const seen = new Set<string>();
 
 		return all.filter((problem) => {
@@ -127,16 +155,16 @@ export default function App() {
 
 	useEffect(() => {
 		try {
-			localStorage.setItem(STORAGE_KEY, JSON.stringify({ files, target }));
+			localStorage.setItem(STORAGE_KEY, JSON.stringify({ files, target, keywordPolicy }));
 		} catch {
 			// Storage can be full or denied. Keep the workspace in memory.
 		}
-	}, [files, target]);
+	}, [files, target, keywordPolicy]);
 
 	useEffect(() => {
 		setShared(false);
 		setCopied(false);
-	}, [files, target]);
+	}, [files, target, keywordPolicy]);
 
 	useEffect(() => {
 		if (!copied) {
@@ -161,6 +189,8 @@ export default function App() {
 					const { root } = await parse(bundle.root as never, {
 						cwd: '/',
 						fileName: bundle.rootFileName,
+						keywordPolicy,
+						onDialectIssue: () => {},
 					});
 
 					const rawCode = generateCodeFor(target, root);
@@ -185,7 +215,7 @@ export default function App() {
 			cancelled = true;
 			clearTimeout(timer);
 		};
-	}, [bundle, target]);
+	}, [bundle, target, keywordPolicy]);
 
 	useEffect(() => {
 		const query = window.matchMedia('(prefers-color-scheme: dark)');
@@ -225,12 +255,16 @@ export default function App() {
 	}, []);
 
 	useEffect(() => {
-		const onPopState = () => {
-			const next = readHash() ?? readUrlState() ?? loadSavedState();
+		const url = new URL(location.href);
 
-			if (next) {
-				applyState(next);
-			}
+		if (!url.hash && url.searchParams.get(KEYWORD_POLICY_PARAM) !== keywordPolicy) {
+			updateUrl({ [KEYWORD_POLICY_PARAM]: keywordPolicy }, 'replace');
+		}
+	}, [keywordPolicy]);
+
+	useEffect(() => {
+		const onPopState = () => {
+			applyState(loadState());
 		};
 
 		window.addEventListener('popstate', onPopState);
@@ -241,6 +275,7 @@ export default function App() {
 	function applyState(next: AppState) {
 		setFiles(next.files);
 		setTarget(next.target);
+		setKeywordPolicy(next.keywordPolicy);
 		setActiveId(next.files[0]?.id ?? '');
 		setEditingId(null);
 	}
@@ -384,6 +419,11 @@ export default function App() {
 		updateUrl({ [GENERATOR_PARAM]: id }, 'push');
 	}
 
+	function applyKeywordPolicy(policy: KeywordPolicy) {
+		setKeywordPolicy(policy);
+		updateUrl({ [KEYWORD_POLICY_PARAM]: policy }, 'push');
+	}
+
 	function setExampleUrl(id: string | null, mode: 'push' | 'replace') {
 		updateUrl({ [EXAMPLE_PARAM]: id }, mode);
 	}
@@ -429,11 +469,12 @@ export default function App() {
 	}
 
 	async function share() {
-		const encoded = encodeState({ files, target });
+		const encoded = encodeState({ files, target, keywordPolicy });
 		const url = new URL(location.href);
 
 		url.searchParams.delete(EXAMPLE_PARAM);
 		url.searchParams.delete(GENERATOR_PARAM);
+		url.searchParams.set(KEYWORD_POLICY_PARAM, keywordPolicy);
 		url.hash = `data=${encoded}`;
 		history.replaceState(null, '', url);
 		setShared(true);
@@ -489,6 +530,29 @@ export default function App() {
 						options={exampleOptions}
 						onChange={applyExample}
 					/>
+				</div>
+				<div className={styles.policyPicker}>
+					<Select
+						items={keywordPolicyOptions.map(({ value, label }) => ({ value, label }))}
+						value={keywordPolicy}
+						onValueChange={(value) => {
+							if (isKeywordPolicy(value)) {
+								applyKeywordPolicy(value);
+							}
+						}}
+					>
+						<SelectLabel>Keyword policy</SelectLabel>
+						<SelectTrigger>
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent className={styles.policyContent}>
+							{keywordPolicyOptions.map((option) => (
+								<SelectItem key={option.value} value={option.value} title={option.hint}>
+									{option.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
 				</div>
 			</Header>
 
@@ -740,38 +804,41 @@ function defaultState(): AppState {
 	return {
 		files: example.files,
 		target: defaultTarget,
+		keywordPolicy: 'warn',
 	};
 }
 
 function loadState(): AppState {
-	const fromHash = readHash();
+	const fromHash = readHash() ?? readUrlState() ?? loadSavedState() ?? defaultState();
+	const keywordPolicy = readKeywordPolicyParam();
 
-	if (fromHash) {
-		return fromHash;
-	}
-
-	const fromUrl = readUrlState();
-
-	if (fromUrl) {
-		return fromUrl;
-	}
-
-	return loadSavedState() ?? defaultState();
+	// The `keyword-policy` query parameter wins over the policy stored in the
+	// shared `#data=` hash so the setting can be changed without editing the hash.
+	return keywordPolicy ? { ...fromHash, keywordPolicy } : fromHash;
 }
 
 function readUrlState(): AppState | null {
 	const url = new URL(location.href);
 	const target = readGeneratorParam();
+	const keywordPolicy = readKeywordPolicyParam();
 	const example = exampleById(url.searchParams.get(EXAMPLE_PARAM));
+	const base = loadSavedState() ?? defaultState();
+	const policy = keywordPolicy ?? base.keywordPolicy;
 
 	if (example) {
-		return { files: example.files, target: target ?? defaultTarget };
+		return {
+			files: example.files,
+			target: target ?? defaultTarget,
+			keywordPolicy: policy,
+		};
 	}
 
-	if (target) {
-		const base = loadSavedState() ?? defaultState();
-
-		return { files: base.files, target };
+	if (target || keywordPolicy) {
+		return {
+			files: base.files,
+			target: target ?? base.target,
+			keywordPolicy: policy,
+		};
 	}
 
 	return null;
@@ -781,6 +848,12 @@ function readGeneratorParam(): TargetId | null {
 	const id = new URL(location.href).searchParams.get(GENERATOR_PARAM);
 
 	return isAvailableTarget(id) ? id : null;
+}
+
+function readKeywordPolicyParam(): KeywordPolicy | null {
+	const value = new URL(location.href).searchParams.get(KEYWORD_POLICY_PARAM);
+
+	return isKeywordPolicy(value) ? value : null;
 }
 
 function loadSavedState(): AppState | null {
@@ -808,6 +881,14 @@ function isAvailableTarget(value: unknown): value is TargetId {
 	return isTargetId(value) && targets.some((target) => target.value === value && !target.disabled);
 }
 
+function isKeywordPolicy(value: unknown): value is KeywordPolicy {
+	return value === 'error' || value === 'warn' || value === 'ignore';
+}
+
+function issueText(message: string): string {
+	return message.replace(/\s+\([^()]*\)$/, '');
+}
+
 function normalizeState(value: unknown): AppState | null {
 	if (!value || typeof value !== 'object') {
 		return null;
@@ -822,6 +903,7 @@ function normalizeState(value: unknown): AppState | null {
 	return {
 		files: state.files,
 		target: isAvailableTarget(state.target) ? state.target : defaultTarget,
+		keywordPolicy: isKeywordPolicy(state.keywordPolicy) ? state.keywordPolicy : 'warn',
 	};
 }
 

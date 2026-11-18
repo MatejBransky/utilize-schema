@@ -1,12 +1,14 @@
 import { $RefParser } from '@apidevtools/json-schema-ref-parser';
 
+import type { DialectIssue, DialectOptions } from './dialect';
+import { resolveDialect } from './dialect';
 import { link } from './linker';
 import { Meta, type JSONSchema, type ParsedJSONSchema } from './model';
-import { detectSchemaVersion, normalizeSchema } from './normalize';
+import { type DialectMap, prepareSchema } from './normalize';
 
 type SchemaPath = string;
 
-interface ParseOptions {
+export interface ParseOptions extends DialectOptions {
 	cwd: string;
 	fileName: string;
 }
@@ -18,6 +20,8 @@ export async function parse(
 	root: ParsedJSONSchema;
 	get: ($ref: string) => ParsedJSONSchema;
 	referencedSchemas: ParsedJSONSchema[];
+	/** Dialect issues reported with `keywordPolicy: 'warn'`. */
+	issues: DialectIssue[];
 }> {
 	let cwd = options.cwd;
 	const rootFileName = options.fileName;
@@ -27,19 +31,43 @@ export async function parse(
 	}
 
 	const parser = new $RefParser();
-	const $refs = await parser.resolve(cwd, schema, {});
+	// Parsing normalizes and links in place. Clone the input so the same schema
+	// object can be compiled again, and with another dialect, without leftovers.
+	const input = structuredClone(schema);
+	const $refs = await parser.resolve(cwd, input, {});
 
 	const entries = Object.entries($refs.values()) as Array<[SchemaPath, JSONSchema]>;
 
-	const rootVersion = detectSchemaVersion(schema);
+	const rootDialect = resolveDialect(schema, options).dialect.id;
+
+	let rootDialects: DialectMap | undefined;
+	const issues: DialectIssue[] = [];
+	const onDialectIssue = (issue: DialectIssue) => {
+		issues.push(issue);
+		options.onDialectIssue?.(issue);
+	};
 
 	entries.forEach(([filePath, entrySchema]) => {
-		normalizeSchema(entrySchema, detectSchemaVersion(entrySchema, rootVersion));
-
 		const rootSchema = $refs.get('#');
 		const isRootSchema = entrySchema === rootSchema;
 		const prefixPath = isRootSchema ? '#' : filePath.replace(cwd, '');
 		const fileName = isRootSchema ? rootFileName : (filePath.split(/[\\/]/).at(-1) ?? 'Unknown');
+
+		// A referenced file without `$schema` inherits the root's dialect.
+		const dialects = prepareSchema(entrySchema, {
+			dialect: options.dialect,
+			fallbackDialect: options.fallbackDialect,
+			inheritedDialect: isRootSchema ? undefined : rootDialect,
+			unknownDialect: options.unknownDialect,
+			keywordPolicy: options.keywordPolicy,
+			onDialectIssue,
+			filePath: prefixPath,
+		});
+
+		if (isRootSchema) {
+			rootDialects = dialects;
+		}
+
 		link({
 			schema: entrySchema,
 			parent: null,
@@ -48,6 +76,7 @@ export async function parse(
 			path: [],
 			$refs,
 			stack: new Set(),
+			dialects,
 		});
 	});
 	const root = $refs.get('#') as unknown as ParsedJSONSchema;
@@ -61,6 +90,7 @@ export async function parse(
 			path: [],
 			$refs,
 			stack: new Set(),
+			dialects: rootDialects,
 		});
 	}
 
@@ -70,5 +100,6 @@ export async function parse(
 		referencedSchemas: entries
 			.filter(([, entrySchema]) => entrySchema !== root)
 			.map(([, entrySchema]) => entrySchema) as ParsedJSONSchema[],
+		issues,
 	};
 }

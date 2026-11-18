@@ -82,6 +82,118 @@ test('generates a root schema that only contains a $ref', async () => {
 	expect(code).toContain('export const');
 });
 
+test('reports foreign keywords as warnings by default', () => {
+	const root = file('root', 'root.json', {
+		$schema: 'http://json-schema.org/draft-07/schema#',
+		type: 'array',
+		prefixItems: [{ type: 'string' }],
+	});
+
+	const bundle = buildBundle([parseJsonFile(root)], 'root');
+
+	expect(bundle.problems).toEqual([
+		{
+			fileId: 'root',
+			severity: 'warning',
+			message: expect.stringContaining('"prefixItems" is not part of draft-07'),
+		},
+	]);
+});
+
+test('reports foreign keywords as errors with keywordPolicy error', () => {
+	const root = file('root', 'root.json', {
+		$schema: 'http://json-schema.org/draft-07/schema#',
+		type: 'array',
+		prefixItems: [{ type: 'string' }],
+	});
+
+	const bundle = buildBundle([parseJsonFile(root)], 'root', 'error');
+
+	expect(bundle.problems).toContainEqual(
+		expect.objectContaining({
+			fileId: 'root',
+			severity: 'error',
+			message: expect.stringContaining('"prefixItems" is not part of draft-07'),
+		})
+	);
+});
+
+test('reports foreign keywords as warnings with keywordPolicy warn', () => {
+	const root = file('root', 'root.json', {
+		$schema: 'http://json-schema.org/draft-07/schema#',
+		type: 'array',
+		prefixItems: [{ type: 'string' }],
+	});
+
+	const bundle = buildBundle([parseJsonFile(root)], 'root', 'warn');
+
+	expect(bundle.problems).toEqual([
+		{
+			fileId: 'root',
+			severity: 'warning',
+			message: expect.stringContaining('"prefixItems" is not part of draft-07'),
+		},
+	]);
+});
+
+test('silently ignores foreign keywords with keywordPolicy ignore', () => {
+	const root = file('root', 'root.json', {
+		$schema: 'http://json-schema.org/draft-07/schema#',
+		type: 'array',
+		prefixItems: [{ type: 'string' }],
+	});
+
+	const bundle = buildBundle([parseJsonFile(root)], 'root', 'ignore');
+
+	expect(bundle.problems).toEqual([]);
+});
+
+test('normalizes a draft-04 schema only once with keywordPolicy error', async () => {
+	const root = file('root', 'root.json', {
+		$schema: 'http://json-schema.org/draft-04/schema#',
+		type: 'number',
+		minimum: 0,
+		exclusiveMinimum: true,
+	});
+	const parsedFiles = [parseJsonFile(root)];
+
+	const first = buildBundle(parsedFiles, 'root', 'error');
+	const second = buildBundle(parsedFiles, 'root', 'error');
+
+	expect(first.problems).toEqual([]);
+	expect(second.problems).toEqual([]);
+	expect(parsedFiles[0].schema).toMatchObject({ exclusiveMinimum: true });
+
+	const parsed = await parse(second.root as never, {
+		cwd: '/',
+		fileName: second.rootFileName,
+		keywordPolicy: 'error',
+	});
+
+	expect(generate(parsed.root, { importZod: true })).toContain('.gt(0)');
+});
+
+test('reports foreign keywords in a referenced file that inherits the root dialect', () => {
+	const root = file('root', 'root.json', {
+		$schema: 'http://json-schema.org/draft-07/schema#',
+		$ref: './child.json',
+	});
+	const child = file('child', 'child.json', {
+		type: 'object',
+		unevaluatedProperties: false,
+	});
+
+	const bundle = buildBundle([parseJsonFile(root), parseJsonFile(child)], 'root');
+
+	expect(bundle.problems).toEqual([
+		{
+			fileId: 'child',
+			severity: 'warning',
+			message: expect.stringContaining('"unevaluatedProperties" is not part of draft-07'),
+		},
+	]);
+});
+
 test('detectRootId picks the file that no other file references', () => {
 	const files = [
 		file('address', 'address.json', { type: 'object' }),

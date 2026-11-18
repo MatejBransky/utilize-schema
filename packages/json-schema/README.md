@@ -29,6 +29,8 @@ console.log(meta);
 //   filePath,      // Path to the schema file
 //   path,          // Path within the schema
 //   resolvedName,  // Placeholder for code generators (set later)
+//   dialect,       // Dialect of the schema resource ('draft-07', '2020-12', ...)
+//   dialectSource, // 'declared' | 'inherited' | 'fallback' | 'forced'
 // }
 ```
 
@@ -54,6 +56,32 @@ const { root } = await parse(schema, {
 });
 console.log(root[Meta]);
 ```
+
+## Dialects
+
+The dialect is resolved per schema resource from `$schema` and copied into
+`Meta`. Keywords that do not belong to the node's dialect are reported as
+warnings by default, so draft-2020-12 syntax in a draft-07 schema does not go
+unnoticed. `keywordPolicy: 'error'` fails instead, and `'ignore'` does not
+report them. The library never writes to the console: issues go to
+`onDialectIssue` and are also returned by `parse()`.
+
+```ts
+import { formatIssue, parse } from '@utilize/json-schema';
+
+await parse(schema, {
+	cwd: process.cwd(),
+	fileName: 'schema.json',
+	// dialect: '2020-12',              // force one dialect
+	fallbackDialect: 'draft-07', // used when `$schema` is missing
+	unknownDialect: 'fallback', // or 'error'
+	keywordPolicy: 'warn', // or 'error' / 'ignore'
+	onDialectIssue: (issue) => console.warn(formatIssue(issue)),
+});
+// parse() also returns the reported issues as `issues`.
+```
+
+See [docs/dialects.md](../../docs/dialects.md) for the keyword matrix.
 
 ## When to use
 

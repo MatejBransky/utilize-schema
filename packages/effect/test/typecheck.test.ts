@@ -31,6 +31,7 @@ const mutualDefinitions: TestSchema = {
 const recursiveArray: TestSchema = { type: 'array', items: { $ref: '#' } };
 
 const recursiveTuple: TestSchema = {
+	$schema: 'https://json-schema.org/draft/2020-12/schema',
 	type: 'array',
 	prefixItems: [{ type: 'string' }, { $ref: '#' }],
 	items: false,
@@ -114,6 +115,7 @@ const booleanRefs = {
 } as unknown as TestSchema;
 
 const nested: TestSchema = {
+	$schema: 'https://json-schema.org/draft/2020-12/schema',
 	type: 'object',
 	properties: {
 		id: { type: 'string' },

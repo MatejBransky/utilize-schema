@@ -6,7 +6,14 @@ import { parseArgs } from 'node:util';
 
 import { load as loadYaml } from 'js-yaml';
 
-import { type JSONSchema } from '@utilize/json-schema';
+import {
+	dialectCliHelp,
+	type DialectIssue,
+	dialectCliOptions,
+	formatIssue,
+	type JSONSchema,
+	readDialectCliOptions,
+} from '@utilize/json-schema';
 
 import { compileFile, compileSchema, withBanner } from './compile';
 
@@ -35,6 +42,7 @@ Options:
   --cwd <path>          directory used to resolve paths
   --readonly            map readOnly: true to .readonly()
   --no-banner           omit the generated-file banner
+${dialectCliHelp}
   -h, --help            show this help
 `;
 
@@ -54,6 +62,7 @@ export async function run(
 				cwd: { type: 'string' },
 				readonly: { type: 'boolean', default: false },
 				'no-banner': { type: 'boolean', default: false },
+				...dialectCliOptions,
 				help: { type: 'boolean', short: 'h', default: false },
 			},
 		});
@@ -74,6 +83,17 @@ export async function run(
 	const output = values.output ?? positionals[1];
 	const banner = values['no-banner'] ? false : undefined;
 	const readOnlyKeyword = values.readonly;
+	const dialectCli = readDialectCliOptions(values);
+
+	if (!dialectCli.ok) {
+		io.stderr.write(`${dialectCli.error}\n`);
+		return 1;
+	}
+
+	const dialectOptions = {
+		...dialectCli.options,
+		onDialectIssue: (issue: DialectIssue) => io.stderr.write(`${formatIssue(issue)}\n`),
+	};
 
 	try {
 		if (!input) {
@@ -82,6 +102,7 @@ export async function run(
 				cwd,
 				fileName: 'Root.json',
 				readOnlyKeyword,
+				...dialectOptions,
 			});
 			const content = withBanner(code, banner);
 
@@ -125,7 +146,7 @@ export async function run(
 		}
 
 		for (const [index, file] of files.entries()) {
-			const code = await compileFile(file.path, { readOnlyKeyword });
+			const code = await compileFile(file.path, { readOnlyKeyword, ...dialectOptions });
 			const content = withBanner(code, banner);
 
 			if (!output) {

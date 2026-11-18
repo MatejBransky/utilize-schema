@@ -1,6 +1,17 @@
+import {
+	type Dialect,
+	type DialectId,
+	DialectError,
+	dialects,
+	type DialectIssue,
+	type DialectOptions,
+	type DialectSource,
+	keywordIssues,
+	resolveDialect,
+	type ResolvedDialect,
+} from './dialect';
+import type { Path } from './model';
 import { isPlainObject } from './utils';
-
-export type SchemaVersion = 'draft-04' | 'draft-06' | 'draft-07' | '2019-09' | '2020-12';
 
 export class UnsupportedSchemaFeatureError extends Error {
 	constructor(keyword: string) {
@@ -11,33 +22,19 @@ export class UnsupportedSchemaFeatureError extends Error {
 	}
 }
 
-/**
- * Reads `$schema` and maps it to a known draft. Unknown or absent values fall
- * back to the provided version, so custom meta-schemas keep working.
- */
-export function detectSchemaVersion(
-	schema: unknown,
-	fallback: SchemaVersion = 'draft-07'
-): SchemaVersion {
-	if (!isPlainObject(schema) || typeof schema.$schema !== 'string') {
-		return fallback;
-	}
+/** The dialect of every object node in a prepared schema. */
+export type DialectMap = WeakMap<object, ResolvedDialect>;
 
-	const uri = schema.$schema;
-
-	if (/draft-04/.test(uri)) return 'draft-04';
-	if (/draft-06/.test(uri)) return 'draft-06';
-	if (/draft-07/.test(uri)) return 'draft-07';
-	if (/2019-09/.test(uri)) return '2019-09';
-	if (/2020-12/.test(uri)) return '2020-12';
-
-	return fallback;
+export interface PrepareSchemaOptions extends DialectOptions {
+	/** Included in diagnostics; file name or relative path. */
+	filePath?: string;
+	/**
+	 * Dialect of the document that references this one. A schema without
+	 * `$schema` inherits it instead of using `fallbackDialect`.
+	 */
+	inheritedDialect?: DialectId;
 }
 
-/**
- * Rewrites keywords that have a different shape in newer drafts into the
- * draft-07 form the generator understands. Mutates the schema in place.
- */
 const MAP_KEYWORDS = new Set([
 	'properties',
 	'patternProperties',
@@ -48,6 +45,9 @@ const MAP_KEYWORDS = new Set([
 const SINGLE_SCHEMA_KEYWORDS = new Set([
 	'additionalProperties',
 	'additionalItems',
+	'unevaluatedProperties',
+	'unevaluatedItems',
+	'contentSchema',
 	'contains',
 	'propertyNames',
 	'if',
@@ -56,31 +56,92 @@ const SINGLE_SCHEMA_KEYWORDS = new Set([
 	'not',
 ]);
 const ARRAY_SCHEMA_KEYWORDS = new Set(['allOf', 'anyOf', 'oneOf', 'prefixItems']);
+/** Keywords whose value may be a boolean even in draft-04. */
+const BOOLEAN_FORM_KEYWORDS = new Set(['additionalProperties', 'additionalItems']);
 
-const normalizedNodes = new WeakSet<object>();
-
-export function normalizeSchema(schema: unknown, version: SchemaVersion) {
+/**
+ * Resolves the dialect of every schema resource, reports keywords that do not
+ * belong to it, and rewrites the keywords whose newer shape the generators
+ * expect. Returns the dialect assigned to each node so `link` can copy it into
+ * `Meta`.
+ */
+export function prepareSchema(schema: unknown, options: PrepareSchemaOptions = {}): DialectMap {
+	const map: DialectMap = new WeakMap();
 	const seen = new Set<unknown>();
+	const policy = options.keywordPolicy ?? 'warn';
+	const root = resolveDocumentDialect(schema, options);
 
-	visitSchema(schema);
+	visit(schema, root, [], true);
 
-	function visitSchema(node: unknown) {
-		if (typeof node !== 'object' || node === null || seen.has(node)) {
+	return map;
+
+	function visit(
+		node: unknown,
+		inherited: ResolvedDialect,
+		path: Path,
+		isDocumentRoot: boolean
+	): void {
+		if (typeof node === 'boolean') {
+			if (inherited.dialect.id === 'draft-04') {
+				report(
+					{
+						kind: 'invalid-keyword',
+						message: `${inherited.dialect.id} does not allow boolean schemas.`,
+						path,
+					},
+					inherited
+				);
+			}
+
 			return;
 		}
 
+		if (typeof node !== 'object' || node === null) {
+			return;
+		}
+
+		if (seen.has(node)) {
+			return;
+		}
 		seen.add(node);
+
+		if (Array.isArray(node)) {
+			map.set(node, inherited);
+			node.forEach((item, index) => visit(item, inherited, [...path, index], false));
+			return;
+		}
 
 		if (!isPlainObject(node)) {
 			return;
 		}
 
-		if (normalizedNodes.has(node)) {
-			return;
-		}
-		normalizedNodes.add(node);
+		let resolved = inherited;
 
-		normalizeNode(node, version);
+		if (!isDocumentRoot && isResourceRoot(node, inherited.dialect)) {
+			// A bundled file keeps its `$schema` after being embedded under `$defs`,
+			// so a declared `$schema` starts a dialect scope even without `$id`.
+			const next = resolveDialect(node, {
+				...options,
+				fallbackDialect: inherited.dialect.id,
+			});
+			resolved = next.source === 'fallback' ? { ...next, source: 'inherited' } : next;
+		}
+
+		map.set(node, resolved);
+
+		for (const issue of keywordIssues(node, resolved.dialect)) {
+			// Without a declared dialect `unevaluated*` is mapped best effort
+			// (see `normalizeNode`), so it is not reported.
+			const bestEffortUnevaluated =
+				resolved.source === 'fallback' &&
+				(issue.keyword === 'unevaluatedProperties' || issue.keyword === 'unevaluatedItems');
+
+			if (!bestEffortUnevaluated) {
+				report({ ...issue, path }, resolved);
+			}
+		}
+
+		normalizeNode(node, resolved.dialect, resolved.source);
 
 		for (const [key, value] of Object.entries(node)) {
 			if (key === '$schema') {
@@ -89,67 +150,154 @@ export function normalizeSchema(schema: unknown, version: SchemaVersion) {
 
 			if (key === 'items') {
 				if (Array.isArray(value)) {
-					for (const item of value) visitSchema(item);
+					value.forEach((item, index) => visit(item, resolved, [...path, key, index], false));
 				} else {
-					visitSchema(value);
+					visit(value, resolved, [...path, key], false);
 				}
 			} else if (MAP_KEYWORDS.has(key) && isPlainObject(value)) {
-				for (const subschema of Object.values(value)) visitSchema(subschema);
+				for (const [name, subschema] of Object.entries(value)) {
+					visit(subschema, resolved, [...path, key, name], false);
+				}
 			} else if (SINGLE_SCHEMA_KEYWORDS.has(key)) {
-				visitSchema(value);
+				// Every dialect accepts a boolean here, draft-04 included.
+				if (typeof value === 'boolean' && BOOLEAN_FORM_KEYWORDS.has(key)) {
+					continue;
+				}
+
+				visit(value, resolved, [...path, key], false);
 			} else if (ARRAY_SCHEMA_KEYWORDS.has(key) && Array.isArray(value)) {
-				for (const subschema of value) visitSchema(subschema);
+				value.forEach((item, index) => visit(item, resolved, [...path, key, index], false));
 			} else if (key === 'dependencies' && isPlainObject(value)) {
-				for (const dependency of Object.values(value)) {
-					if (!Array.isArray(dependency)) visitSchema(dependency);
+				for (const [name, dependency] of Object.entries(value)) {
+					if (!Array.isArray(dependency)) {
+						visit(dependency, resolved, [...path, key, name], false);
+					}
 				}
 			}
 		}
 	}
+
+	function report(
+		issue: Omit<DialectIssue, 'dialect' | 'dialectSource' | 'filePath'>,
+		resolved: ResolvedDialect
+	): void {
+		const full: DialectIssue = {
+			...issue,
+			dialect: resolved.dialect.id,
+			dialectSource: resolved.source,
+			filePath: options.filePath,
+		};
+
+		// `$ref` siblings are valid; the specification only says they are
+		// ignored, so they are reported when warnings are requested.
+		if (issue.kind === 'ignored-ref-siblings') {
+			if (policy === 'warn') {
+				emit(full);
+			}
+
+			return;
+		}
+
+		if (policy === 'error') {
+			throw new DialectError(full);
+		}
+
+		if (policy === 'warn') {
+			emit(full);
+		}
+	}
+
+	// The library never writes to the console; callers decide how to show
+	// issues (the CLIs print them, `parse` also returns them).
+	function emit(issue: DialectIssue): void {
+		options.onDialectIssue?.(issue);
+	}
 }
 
-function normalizeNode(node: Record<string, unknown>, version: SchemaVersion): void {
-	if (version === 'draft-04') {
+/**
+ * Normalizes a schema for a single dialect. Newer parsers use `prepareSchema`,
+ * which resolves the dialect per resource and reports issues.
+ */
+export function normalizeSchema(schema: unknown, dialect: DialectId | Dialect = 'draft-07'): void {
+	prepareSchema(schema, {
+		dialect: typeof dialect === 'string' ? dialect : dialect.id,
+		keywordPolicy: 'ignore',
+	});
+}
+
+function resolveDocumentDialect(schema: unknown, options: PrepareSchemaOptions): ResolvedDialect {
+	const resolved = resolveDialect(schema, options);
+
+	if (resolved.source === 'fallback' && options.inheritedDialect) {
+		return { dialect: dialects[options.inheritedDialect], source: 'inherited' };
+	}
+
+	return resolved;
+}
+
+function isResourceRoot(node: Record<string, unknown>, dialect: Dialect): boolean {
+	const id = dialect.id === 'draft-04' ? node.id : node.$id;
+
+	return (
+		(typeof id === 'string' && id.length > 0 && !id.startsWith('#')) ||
+		typeof node.$schema === 'string'
+	);
+}
+
+function normalizeNode(
+	node: Record<string, unknown>,
+	dialect: Dialect,
+	source: DialectSource
+): void {
+	if (dialect.id === 'draft-04') {
 		normalizeDraft04ExclusiveBounds(node);
 	}
 
 	// These keywords have a single meaning and schemas often omit `$schema`, so
-	// map them before the version guard.
+	// map them best effort for 2019-09+, and also for a schema without a declared
+	// dialect. In a declared older dialect they are foreign and must be ignored.
 	//
 	// `additionalProperties` / `additionalItems` cover the common case, where the
-	// schema does not rely on properties evaluated by applicators. That mapping
-	// is best effort; the full `unevaluated*` semantics need evaluation tracking.
+	// schema does not rely on properties evaluated by applicators.
 	//
 	// The original keywords are kept so `$ref`s such as
 	// `#/unevaluatedProperties` still resolve after normalization; generators
 	// ignore them once the mapped keyword is present.
-	if (node.unevaluatedProperties !== undefined) {
-		if (node.additionalProperties === undefined) {
-			node.additionalProperties = node.unevaluatedProperties;
+	if (dialect.unevaluated || source === 'fallback') {
+		if (node.unevaluatedProperties !== undefined) {
+			if (node.additionalProperties === undefined) {
+				node.additionalProperties = node.unevaluatedProperties;
+			}
+		}
+
+		if (node.unevaluatedItems !== undefined) {
+			if (node.items === undefined) {
+				node.items = node.unevaluatedItems;
+			} else if (Array.isArray(node.items) && node.additionalItems === undefined) {
+				node.additionalItems = node.unevaluatedItems;
+			}
 		}
 	}
 
-	if (node.unevaluatedItems !== undefined) {
-		if (node.items === undefined) {
-			node.items = node.unevaluatedItems;
-		} else if (Array.isArray(node.items) && node.additionalItems === undefined) {
-			node.additionalItems = node.unevaluatedItems;
-		}
-	}
-
-	if (version !== '2019-09' && version !== '2020-12') {
+	if (!dialect.unevaluated) {
 		return;
 	}
 
+	// These keywords are valid in the dialect, but no generator supports them
+	// yet. `keywordPolicy` only covers keywords from other dialects, so this
+	// always fails instead of producing code that is looser than the schema.
 	for (const keyword of ['$recursiveRef', '$dynamicRef', 'minContains', 'maxContains']) {
 		if (node[keyword] !== undefined) {
 			throw new UnsupportedSchemaFeatureError(keyword);
 		}
 	}
 
-	const dependencies: Record<string, unknown> = isPlainObject(node.dependencies)
-		? { ...node.dependencies }
-		: {};
+	// In 2019-09 and newer `dependencies` was replaced by `dependentRequired`
+	// and `dependentSchemas`. A leftover `dependencies` keyword was reported
+	// above and must not be applied to generated code.
+	delete node.dependencies;
+
+	const dependencies: Record<string, unknown> = {};
 
 	for (const [key, value] of Object.entries(
 		isPlainObject(node.dependentRequired) ? node.dependentRequired : {}

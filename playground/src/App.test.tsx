@@ -189,6 +189,7 @@ test('an agent can find and change the playground controls', async () => {
 	for (const label of [
 		'Generator',
 		'Example',
+		'Keyword policy',
 		'Color mode',
 		'Schema files',
 		'Add file',
@@ -261,9 +262,10 @@ test('the header pickers are selects rather than text inputs', async () => {
 	const screen = await render(<App />);
 
 	expect(document.querySelector('[data-slot="combobox-input"]')).toBeNull();
-	expect(document.querySelectorAll('[data-slot="select-trigger"]')).toHaveLength(2);
+	expect(document.querySelectorAll('[data-slot="select-trigger"]')).toHaveLength(3);
 	await expect.element(screen.getByRole('combobox', { name: 'Generator' })).toBeVisible();
 	await expect.element(screen.getByRole('combobox', { name: 'Example' })).toBeVisible();
+	await expect.element(screen.getByRole('combobox', { name: 'Keyword policy' })).toBeVisible();
 });
 
 test('the generator select offers only implemented generators', async () => {
@@ -311,6 +313,148 @@ test('an agent can switch the generator', async () => {
 	expect(result.ok, result.error?.message).toBe(true);
 	await vi.waitFor(() =>
 		expect(new URL(location.href).searchParams.get('generator')).toBe('effect')
+	);
+});
+
+test('the keyword policy shows foreign keywords as errors or warnings', async () => {
+	localStorage.setItem(
+		'utilize-schema-playground',
+		JSON.stringify({
+			files: [
+				{
+					id: 'root',
+					name: 'root.json',
+					content: JSON.stringify({
+						$schema: 'http://json-schema.org/draft-07/schema#',
+						type: 'array',
+						prefixItems: [{ type: 'string' }],
+					}),
+				},
+			],
+			target: 'zod',
+			keywordPolicy: 'error',
+		})
+	);
+	const agent = createAgent({ allow: () => true });
+	await render(<App />);
+
+	const problemsText = () => document.querySelector('[data-testid="problems"]')?.textContent ?? '';
+
+	await vi.waitFor(() => expect(problemsText()).toContain('"prefixItems" is not part of draft-07'));
+	expect(problemsText()).toContain('1 errors, 0 warnings');
+	expect(problemsText()).toContain('Error');
+
+	const result = await agent.act({
+		steps: [{ ref: 'Keyword policy', action: 'setValue', args: ['Warning'] }],
+	});
+	expect(result.ok, result.error?.message).toBe(true);
+
+	await vi.waitFor(() => expect(problemsText()).toContain('0 errors, 1 warnings'));
+	expect(problemsText()).toContain('"prefixItems" is not part of draft-07');
+	// The workspace is saved in an effect, which can run after the panel updates.
+	await vi.waitFor(() =>
+		expect(JSON.parse(localStorage.getItem('utilize-schema-playground')!).keywordPolicy).toBe(
+			'warn'
+		)
+	);
+	expect(new URL(location.href).searchParams.get('keyword-policy')).toBe('warn');
+});
+
+test('foreign keywords show as warnings by default', async () => {
+	localStorage.setItem(
+		'utilize-schema-playground',
+		JSON.stringify({
+			files: [
+				{
+					id: 'root',
+					name: 'root.json',
+					content: JSON.stringify({
+						$schema: 'http://json-schema.org/draft-07/schema#',
+						type: 'array',
+						prefixItems: [{ type: 'string' }],
+					}),
+				},
+			],
+			target: 'zod',
+		})
+	);
+	await render(<App />);
+
+	const problemsText = () => document.querySelector('[data-testid="problems"]')?.textContent ?? '';
+
+	await vi.waitFor(() => expect(problemsText()).toContain('"prefixItems" is not part of draft-07'));
+	expect(problemsText()).toContain('0 errors, 1 warnings');
+	expect(problemsText()).toContain('Warning');
+});
+
+test('the keyword-policy URL parameter sets the policy', async () => {
+	history.replaceState(null, '', '/?keyword-policy=error');
+	localStorage.setItem(
+		'utilize-schema-playground',
+		JSON.stringify({
+			files: [
+				{
+					id: 'root',
+					name: 'root.json',
+					content: JSON.stringify({
+						$schema: 'http://json-schema.org/draft-07/schema#',
+						type: 'array',
+						prefixItems: [{ type: 'string' }],
+					}),
+				},
+			],
+			target: 'zod',
+		})
+	);
+	await render(<App />);
+
+	const problemsText = () => document.querySelector('[data-testid="problems"]')?.textContent ?? '';
+
+	await vi.waitFor(() => expect(problemsText()).toContain('"prefixItems" is not part of draft-07'));
+	expect(problemsText()).toContain('1 errors, 0 warnings');
+	expect(problemsText()).toContain('Error');
+});
+
+test('the keyword-policy query parameter overrides the hash state', async () => {
+	const state = {
+		files: [
+			{
+				id: 'root',
+				name: 'root.json',
+				content: JSON.stringify({
+					$schema: 'http://json-schema.org/draft-07/schema#',
+					type: 'array',
+					prefixItems: [{ type: 'string' }],
+				}),
+			},
+		],
+		target: 'zod',
+		keywordPolicy: 'warn',
+	};
+	const encoded = btoa(JSON.stringify(state))
+		.replace(/\+/g, '-')
+		.replace(/\//g, '_')
+		.replace(/=+$/, '');
+	history.replaceState(null, '', `/?keyword-policy=error#data=${encoded}`);
+	await render(<App />);
+
+	const problemsText = () => document.querySelector('[data-testid="problems"]')?.textContent ?? '';
+
+	await vi.waitFor(() => expect(problemsText()).toContain('"prefixItems" is not part of draft-07'));
+	expect(problemsText()).toContain('1 errors, 0 warnings');
+});
+
+test('share includes the keyword policy in the URL', async () => {
+	Object.defineProperty(navigator, 'clipboard', {
+		configurable: true,
+		value: { writeText: async () => {} },
+	});
+
+	const screen = await render(<App />);
+
+	await screen.getByRole('button', { name: 'Share' }).click();
+	await vi.waitFor(() =>
+		expect(new URL(location.href).searchParams.get('keyword-policy')).toBe('warn')
 	);
 });
 

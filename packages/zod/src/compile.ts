@@ -1,4 +1,10 @@
-import { type JSONSchema, parse } from '@utilize/json-schema';
+import {
+	type DialectOptions,
+	type JSONSchema,
+	parse,
+	pickDialectOptions,
+	warnDialectIssue,
+} from '@utilize/json-schema';
 
 import { readFileSync, writeFileSync } from 'fs';
 import { load as loadYaml } from 'js-yaml';
@@ -6,10 +12,8 @@ import path from 'path';
 
 import { generate, type GenerateOptions } from './generator';
 
-export interface CompileOptions extends Pick<
-	GenerateOptions,
-	'customNameResolver' | 'schemaName' | 'typeName'
-> {
+export interface CompileOptions
+	extends DialectOptions, Pick<GenerateOptions, 'customNameResolver' | 'schemaName' | 'typeName'> {
 	input: string;
 	output?: string;
 	cwd?: string;
@@ -19,10 +23,8 @@ export interface CompileOptions extends Pick<
 	bannerComment?: string | false;
 }
 
-export interface CompileSchemaOptions extends Pick<
-	GenerateOptions,
-	'customNameResolver' | 'schemaName' | 'typeName'
-> {
+export interface CompileSchemaOptions
+	extends DialectOptions, Pick<GenerateOptions, 'customNameResolver' | 'schemaName' | 'typeName'> {
 	cwd: string;
 	fileName: string;
 	readOnlyKeyword?: boolean;
@@ -48,6 +50,7 @@ export async function compile(userOptions: CompileOptions) {
 		schemaName: userOptions.schemaName,
 		typeName: userOptions.typeName,
 		readOnlyKeyword: userOptions.readOnlyKeyword,
+		...pickDialectOptions(userOptions),
 	});
 
 	writeFileSync(outputPath, withBanner(code, userOptions.bannerComment), 'utf8');
@@ -67,6 +70,9 @@ export async function compileSchema(schema: JSONSchema, options: CompileSchemaOp
 	const { root } = await parse(schema, {
 		cwd: options.cwd,
 		fileName: options.fileName,
+		...pickDialectOptions(options),
+		// Programmatic builds still see warnings unless they handle them.
+		onDialectIssue: options.onDialectIssue ?? warnDialectIssue,
 	});
 
 	return generate(root, {

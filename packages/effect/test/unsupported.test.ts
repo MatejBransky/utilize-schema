@@ -3,14 +3,31 @@ import { describe, expect, test } from 'vitest';
 import { UnsupportedEffectSchemaFeatureError } from '../src';
 import { compile, type TestSchema } from './test-utils';
 
-const unsupported: Array<[string, TestSchema]> = [
-	['minContains', { type: 'array', contains: { type: 'string' }, minContains: 1 }],
-	['maxContains', { type: 'array', contains: { type: 'string' }, maxContains: 2 }],
+const twentyTwentyTwelve = 'https://json-schema.org/draft/2020-12/schema';
+
+/** Valid 2020-12 keywords that the parser has no generator for yet. */
+const unsupportedByDialect: Array<[string, TestSchema]> = [
+	[
+		'minContains',
+		{ $schema: twentyTwentyTwelve, type: 'array', contains: { type: 'string' }, minContains: 1 },
+	],
+	[
+		'maxContains',
+		{ $schema: twentyTwentyTwelve, type: 'array', contains: { type: 'string' }, maxContains: 2 },
+	],
+];
+
+/** Keywords that are part of the dialect but have no Effect Schema equivalent. */
+const unsupportedByEffect: Array<[string, TestSchema]> = [
 	['patternProperties', { type: 'object', patternProperties: { '^a': { type: 'string' } } }],
 ];
 
 describe('unsupported keywords', () => {
-	test.each(unsupported)('rejects %s', async (_name, schema) => {
+	test.each(unsupportedByDialect)('rejects %s', async (keyword, schema) => {
+		await expect(compile(schema)).rejects.toThrow(new RegExp(keyword));
+	});
+
+	test.each(unsupportedByEffect)('rejects %s', async (_name, schema) => {
 		await expect(compile(schema)).rejects.toBeInstanceOf(UnsupportedEffectSchemaFeatureError);
 	});
 

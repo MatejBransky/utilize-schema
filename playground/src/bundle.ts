@@ -1,4 +1,10 @@
-import { detectSchemaVersion, isPlainObject, normalizeSchema } from '@utilize/json-schema';
+import {
+	formatIssue,
+	isPlainObject,
+	type KeywordPolicy,
+	prepareSchema,
+	resolveDialect,
+} from '@utilize/json-schema';
 
 export interface SchemaFile {
 	id: string;
@@ -63,7 +69,11 @@ export function parseJsonFile(file: SchemaFile): ParsedFile {
 	}
 }
 
-export function buildBundle(parsedFiles: ParsedFile[], rootId: string): BundleResult {
+export function buildBundle(
+	parsedFiles: ParsedFile[],
+	rootId: string,
+	keywordPolicy: KeywordPolicy = 'warn'
+): BundleResult {
 	const problems = parsedFiles.flatMap((parsed) => parsed.problems);
 	const rootParsed = parsedFiles.find((parsed) => parsed.file.id === rootId) ?? parsedFiles[0];
 
@@ -76,15 +86,31 @@ export function buildBundle(parsedFiles: ParsedFile[], rootId: string): BundleRe
 		};
 	}
 
-	const rootVersion = detectSchemaVersion(rootParsed.schema);
+	const rootDialect = resolveDialect(rootParsed.schema, {
+		unknownDialect: 'fallback',
+	}).dialect.id;
 
 	for (const parsed of parsedFiles) {
 		if (parsed.schema === undefined) {
 			continue;
 		}
 
+		// Check a copy for dialect issues and bundle the raw schema: `parse`
+		// normalizes the bundle, and normalizing twice would validate keywords
+		// that were already rewritten (and mutate the memoized parsed files).
 		try {
-			normalizeSchema(parsed.schema, detectSchemaVersion(parsed.schema, rootVersion));
+			prepareSchema(structuredClone(parsed.schema), {
+				filePath: parsed.file.name,
+				inheritedDialect: parsed === rootParsed ? undefined : rootDialect,
+				keywordPolicy,
+				onDialectIssue: (issue) => {
+					problems.push({
+						fileId: parsed.file.id,
+						severity: 'warning',
+						message: formatIssue(issue),
+					});
+				},
+			});
 		} catch (error) {
 			problems.push({
 				fileId: parsed.file.id,
@@ -313,6 +339,9 @@ const MAP_KEYWORDS = new Set([
 const SINGLE_SCHEMA_KEYWORDS = new Set([
 	'additionalProperties',
 	'additionalItems',
+	'unevaluatedProperties',
+	'unevaluatedItems',
+	'contentSchema',
 	'contains',
 	'propertyNames',
 	'if',

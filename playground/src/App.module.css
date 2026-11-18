@@ -13,6 +13,29 @@
 	flex: 0 0 20rem;
 	min-width: 12rem;
 }
+
+.policyPicker {
+	display: flex;
+	flex-direction: column;
+	flex: 0 0 11rem;
+	gap: calc(var(--ui-spacing) * 1);
+	min-width: 9rem;
+}
+
+.policyPicker [data-slot='select-label'] {
+	font-size: 0.75rem;
+	line-height: 1.2;
+	color: var(--ui-muted-foreground);
+}
+
+.policyPicker [data-slot='select-trigger'] {
+	width: 100%;
+	min-width: 0;
+}
+
+.policyContent {
+	min-width: var(--anchor-width);
+}
 .workspace {
 	flex: 1;
 	min-height: 0;
@@ -478,7 +501,8 @@
 
 @media (max-width: 900px) {
 	.generatorPicker,
-	.examplePicker {
+	.examplePicker,
+	.policyPicker {
 		flex: 1 1 45%;
 	}
 }
@@ -510,7 +534,8 @@
 	}
 
 	.generatorPicker,
-	.examplePicker {
+	.examplePicker,
+	.policyPicker {
 		flex: 1 1 100%;
 	}
 }
