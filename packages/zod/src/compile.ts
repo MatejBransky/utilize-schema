@@ -24,6 +24,8 @@ export interface CompileOptions
 	formatMap?: FormatMap;
 	/** Emits a caller-provided Zod expression for a matching schema node. */
 	customSchemaResolver?: CustomSchemaResolver;
+	/** Runs a formatter (for example Prettier) over the generated code. */
+	format?: CodeFormatter | false;
 	/** Header prepended to the generated file. Pass `false` to omit it. */
 	bannerComment?: string | false;
 }
@@ -35,7 +37,11 @@ export interface CompileSchemaOptions
 	readOnlyKeyword?: boolean;
 	formatMap?: FormatMap;
 	customSchemaResolver?: CustomSchemaResolver;
+	format?: CodeFormatter | false;
 }
+
+/** A synchronous or asynchronous formatter applied to generated code. */
+export type CodeFormatter = (code: string) => string | Promise<string>;
 
 const defaultCwd = process.cwd();
 
@@ -59,6 +65,7 @@ export async function compile(userOptions: CompileOptions) {
 		readOnlyKeyword: userOptions.readOnlyKeyword,
 		formatMap: userOptions.formatMap,
 		customSchemaResolver: userOptions.customSchemaResolver,
+		format: userOptions.format,
 		...pickDialectOptions(userOptions),
 	});
 
@@ -84,7 +91,7 @@ export async function compileSchema(schema: JSONSchema, options: CompileSchemaOp
 		onDialectIssue: options.onDialectIssue ?? warnDialectIssue,
 	});
 
-	return generate(root, {
+	const code = generate(root, {
 		customNameResolver: options.customNameResolver,
 		schemaName: options.schemaName,
 		typeName: options.typeName,
@@ -92,6 +99,8 @@ export async function compileSchema(schema: JSONSchema, options: CompileSchemaOp
 		formatMap: options.formatMap,
 		customSchemaResolver: options.customSchemaResolver,
 	});
+
+	return options.format ? options.format(code) : code;
 }
 
 export function readSchema(filePath: string): JSONSchema {

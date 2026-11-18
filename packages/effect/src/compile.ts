@@ -27,6 +27,8 @@ export interface CompileOptions
 	cwd?: string;
 	/** Emit `import { Schema } from 'effect';` at the top of the generated code. */
 	importEffect?: boolean;
+	/** Runs a formatter (for example Prettier) over the generated code. */
+	format?: CodeFormatter | false;
 	/** Header prepended to the generated file. Pass `false` to omit it. */
 	bannerComment?: string | false;
 }
@@ -41,7 +43,11 @@ export interface CompileSchemaOptions
 	cwd: string;
 	fileName: string;
 	importEffect?: boolean;
+	format?: CodeFormatter | false;
 }
+
+/** A synchronous or asynchronous formatter applied to generated code. */
+export type CodeFormatter = (code: string) => string | Promise<string>;
 
 export const DEFAULT_BANNER = `/* eslint-disable */
 /**
@@ -66,6 +72,7 @@ export async function compile(options: CompileOptions): Promise<void> {
 		schemaName: options.schemaName,
 		typeName: options.typeName,
 		customSchemaResolver: options.customSchemaResolver,
+		format: options.format,
 		...pickDialectOptions(options),
 	});
 
@@ -91,13 +98,15 @@ export async function compileSchema(schema: JSONSchema, options: CompileSchemaOp
 		onDialectIssue: options.onDialectIssue ?? warnDialectIssue,
 	});
 
-	return generate(root, {
+	const code = generate(root, {
 		importEffect: options.importEffect,
 		customNameResolver: options.customNameResolver,
 		schemaName: options.schemaName,
 		typeName: options.typeName,
 		customSchemaResolver: options.customSchemaResolver,
 	});
+
+	return options.format ? options.format(code) : code;
 }
 
 export function readSchema(filePath: string): JSONSchema {
