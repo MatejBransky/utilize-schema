@@ -4,7 +4,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { compile as compileToFile } from '../src';
+import { compile as compileToFile, type CustomSchemaResolver } from '../src';
 import { compile, ts } from './test-utils';
 
 describe('customSchemaResolver', () => {
@@ -50,6 +50,9 @@ describe('customSchemaResolver', () => {
 	});
 
 	test('is passed on by compile()', async () => {
+		// Typed with the package export, so dropping the export fails `check:types`.
+		const dateTimeResolver: CustomSchemaResolver = (schema) =>
+			schema.format === 'date-time' ? 'Date' : undefined;
 		const directory = await mkdtemp(join(tmpdir(), 'utilize-typescript-resolver-'));
 
 		try {
@@ -60,7 +63,7 @@ describe('customSchemaResolver', () => {
 			await compileToFile({
 				input: 'schema.json',
 				cwd: directory,
-				customSchemaResolver: (schema) => (schema.format === 'date-time' ? 'Date' : undefined),
+				customSchemaResolver: dateTimeResolver,
 			});
 
 			expect(await readFile(join(directory, 'schema.generated.ts'), 'utf8')).toContain('Date');

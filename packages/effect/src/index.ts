@@ -8,7 +8,7 @@ export {
 	type CompileOptions,
 	type CompileSchemaOptions,
 } from './compile';
-export { generate, type GenerateOptions } from './generator';
+export { generate, type CustomSchemaResolver, type GenerateOptions } from './generator';
 export { UnresolvedReferenceError, UnsupportedEffectSchemaFeatureError } from './errors';
 export {
 	mapName,
