@@ -57,6 +57,22 @@ importers:
         specifier: 'catalog:'
         version: 7.0.2
 
+  examples/content-mapper:
+    dependencies:
+      '@utilize/content-mapper':
+        specifier: workspace:*
+        version: link:../../packages/content-mapper
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.2
+      typescript:
+        specifier: 7.1.0-beta
+        version: 7.1.0-beta
+
   packages/content-mapper:
     dependencies:
       '@utilize/effect':
