@@ -87,7 +87,10 @@ export interface DialectOptions {
 	unknownDialect?: 'fallback' | 'error';
 	/** What to do with keywords outside the node's dialect. Default `warn`. */
 	keywordPolicy?: KeywordPolicy;
-	/** Receives diagnostics produced by `keywordPolicy: 'warn'`. */
+	/**
+	 * Receives diagnostics produced by `keywordPolicy: 'warn'`. The library does
+	 * not print them; `parse` also returns them as `issues`.
+	 */
 	onDialectIssue?: (issue: DialectIssue) => void;
 }
 
@@ -494,6 +497,11 @@ function isReferenceAnnotation(keyword: string): boolean {
 		keyword === 'examples' ||
 		keyword === '$schema'
 	);
+}
+
+/** Writes an issue to `console.warn`, for callers that want the default CLI-like output. */
+export function warnDialectIssue(issue: DialectIssue): void {
+	console.warn(formatIssue(issue));
 }
 
 export function formatIssue(issue: DialectIssue): string {

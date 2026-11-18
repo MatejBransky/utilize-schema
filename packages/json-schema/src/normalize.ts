@@ -6,7 +6,6 @@ import {
 	type DialectIssue,
 	type DialectOptions,
 	type DialectSource,
-	formatIssue,
 	keywordIssues,
 	resolveDialect,
 	type ResolvedDialect,
@@ -208,12 +207,10 @@ export function prepareSchema(schema: unknown, options: PrepareSchemaOptions = {
 		}
 	}
 
+	// The library never writes to the console; callers decide how to show
+	// issues (the CLIs print them, `parse` also returns them).
 	function emit(issue: DialectIssue): void {
-		if (options.onDialectIssue) {
-			options.onDialectIssue(issue);
-		} else {
-			console.warn(formatIssue(issue));
-		}
+		options.onDialectIssue?.(issue);
 	}
 }
 

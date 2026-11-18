@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 
 import {
 	type DialectIssue,
@@ -400,6 +400,17 @@ describe('parse metadata', () => {
 			dialectSource: 'declared',
 		});
 		expect(unevaluated.dependencies).toEqual({ a: ['b'] });
+	});
+
+	test('returns dialect issues instead of writing to the console', async () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		const schema = { $schema: draft07, type: 'array', prefixItems: [{}] } as JSONSchema;
+
+		const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Root.json' });
+
+		expect(parsed.issues).toEqual([expect.objectContaining({ keyword: 'prefixItems' })]);
+		expect(warn).not.toHaveBeenCalled();
+		warn.mockRestore();
 	});
 
 	test('marks a schema without $schema as a fallback', async () => {

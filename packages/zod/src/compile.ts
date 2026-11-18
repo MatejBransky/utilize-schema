@@ -3,6 +3,7 @@ import {
 	type JSONSchema,
 	parse,
 	pickDialectOptions,
+	warnDialectIssue,
 } from '@utilize/json-schema';
 
 import { readFileSync, writeFileSync } from 'fs';
@@ -70,6 +71,8 @@ export async function compileSchema(schema: JSONSchema, options: CompileSchemaOp
 		cwd: options.cwd,
 		fileName: options.fileName,
 		...pickDialectOptions(options),
+		// Programmatic builds still see warnings unless they handle them.
+		onDialectIssue: options.onDialectIssue ?? warnDialectIssue,
 	});
 
 	return generate(root, {

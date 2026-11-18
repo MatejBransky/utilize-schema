@@ -1,6 +1,6 @@
 import { $RefParser } from '@apidevtools/json-schema-ref-parser';
 
-import type { DialectOptions } from './dialect';
+import type { DialectIssue, DialectOptions } from './dialect';
 import { resolveDialect } from './dialect';
 import { link } from './linker';
 import { Meta, type JSONSchema, type ParsedJSONSchema } from './model';
@@ -20,6 +20,8 @@ export async function parse(
 	root: ParsedJSONSchema;
 	get: ($ref: string) => ParsedJSONSchema;
 	referencedSchemas: ParsedJSONSchema[];
+	/** Dialect issues reported with `keywordPolicy: 'warn'`. */
+	issues: DialectIssue[];
 }> {
 	let cwd = options.cwd;
 	const rootFileName = options.fileName;
@@ -39,6 +41,11 @@ export async function parse(
 	const rootDialect = resolveDialect(schema, options).dialect.id;
 
 	let rootDialects: DialectMap | undefined;
+	const issues: DialectIssue[] = [];
+	const onDialectIssue = (issue: DialectIssue) => {
+		issues.push(issue);
+		options.onDialectIssue?.(issue);
+	};
 
 	entries.forEach(([filePath, entrySchema]) => {
 		const rootSchema = $refs.get('#');
@@ -53,7 +60,7 @@ export async function parse(
 			inheritedDialect: isRootSchema ? undefined : rootDialect,
 			unknownDialect: options.unknownDialect,
 			keywordPolicy: options.keywordPolicy,
-			onDialectIssue: options.onDialectIssue,
+			onDialectIssue,
 			filePath: prefixPath,
 		});
 
@@ -93,5 +100,6 @@ export async function parse(
 		referencedSchemas: entries
 			.filter(([, entrySchema]) => entrySchema !== root)
 			.map(([, entrySchema]) => entrySchema) as ParsedJSONSchema[],
+		issues,
 	};
 }

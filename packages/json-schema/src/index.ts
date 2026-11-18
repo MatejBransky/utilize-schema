@@ -18,6 +18,7 @@ export {
 	isKeywordApplicable,
 	pickDialectOptions,
 	resolveDialect,
+	warnDialectIssue,
 } from './dialect';
 export * from './linker';
 export * from './model';
