@@ -286,6 +286,41 @@ export const examples: Example[] = [
 			},
 		],
 	}),
+	single('id-refs', '$id and $anchor refs', 'References', {
+		$id: 'https://example.com/person.json',
+		title: 'Person',
+		type: 'object',
+		properties: {
+			name: { type: 'string' },
+			address: { $ref: '#address' },
+		},
+		required: ['name', 'address'],
+		definitions: {
+			address: {
+				$id: '#address',
+				title: 'Address',
+				type: 'object',
+				properties: {
+					street: { type: 'string' },
+					city: { type: 'string' },
+				},
+				required: ['street', 'city'],
+			},
+		},
+	}),
+	single('pattern-properties', 'Pattern properties', 'Common', {
+		title: 'Settings',
+		type: 'object',
+		properties: {
+			name: { type: 'string' },
+		},
+		patternProperties: {
+			'^S_': { type: 'string' },
+			'^I_': { type: 'integer' },
+		},
+		additionalProperties: false,
+		required: ['name'],
+	}),
 	single('external-ref', 'External $ref', 'References', {
 		title: 'Release',
 		type: 'object',

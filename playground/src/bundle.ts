@@ -466,8 +466,14 @@ function pointerExists(parsed: ParsedFile, fragment: string): boolean {
 		return false;
 	}
 
-	if (parsed.schema === undefined || !decoded.startsWith('/')) {
+	if (parsed.schema === undefined) {
 		return false;
+	}
+
+	// A fragment that does not start with `/` is an identifier (`$id` or
+	// `$anchor`), not a JSON pointer. The parser validates it after bundling.
+	if (!decoded.startsWith('/')) {
+		return true;
 	}
 
 	let current: unknown = parsed.schema;
