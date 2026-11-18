@@ -149,6 +149,40 @@ const intersections: TestSchema = {
 	},
 };
 
+const booleanDefinitions = {
+	type: 'object',
+	properties: { allowed: { $ref: '#/$defs/Allowed' } },
+	$defs: { Allowed: true, Denied: false },
+} as TestSchema;
+
+const shadowedGlobals = {
+	title: 'Array',
+	type: 'object',
+	properties: { empty: { $ref: '#/$defs/Record' } },
+	$defs: { Record: { title: 'Record', const: {} } },
+} as TestSchema;
+
+const siblingConstrainedUnion: TestSchema = {
+	type: 'object',
+	properties: { id: { type: 'string' } },
+	required: ['id'],
+	additionalProperties: false,
+	anyOf: [
+		{
+			type: 'object',
+			properties: { kind: { const: 'a' } },
+			required: ['kind'],
+			additionalProperties: false,
+		},
+		{
+			type: 'object',
+			properties: { kind: { const: 'b' } },
+			required: ['kind'],
+			additionalProperties: false,
+		},
+	],
+};
+
 describe('generated types type-check', () => {
 	test('accepts strict TypeScript', async () => {
 		await expect(
@@ -170,6 +204,9 @@ describe('generated types type-check', () => {
 				'RequiredWithoutProperty.ts': requiredWithoutProperty,
 				'Tuples.ts': tuples,
 				'Intersections.ts': intersections,
+				'BooleanDefinitions.ts': booleanDefinitions,
+				'ShadowedGlobals.ts': shadowedGlobals,
+				'SiblingConstrainedUnion.ts': siblingConstrainedUnion,
 			})
 		).resolves.toBeUndefined();
 	});

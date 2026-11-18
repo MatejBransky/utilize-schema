@@ -56,4 +56,16 @@ describe('resolveName', () => {
 
 		expect(resolveName({ schema, customResolver })).toBe('KebabCase');
 	});
+
+	it('reserves a custom name so automatic names do not reuse it', () => {
+		const used = new Set<string>();
+		const root = withMeta({}, { parent: null });
+		const definition = withMeta({}, { parent: root, path: ['$defs', 'Root'] });
+		// The conformance runner names only the root.
+		const customResolver = (schema: ParsedJSONSchemaObject) =>
+			schema[Meta].parent === null ? 'Root' : undefined;
+
+		expect(resolveName({ schema: root, usedNames: used, customResolver })).toBe('Root');
+		expect(resolveName({ schema: definition, usedNames: used })).toBe('Root1');
+	});
 });

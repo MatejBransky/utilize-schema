@@ -1,15 +1,31 @@
-import { type ParsedJSONSchemaObject, Meta } from '@utilize/json-schema';
+import {
+	isPlainObject,
+	Meta,
+	type ParsedJSONSchema,
+	type ParsedJSONSchemaObject,
+} from '@utilize/json-schema';
 
 export type SchemaEdge = [ParsedJSONSchemaObject | null, ParsedJSONSchemaObject];
 
+/**
+ * A `$defs` or `definitions` entry that is a boolean schema. Booleans carry no
+ * metadata, so the path is kept to name the declaration.
+ */
+export interface BooleanDefinition {
+	schema: boolean;
+	path: Array<string | number>;
+}
+
 interface StandaloneSchemasResult {
 	schemas: ParsedJSONSchemaObject[];
+	booleanDefinitions: BooleanDefinition[];
 	edges: SchemaEdge[];
 }
 
 // Helper to collect all standalone schemas: referenced and $defs/definitions
 export function collectStandaloneSchemas(root: ParsedJSONSchemaObject): StandaloneSchemasResult {
 	const standalone = new Set<ParsedJSONSchemaObject>();
+	const booleanDefinitions: BooleanDefinition[] = [];
 	const seen = new Set<ParsedJSONSchemaObject>();
 	const edges = new Set<[ParsedJSONSchemaObject | null, ParsedJSONSchemaObject]>();
 
@@ -32,18 +48,29 @@ export function collectStandaloneSchemas(root: ParsedJSONSchemaObject): Standalo
 			visit(reference, schema);
 		}
 
-		const definitions = schema.$defs || schema.definitions;
-
 		// 2. If schema is in $defs or definitions, mark as standalone.
 		// Definitions get their own const, so they are not ordered under the
 		// schema that declares them: ordering must follow $ref edges only.
-		if (definitions) {
-			for (const def of Object.values(definitions) as Array<ParsedJSONSchemaObject | boolean>) {
-				if (typeof def === 'object' && def !== null) {
-					standalone.add(def);
-				}
+		// Both namespaces are valid at once, so neither may shadow the other.
+		const basePath = schema[Meta]?.path ?? [];
 
-				visit(def, null);
+		for (const namespace of ['$defs', 'definitions'] as const) {
+			const definitions = schema[namespace] as unknown as
+				| Record<string, ParsedJSONSchema>
+				| undefined;
+
+			if (!isPlainObject(definitions)) continue;
+
+			for (const [key, definition] of Object.entries(definitions)) {
+				if (isPlainObject(definition)) {
+					standalone.add(definition as ParsedJSONSchemaObject);
+					visit(definition as ParsedJSONSchemaObject, null);
+				} else if (typeof definition === 'boolean') {
+					booleanDefinitions.push({
+						schema: definition,
+						path: [...basePath, namespace, key],
+					});
+				}
 			}
 		}
 
@@ -123,5 +150,5 @@ export function collectStandaloneSchemas(root: ParsedJSONSchemaObject): Standalo
 	// Always include root as standalone
 	standalone.add(root);
 
-	return { schemas: Array.from(standalone), edges: Array.from(edges) };
+	return { schemas: Array.from(standalone), booleanDefinitions, edges: Array.from(edges) };
 }

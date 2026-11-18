@@ -1,14 +1,16 @@
 import {
 	isPlainObject,
+	Meta,
 	type ParsedJSONSchema,
 	type ParsedJSONSchemaObject,
 } from '@utilize/json-schema';
 
-import { collectStandaloneSchemas } from './collectStandaloneSchemas';
+import { collectStandaloneSchemas, type BooleanDefinition } from './collectStandaloneSchemas';
 import { findUnsupportedCycles } from './cycles';
 import { UnresolvedReferenceError, UnsupportedCircularTypeError } from './errors';
 import {
 	isObjectDeclaration,
+	RENDERED_GLOBAL_TYPES,
 	renderJsDoc,
 	renderObjectBody,
 	renderType,
@@ -29,7 +31,9 @@ export interface GenerateOptions {
  * because TypeScript hoists types, so no topological sort is needed.
  */
 export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}): string {
-	const usedNames = new Set<string>();
+	// The renderer emits `Array<…>` and `Record<string, never>`; a schema named
+	// after one of those globals would shadow it and not compile.
+	const usedNames = new Set<string>(RENDERED_GLOBAL_TYPES);
 	const names = new Map<ParsedJSONSchemaObject, string>();
 
 	const context: TypeContext = {
@@ -67,13 +71,29 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		ensureName(schema);
 	}
 
+	const booleanNames = collected.booleanDefinitions.map((definition) => ({
+		definition,
+		name: ensureBooleanDefinitionName(definition),
+	}));
+
 	const declarations = definitions.map((schema) =>
 		renderDeclaration(ensureName(schema), schema, context)
 	);
 
+	for (const { definition, name } of booleanNames) {
+		declarations.push(renderBooleanDeclaration(name, definition, context));
+	}
+
 	declarations.push(renderDeclaration(rootName, rootSchema, context));
 
 	return `${declarations.join('\n\n')}\n`;
+
+	function ensureBooleanDefinitionName(definition: BooleanDefinition): string {
+		// A boolean has no metadata of its own, so the name comes from its path.
+		const synthetic = { [Meta]: { path: definition.path } } as unknown as ParsedJSONSchemaObject;
+
+		return ensureName(synthetic);
+	}
 
 	function ensureName(schema: ParsedJSONSchemaObject): string {
 		const existing = names.get(schema);
@@ -104,4 +124,12 @@ function renderDeclaration(
 	return body === undefined
 		? [...doc, `export type ${name} = ${renderType(schema, context)};`].join('\n')
 		: [...doc, `export interface ${name} {\n${body}\n}`].join('\n');
+}
+
+function renderBooleanDeclaration(
+	name: string,
+	definition: BooleanDefinition,
+	context: TypeContext
+): string {
+	return `export type ${name} = ${renderType(definition.schema, context)};`;
 }

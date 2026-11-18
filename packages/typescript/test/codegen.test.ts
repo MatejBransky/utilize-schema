@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { generate } from '../src/generator';
-import { compile, ts, type TestSchema } from './test-utils';
+import { compile, generateCode, ts, type TestSchema } from './test-utils';
 
 describe('code generation', () => {
 	test('exports a type for a scalar root schema', async () => {
@@ -200,5 +200,118 @@ describe('code generation', () => {
 	test('renders boolean schemas', () => {
 		expect(generate(true)).toBe('export type Root = unknown;\n');
 		expect(generate(false)).toBe('export type Root = never;\n');
+	});
+
+	test('collects $defs and definitions independently', async () => {
+		// An empty `$defs` must not hide `definitions`.
+		await expect(
+			compile({
+				type: 'object',
+				properties: { legacy: { $ref: '#/definitions/Legacy' } },
+				$defs: {},
+				definitions: { Legacy: { type: 'string' } },
+				additionalProperties: false,
+			})
+		).toMatchCode(ts`
+			export type Legacy = string;
+
+			export interface Root {
+				legacy?: Legacy;
+			}
+		`);
+	});
+
+	test('emits both namespaces when they share a definition key', async () => {
+		const code = await generateCode({
+			type: 'object',
+			additionalProperties: false,
+			$defs: { Value: { type: 'string' } },
+			definitions: { Value: { type: 'number' } },
+		});
+
+		expect(code).toContain('export type Value = string;');
+		expect(code).toContain('export type Value1 = number;');
+	});
+
+	test('emits declarations for boolean definitions', async () => {
+		const code = await generateCode({
+			type: 'object',
+			additionalProperties: false,
+			$defs: { Allowed: true, Denied: false },
+		} as TestSchema);
+
+		expect(code).toContain('export type Allowed = unknown;');
+		expect(code).toContain('export type Denied = never;');
+	});
+
+	test('does not shadow the globals used by the renderer', async () => {
+		await expect(compile({ title: 'Array', type: 'array', items: { type: 'string' } }))
+			.toMatchCode(ts`
+				/**
+				 * Array
+				 */
+				export type Array1 = Array<string>;
+			`);
+
+		await expect(compile({ title: 'Record', const: {} })).toMatchCode(ts`
+			/**
+			 * Record
+			 */
+			export type Record1 = Record<string, never>;
+		`);
+	});
+
+	test('intersects const and enum with the declared type', async () => {
+		await expect(compile({ type: 'string', enum: ['ok', 42] })).toMatchCode(ts`
+			export type Root = 'ok';
+		`);
+
+		await expect(compile({ type: 'string', const: 42 })).toMatchCode(ts`
+			export type Root = never;
+		`);
+
+		await expect(compile({ type: 'number', enum: [1, 'one'] })).toMatchCode(ts`
+			export type Root = 1;
+		`);
+	});
+
+	test('parenthesizes compound intersection members and tuple elements', async () => {
+		await expect(
+			compile({
+				allOf: [
+					{
+						anyOf: [
+							{
+								type: 'object',
+								properties: { a: { type: 'string' } },
+								required: ['a'],
+								additionalProperties: false,
+							},
+							{ type: 'null' },
+						],
+					},
+					{
+						type: 'object',
+						properties: { b: { type: 'boolean' } },
+						required: ['b'],
+						additionalProperties: false,
+					},
+				],
+			})
+		).toMatchCode(ts`
+			export type Root = ({ a: string } | null) & {
+				b: boolean;
+			};
+		`);
+
+		await expect(
+			compile({
+				type: 'array',
+				prefixItems: [{ anyOf: [{ type: 'number' }, { type: 'null' }] }, { type: 'string' }],
+				items: false,
+			})
+		).toMatchCode(ts`
+			export type Root = [(number | null)?, string?];
+		`);
 	});
 });

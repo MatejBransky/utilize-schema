@@ -121,6 +121,41 @@ describe('objects', () => {
 		`);
 	});
 
+	test('types a required key from a matching patternProperties schema', async () => {
+		await expect(
+			compile({
+				type: 'object',
+				required: ['x', 'y'],
+				patternProperties: {
+					'^x$': { type: 'string' },
+					'^y': { type: 'number' },
+				},
+				additionalProperties: false,
+			})
+		).toMatchCode(ts`
+			export interface Root {
+				x: string;
+				y: number;
+				[key: string]: string | number;
+			}
+		`);
+
+		// No pattern matches, so `additionalProperties` decides.
+		await expect(
+			compile({
+				type: 'object',
+				required: ['b'],
+				patternProperties: { '^x-': { type: 'number' } },
+				additionalProperties: { type: 'string' },
+			})
+		).toMatchCode(ts`
+			export interface Root {
+				b: string;
+				[key: string]: string | number;
+			}
+		`);
+	});
+
 	test('marks readOnly properties as readonly', async () => {
 		await expect(
 			compile({

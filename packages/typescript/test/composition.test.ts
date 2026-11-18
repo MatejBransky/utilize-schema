@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { compile, ts } from './test-utils';
+import { compile, generateCode, ts } from './test-utils';
 
 describe('composition', () => {
 	test('intersects allOf members', async () => {
@@ -95,6 +95,51 @@ describe('composition', () => {
 			})
 		).toMatchCode(ts`
 			export type Root = string | null;
+		`);
+	});
+
+	test('intersects union members with sibling keywords', async () => {
+		await expect(compile({ type: 'string', anyOf: [{ type: 'string' }, { type: 'number' }] }))
+			.toMatchCode(ts`
+			export type Root = (string | number) & string;
+		`);
+
+		await expect(compile({ type: 'number', oneOf: [{ const: 1 }, { const: 2 }] })).toMatchCode(ts`
+			export type Root = (1 | 2) & number;
+		`);
+	});
+
+	test('keeps parent properties of a union schema', async () => {
+		const code = await generateCode({
+			type: 'object',
+			properties: { id: { type: 'string' } },
+			required: ['id'],
+			additionalProperties: false,
+			anyOf: [
+				{
+					type: 'object',
+					properties: { kind: { const: 'a' } },
+					required: ['kind'],
+					additionalProperties: false,
+				},
+				{
+					type: 'object',
+					properties: { kind: { const: 'b' } },
+					required: ['kind'],
+					additionalProperties: false,
+				},
+			],
+		});
+
+		expect(code).toContain(`kind: 'a';`);
+		expect(code).toContain(`kind: 'b';`);
+		expect(code).toContain('id: string;');
+	});
+
+	test('keeps anyOf next to allOf', async () => {
+		await expect(compile({ allOf: [{ type: 'number' }], anyOf: [{ const: 1 }, { const: 2 }] }))
+			.toMatchCode(ts`
+			export type Root = (1 | 2) & number;
 		`);
 	});
 

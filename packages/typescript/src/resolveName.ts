@@ -20,6 +20,8 @@ export function resolveName({
 	if (customResolver) {
 		const customName = customResolver(schema, usedNames);
 		if (customName) {
+			// Reserve the name so automatic allocation cannot hand it out again.
+			usedNames.add(customName);
 			return customName;
 		}
 	}

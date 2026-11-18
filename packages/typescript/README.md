@@ -16,16 +16,19 @@ for the cases where you want types without a schema runtime.
 - Emits an interface for every object and a type alias for everything else
 - One exported declaration per standalone schema (root, `$defs`, `definitions`,
   referenced)
+- Reads `$defs` and `definitions` independently, including boolean definitions
 - Handles local, external and cyclic `$ref`s — recursive types come out as
   interfaces and deferred aliases that TypeScript accepts
 - Rejects cycles TypeScript cannot express with a clear error instead of
   emitting code that does not compile
-- `allOf` becomes an intersection, `anyOf` and `oneOf` become unions
+- `allOf` becomes an intersection, `anyOf` and `oneOf` become unions that keep
+  the sibling keywords as constraints
 - `patternProperties` and `additionalProperties` become index signatures
 - JSDoc from `title`, `description`, `deprecated`, `default`, `format` and
   `examples`
 - `readOnly` becomes a `readonly` modifier
 - Permissive schemas map to `unknown`, not `any`
+- Schema names never shadow the globals the output uses (`Array`, `Record`)
 
 ## Usage
 
@@ -60,11 +63,16 @@ export interface Person {
 }
 ```
 
-Enums and `const` become literal unions:
+Enums and `const` become literal unions, filtered and intersected with the
+declared type:
 
 ```ts
 export type Status = 'open' | 'closed';
 ```
+
+`{ type: 'string', enum: ['ok', 42] }` therefore becomes `'ok'`, because `42`
+cannot satisfy `type: 'string'`, and `{ type: 'string', const: 42 }` becomes
+`never`.
 
 Recursive schemas work without annotations or ordering constraints:
 
@@ -83,20 +91,20 @@ reference correctly.
 
 ## Keyword coverage
 
-| JSON Schema keyword                           | TypeScript                                         |
-| --------------------------------------------- | -------------------------------------------------- |
-| `type`                                        | Primitive types, unions of types                   |
-| `const`, `enum`                               | Literal types (objects and arrays too)             |
-| `properties`, `required`                      | Interface members, optional members                |
-| `additionalProperties`                        | Index signature (`unknown` when open)              |
-| `patternProperties`                           | Index signature union with the pattern schemas     |
-| `items`, `prefixItems`, `additionalItems`     | `Array<T>`, tuples with optional and rest elements |
-| `allOf`                                       | Intersection                                       |
-| `anyOf`, `oneOf`                              | Union                                              |
-| `$ref`, `$defs`, `definitions`                | Named declarations, including cycles               |
-| `title`, `description`                        | JSDoc                                              |
-| `deprecated`, `default`, `format`, `examples` | JSDoc tags                                         |
-| `readOnly`                                    | `readonly` modifier                                |
+| JSON Schema keyword                           | TypeScript                                                        |
+| --------------------------------------------- | ----------------------------------------------------------------- |
+| `type`                                        | Primitive types, unions of types                                  |
+| `const`, `enum`                               | Literal types (objects and arrays too), intersected with siblings |
+| `properties`, `required`                      | Interface members, optional members                               |
+| `additionalProperties`                        | Index signature (`unknown` when open)                             |
+| `patternProperties`                           | Index signature union with the pattern schemas                    |
+| `items`, `prefixItems`, `additionalItems`     | `Array<T>`, tuples with optional and rest elements                |
+| `allOf`                                       | Intersection                                                      |
+| `anyOf`, `oneOf`                              | Union, intersected with the sibling keywords                      |
+| `$ref`, `$defs`, `definitions`                | Named declarations, including cycles                              |
+| `title`, `description`                        | JSDoc                                                             |
+| `deprecated`, `default`, `format`, `examples` | JSDoc tags                                                        |
+| `readOnly`                                    | `readonly` modifier                                               |
 
 Validation-only keywords (`minLength`, `pattern`, `minimum`, `uniqueItems`,
 `minItems`, `not`, `if`/`then`/`else`, `dependencies`, …) have no equivalent in
@@ -124,14 +132,14 @@ pnpm test:suite # official JSON Schema Test Suite
 Current baseline on suite commit `e2a68a1`:
 
 - **167 of 288 cases** pass in both directions.
-- **787 of 813** spec-valid instances are accepted.
-- **207 of 788** spec-invalid instances are rejected.
+- **788 of 814** spec-valid instances are accepted.
+- **209 of 788** spec-invalid instances are rejected.
 - **100 cases** differ only because an invalid instance is accepted. TypeScript
   cannot express `minimum`, `pattern`, `format`, `uniqueItems`, `dependencies`,
   `if`/`then`/`else`, and similar value constraints, so these are inherent to
   the target.
-- **22 cases** are listed in `test/suite/knownGaps.ts`: 10 need `$id`/`$anchor`
-  or boolean-schema `$ref` resolution from the shared parser, and 12 are the
+- **21 cases** are listed in `test/suite/knownGaps.ts`: 10 need `$id`/`$anchor`
+  or boolean-schema `$ref` resolution from the shared parser, and 11 are the
   inference trade-off described below.
 
 The numbers are recorded in `test/suite/baseline.ts` and the test fails when
@@ -164,10 +172,10 @@ one accepted, 24 crashes and 2 invalid TypeScript files. Its instance totals are
 and case selections differ (257 groups there, 288 runnable cases here; this
 runner skips cases that need external schemas), so the numbers describe two
 different records rather than a score. On the same group metric the TypeScript
-generator is ahead (57.6% vs 54.9%), accepts more valid instances (96.8% vs
+generator is ahead (58.0% vs 54.9%), accepts more valid instances (96.8% vs
 95.0%), emits no invalid TypeScript and crashes only where the shared parser has
 the same `$id`/`$anchor` gap (10 cases vs 24). Instance-level invalid rejection
-is not comparable across the two revisions: this runner rejects 26.3% of 788
+is not comparable across the two revisions: this runner rejects 26.5% of 788
 invalid instances, json-schema-to-typescript 57.9% of its 342, largely because
 the newer suite revision adds many more `format` cases that a type cannot
 reject.
@@ -194,7 +202,8 @@ reject.
   validator if excess keys must be rejected.
 - Optional properties use `?`, which is `T | undefined` without
   `exactOptionalPropertyTypes` and `T` with it.
-- A required key that is not declared in `properties` is typed from
+- A required key that is not declared in `properties` is typed from the
+  `patternProperties` schemas that match it, then from
   `additionalProperties`, or as `never` when the object is closed.
 
 ## When to use

@@ -38,6 +38,12 @@ const OBJECT_KEYWORDS = ['properties', 'patternProperties', 'additionalPropertie
 
 const ARRAY_KEYWORDS = ['items', 'prefixItems'];
 
+/**
+ * Global types the renderer emits. A schema name must never shadow one of
+ * them: `export type Array = Array<string>` refers to the alias itself.
+ */
+export const RENDERED_GLOBAL_TYPES = ['Array', 'Record'] as const;
+
 const INDENT = '\t';
 
 export function indent(level: number): string {
@@ -62,16 +68,16 @@ export function renderType(schema: ParsedJSONSchema, context: TypeContext, level
 	}
 
 	if (Object.hasOwn(schema, 'const')) {
-		return renderLiteral(schema.const);
+		return renderLiteralConstraint([schema.const], 'const', schema, context, level);
 	}
 
 	if (Array.isArray(schema.enum)) {
-		return schema.enum.length === 0 ? 'never' : union(schema.enum.map(renderLiteral));
+		return renderLiteralConstraint(schema.enum, 'enum', schema, context, level);
 	}
 
 	if (Array.isArray(schema.allOf) && schema.allOf.length > 0) {
 		const parts = schema.allOf.map((subschema) => renderType(subschema, context, level));
-		const parent = remainingSchema(schema);
+		const parent = remainingSchema(schema, 'allOf');
 
 		if (hasRenderableKeywords(parent)) {
 			parts.unshift(renderType(parent, context, level));
@@ -81,11 +87,11 @@ export function renderType(schema: ParsedJSONSchema, context: TypeContext, level
 	}
 
 	if (Array.isArray(schema.anyOf)) {
-		return union(schema.anyOf.map((subschema) => renderType(subschema, context, level)));
+		return renderUnionApplicator(schema, 'anyOf', context, level);
 	}
 
 	if (Array.isArray(schema.oneOf)) {
-		return union(schema.oneOf.map((subschema) => renderType(subschema, context, level)));
+		return renderUnionApplicator(schema, 'oneOf', context, level);
 	}
 
 	if (Array.isArray(schema.type)) {
@@ -101,6 +107,100 @@ export function renderType(schema: ParsedJSONSchema, context: TypeContext, level
 	}
 
 	return renderTyped(schema, context, level);
+}
+
+/**
+ * `const` and `enum` constrain a schema alongside its other keywords rather
+ * than replacing them. A scalar `type` rules out literals of another JSON type
+ * (`42 & string` is `never`), so those are filtered; every other remaining
+ * keyword is intersected with the literal union.
+ */
+function renderLiteralConstraint(
+	values: unknown[],
+	keyword: 'const' | 'enum',
+	schema: ParsedJSONSchemaObject,
+	context: TypeContext,
+	level: number
+): string {
+	const parent = remainingSchema(schema, keyword);
+	const declaredType = parent.type;
+
+	if (isScalarType(declaredType) && hasOnlyTypeKeyword(parent)) {
+		const matching = values.filter((value) => isOfType(value, declaredType));
+
+		return union(matching.map(renderLiteral));
+	}
+
+	const literal = union(values.map(renderLiteral));
+
+	if (!hasRenderableKeywords(parent)) {
+		return literal;
+	}
+
+	const parentType = renderType(parent, context, level);
+
+	return parentType === 'unknown' ? literal : intersection([literal, parentType]);
+}
+
+/**
+ * A union applicator only describes one branch of the value; sibling keywords
+ * still constrain it, so they are intersected with the union.
+ */
+function renderUnionApplicator(
+	schema: ParsedJSONSchemaObject,
+	keyword: 'anyOf' | 'oneOf',
+	context: TypeContext,
+	level: number
+): string {
+	const members = schema[keyword] as ParsedJSONSchema[];
+	const branch = union(members.map((member) => renderType(member, context, level)));
+	const parent = remainingSchema(schema, keyword);
+
+	if (!hasRenderableKeywords(parent)) {
+		return branch;
+	}
+
+	const parentType = renderType(parent, context, level);
+
+	return parentType === 'unknown' ? branch : intersection([branch, parentType]);
+}
+
+function isScalarType(
+	type: ParsedJSONSchemaObject['type']
+): type is 'string' | 'number' | 'integer' | 'boolean' | 'null' {
+	return (
+		type === 'string' ||
+		type === 'number' ||
+		type === 'integer' ||
+		type === 'boolean' ||
+		type === 'null'
+	);
+}
+
+function isOfType(
+	value: unknown,
+	type: 'string' | 'number' | 'integer' | 'boolean' | 'null'
+): boolean {
+	switch (type) {
+		case 'null':
+			return value === null;
+		case 'integer':
+			return typeof value === 'number' && Number.isInteger(value);
+		default:
+			return typeof value === type;
+	}
+}
+
+function hasOnlyTypeKeyword(schema: ParsedJSONSchemaObject): boolean {
+	const record = schema as unknown as Record<string, unknown>;
+
+	for (const keyword of TYPE_KEYWORDS) {
+		if (keyword !== 'type' && record[keyword] !== undefined) {
+			return false;
+		}
+	}
+
+	return true;
 }
 
 function renderTyped(schema: ParsedJSONSchemaObject, context: TypeContext, level: number): string {
@@ -336,7 +436,7 @@ export function renderObjectBody(
 		const type =
 			property !== undefined
 				? renderType(property, context, memberLevel)
-				: additionalPropertyType(schema, context, memberLevel);
+				: implicitPropertyType(schema, key, context, memberLevel);
 
 		hasOptional ||= optional;
 		propertyTypes.push(type);
@@ -355,7 +455,43 @@ export function renderObjectBody(
 	return lines.join('\n');
 }
 
-/** The type of a key that `required` names without declaring it in `properties`. */
+/**
+ * The type of a key that `required` names without declaring it in
+ * `properties`. A matching `patternProperties` schema applies to it, so
+ * `additionalProperties` only decides when no pattern matches.
+ */
+function implicitPropertyType(
+	schema: ParsedJSONSchemaObject,
+	key: string,
+	context: TypeContext,
+	level: number
+): string {
+	const patterns = isPlainObject(schema.patternProperties) ? schema.patternProperties : {};
+	const matches: string[] = [];
+
+	for (const [pattern, subschema] of Object.entries(patterns)) {
+		if (matchesPattern(pattern, key)) {
+			matches.push(renderType(subschema as ParsedJSONSchema, context, level));
+		}
+	}
+
+	if (matches.length > 0) {
+		return union(matches);
+	}
+
+	return additionalPropertyType(schema, context, level);
+}
+
+/** JSON Schema patterns are unanchored ECMA-262 regular expressions. */
+function matchesPattern(pattern: string, key: string): boolean {
+	try {
+		return new RegExp(pattern).test(key);
+	} catch {
+		return false;
+	}
+}
+
+/** Fallback for a required key that no declared property or pattern covers. */
 function additionalPropertyType(
 	schema: ParsedJSONSchemaObject,
 	context: TypeContext,
@@ -514,12 +650,13 @@ function escapeComment(text: string): string {
 	return text.replace(/\*\//g, '*\\/');
 }
 
-function remainingSchema(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject {
+function remainingSchema(
+	schema: ParsedJSONSchemaObject,
+	keyword: 'allOf' | 'anyOf' | 'oneOf' | 'const' | 'enum'
+): ParsedJSONSchemaObject {
 	return {
 		...schema,
-		allOf: undefined,
-		anyOf: undefined,
-		oneOf: undefined,
+		[keyword]: undefined,
 	} as unknown as ParsedJSONSchemaObject;
 }
 
@@ -589,5 +726,42 @@ function intersection(types: string[]): string {
 }
 
 function parenthesize(type: string): string {
-	return /[|&]/.test(type) && !type.startsWith('{') && !type.startsWith('[') ? `(${type})` : type;
+	return hasTopLevelOperator(type) ? `(${type})` : type;
+}
+
+/**
+ * True when `type` combines at a depth of zero with `|` or `&`, so it has to be
+ * parenthesized before it becomes an intersection member or an optional tuple
+ * element. An object or tuple body may contain unions of its own; those are
+ * already delimited and must not be wrapped.
+ */
+function hasTopLevelOperator(type: string): boolean {
+	let depth = 0;
+	let quote: '"' | "'" | undefined;
+
+	for (let index = 0; index < type.length; index++) {
+		const character = type[index]!;
+
+		if (quote !== undefined) {
+			if (character === '\\') {
+				index++;
+			} else if (character === quote) {
+				quote = undefined;
+			}
+
+			continue;
+		}
+
+		if (character === '"' || character === "'") {
+			quote = character;
+		} else if (character === '{' || character === '[' || character === '(' || character === '<') {
+			depth++;
+		} else if (character === '}' || character === ']' || character === ')' || character === '>') {
+			depth = Math.max(0, depth - 1);
+		} else if ((character === '|' || character === '&') && depth === 0) {
+			return true;
+		}
+	}
+
+	return false;
 }
