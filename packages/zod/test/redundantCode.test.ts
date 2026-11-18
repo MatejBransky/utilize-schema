@@ -560,6 +560,29 @@ describe('an inline subschema repeated without a named schema', () => {
 		expect(code).toContain("x: z.literal('custom')");
 	});
 
+	test('declares no copy inside a node customSchemaResolver replaces', async () => {
+		await expect(
+			compile(
+				{
+					type: 'object',
+					properties: {
+						pair: {
+							type: 'object',
+							properties: { p: structuredClone(point), q: structuredClone(point) },
+						},
+					},
+				},
+				{
+					customSchemaResolver: (schema) =>
+						schema[Meta].path.join('/') === 'properties/pair' ? 'z.literal(1)' : undefined,
+				}
+			)
+		).toMatchCode(ts`
+			export const Root = z.object({ pair: z.literal(1).optional() });
+			export type Root = z.infer<typeof Root>;
+		`);
+	});
+
 	test('breaks a cycle through a repeated array of the recursive schema', async () => {
 		const Root = await compileToZod({
 			type: 'object',

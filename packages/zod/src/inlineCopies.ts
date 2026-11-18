@@ -64,7 +64,12 @@ export function findInlineCopies(
 	}
 
 	const copies = new Map<ParsedJSONSchemaObject, ParsedJSONSchemaObject>();
-	const inline = collectInlineCandidates(standaloneSchemas, isCandidate, keys, declarations);
+	const inline = collectInlineCandidates(standaloneSchemas, {
+		keys,
+		declarations,
+		isCandidate,
+		isOpaque,
+	});
 
 	for (const [key, occurrences] of inline.occurrences) {
 		const declaration = declarations.get(key);
@@ -90,16 +95,24 @@ interface InlineCandidates {
 	order: Map<ParsedJSONSchemaObject, number>;
 }
 
+interface InlineSearch {
+	keys: StructuralKeys;
+	/** Standalone schemas with subschemas, by structural key. */
+	declarations: ReadonlyMap<string, ParsedJSONSchemaObject>;
+	isCandidate: (schema: ParsedJSONSchemaObject) => boolean;
+	/** True for a node whose code the caller provides. */
+	isOpaque: (schema: ParsedJSONSchemaObject) => boolean;
+}
+
 /**
- * Collects the inline subschemas that may become a reference. A subschema
- * inside a copy of a standalone schema is generated as part of that schema, so
- * the walk does not enter such a copy.
+ * Collects the inline subschemas that may become a reference. The walk covers
+ * only subschemas the generator turns into code: it does not enter a copy of a
+ * standalone schema, which is generated as part of that schema, nor a node
+ * whose code the caller provides.
  */
 function collectInlineCandidates(
 	standaloneSchemas: ParsedJSONSchemaObject[],
-	isCandidate: (schema: ParsedJSONSchemaObject) => boolean,
-	keys: StructuralKeys,
-	declarations: ReadonlyMap<string, ParsedJSONSchemaObject>
+	{ keys, declarations, isCandidate, isOpaque }: InlineSearch
 ): InlineCandidates {
 	const standalone = new Set(standaloneSchemas);
 	const candidates: InlineCandidates = {
@@ -110,7 +123,7 @@ function collectInlineCandidates(
 
 	function visit(schema: ParsedJSONSchemaObject, enclosing: ParsedJSONSchemaObject | undefined) {
 		for (const child of childSchemasOf(schema)) {
-			if (standalone.has(child)) {
+			if (standalone.has(child) || isOpaque(child)) {
 				continue;
 			}
 
@@ -141,7 +154,9 @@ function collectInlineCandidates(
 	}
 
 	for (const schema of standaloneSchemas) {
-		visit(schema, undefined);
+		if (!isOpaque(schema)) {
+			visit(schema, undefined);
+		}
 	}
 
 	return candidates;
