@@ -19,7 +19,8 @@ beforeAll(() => {
 	mkdirSync(join(fixtures, 'node_modules', '@utilize'), { recursive: true });
 
 	if (!existsSync(contentMapperLink)) {
-		symlinkSync(packageRoot, contentMapperLink, 'dir');
+		// A `dir` symlink needs Developer Mode or admin rights on Windows.
+		symlinkSync(packageRoot, contentMapperLink, process.platform === 'win32' ? 'junction' : 'dir');
 	}
 });
 
