@@ -57,8 +57,8 @@ interface AppState {
 
 const keywordPolicyOptions: Array<{ value: KeywordPolicy; label: string; hint: string }> = [
 	{ value: 'error', label: 'Error', hint: 'Reject keywords outside the dialect' },
-	{ value: 'warn', label: 'Warning', hint: 'Report and ignore them' },
-	{ value: 'ignore', label: 'Ignore', hint: 'Silently ignore them' },
+	{ value: 'warn', label: 'Warning', hint: 'Report them as warnings' },
+	{ value: 'ignore', label: 'Ignore', hint: 'Do not report them' },
 ];
 
 export default function App() {

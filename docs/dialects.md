@@ -3,7 +3,8 @@
 JSON Schema is a family of dialects. The same keyword can mean different
 things, or not exist at all, depending on the dialect a schema declares in
 `$schema`. This project resolves the dialect for every schema resource and
-generates code from that dialect instead of guessing from keyword shapes.
+checks every keyword against that dialect instead of guessing from keyword
+shapes.
 
 ## Supported dialects
 
@@ -40,9 +41,9 @@ keyword above is treated as belonging to the dialects marked "defined".
 ## Keyword policy
 
 Generating code that applies a keyword the dialect does not define makes the
-output stricter than the standard, so the parser reports foreign keywords and
-invalid keyword shapes. Reporting is a warning by default: the keyword is
-reported and then ignored, and compilation continues:
+output stricter or looser than the standard, so the parser reports foreign
+keywords and invalid keyword shapes. Reporting is a warning by default, and
+compilation continues:
 
 ```ts
 await compile({
@@ -63,12 +64,18 @@ await compile({
 });
 ```
 
-- `keywordPolicy: 'warn'` (default) reports through `onDialectIssue` (or
-  `console.warn`) and then ignores the keyword.
+- `keywordPolicy: 'warn'` (default) reports through `onDialectIssue`, and
+  `parse()` also returns the issues as `issues`. The core library never writes
+  to the console; the CLIs and the zod/effect `compile()` functions print the
+  warnings when no `onDialectIssue` is given.
 - `keywordPolicy: 'error'` fails validation instead, which is useful in CI to
   keep generated code faithful to the declared dialect.
-- `keywordPolicy: 'ignore'` ignores foreign keywords silently, which is what the
-  specification requires for keywords a dialect does not define.
+- `keywordPolicy: 'ignore'` does not report foreign keywords.
+
+The policy only decides how foreign keywords are reported; the parser does not
+remove them, so a generator that supports such a keyword still applies it.
+Valid keywords that no generator supports yet (`$dynamicRef`, `$recursiveRef`,
+`minContains`, `maxContains`) always fail, whatever the policy.
 
 The other options:
 
@@ -96,11 +103,17 @@ Every linked node carries the resolved dialect:
 ```ts
 import { dialectOf, Meta, parse } from '@utilize/json-schema';
 
-const { root } = await parse(schema, { cwd, fileName });
+const { root, issues } = await parse(schema, { cwd, fileName });
 const meta = root[Meta];
 
 meta.dialect; // '2020-12'
 meta.dialectSource; // 'declared' | 'inherited' | 'fallback' | 'forced'
 
 dialectOf(root); // the full Dialect definition
+issues; // DialectIssue[] reported with keywordPolicy: 'warn'
 ```
+
+A node the parser does not treat as a subschema (for example the `properties`
+object itself) carries the dialect of its parent. A referenced file without
+`$schema` inherits the dialect of the root document and is marked
+`inherited`.

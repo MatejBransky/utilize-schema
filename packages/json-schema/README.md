@@ -60,13 +60,15 @@ console.log(root[Meta]);
 ## Dialects
 
 The dialect is resolved per schema resource from `$schema` and copied into
-`Meta`. Keywords that do not belong to the node's dialect are reported and
-ignored by default, so generated code cannot silently apply draft-2020-12
-syntax to a draft-07 schema. `keywordPolicy: 'error'` fails instead, `'ignore'`
-drops them without a warning, like the specification requires for unknown
-keywords.
+`Meta`. Keywords that do not belong to the node's dialect are reported as
+warnings by default, so draft-2020-12 syntax in a draft-07 schema does not go
+unnoticed. `keywordPolicy: 'error'` fails instead, and `'ignore'` does not
+report them. The library never writes to the console: issues go to
+`onDialectIssue` and are also returned by `parse()`.
 
 ```ts
+import { formatIssue, parse } from '@utilize/json-schema';
+
 await parse(schema, {
 	cwd: process.cwd(),
 	fileName: 'schema.json',
@@ -74,8 +76,9 @@ await parse(schema, {
 	fallbackDialect: 'draft-07', // used when `$schema` is missing
 	unknownDialect: 'fallback', // or 'error'
 	keywordPolicy: 'warn', // or 'error' / 'ignore'
-	onDialectIssue: (issue) => console.warn(issue),
+	onDialectIssue: (issue) => console.warn(formatIssue(issue)),
 });
+// parse() also returns the reported issues as `issues`.
 ```
 
 See [docs/dialects.md](../../docs/dialects.md) for the keyword matrix.
