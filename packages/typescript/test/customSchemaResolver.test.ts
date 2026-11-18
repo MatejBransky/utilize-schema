@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'vitest';
 
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { compile as compileToFile } from '../src';
 import { compile, ts } from './test-utils';
 
 describe('customSchemaResolver', () => {
@@ -42,5 +47,25 @@ describe('customSchemaResolver', () => {
 			.toMatchCode(ts`
       export type Root = string;
     `);
+	});
+
+	test('is passed on by compile()', async () => {
+		const directory = await mkdtemp(join(tmpdir(), 'utilize-typescript-resolver-'));
+
+		try {
+			await writeFile(
+				join(directory, 'schema.json'),
+				JSON.stringify({ type: 'string', format: 'date-time' })
+			);
+			await compileToFile({
+				input: 'schema.json',
+				cwd: directory,
+				customSchemaResolver: (schema) => (schema.format === 'date-time' ? 'Date' : undefined),
+			});
+
+			expect(await readFile(join(directory, 'schema.generated.ts'), 'utf8')).toContain('Date');
+		} finally {
+			await rm(directory, { recursive: true, force: true });
+		}
 	});
 });

@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'vitest';
 
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { compile as compileToFile } from '../src';
 import { compile, ts } from './test-utils';
 
 describe('customSchemaResolver', () => {
@@ -64,9 +69,7 @@ describe('customSchemaResolver', () => {
 				{ type: ['string', 'null'], format: 'date-time' },
 				{
 					customSchemaResolver: (schema) =>
-						schema.type === 'string' && schema.format === 'date-time'
-							? 'Schema.Finite'
-							: undefined,
+						schema.type === 'string' && schema.format === 'date-time' ? 'Schema.Finite' : undefined,
 				}
 			)
 		).toMatchCode(ts`
@@ -83,5 +86,28 @@ describe('customSchemaResolver', () => {
 
       export type Root = typeof Root.Type;
     `);
+	});
+
+	test('is passed on by compile()', async () => {
+		const directory = await mkdtemp(join(tmpdir(), 'utilize-effect-resolver-'));
+
+		try {
+			await writeFile(
+				join(directory, 'schema.json'),
+				JSON.stringify({ type: 'string', format: 'date-time' })
+			);
+			await compileToFile({
+				input: 'schema.json',
+				cwd: directory,
+				customSchemaResolver: (schema) =>
+					schema.format === 'date-time' ? 'Schema.Finite' : undefined,
+			});
+
+			expect(await readFile(join(directory, 'schema.generated.ts'), 'utf8')).toContain(
+				'Schema.Finite'
+			);
+		} finally {
+			await rm(directory, { recursive: true, force: true });
+		}
 	});
 });
