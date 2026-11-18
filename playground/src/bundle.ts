@@ -101,7 +101,7 @@ export function buildBundle(
 		try {
 			prepareSchema(structuredClone(parsed.schema), {
 				filePath: parsed.file.name,
-				fallbackDialect: rootDialect,
+				inheritedDialect: parsed === rootParsed ? undefined : rootDialect,
 				keywordPolicy,
 				onDialectIssue: (issue) => {
 					problems.push({

@@ -173,6 +173,27 @@ test('normalizes a draft-04 schema only once with keywordPolicy error', async ()
 	expect(generate(parsed.root, { importZod: true })).toContain('.gt(0)');
 });
 
+test('reports foreign keywords in a referenced file that inherits the root dialect', () => {
+	const root = file('root', 'root.json', {
+		$schema: 'http://json-schema.org/draft-07/schema#',
+		$ref: './child.json',
+	});
+	const child = file('child', 'child.json', {
+		type: 'object',
+		unevaluatedProperties: false,
+	});
+
+	const bundle = buildBundle([parseJsonFile(root), parseJsonFile(child)], 'root');
+
+	expect(bundle.problems).toEqual([
+		{
+			fileId: 'child',
+			severity: 'warning',
+			message: expect.stringContaining('"unevaluatedProperties" is not part of draft-07'),
+		},
+	]);
+});
+
 test('detectRootId picks the file that no other file references', () => {
 	const files = [
 		file('address', 'address.json', { type: 'object' }),

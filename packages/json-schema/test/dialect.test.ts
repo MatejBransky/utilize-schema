@@ -272,6 +272,21 @@ describe('prepareSchema', () => {
 		).toThrow(/draft-04 does not allow boolean schemas/);
 	});
 
+	test('marks a referenced document without $schema as inherited', () => {
+		const issues: DialectIssue[] = [];
+		const schema = { type: 'object', unevaluatedProperties: false };
+
+		const map = prepareSchema(schema, {
+			inheritedDialect: 'draft-07',
+			onDialectIssue: (issue) => issues.push(issue),
+		});
+
+		expect(map.get(schema)).toMatchObject({ source: 'inherited' });
+		expect(issues).toEqual([
+			expect.objectContaining({ keyword: 'unevaluatedProperties', dialectSource: 'inherited' }),
+		]);
+	});
+
 	test('still rejects unsupported keywords of the dialect with keywordPolicy ignore', () => {
 		expect(() =>
 			prepareSchema(

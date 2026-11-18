@@ -46,9 +46,11 @@ export async function parse(
 		const prefixPath = isRootSchema ? '#' : filePath.replace(cwd, '');
 		const fileName = isRootSchema ? rootFileName : (filePath.split(/[\\/]/).at(-1) ?? 'Unknown');
 
+		// A referenced file without `$schema` inherits the root's dialect.
 		const dialects = prepareSchema(entrySchema, {
 			dialect: options.dialect,
-			fallbackDialect: rootDialect,
+			fallbackDialect: options.fallbackDialect,
+			inheritedDialect: isRootSchema ? undefined : rootDialect,
 			unknownDialect: options.unknownDialect,
 			keywordPolicy: options.keywordPolicy,
 			onDialectIssue: options.onDialectIssue,

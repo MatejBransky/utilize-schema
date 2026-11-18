@@ -2,6 +2,7 @@ import {
 	type Dialect,
 	type DialectId,
 	DialectError,
+	dialects,
 	type DialectIssue,
 	type DialectOptions,
 	type DialectSource,
@@ -28,6 +29,11 @@ export type DialectMap = WeakMap<object, ResolvedDialect>;
 export interface PrepareSchemaOptions extends DialectOptions {
 	/** Included in diagnostics; file name or relative path. */
 	filePath?: string;
+	/**
+	 * Dialect of the document that references this one. A schema without
+	 * `$schema` inherits it instead of using `fallbackDialect`.
+	 */
+	inheritedDialect?: DialectId;
 }
 
 const MAP_KEYWORDS = new Set([
@@ -64,7 +70,7 @@ export function prepareSchema(schema: unknown, options: PrepareSchemaOptions = {
 	const map: DialectMap = new WeakMap();
 	const seen = new Set<unknown>();
 	const policy = options.keywordPolicy ?? 'warn';
-	const root = resolveDialect(schema, options);
+	const root = resolveDocumentDialect(schema, options);
 
 	visit(schema, root, [], true);
 
@@ -217,6 +223,16 @@ export function normalizeSchema(schema: unknown, dialect: DialectId | Dialect = 
 		dialect: typeof dialect === 'string' ? dialect : dialect.id,
 		keywordPolicy: 'ignore',
 	});
+}
+
+function resolveDocumentDialect(schema: unknown, options: PrepareSchemaOptions): ResolvedDialect {
+	const resolved = resolveDialect(schema, options);
+
+	if (resolved.source === 'fallback' && options.inheritedDialect) {
+		return { dialect: dialects[options.inheritedDialect], source: 'inherited' };
+	}
+
+	return resolved;
 }
 
 function isResourceRoot(node: Record<string, unknown>, dialect: Dialect): boolean {
