@@ -5,7 +5,7 @@ local root = vim.fs.root(0, { 'tsconfig.json' })
 
 if root and root:match('content%-mapper') then
   vim.lsp.start({
-    name = 'tsgo-content-mapper',
+    name = 'tsc-content-mapper',
     cmd = { root .. '/node_modules/.bin/tsc', '--lsp', '--stdio' },
     root_dir = root,
     -- `--runExternalCode` is not an LSP flag in TypeScript 7.1 beta;
