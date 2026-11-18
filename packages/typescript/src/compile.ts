@@ -5,7 +5,7 @@ import { type JSONSchema, parse } from '@utilize/json-schema';
 
 import { load as loadYaml } from 'js-yaml';
 
-import { generate } from './generator';
+import { generate, type CustomSchemaResolver } from './generator';
 import type { CustomNameResolver } from './resolveName';
 
 export interface CompileOptions {
@@ -17,6 +17,8 @@ export interface CompileOptions {
 	cwd?: string;
 	/** Overrides the name allocated for a standalone schema. */
 	customNameResolver?: CustomNameResolver;
+	/** Emits a caller-provided TypeScript type for a matching schema node. */
+	customSchemaResolver?: CustomSchemaResolver;
 	/** Header prepended to the generated file. Pass `false` to omit it. */
 	bannerComment?: string | false;
 }
@@ -25,6 +27,7 @@ export interface CompileSchemaOptions {
 	cwd: string;
 	fileName: string;
 	customNameResolver?: CustomNameResolver;
+	customSchemaResolver?: CustomSchemaResolver;
 }
 
 export const DEFAULT_BANNER = `/* eslint-disable */
@@ -46,6 +49,7 @@ export async function compile(options: CompileOptions): Promise<void> {
 
 	const code = await compileFile(inputPath, {
 		customNameResolver: options.customNameResolver,
+		customSchemaResolver: options.customSchemaResolver,
 	});
 
 	writeFileSync(outputPath, withBanner(code, options.bannerComment), 'utf8');
@@ -69,6 +73,7 @@ export async function compileSchema(schema: JSONSchema, options: CompileSchemaOp
 
 	return generate(root, {
 		customNameResolver: options.customNameResolver,
+		customSchemaResolver: options.customSchemaResolver,
 	});
 }
 

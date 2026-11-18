@@ -30,6 +30,15 @@ await compile({
 default (`bannerComment: false` to omit it). `compileFile()` and
 `compileSchema()` return the generated code without writing anything.
 
+Options:
+
+- `customNameResolver(schema, usedNames)` — override the name allocated for a
+  standalone schema.
+- `customSchemaResolver(schema)` — return an Effect Schema expression for a
+  schema node, or `undefined` to let the generator handle it. It runs before
+  the built-in generator, so it can replace unsupported keywords.
+- `importEffect` — emit `import { Schema } from 'effect';`; on by default.
+
 ## CLI
 
 ```sh

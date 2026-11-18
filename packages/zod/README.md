@@ -58,6 +58,18 @@ pnpm add zod
   });
   ```
 
+- `customSchemaResolver(schema)` — return a Zod expression for a schema node,
+  or `undefined` to let the generator handle it. It runs before any built-in
+  generator, so it can replace keywords the generator does not support:
+
+  ```ts
+  await compile({
+  	input: './schema.json',
+  	customSchemaResolver: (schema) =>
+  		schema.format === 'date-time' ? 'z.string().datetime({ offset: true })' : undefined,
+  });
+  ```
+
 - `bannerComment` — header prepended to written files; `false` disables it.
 
 For custom pipelines, `compileFile()` and `compileSchema()` return the generated

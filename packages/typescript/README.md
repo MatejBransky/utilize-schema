@@ -43,6 +43,18 @@ await compile({
 });
 ```
 
+`compile()` accepts `customNameResolver(schema, usedNames)` to rename a
+declaration and `customSchemaResolver(schema)` to return a TypeScript type for a
+schema node. The schema resolver runs before the built-in renderer, so it can
+replace nodes the generator would otherwise infer:
+
+```ts
+await compile({
+	input: './schema.json',
+	customSchemaResolver: (schema) => (schema.format === 'date-time' ? 'Date' : undefined),
+});
+```
+
 Or generate from an already parsed schema:
 
 ```ts

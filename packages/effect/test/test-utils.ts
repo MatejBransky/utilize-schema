@@ -11,7 +11,7 @@ import { format as formatCode } from 'oxfmt';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { generate } from '../src/generator';
+import { generate, type CustomSchemaResolver } from '../src/generator';
 import type { NameMapper } from '../src/resolveName';
 
 /** JSON Schema 2020-12 keywords that the draft-07 based `JSONSchema` type lacks. */
@@ -69,6 +69,7 @@ export interface CompileOptions extends DialectOptions {
 	fileName?: string;
 	schemaName?: NameMapper;
 	typeName?: NameMapper;
+	customSchemaResolver?: CustomSchemaResolver;
 }
 
 export async function compile(schema: TestSchema, options: CompileOptions = {}) {
@@ -85,6 +86,7 @@ export async function compile(schema: TestSchema, options: CompileOptions = {}) 
 		importEffect: options.importEffect ?? false,
 		schemaName: options.schemaName,
 		typeName: options.typeName,
+		customSchemaResolver: options.customSchemaResolver,
 	});
 
 	return formatSource(code);

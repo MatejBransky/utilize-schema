@@ -11,9 +11,9 @@ import { collectStandaloneSchemas } from './collectStandaloneSchemas';
 import { unsupportedUnionCycleError } from './errors';
 import { findCyclicSchemas } from './findCyclicSchemas';
 import { generateSchema } from './generators/generateSchema';
-import type { FormatMap, GeneratorContext } from './generators/types';
+import type { CustomSchemaResolver, FormatMap, GeneratorContext } from './generators/types';
 
-export type { FormatMap } from './generators/types';
+export type { CustomSchemaResolver, FormatMap } from './generators/types';
 import {
 	allocateName,
 	mapDeclarationNames,
@@ -38,6 +38,8 @@ export interface GenerateOptions {
 	readOnlyKeyword?: boolean;
 	/** Overrides the built-in `format` to Zod mapping per format; unlisted formats keep it. */
 	formatMap?: FormatMap;
+	/** Emits a caller-provided Zod expression for a matching schema node. */
+	customSchemaResolver?: CustomSchemaResolver;
 }
 
 /** Names the generated code uses besides the declarations. */
@@ -53,6 +55,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 				throw new Error('A primitive schema cannot reference another schema.');
 			},
 			dialect: dialectOf(root),
+			customSchemaResolver: options.customSchemaResolver,
 		});
 	}
 
@@ -91,6 +94,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		formatMap: options.formatMap,
 		nameOf: (schema) => namesOf(schema).schema,
 		dialect: dialectOf(root),
+		customSchemaResolver: options.customSchemaResolver,
 	};
 
 	const valueTypeContext: ValueTypeContext = {
