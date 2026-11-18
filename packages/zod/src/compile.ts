@@ -20,7 +20,7 @@ export interface CompileOptions
 	cwd?: string;
 	/** Map `readOnly: true` to `.readonly()`; off by default because it changes the value type. */
 	readOnlyKeyword?: boolean;
-	/** Replaces the built-in `format` to Zod mapping. */
+	/** Overrides the built-in `format` to Zod mapping per format; unlisted formats keep it. */
 	formatMap?: FormatMap;
 	/** Header prepended to the generated file. Pass `false` to omit it. */
 	bannerComment?: string | false;

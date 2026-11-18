@@ -1,9 +1,10 @@
 import type { Dialect, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 /**
- * Maps a JSON Schema `format` name to a Zod string expression. The expression
- * replaces the built-in mapping and string constraints are appended to it, so
- * it has to be a string schema.
+ * Maps a JSON Schema `format` name to a Zod string expression. An entry
+ * overrides the built-in mapping for that format only; formats that are not
+ * listed keep the built-in mapping. String constraints are appended to the
+ * expression, so it has to be a string schema.
  */
 export type FormatMap = Record<string, string>;
 
@@ -22,6 +23,6 @@ export type GeneratorContext = {
 	 * without `Meta` read it from here instead of resolving it again.
 	 */
 	dialect: Dialect;
-	/** Replaces the built-in `format` to Zod mapping. */
+	/** Overrides the built-in `format` to Zod mapping per format; unlisted formats keep it. */
 	formatMap?: FormatMap;
 };
