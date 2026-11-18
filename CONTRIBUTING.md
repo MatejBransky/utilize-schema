@@ -37,7 +37,8 @@ Generators are pluggable: `packages/json-schema` owns parsing, linking and
 normalization, and each target package only maps the parsed tree to its own
 schema API. A new target follows the shape of `packages/typescript` — a
 `generate` function that returns a module with one declaration per standalone
-schema, plus a `compile` helper for the CLI. See the
+schema, plus a `compile` helper that reads a schema file and writes the
+generated module. See the
 [playground README](./playground/README.md#adding-a-generator) for the wiring a
 target needs to show up in the UI.
 

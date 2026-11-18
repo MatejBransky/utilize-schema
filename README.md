@@ -56,15 +56,17 @@ await compileTypescript({
 });
 ```
 
-Both generators require their runtime as a peer dependency: `zod`
-(`>=4.0.0 <5`) and `effect` (`>=4.0.0 <5`):
+The runtime generators require their runtime as a peer dependency: `zod`
+(`>=4.0.0 <5`) and `effect` (`>=4.0.0 <5`); `@utilize/typescript` has no runtime
+dependency:
 
 ```sh
 pnpm add zod effect
 ```
 
-Both packages also ship a CLI that accepts a file, directory or glob, reads JSON
-and YAML, and writes to a file, a directory or stdout:
+The `@utilize/zod` and `@utilize/effect` packages also ship a CLI that accepts a
+file, directory or glob, reads JSON and YAML, and writes to a file, a directory
+or stdout:
 
 ```sh
 utilize-zod schema.json schema.generated.ts
@@ -101,23 +103,27 @@ Vercel preview deployment of the playground.
 
 ## Supported features
 
-Both generators accept the same input and are checked against each other by a
-differential test suite (`packages/effect/test/parity.test.ts`), so the table
-below is kept honest by CI. Both generators are also checked against the
-official JSON Schema Test Suite for draft-07:
+The Zod and Effect Schema generators accept the same input and are checked
+against each other by a differential test suite
+(`packages/effect/test/parity.test.ts`), so the table below is kept honest by
+CI. All three generators are also checked against the official JSON Schema Test
+Suite for draft-07:
 
 - **Zod:** 233 of 271 cases (1,323 of 1,605 assertions) pass.
 - **Effect Schema:** 204 of 269 cases (774 of 939 assertions) pass. Cases tagged
   `format-assertion` are skipped because `format` is kept as an annotation.
+- **TypeScript:** 167 of 288 cases pass at the type level.
 
-The remaining gaps are listed in each package's `test/suite/knownFailures.ts`.
+The remaining gaps are recorded in each package's `test/suite/` directory:
+`knownFailures.ts` for the runtime generators, `knownGaps.ts` for the type-level
+runner.
 
 The TypeScript generator has no runtime: validation keywords such as
 `minLength`, `pattern` or `uniqueItems` have no type-level equivalent, so they
-are ignored. It is checked against the same suite at the type level — **166 of
-288 draft-07 cases** accept every valid instance and reject every invalid one;
-the rest are type-only gaps, the inference trade-off shared with
-json-schema-to-typescript, or shared parser gaps. See
+are ignored. Its runner emits every suite instance as a typed constant and
+checks the whole set with one `tsc` pass. The rest are type-only gaps, the
+inference trade-off shared with json-schema-to-typescript, or shared parser
+gaps. See
 [`packages/typescript/README.md`](./packages/typescript/README.md#conformance)
 for the full numbers and methodology.
 
@@ -164,7 +170,7 @@ for the full numbers and methodology.
 `✅` supported, `❌` rejected with a clear error, `—` accepted but only kept as
 an annotation.
 
-Schemas that omit `type` infer it from a single keyword family (object, array,
+Zod and Effect Schema infer `type` from a single keyword family (object, array,
 string or number), so constraints such as `{ pattern }` or `{ required }`
 are not silently dropped.
 

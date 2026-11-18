@@ -1,10 +1,11 @@
 # Conformance comparison
 
-This page compares the conformance numbers of the Zod generator with
+This page compares the conformance numbers of the generators in this repository
+with
 [json-schema-to-typescript](https://github.com/bcherny/json-schema-to-typescript),
 the project this repository started from. Read it as **a description of what
-each project measures**, not as a ranking: the two tools emit different
-artifacts and their numbers are not directly comparable.
+each project measures**, not as a ranking: the tools emit different artifacts
+and their numbers are not directly comparable.
 
 Both projects run the official
 [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
@@ -18,6 +19,25 @@ rejected. Draft-07 baseline on suite commit `e2a68a1`:
 - 233 of 271 cases (1,323 of 1,605 assertions).
 - Cases that need external schemas are not wired up yet, and cases tagged
   `format-annotation` are skipped because this generator asserts known formats.
+
+**Utilize Schema (`@utilize/typescript`)** generates TypeScript types and uses
+the same type-level method as json-schema-to-typescript: every suite instance is
+emitted as a typed constant and one `tsc --strict` pass decides acceptance. This
+is the closest comparison on this page, although the suite revisions differ.
+Draft-07 baseline on suite commit `e2a68a1`:
+
+- 167 of 288 cases have no valid instance rejected and no invalid instance
+  accepted.
+- 100 cases differ only because an invalid instance is accepted by a keyword a
+  type cannot express (`minimum`, `pattern`, `format`, `uniqueItems`, …).
+- 21 cases are listed in `test/suite/knownGaps.ts`: 10 shared parser gaps
+  (`$id`/`$anchor` and URN resolution) and 11 inference gaps.
+- Across instances it accepts 788 of 814 spec-valid instances and rejects 209 of
+  788 spec-invalid ones.
+
+See
+[`packages/typescript/README.md`](../packages/typescript/README.md#conformance)
+for the methodology and a side-by-side record with json-schema-to-typescript.
 
 **json-schema-to-typescript** generates TypeScript types and checks them with
 the TypeScript compiler: each instance is emitted as a typed constant and the
@@ -44,7 +64,7 @@ commit `3c25e5f`):
    what master does".
 2. **Different suite revisions.** The numbers come from different pinned
    revisions with different group counts (257 draft-07 groups there, 271
-   runnable cases here).
+   runnable cases for Zod and 288 for TypeScript here).
 3. **Different case selection.** This project skips `format-annotation` cases
    and cases that need external schemas; json-schema-to-typescript runs every
    draft-07 group and serves remote references from the suite's `remotes/`
@@ -53,11 +73,14 @@ commit `3c25e5f`):
 ## What a fair comparison would need
 
 Run both tools against the same suite revision, keep only the cases whose outcome
-a TypeScript type can express, and compare the same metric. Until then, read the
-numbers above as two different records, not as a score.
+a TypeScript type can express, and compare the same metric.
+`@utilize/typescript` already does this at its pinned revision; its README
+records the numbers next to json-schema-to-typescript's. Until the revisions
+match, read the numbers above as different records, not as a score.
 
 ## Reproducing
 
 - Utilize Schema: `pnpm --filter @utilize/zod test:suite`
+- Utilize Schema (type level): `pnpm --filter @utilize/typescript test:suite`
 - json-schema-to-typescript: `bun run build:server && node test/conformance/run.js`
   at its pinned suite commit.
