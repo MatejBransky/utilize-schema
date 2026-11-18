@@ -100,7 +100,7 @@ function generateCore(schema: ParsedJSONSchemaObject, context: GeneratorContext)
 		)})`;
 	}
 
-	return selectGenerator(schema, context).generate(schema, context);
+	return selectGenerator(schema, context.dialect).generate(schema, context);
 }
 
 /**

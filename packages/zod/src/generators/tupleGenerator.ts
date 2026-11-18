@@ -6,12 +6,12 @@ import { generateSchema } from './generateSchema';
 import { NEWLINE, ts } from '../utils';
 
 export const generator = createGenerator(
-	(schema, context) => {
+	(schema, dialect) => {
 		if (schema.type !== 'array') {
 			return false;
 		}
 
-		return tupleItems(schema, context.dialect) !== undefined;
+		return tupleItems(schema, dialect) !== undefined;
 	},
 	(schema, context) => {
 		const items = tupleItems(schema, context.dialect)!;

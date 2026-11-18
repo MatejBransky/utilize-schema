@@ -4,7 +4,7 @@ import { createGenerator } from './createGenerator';
 import { renderLiteral } from './renderLiteral';
 
 export const generator = createGenerator<{ const: unknown }>(
-	(schema, context) => schema.const !== undefined && isKeywordApplicable(context.dialect, 'const'),
+	(schema, dialect) => schema.const !== undefined && isKeywordApplicable(dialect, 'const'),
 	(schema) => {
 		return renderLiteral(schema.const);
 	}

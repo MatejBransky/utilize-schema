@@ -1,4 +1,4 @@
-import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
+import { dialectOf, type ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
 import { composedSchemaParts, generateSchema } from './generateSchema';
@@ -21,7 +21,7 @@ export const generator = createGenerator<
 			(subschema) =>
 				typeof subschema === 'object' &&
 				subschema !== null &&
-				selectGenerator(subschema, context) === objectGenerator &&
+				selectGenerator(subschema, dialectOf(subschema, context.dialect)) === objectGenerator &&
 				composedSchemaParts(subschema) === undefined
 		);
 

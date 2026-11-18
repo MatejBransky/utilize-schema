@@ -8,12 +8,12 @@ import { ts } from '../utils';
 export const generator = createGenerator<
 	ParsedJSONSchemaObject & { items: ParsedJSONSchemaObject }
 >(
-	(schema, context) => {
+	(schema, dialect) => {
 		if (schema.type !== 'array') {
 			return false;
 		}
 
-		return context.dialect.tuple === 'prefixItems'
+		return dialect.tuple === 'prefixItems'
 			? schema.prefixItems === undefined
 			: !Array.isArray(schema.items);
 	},

@@ -59,11 +59,7 @@ function isStructuralNode(schema: SchemaNode): boolean {
 		return false;
 	}
 
-	const generator = selectGenerator(schema, {
-		dialect: dialectOf(schema),
-		nameOf: () => '',
-		lazyRefs: new Set(),
-	});
+	const generator = selectGenerator(schema, dialectOf(schema));
 
 	if (
 		generator === objectGenerator ||

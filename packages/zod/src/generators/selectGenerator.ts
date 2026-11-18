@@ -1,4 +1,4 @@
-import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
+import type { Dialect, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { generator as allOfGenerator } from './allOfGenerator';
 import { generator as anyGenerator } from './anyGenerator';
@@ -17,7 +17,6 @@ import { generator as recordGenerator } from './recordGenerator';
 import { generator as refGenerator } from './refGenerator';
 import { generator as stringGenerator } from './stringGenerator';
 import { generator as tupleGenerator } from './tupleGenerator';
-import type { GeneratorContext } from './types';
 
 let generators: ExpressionGenerator[] | undefined;
 
@@ -50,9 +49,9 @@ function getGenerators(): ExpressionGenerator[] {
 
 export function selectGenerator(
 	input: ParsedJSONSchemaObject,
-	context: GeneratorContext
+	dialect: Dialect
 ): ExpressionGenerator {
-	const generator = getGenerators().find(({ predicate }) => predicate(input, context));
+	const generator = getGenerators().find(({ predicate }) => predicate(input, dialect));
 
 	if (!generator) {
 		return anyGenerator;

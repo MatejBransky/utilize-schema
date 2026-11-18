@@ -77,11 +77,7 @@ function renderType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): 
 		)}`;
 	}
 
-	const generator = selectGenerator(schema, {
-		dialect,
-		nameOf: () => '',
-		lazyRefs: new Set(),
-	});
+	const generator = selectGenerator(schema, dialect);
 
 	if (generator === refGenerator) {
 		const reference = schema[Meta]?.reference;
@@ -205,11 +201,7 @@ function renderType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): 
 }
 
 function renderReadOnlyType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): string {
-	const generator = selectGenerator(schema, {
-		dialect: dialectOf(schema, context.dialect),
-		nameOf: () => '',
-		lazyRefs: new Set(),
-	});
+	const generator = selectGenerator(schema, dialectOf(schema, context.dialect));
 
 	if (generator === arrayGenerator) {
 		const items = schema.items
@@ -239,11 +231,7 @@ function renderInterfaceBody(
 	schema: ParsedJSONSchemaObject,
 	context: ValueTypeContext
 ): string | undefined {
-	const generator = selectGenerator(schema, {
-		dialect: dialectOf(schema, context.dialect),
-		nameOf: () => '',
-		lazyRefs: new Set(),
-	});
+	const generator = selectGenerator(schema, dialectOf(schema, context.dialect));
 
 	if (generator === recordGenerator) {
 		const additionalProperties = schema.additionalProperties as ParsedJSONSchemaObject;
