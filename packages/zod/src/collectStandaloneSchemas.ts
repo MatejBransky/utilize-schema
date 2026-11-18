@@ -1,4 +1,4 @@
-import { type ParsedJSONSchemaObject, Meta } from '@utilize/json-schema';
+import { type ParsedJSONSchema, type ParsedJSONSchemaObject, Meta } from '@utilize/json-schema';
 
 export type SchemaEdge = [ParsedJSONSchemaObject | null, ParsedJSONSchemaObject];
 
@@ -48,73 +48,8 @@ export function collectStandaloneSchemas(root: ParsedJSONSchemaObject): Standalo
 		}
 
 		// 3. Traverse properties, items, etc.
-		if (schema.properties) {
-			for (const prop of Object.values(schema.properties)) {
-				visit(prop, schema);
-			}
-		}
-
-		if (schema.patternProperties) {
-			for (const prop of Object.values(schema.patternProperties)) {
-				visit(prop, schema);
-			}
-		}
-
-		if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
-			visit(schema.additionalProperties, schema);
-		}
-
-		if (schema.items) {
-			if (Array.isArray(schema.items)) {
-				for (const item of schema.items) {
-					visit(item, schema);
-				}
-			} else {
-				visit(schema.items, schema);
-			}
-		}
-
-		if (schema.prefixItems) {
-			for (const item of schema.prefixItems) {
-				visit(item, schema);
-			}
-		}
-
-		if (schema.additionalItems && typeof schema.additionalItems === 'object') {
-			visit(schema.additionalItems, schema);
-		}
-
-		if (schema.contains) {
-			visit(schema.contains, schema);
-		}
-
-		if (schema.propertyNames) {
-			visit(schema.propertyNames, schema);
-		}
-
-		if (schema.if) {
-			visit(schema.if as ParsedJSONSchemaObject, schema);
-		}
-
-		if (schema.then) {
-			visit(schema.then as ParsedJSONSchemaObject, schema);
-		}
-
-		if (schema.else) {
-			visit(schema.else as ParsedJSONSchemaObject, schema);
-		}
-
-		if (schema.allOf) schema.allOf.forEach((n) => visit(n, schema));
-		if (schema.anyOf) schema.anyOf.forEach((n) => visit(n, schema));
-		if (schema.oneOf) schema.oneOf.forEach((n) => visit(n, schema));
-		if (schema.not) visit(schema.not, schema);
-
-		if (schema.dependencies) {
-			for (const dep of Object.values(schema.dependencies)) {
-				if (typeof dep === 'object' && dep !== null && !Array.isArray(dep)) {
-					visit(dep, schema);
-				}
-			}
+		for (const child of childSchemasOf(schema)) {
+			visit(child, schema);
 		}
 	}
 
@@ -124,4 +59,35 @@ export function collectStandaloneSchemas(root: ParsedJSONSchemaObject): Standalo
 	standalone.add(root);
 
 	return { schemas: Array.from(standalone), edges: Array.from(edges) };
+}
+
+/**
+ * The subschemas of a schema that are generated as part of it: everything
+ * except `$defs`/`definitions` and the target of a `$ref`.
+ */
+export function childSchemasOf(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject[] {
+	const children: (ParsedJSONSchema | undefined)[] = [
+		...Object.values(schema.properties ?? {}),
+		...Object.values(schema.patternProperties ?? {}),
+		schema.additionalProperties,
+		...[schema.items].flat(),
+		...(schema.prefixItems ?? []),
+		schema.additionalItems,
+		schema.contains,
+		schema.propertyNames,
+		schema.if as ParsedJSONSchema | undefined,
+		schema.then as ParsedJSONSchema | undefined,
+		schema.else as ParsedJSONSchema | undefined,
+		...(schema.allOf ?? []),
+		...(schema.anyOf ?? []),
+		...(schema.oneOf ?? []),
+		schema.not,
+		...Object.values(schema.dependencies ?? {}).filter(
+			(dependency): dependency is ParsedJSONSchemaObject => !Array.isArray(dependency)
+		),
+	];
+
+	return children.filter(
+		(child): child is ParsedJSONSchemaObject => typeof child === 'object' && child !== null
+	);
 }
