@@ -33,7 +33,10 @@ export function findCyclicSchemas(
 			continue;
 		}
 
-		if (members.every((member) => !isStructuralNode(member))) {
+		// Check every node in the component, not only the standalone members:
+		// an inline object or array can anchor a cycle even when the only
+		// standalone schema in it is a union.
+		if ([...component].every((node) => !isStructuralNode(node))) {
 			unsupported.push(members);
 			continue;
 		}
@@ -51,7 +54,7 @@ export function findCyclicSchemas(
  * Subschema branches do not count: a structural constructor in a sibling
  * `anyOf` branch does not anchor a cycle that bypasses it.
  */
-function isStructuralNode(schema: ParsedJSONSchemaObject): boolean {
+function isStructuralNode(schema: SchemaNode): boolean {
 	if (typeof schema !== 'object' || schema === null) {
 		return false;
 	}
