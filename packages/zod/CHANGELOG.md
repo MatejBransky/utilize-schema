@@ -1,5 +1,12 @@
 # @utilize/zod
 
+## 0.7.1
+
+### Patch Changes
+
+- 2f292c3: Anchor cycles on inline object and array nodes, so a recursive `oneOf` through an object property holding an array compiles and infers a recursive type.
+- 001cddd: Emit required tuple items up to `minItems` and drop `.rest()` and the redundant length check when `maxItems` fixes the length, so fixed-size arrays infer `[T, T]` instead of `[T?, T?, ...unknown[]]`.
+
 ## 0.7.0
 
 ### Minor Changes
