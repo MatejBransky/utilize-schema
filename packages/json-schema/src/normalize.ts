@@ -128,7 +128,7 @@ export function prepareSchema(schema: unknown, options: PrepareSchemaOptions = {
 			report({ ...issue, path }, resolved);
 		}
 
-		normalizeNode(node, resolved.dialect, resolved.source, policy === 'ignore');
+		normalizeNode(node, resolved.dialect, resolved.source);
 
 		for (const [key, value] of Object.entries(node)) {
 			if (key === '$schema') {
@@ -221,8 +221,7 @@ function isResourceRoot(node: Record<string, unknown>, dialect: Dialect): boolea
 function normalizeNode(
 	node: Record<string, unknown>,
 	dialect: Dialect,
-	source: DialectSource,
-	ignore: boolean
+	source: DialectSource
 ): void {
 	if (dialect.id === 'draft-04') {
 		normalizeDraft04ExclusiveBounds(node);
@@ -258,8 +257,11 @@ function normalizeNode(
 		return;
 	}
 
+	// These keywords are valid in the dialect, but no generator supports them
+	// yet. `keywordPolicy` only covers keywords from other dialects, so this
+	// always fails instead of producing code that is looser than the schema.
 	for (const keyword of ['$recursiveRef', '$dynamicRef', 'minContains', 'maxContains']) {
-		if (node[keyword] !== undefined && !ignore) {
+		if (node[keyword] !== undefined) {
 			throw new UnsupportedSchemaFeatureError(keyword);
 		}
 	}

@@ -244,6 +244,15 @@ describe('prepareSchema', () => {
 		).not.toThrow();
 	});
 
+	test('still rejects unsupported keywords of the dialect with keywordPolicy ignore', () => {
+		expect(() =>
+			prepareSchema(
+				{ $schema: twentyTwentyTwelve, type: 'array', contains: {}, minContains: 2 },
+				{ keywordPolicy: 'ignore' }
+			)
+		).toThrow(/"minContains" is not supported/);
+	});
+
 	test('warns about $ref siblings that draft-07 ignores', () => {
 		const issues: DialectIssue[] = [];
 
