@@ -1,3 +1,4 @@
+import { type JSONSchema } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
 import { compile, compileToZod, ts } from './test-utils';
@@ -81,5 +82,61 @@ describe('a type array with annotations', () => {
 			});
 			export type Root = z.infer<typeof Root>;
 		`);
+	});
+});
+
+describe('an anyOf with a branch that accepts every value', () => {
+	const tagged: JSONSchema = {
+		oneOf: [
+			{
+				type: 'object',
+				properties: { type: { type: 'string', const: 'int' }, value: { type: 'integer' } },
+				required: ['type', 'value'],
+			},
+			{
+				type: 'object',
+				properties: { type: { type: 'string', const: 'text' }, value: { type: 'string' } },
+				required: ['type', 'value'],
+			},
+		],
+	};
+
+	test('generates no code for the anyOf', async () => {
+		await expect(
+			compile({
+				type: 'object',
+				properties: { label: { type: 'string' } },
+				required: ['label'],
+				anyOf: [tagged, {}],
+			})
+		).toMatchCode(ts`
+			export const Root = z.object({ label: z.string() });
+			export type Root = z.infer<typeof Root>;
+		`);
+	});
+
+	test.each([
+		['true', true],
+		['an empty schema', {}],
+		['an annotation-only schema', { description: 'Anything else', $comment: 'catch-all' }],
+	] as const)(
+		'generates the same code as without the anyOf when a branch is %s',
+		async (_, branch) => {
+			await expect(compile({ minLength: 2, anyOf: [{ type: 'string' }, branch] })).toMatchCode(
+				compile({ minLength: 2 })
+			);
+		}
+	);
+
+	test('still accepts values that match no other branch', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: { label: { type: 'string' } },
+			required: ['label'],
+			anyOf: [tagged, {}],
+		});
+
+		expect(Root.safeParse({ label: 'a', type: 'other' }).success).toBe(true);
+		expect(Root.safeParse({ type: 'int', value: 1 }).success).toBe(false);
 	});
 });

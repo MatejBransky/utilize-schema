@@ -1,6 +1,7 @@
 import { dialectOf, type ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import type { SchemaEdge } from './collectStandaloneSchemas';
+import { withoutAlwaysValidAnyOf } from './generators/alwaysValidAnyOf';
 import { generator as arrayGenerator } from './generators/arrayGenerator';
 import { generator as multipleTypeGenerator } from './generators/multipleTypeGenerator';
 import { generator as objectGenerator } from './generators/objectGenerator';
@@ -59,7 +60,7 @@ function isStructuralNode(schema: SchemaNode): boolean {
 		return false;
 	}
 
-	const generator = selectGenerator(schema, dialectOf(schema));
+	const generator = selectGenerator(withoutAlwaysValidAnyOf(schema), dialectOf(schema));
 
 	if (
 		generator === objectGenerator ||

@@ -7,6 +7,7 @@ import {
 } from '@utilize/json-schema';
 
 import { generator as allOfGenerator } from './generators/allOfGenerator';
+import { withoutAlwaysValidAnyOf } from './generators/alwaysValidAnyOf';
 import { generator as anyGenerator } from './generators/anyGenerator';
 import { generator as anyOfGenerator } from './generators/anyOfGenerator';
 import { generator as arrayGenerator } from './generators/arrayGenerator';
@@ -49,12 +50,14 @@ export interface ValueTypeContext {
  */
 export function renderValueTypeDeclaration(
 	name: string,
-	schema: ParsedJSONSchemaObject,
+	declaration: ParsedJSONSchemaObject,
 	context: ValueTypeContext
 ): string {
-	if (isResolvedByCaller(schema, context)) {
+	if (isResolvedByCaller(declaration, context)) {
 		return `type ${name} = unknown;`;
 	}
+
+	const schema = withoutAlwaysValidAnyOf(declaration);
 
 	if (context.readOnlyKeyword && schema.readOnly === true) {
 		return `type ${name} = ${renderType(schema, context)};`;
@@ -74,14 +77,16 @@ function isResolvedByCaller(schema: ParsedJSONSchemaObject, context: ValueTypeCo
 	return context.customSchemaResolver?.(schema) !== undefined;
 }
 
-function renderType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): string {
-	if (typeof schema !== 'object' || schema === null) {
-		return schema ? 'unknown' : 'never';
+function renderType(node: ParsedJSONSchemaObject, context: ValueTypeContext): string {
+	if (typeof node !== 'object' || node === null) {
+		return node ? 'unknown' : 'never';
 	}
 
-	if (isResolvedByCaller(schema, context)) {
+	if (isResolvedByCaller(node, context)) {
 		return 'unknown';
 	}
+
+	const schema = withoutAlwaysValidAnyOf(node);
 
 	const dialect = dialectOf(schema, context.dialect);
 

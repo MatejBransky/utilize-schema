@@ -10,6 +10,7 @@ import {
 	withSourceMeta,
 } from '@utilize/json-schema';
 
+import { withoutAlwaysValidAnyOf } from './alwaysValidAnyOf';
 import { generator as refGenerator } from './refGenerator';
 import { selectGenerator } from './selectGenerator';
 import type { GeneratorContext } from './types';
@@ -34,11 +35,12 @@ export const generateSchema = (schema: ParsedJSONSchema | undefined, context: Ge
 
 	const dialect = dialectOf(schema, context.dialect);
 	const nodeContext = dialect === context.dialect ? context : { ...context, dialect };
+	const validated = withoutAlwaysValidAnyOf(schema);
 
-	let expression = generateCore(schema, nodeContext);
+	let expression = generateCore(validated, nodeContext);
 
-	if (!ignoresRefSiblings(schema, dialect)) {
-		expression = applyRefinements(expression, schema, nodeContext, generateSchema);
+	if (!ignoresRefSiblings(validated, dialect)) {
+		expression = applyRefinements(expression, validated, nodeContext, generateSchema);
 	}
 
 	if (
