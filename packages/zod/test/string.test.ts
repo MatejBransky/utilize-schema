@@ -71,5 +71,46 @@ describe('string constraints', () => {
 				).toMatchCode(testCase.expected);
 			});
 		});
+
+		test('maps a custom format to a Zod expression', async () => {
+			await expect(
+				compile(
+					{ type: 'string', format: 'phone-number' },
+					{
+						formatMap: {
+							'phone-number': String.raw`z.string().regex(/^\d{3}-\d{4}$/)`,
+						},
+					}
+				)
+			).toMatchCode(ts`
+        export const Root = z.string().regex(/^\d{3}-\d{4}$/);
+        export type Root = z.infer<typeof Root>;
+      `);
+		});
+
+		test.each(['constructor', 'toString'])(
+			'treats the inherited object key %s as an unknown format',
+			async (format) => {
+				const expected = ts`
+          export const Root = z.string();
+          export type Root = z.infer<typeof Root>;
+        `;
+
+				await expect(compile({ type: 'string', format })).toMatchCode(expected);
+				await expect(compile({ type: 'string', format }, { formatMap: {} })).toMatchCode(expected);
+			}
+		);
+
+		test('lets formatMap override a built-in format and keeps string constraints', async () => {
+			await expect(
+				compile(
+					{ type: 'string', format: 'email', minLength: 5 },
+					{ formatMap: { email: 'z.string().endsWith("@example.com")' } }
+				)
+			).toMatchCode(ts`
+        export const Root = z.string().endsWith('@example.com').min(5);
+        export type Root = z.infer<typeof Root>;
+      `);
+		});
 	});
 });

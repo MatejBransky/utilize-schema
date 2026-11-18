@@ -72,4 +72,23 @@ describe('compile', () => {
 			'DO NOT MODIFY IT BY HAND'
 		);
 	});
+
+	test('passes formatMap to the generator', async () => {
+		vi.spyOn(console, 'log').mockImplementation(() => {});
+		const directory = await makeDirectory();
+		await writeFile(
+			join(directory, 'schema.json'),
+			JSON.stringify({ type: 'string', format: 'phone-number' })
+		);
+
+		await compile({
+			input: 'schema.json',
+			cwd: directory,
+			formatMap: { 'phone-number': 'z.string().startsWith("+")' },
+		});
+
+		expect(await readFile(join(directory, 'schema.generated.ts'), 'utf8')).toContain(
+			'z.string().startsWith("+")'
+		);
+	});
 });

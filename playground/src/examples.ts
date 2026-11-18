@@ -321,6 +321,11 @@ export const examples: Example[] = [
 		additionalProperties: false,
 		required: ['name'],
 	}),
+	single('format-map', 'Custom format map', 'Advanced', {
+		title: 'Phone',
+		type: 'string',
+		format: 'phone-number',
+	}),
 	single('external-ref', 'External $ref', 'References', {
 		title: 'Release',
 		type: 'object',

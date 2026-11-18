@@ -31,6 +31,7 @@ import {
 	type SchemaFile,
 } from './bundle';
 import { collectDroppedFiles, readDroppedSchemas, type DropMode } from './drop';
+import { exampleGeneratorOptions, type ExampleGeneratorOptions } from './exampleOptions';
 import { defaultExampleId, exampleById, examples } from './examples';
 import { formatTypeScript } from './monaco/format';
 import { MonacoEditor, type MonacoEditorHandle } from './monaco/MonacoEditor';
@@ -193,7 +194,11 @@ export default function App() {
 						onDialectIssue: () => {},
 					});
 
-					const rawCode = generateCodeFor(target, root);
+					const rawCode = generateCodeFor(
+						target,
+						root,
+						exampleId ? exampleGeneratorOptions[exampleId] : undefined
+					);
 
 					nextCode = cancelled ? nextCode : await formatTypeScript(rawCode).catch(() => rawCode);
 				} catch (error) {
@@ -215,7 +220,7 @@ export default function App() {
 			cancelled = true;
 			clearTimeout(timer);
 		};
-	}, [bundle, target, keywordPolicy]);
+	}, [bundle, exampleId, target, keywordPolicy]);
 
 	useEffect(() => {
 		const query = window.matchMedia('(prefers-color-scheme: dark)');
@@ -980,14 +985,18 @@ function uniqueName(base: string, files: SchemaFile[]): string {
 	return `${stem}-${counter}${extension}`;
 }
 
-function generateCodeFor(target: TargetId, root: ParsedJSONSchema): string {
+function generateCodeFor(
+	target: TargetId,
+	root: ParsedJSONSchema,
+	options?: ExampleGeneratorOptions
+): string {
 	switch (target) {
 		case 'effect':
 			return generateEffect(root, { importEffect: true });
 		case 'typescript':
 			return generateTypeScript(root);
 		case 'zod':
-			return generateZod(root, { importZod: true });
+			return generateZod(root, { importZod: true, ...options?.zod });
 		default:
 			throw new Error(`The ${target} generator is not available yet.`);
 	}

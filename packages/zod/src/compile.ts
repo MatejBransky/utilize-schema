@@ -11,6 +11,7 @@ import { load as loadYaml } from 'js-yaml';
 import path from 'path';
 
 import { generate, type GenerateOptions } from './generator';
+import type { FormatMap } from './generators/types';
 
 export interface CompileOptions
 	extends DialectOptions, Pick<GenerateOptions, 'customNameResolver' | 'schemaName' | 'typeName'> {
@@ -19,6 +20,8 @@ export interface CompileOptions
 	cwd?: string;
 	/** Map `readOnly: true` to `.readonly()`; off by default because it changes the value type. */
 	readOnlyKeyword?: boolean;
+	/** Overrides the built-in `format` to Zod mapping per format; unlisted formats keep it. */
+	formatMap?: FormatMap;
 	/** Header prepended to the generated file. Pass `false` to omit it. */
 	bannerComment?: string | false;
 }
@@ -28,6 +31,7 @@ export interface CompileSchemaOptions
 	cwd: string;
 	fileName: string;
 	readOnlyKeyword?: boolean;
+	formatMap?: FormatMap;
 }
 
 const defaultCwd = process.cwd();
@@ -50,6 +54,7 @@ export async function compile(userOptions: CompileOptions) {
 		schemaName: userOptions.schemaName,
 		typeName: userOptions.typeName,
 		readOnlyKeyword: userOptions.readOnlyKeyword,
+		formatMap: userOptions.formatMap,
 		...pickDialectOptions(userOptions),
 	});
 
@@ -80,6 +85,7 @@ export async function compileSchema(schema: JSONSchema, options: CompileSchemaOp
 		schemaName: options.schemaName,
 		typeName: options.typeName,
 		readOnlyKeyword: options.readOnlyKeyword,
+		formatMap: options.formatMap,
 	});
 }
 

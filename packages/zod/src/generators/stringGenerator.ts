@@ -18,12 +18,14 @@ export const generator = createGenerator(
 
 		return false;
 	},
-	(schema) => {
-		const format = schema.format && formatToZodMethod[schema.format];
+	(schema, context) => {
+		const format =
+			schema.format &&
+			(ownValue(context.formatMap, schema.format) ?? formatExpression(schema.format));
 		let expression: string;
 
 		if (format) {
-			expression = ts`z${format}`;
+			expression = format;
 		} else {
 			expression = ts`z.string()`;
 		}
@@ -33,6 +35,20 @@ export const generator = createGenerator(
 		return expression;
 	}
 );
+
+function formatExpression(format: string) {
+	const method = ownValue(formatToZodMethod, format);
+
+	return method ? ts`z${method}` : undefined;
+}
+
+/**
+ * Reads a format mapping without falling back to `Object.prototype`, so formats
+ * named like `constructor` or `toString` count as unknown.
+ */
+function ownValue(map: Record<string, string> | undefined, key: string) {
+	return map && Object.hasOwn(map, key) ? map[key] : undefined;
+}
 
 interface StringConstraints {
 	expression: string;

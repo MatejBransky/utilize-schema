@@ -43,6 +43,21 @@ pnpm add zod
   standalone schema.
 - `readOnlyKeyword` — map `readOnly: true` to `.readonly()`. Off by default,
   because it freezes values and changes the inferred type.
+- `formatMap` — map `format` names to your own Zod string expressions. Each
+  entry overrides the built-in mapping for that format (known formats too);
+  formats you do not list keep the built-in mapping. `minLength`, `maxLength`
+  and `pattern` are still appended:
+
+  ```ts
+  await compile({
+  	input: './schema.json',
+  	formatMap: {
+  		'phone-number': String.raw`z.string().regex(/^\d{3}-\d{4}$/)`,
+  		email: 'z.string().endsWith("@example.com")',
+  	},
+  });
+  ```
+
 - `bannerComment` — header prepended to written files; `false` disables it.
 
 For custom pipelines, `compileFile()` and `compileSchema()` return the generated
