@@ -148,6 +148,31 @@ test('silently ignores foreign keywords with keywordPolicy ignore', () => {
 	expect(bundle.problems).toEqual([]);
 });
 
+test('normalizes a draft-04 schema only once with keywordPolicy error', async () => {
+	const root = file('root', 'root.json', {
+		$schema: 'http://json-schema.org/draft-04/schema#',
+		type: 'number',
+		minimum: 0,
+		exclusiveMinimum: true,
+	});
+	const parsedFiles = [parseJsonFile(root)];
+
+	const first = buildBundle(parsedFiles, 'root', 'error');
+	const second = buildBundle(parsedFiles, 'root', 'error');
+
+	expect(first.problems).toEqual([]);
+	expect(second.problems).toEqual([]);
+	expect(parsedFiles[0].schema).toMatchObject({ exclusiveMinimum: true });
+
+	const parsed = await parse(second.root as never, {
+		cwd: '/',
+		fileName: second.rootFileName,
+		keywordPolicy: 'error',
+	});
+
+	expect(generate(parsed.root, { importZod: true })).toContain('.gt(0)');
+});
+
 test('detectRootId picks the file that no other file references', () => {
 	const files = [
 		file('address', 'address.json', { type: 'object' }),

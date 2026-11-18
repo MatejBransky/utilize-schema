@@ -95,8 +95,11 @@ export function buildBundle(
 			continue;
 		}
 
+		// Check a copy for dialect issues and bundle the raw schema: `parse`
+		// normalizes the bundle, and normalizing twice would validate keywords
+		// that were already rewritten (and mutate the memoized parsed files).
 		try {
-			prepareSchema(parsed.schema, {
+			prepareSchema(structuredClone(parsed.schema), {
 				filePath: parsed.file.name,
 				fallbackDialect: rootDialect,
 				keywordPolicy,
