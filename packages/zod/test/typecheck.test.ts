@@ -252,6 +252,52 @@ describe('generated recursive schemas type-check', () => {
 			)
 		).resolves.toBeUndefined();
 	});
+
+	test('type-check formats mapped by formatMap', async () => {
+		await expect(
+			typeCheck(
+				{
+					'Constrained.ts': {
+						type: 'string',
+						format: 'phone-number',
+						minLength: 3,
+						maxLength: 9,
+						pattern: '^1',
+					},
+					'BuiltInOverride.ts': { type: 'string', format: 'email', minLength: 5 },
+					'Nullable.ts': { type: ['string', 'null'], format: 'phone-number' },
+					'Annotated.ts': {
+						type: 'string',
+						format: 'date-time',
+						title: 'Timestamp',
+						default: '2020-01-01T00:00:00Z',
+						readOnly: true,
+					},
+					'Untyped.ts': { format: 'phone-number', default: '123-4567' },
+					'Unknown.ts': { type: 'string', format: 'not-mapped' },
+					'RecursiveObject.ts': {
+						type: 'object',
+						properties: {
+							phone: { type: 'string', format: 'phone-number', minLength: 1 },
+							children: { type: 'array', items: { $ref: '#' } },
+						},
+					},
+					'RecursiveLazy.ts': {
+						type: 'array',
+						items: { anyOf: [{ type: 'string', format: 'email' }, { $ref: '#' }] },
+					},
+				},
+				{
+					readOnlyKeyword: true,
+					formatMap: {
+						'phone-number': String.raw`z.string().regex(/^\d{3}-\d{4}$/)`,
+						email: 'z.email()',
+						'date-time': 'z.iso.datetime({ offset: true })',
+					},
+				}
+			)
+		).resolves.toBeUndefined();
+	});
 });
 
 async function typeCheck(schemas: Record<string, JSONSchema>, options: CompileOptions = {}) {
