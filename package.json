@@ -1,14 +1,20 @@
 {
 	"name": "utilize-schema",
 	"private": true,
-	"description": "A collection of utilities for working with JSON Schema",
+	"description": "Generate Zod and Effect Schema codecs or plain TypeScript types from JSON Schema.",
 	"keywords": [
+		"codegen",
+		"effect",
 		"generator",
 		"json-schema",
+		"json-schema-to-typescript",
+		"json-schema-to-zod",
 		"parser",
 		"schema",
+		"typescript",
 		"utilities",
-		"validation"
+		"validation",
+		"zod"
 	],
 	"license": "MIT",
 	"author": {

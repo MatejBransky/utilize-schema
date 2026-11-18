@@ -25,10 +25,12 @@ for the cases where you want types without a schema runtime.
   the sibling keywords as constraints
 - `patternProperties` and `additionalProperties` become index signatures
 - JSDoc from `title`, `description`, `deprecated`, `default`, `format` and
-  `examples`
+  `examples`, without repeating a title that only matches the declared name
 - `readOnly` becomes a `readonly` modifier
 - Permissive schemas map to `unknown`, not `any`
 - Schema names never shadow the globals the output uses (`Array`, `Record`)
+- Ships a `utilize-typescript` CLI that reads JSON or YAML from a file,
+  directory, glob or stdin
 
 ## Usage
 
@@ -50,6 +52,18 @@ import { generate } from '@utilize/typescript';
 const { root } = await parse(schema, { cwd: process.cwd(), fileName: 'schema.json' });
 const code = generate(root);
 ```
+
+## CLI
+
+```sh
+utilize-typescript schema.json schema.generated.ts
+utilize-typescript --input 'schemas/**/*.json' --output generated/
+cat schema.yaml | utilize-typescript > schema.generated.ts
+```
+
+Input can be a file, a directory or a glob; JSON and YAML are supported. Output
+defaults to stdout. Every generated file starts with a "do not edit" banner
+(`--no-banner` omits it).
 
 ## Output
 
@@ -102,7 +116,7 @@ reference correctly.
 | `allOf`                                       | Intersection                                                      |
 | `anyOf`, `oneOf`                              | Union, intersected with the sibling keywords                      |
 | `$ref`, `$defs`, `definitions`                | Named declarations, including cycles                              |
-| `title`, `description`                        | JSDoc                                                             |
+| `title`, `description`                        | JSDoc, skipping a title that only repeats the name                |
 | `deprecated`, `default`, `format`, `examples` | JSDoc tags                                                        |
 | `readOnly`                                    | `readonly` modifier                                               |
 

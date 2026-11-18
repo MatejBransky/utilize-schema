@@ -118,7 +118,7 @@ function renderDeclaration(
 	schema: ParsedJSONSchemaObject,
 	context: TypeContext
 ): string {
-	const doc = renderJsDoc(schema);
+	const doc = renderJsDoc(schema, 0, name);
 	const body = isObjectDeclaration(schema) ? renderObjectBody(schema, context, 1) : undefined;
 
 	return body === undefined
