@@ -19,6 +19,9 @@
 		"url": "https://github.com/MatejBransky/utilize-schema.git",
 		"directory": "packages/json-schema"
 	},
+	"files": [
+		"dist"
+	],
 	"type": "module",
 	"main": "./dist/index.mjs",
 	"module": "./dist/index.mjs",
