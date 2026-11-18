@@ -1,5 +1,19 @@
 # @utilize/zod
 
+## 0.10.0
+
+### Minor Changes
+
+- e4fed99: Declare a repeated inline subschema once. An inline subschema with subschemas of its own (properties, items or a combinator) that appears more than once and is not identical to a named schema is now generated as its own `export const` and referenced wherever it appears, instead of being generated again at every place. The declaration is named by its `$id` or `title`, else after the place it first appears (e.g. `TagsItem` for the items of a `tags` property), takes a numeric suffix when a named schema already has that name, and goes through `customNameResolver`, `schemaName` and `typeName` like any other declaration. Generated code that repeated such a subschema now exports one more schema and type for it.
+- 6da93fd: Generate less redundant code. A `const` or `enum` next to a `type` it already satisfies (e.g. `{ "type": "string", "const": "a" }`) is only a literal, a `type` list puts its `description` and other annotations on the union once, and an `anyOf` with a branch that accepts every value (e.g. `[X, {}]`) is left out. That `anyOf` never rejected a value and its keys were never in the inferred type, but note that `.parse()` no longer keeps the properties only `X` described (an object next to it strips them like any other unknown key) and defaults inside `X` no longer apply. A `oneOf` whose branches cannot match the same value (different `const`/`enum` values, different types, or tagged objects) becomes a plain `z.union()`, which `z.toJSONSchema()` can convert. An inline subschema identical to a named schema is generated as a reference to it. The new `runtimeImport` option (CLI: `--runtime-import`) imports the `oneOfSchema` helper from `@utilize/zod/runtime`, which the package now exports, instead of declaring it in every file. The package now has an `exports` map: the main entry, `./runtime` and `./dist/*` can be imported or required, other deep paths cannot.
+
+### Patch Changes
+
+- 752d60c: Resolve a `$ref` with a JSON pointer fragment, such as `#/definitions/a` or `other.json#/definitions/b`, against the nearest `$id` instead of the root document. A pointer inside an embedded `$id` resource now links to that resource's definition, and a `../` reference from a referenced file is linked. This raises the official draft-07 conformance to 248/271 cases for Zod and 175/288 for TypeScript.
+- 52f2989: Fix the value type of a recursive schema when a draft-07 `$ref` has a `const`, `enum` or combinator plus another keyword next to it. Draft-07 ignores those keywords and the generated schema already did, but the value type still included them (e.g. `'a' & Kind`), so the generated file failed to type-check. In 2019-09 and newer the keywords still apply to both.
+- Updated dependencies [752d60c]
+  - @utilize/json-schema@0.5.1
+
 ## 0.9.0
 
 ### Minor Changes
