@@ -107,6 +107,27 @@ const cases: ParityCase[] = [
 		invalid: [{ a: 'x', b: 1.5 }],
 	},
 	{
+		name: 'patternProperties',
+		schema: {
+			type: 'object',
+			properties: { id: { type: 'string' } },
+			required: ['id'],
+			patternProperties: {
+				'^n_': { type: 'number' },
+				_i$: { type: 'integer' },
+			},
+			additionalProperties: { type: 'boolean' },
+		},
+		valid: [{ id: 'x' }, { id: 'x', n_a: 1.5, b_i: 2, n_c_i: 3, flag: true }, { id: 'x', id_i: 1 }],
+		invalid: [
+			{},
+			{ id: 'x', n_a: 'a' },
+			{ id: 'x', n_c_i: 1.5 },
+			{ id: 'x', other: 'a' },
+			{ id: 1 },
+		],
+	},
+	{
 		name: 'propertyNames',
 		schema: {
 			type: 'object',
