@@ -1,6 +1,7 @@
 import { type JSONSchema } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { run } from '../src/cli';
@@ -63,4 +64,18 @@ describe('runtimeImport', () => {
 		expect(stdout.join('')).toContain("import { oneOfSchema } from '@utilize/zod/runtime';");
 		expect(stdout.join('')).not.toContain('function oneOfSchema');
 	});
+
+	test('the exported helper is the one generated files declare', async () => {
+		const declaredHelper = helperSource(await compile(overlappingOneOf));
+		const runtimeSource = await readFile(join(__dirname, '../src/runtime.ts'), 'utf8');
+		// Format it like the generated code, so only real differences remain.
+		const exportedHelper = helperSource(await ts`${runtimeSource}`);
+
+		expect(exportedHelper).toBe(declaredHelper);
+	});
 });
+
+/** The `oneOfSchema` function declaration, which ends at the first closing brace in column 0. */
+function helperSource(code: string): string | undefined {
+	return /function oneOfSchema[\s\S]*?\n\}/.exec(code)?.[0];
+}

@@ -197,7 +197,7 @@ function singleQuoted(text: string): string {
 	return `'${text.replaceAll('\\', '\\\\').replaceAll("'", "\\'")}'`;
 }
 
-/** Declared in every file that needs it, unless `runtimeImport` is set. Keep in sync with `runtime.ts`. */
+/** Declared in every file that needs it, unless `runtimeImport` is set. A test keeps it identical to `runtime.ts`. */
 const ONE_OF_HELPER = ts`function oneOfSchema<T extends z.ZodType>(
   options: readonly T[]
 ): z.ZodType<z.output<T>, z.input<T>> {
