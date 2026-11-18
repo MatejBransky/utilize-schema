@@ -11,6 +11,7 @@ import {
 	normalizeSchema,
 	parse,
 	prepareSchema,
+	readDialectCliOptions,
 	resolveDialect,
 } from '../src';
 
@@ -486,5 +487,38 @@ describe('normalizeSchema', () => {
 		normalizeSchema(first, 'draft-04');
 
 		expect(first.exclusiveMinimum).toBe(0);
+	});
+});
+
+describe('readDialectCliOptions', () => {
+	test('maps valid flags to dialect options', () => {
+		expect(
+			readDialectCliOptions({
+				dialect: '2020-12',
+				'fallback-dialect': 'draft-04',
+				'unknown-dialect': 'error',
+				'keyword-policy': 'ignore',
+			})
+		).toEqual({
+			ok: true,
+			options: {
+				dialect: '2020-12',
+				fallbackDialect: 'draft-04',
+				unknownDialect: 'error',
+				keywordPolicy: 'ignore',
+			},
+		});
+	});
+
+	test.each([
+		[{ dialect: 'draft-05' }, 'Unknown dialect "draft-05"'],
+		[{ 'fallback-dialect': 'auto' }, 'Unknown fallback dialect "auto"'],
+		[{ 'unknown-dialect': 'warn' }, '--unknown-dialect'],
+		[{ 'keyword-policy': 'nope' }, '--keyword-policy'],
+	])('rejects %o', (values, error) => {
+		expect(readDialectCliOptions(values)).toEqual({
+			ok: false,
+			error: expect.stringContaining(error),
+		});
 	});
 });

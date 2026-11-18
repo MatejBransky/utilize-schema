@@ -94,6 +94,17 @@ export interface DialectOptions {
 	onDialectIssue?: (issue: DialectIssue) => void;
 }
 
+/** Copies only the dialect options, so callers can forward them as one value. */
+export function pickDialectOptions(options: DialectOptions): DialectOptions {
+	return {
+		dialect: options.dialect,
+		fallbackDialect: options.fallbackDialect,
+		unknownDialect: options.unknownDialect,
+		keywordPolicy: options.keywordPolicy,
+		onDialectIssue: options.onDialectIssue,
+	};
+}
+
 const BASE_KEYWORDS = [
 	'$schema',
 	'$ref',

@@ -1,7 +1,12 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { type DialectOptions, type JSONSchema, parse } from '@utilize/json-schema';
+import {
+	type DialectOptions,
+	type JSONSchema,
+	parse,
+	pickDialectOptions,
+} from '@utilize/json-schema';
 import { load as loadYaml } from 'js-yaml';
 
 import { generate, type GenerateOptions } from './generator';
@@ -49,11 +54,7 @@ export async function compile(options: CompileOptions): Promise<void> {
 		customNameResolver: options.customNameResolver,
 		schemaName: options.schemaName,
 		typeName: options.typeName,
-		dialect: options.dialect,
-		fallbackDialect: options.fallbackDialect,
-		unknownDialect: options.unknownDialect,
-		keywordPolicy: options.keywordPolicy,
-		onDialectIssue: options.onDialectIssue,
+		...pickDialectOptions(options),
 	});
 
 	writeFileSync(outputPath, withBanner(code, options.bannerComment), 'utf8');
@@ -73,11 +74,7 @@ export async function compileSchema(schema: JSONSchema, options: CompileSchemaOp
 	const { root } = await parse(schema, {
 		cwd: options.cwd,
 		fileName: options.fileName,
-		dialect: options.dialect,
-		fallbackDialect: options.fallbackDialect,
-		unknownDialect: options.unknownDialect,
-		keywordPolicy: options.keywordPolicy,
-		onDialectIssue: options.onDialectIssue,
+		...pickDialectOptions(options),
 	});
 
 	return generate(root, {

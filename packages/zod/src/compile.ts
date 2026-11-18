@@ -1,4 +1,9 @@
-import { type DialectOptions, type JSONSchema, parse } from '@utilize/json-schema';
+import {
+	type DialectOptions,
+	type JSONSchema,
+	parse,
+	pickDialectOptions,
+} from '@utilize/json-schema';
 
 import { readFileSync, writeFileSync } from 'fs';
 import { load as loadYaml } from 'js-yaml';
@@ -44,11 +49,7 @@ export async function compile(userOptions: CompileOptions) {
 		schemaName: userOptions.schemaName,
 		typeName: userOptions.typeName,
 		readOnlyKeyword: userOptions.readOnlyKeyword,
-		dialect: userOptions.dialect,
-		fallbackDialect: userOptions.fallbackDialect,
-		unknownDialect: userOptions.unknownDialect,
-		keywordPolicy: userOptions.keywordPolicy,
-		onDialectIssue: userOptions.onDialectIssue,
+		...pickDialectOptions(userOptions),
 	});
 
 	writeFileSync(outputPath, withBanner(code, userOptions.bannerComment), 'utf8');
@@ -68,11 +69,7 @@ export async function compileSchema(schema: JSONSchema, options: CompileSchemaOp
 	const { root } = await parse(schema, {
 		cwd: options.cwd,
 		fileName: options.fileName,
-		dialect: options.dialect,
-		fallbackDialect: options.fallbackDialect,
-		unknownDialect: options.unknownDialect,
-		keywordPolicy: options.keywordPolicy,
-		onDialectIssue: options.onDialectIssue,
+		...pickDialectOptions(options),
 	});
 
 	return generate(root, {
