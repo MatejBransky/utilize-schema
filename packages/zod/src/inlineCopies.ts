@@ -35,6 +35,7 @@ export function findInlineCopies(
 	isOpaque: (schema: ParsedJSONSchemaObject) => boolean
 ): InlineCopies {
 	const keys = new StructuralKeys();
+	const containsOpaque = opaqueSubtreeCheck(isOpaque);
 	const standalone = new Set(standaloneSchemas);
 	const declarations = new Map<string, ParsedJSONSchemaObject>();
 	const copies = new Map<ParsedJSONSchemaObject, ParsedJSONSchemaObject>();
@@ -42,7 +43,7 @@ export function findInlineCopies(
 	for (const schema of standaloneSchemas) {
 		const key = keys.of(schema);
 
-		if (isComposite(schema) && !isOpaque(schema) && !declarations.has(key)) {
+		if (isComposite(schema) && !containsOpaque(schema) && !declarations.has(key)) {
 			declarations.set(key, schema);
 		}
 	}
@@ -55,7 +56,7 @@ export function findInlineCopies(
 
 			const declaration = isComposite(child) ? declarations.get(keys.of(child)) : undefined;
 
-			if (declaration && !isOpaque(child)) {
+			if (declaration && !containsOpaque(child)) {
 				copies.set(child, declaration);
 			} else {
 				visit(child);
@@ -68,6 +69,28 @@ export function findInlineCopies(
 	}
 
 	return copies;
+}
+
+/**
+ * True when `isOpaque` matches the schema or a node inside it. Such a schema
+ * may be generated differently from an identical one elsewhere, e.g. when a
+ * `customSchemaResolver` matches nodes by their path.
+ */
+function opaqueSubtreeCheck(
+	isOpaque: (schema: ParsedJSONSchemaObject) => boolean
+): (schema: ParsedJSONSchemaObject) => boolean {
+	const results = new Map<ParsedJSONSchemaObject, boolean>();
+
+	return function containsOpaque(schema) {
+		let result = results.get(schema);
+
+		if (result === undefined) {
+			result = isOpaque(schema) || childSchemasOf(schema).some(containsOpaque);
+			results.set(schema, result);
+		}
+
+		return result;
+	};
 }
 
 function isComposite(schema: ParsedJSONSchemaObject): boolean {

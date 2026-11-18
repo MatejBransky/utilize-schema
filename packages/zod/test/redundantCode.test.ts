@@ -1,4 +1,4 @@
-import { type JSONSchema } from '@utilize/json-schema';
+import { type JSONSchema, Meta } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
 import { compile, compileToZod, ts } from './test-utils';
@@ -301,6 +301,27 @@ describe('an inline subschema identical to a named schema', () => {
 			export const Root = z.object({ name: z.string().optional() });
 			export type Root = z.infer<typeof Root>;
 		`);
+	});
+
+	test.each([
+		['the copy', ['properties', 'inline', 'properties', 'n']],
+		['the named schema', ['definitions', 'Def', 'properties', 'n']],
+	])('keeps a copy when customSchemaResolver replaces a node inside %s', async (_, path) => {
+		const def: JSONSchema = { type: 'object', properties: { n: { type: 'number' } } };
+		const code = await compile(
+			{
+				type: 'object',
+				properties: { inline: structuredClone(def) },
+				definitions: { Def: def },
+			},
+			{
+				customSchemaResolver: (schema) =>
+					schema[Meta].path.join('/') === path.join('/') ? "z.literal('custom')" : undefined,
+			}
+		);
+
+		expect(code).toContain("z.literal('custom')");
+		expect(code).not.toContain('inline: Def');
 	});
 
 	test('refers to a recursive schema whose copy closes a new cycle', async () => {
