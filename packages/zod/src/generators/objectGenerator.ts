@@ -2,14 +2,13 @@ import { Meta, type ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
 import { generateSchema } from './generateSchema';
+import type { GeneratorContext } from './types';
 
 import { isSchemaObject, NEWLINE, ts } from '../utils';
 
 export const generator = createGenerator(
 	(schema) => schema.type === 'object',
 	(schema, context) => {
-		// TODO: handle patternProperties
-
 		const properties = Object.entries(schema.properties ?? {}).map(([key, value]) => {
 			const keyLiteral = JSON.stringify(key);
 			let optionalPart = '.optional()';
@@ -40,12 +39,19 @@ export const generator = createGenerator(
 			(key) => !Object.hasOwn(schema.properties ?? {}, key)
 		);
 		const additionalProperties = schema.additionalProperties;
+		const patterns = Object.entries(schema.patternProperties ?? {});
+
+		// A required key that is not declared in `properties` is validated by a
+		// matching pattern, or by `additionalProperties`, not by the property
+		// placeholder itself.
 		const requiredValue =
-			additionalProperties === false
-				? ts`z.never()`
-				: isSchemaObject<ParsedJSONSchemaObject>(additionalProperties)
-					? generateSchema(additionalProperties, context)
-					: ts`z.unknown()`;
+			patterns.length > 0
+				? ts`z.unknown()`
+				: additionalProperties === false
+					? ts`z.never()`
+					: isSchemaObject<ParsedJSONSchemaObject>(additionalProperties)
+						? generateSchema(additionalProperties, context)
+						: ts`z.unknown()`;
 		const requiredPart = requiredWithoutProperties
 			.map((key) => `${JSON.stringify(key)}: ${requiredValue}`)
 			.join(`,${NEWLINE}`);
@@ -64,6 +70,12 @@ export const generator = createGenerator(
         }
       })`
 				: '';
+
+		if (patterns.length > 0) {
+			return ts`z.looseObject({
+        ${allProperties}
+      })${patternRefinement(schema, patterns, context)}${requiredCheck}`;
+		}
 
 		const catchAllPart = isSchemaObject<ParsedJSONSchemaObject>(additionalProperties)
 			? ts`.catchall(${generateSchema(additionalProperties, context)})`
@@ -86,6 +98,77 @@ export const generator = createGenerator(
     })${catchAllPart}${requiredCheck}`;
 	}
 );
+
+/**
+ * `patternProperties` can apply several schemas to the same key and only
+ * applies to keys that match, so a `catchall` cannot express it. The object is
+ * kept open and a refinement validates matching keys; keys that match no
+ * pattern fall through to `additionalProperties`.
+ */
+function patternRefinement(
+	schema: ParsedJSONSchemaObject,
+	patterns: Array<[string, ParsedJSONSchemaObject]>,
+	context: GeneratorContext
+): string {
+	const declared = Object.keys(schema.properties ?? {});
+	const additionalProperties = schema.additionalProperties;
+	const additionalCheck = isSchemaObject<ParsedJSONSchemaObject>(additionalProperties)
+		? ts`
+        const result = ${generateSchema(additionalProperties, context)}.safeParse(entry);
+
+        if (!result.success) {
+          for (const issue of result.error.issues) {
+            ctx.addIssue({
+              code: 'custom',
+              message: issue.message,
+              path: [key, ...issue.path],
+            });
+          }
+        }`
+		: additionalProperties === false
+			? ts`
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Unrecognized key.',
+          path: [key],
+        });`
+			: '';
+
+	const checks = patterns
+		.map(
+			([pattern, subschema]) => ts`{
+          if (${new RegExp(pattern)}.test(key)) {
+            matched = true;
+            const result = ${generateSchema(subschema, context)}.safeParse(entry);
+
+            if (!result.success) {
+              for (const issue of result.error.issues) {
+                ctx.addIssue({
+                  code: 'custom',
+                  message: issue.message,
+                  path: [key, ...issue.path],
+                });
+              }
+            }
+          }
+        }`
+		)
+		.join('\n');
+
+	return ts`.superRefine((value, ctx) => {
+      for (const [key, entry] of Object.entries(value)) {
+        let matched = false;
+
+        ${checks}
+
+        if (matched || ${JSON.stringify(declared)}.includes(key)) {
+          continue;
+        }
+
+        ${additionalCheck}
+      }
+    })`;
+}
 
 function containsCircularRef(schema: ParsedJSONSchemaObject | boolean): boolean {
 	if (typeof schema !== 'object' || schema === null) {

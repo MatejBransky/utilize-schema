@@ -2,6 +2,7 @@ import { $RefParser } from '@apidevtools/json-schema-ref-parser';
 
 import type { DialectIssue, DialectOptions } from './dialect';
 import { resolveDialect } from './dialect';
+import { createSchemaIndex } from './identifiers';
 import { link } from './linker';
 import { Meta, type JSONSchema, type ParsedJSONSchema } from './model';
 import { type DialectMap, prepareSchema } from './normalize';
@@ -47,8 +48,12 @@ export async function parse(
 		options.onDialectIssue?.(issue);
 	};
 
-	entries.forEach(([filePath, entrySchema]) => {
-		const rootSchema = $refs.get('#');
+	const rootSchema = $refs.get('#');
+	const identifiers = createSchemaIndex();
+
+	// Every document is normalized and indexed before linking, so a `$ref` can
+	// resolve to an `$id` declared in a file that is linked later.
+	const documents = entries.map(([filePath, entrySchema]) => {
 		const isRootSchema = entrySchema === rootSchema;
 		const prefixPath = isRootSchema ? '#' : filePath.replace(cwd, '');
 		const fileName = isRootSchema ? rootFileName : (filePath.split(/[\\/]/).at(-1) ?? 'Unknown');
@@ -68,6 +73,12 @@ export async function parse(
 			rootDialects = dialects;
 		}
 
+		identifiers.addDocument(filePath, entrySchema);
+
+		return { entrySchema, prefixPath, fileName, dialects };
+	});
+
+	for (const { entrySchema, prefixPath, fileName, dialects } of documents) {
 		link({
 			schema: entrySchema,
 			parent: null,
@@ -75,10 +86,12 @@ export async function parse(
 			filePath: prefixPath,
 			path: [],
 			$refs,
+			identifiers,
 			stack: new Set(),
 			dialects,
 		});
-	});
+	}
+
 	const root = $refs.get('#') as unknown as ParsedJSONSchema;
 
 	if (typeof root === 'object' && root !== null && !Object.hasOwnProperty.call(root, Meta)) {
@@ -89,6 +102,7 @@ export async function parse(
 			filePath: '#',
 			path: [],
 			$refs,
+			identifiers,
 			stack: new Set(),
 			dialects: rootDialects,
 		});

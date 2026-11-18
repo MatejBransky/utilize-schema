@@ -17,8 +17,8 @@ for the cases where you want types without a schema runtime.
 - One exported declaration per standalone schema (root, `$defs`, `definitions`,
   referenced)
 - Reads `$defs` and `definitions` independently, including boolean definitions
-- Handles local, external and cyclic `$ref`s — recursive types come out as
-  interfaces and deferred aliases that TypeScript accepts
+- Handles local, external, cyclic, `$id` and `$anchor` based `$ref`s — recursive
+  types come out as interfaces and deferred aliases that TypeScript accepts
 - Rejects cycles TypeScript cannot express with a clear error instead of
   emitting code that does not compile
 - `allOf` becomes an intersection, `anyOf` and `oneOf` become unions that keep
@@ -145,16 +145,15 @@ pnpm test:suite # official JSON Schema Test Suite
 
 Current baseline on suite commit `e2a68a1`:
 
-- **167 of 288 cases** pass in both directions.
-- **788 of 814** spec-valid instances are accepted.
-- **209 of 788** spec-invalid instances are rejected.
+- **173 of 288 cases** pass in both directions.
+- **794 of 820** spec-valid instances are accepted.
+- **215 of 794** spec-invalid instances are rejected.
 - **100 cases** differ only because an invalid instance is accepted. TypeScript
   cannot express `minimum`, `pattern`, `format`, `uniqueItems`, `dependencies`,
   `if`/`then`/`else`, and similar value constraints, so these are inherent to
   the target.
-- **21 cases** are listed in `test/suite/knownGaps.ts`: 9 need `$id`/`$anchor`
-  or URN resolution from the shared parser, and 12 are the inference trade-off
-  described below.
+- **15 cases** are listed in `test/suite/knownGaps.ts`: 3 need URN resolution
+  from the shared parser, and 12 are the inference trade-off described below.
 
 The numbers are recorded in `test/suite/baseline.ts` and the test fails when
 they change, so a regression cannot slip in and an improvement has to update the
@@ -186,10 +185,10 @@ one accepted, 24 crashes and 2 invalid TypeScript files. Its instance totals are
 and case selections differ (257 groups there, 288 runnable cases here; this
 runner skips cases that need external schemas), so the numbers describe two
 different records rather than a score. On the same group metric the TypeScript
-generator is ahead (58.0% vs 54.9%), accepts more valid instances (96.8% vs
+generator is ahead (60.1% vs 54.9%), accepts more valid instances (96.8% vs
 95.0%), emits no invalid TypeScript and crashes only where the shared parser has
-the same `$id`/`$anchor` gap (9 cases vs 24). Instance-level invalid rejection
-is not comparable across the two revisions: this runner rejects 26.5% of 788
+the same URN resolution gap (3 cases vs 24). Instance-level invalid rejection is
+not comparable across the two revisions: this runner rejects 27.1% of 794
 invalid instances, json-schema-to-typescript 57.9% of its 342, largely because
 the newer suite revision adds many more `format` cases that a type cannot
 reject.

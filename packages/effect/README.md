@@ -8,10 +8,10 @@ codecs and TypeScript types.
 
 - Generates standalone Effect schemas for the root and all definitions
 - Emits one exported const and one exported `typeof X.Type` per schema
-- Handles local, external, and cyclic `$ref`s through `Schema.suspend`, so no
-  topological sort is needed
-- Maps scalar, array, object, and composition keywords to Effect Schema
-  constructs and checks
+- Handles local, external, cyclic, `$id` and `$anchor` based `$ref`s through
+  `Schema.suspend`, so no topological sort is needed
+- Maps scalar, array, object, pattern properties, and composition keywords to
+  Effect Schema constructs and checks
 - Rejects JSON Schema features that have no Effect Schema equivalent instead of
   silently ignoring them
 
@@ -128,7 +128,7 @@ pnpm test:suite    # official JSON Schema Test Suite (draft-07)
 
 The generator is checked against the official
 [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
-Today it passes **205 of 269 draft-07 cases (777 of 939 assertions)**. Cases
+Today it passes **213 of 269 draft-07 cases (815 of 939 assertions)**. Cases
 tagged `format-assertion` are skipped because `format` is kept as an annotation;
 cases that need external schemas are not wired up yet.
 
@@ -153,8 +153,8 @@ Supported keywords:
   `exclusiveMaximum`, `multipleOf`
 - `array`: `items`, `prefixItems`, `additionalItems`, `minItems`, `maxItems`,
   `uniqueItems`
-- `object`: `properties`, `required`, `additionalProperties`, `propertyNames`,
-  `minProperties`, `maxProperties`
+- `object`: `properties`, `patternProperties`, `required`,
+  `additionalProperties`, `propertyNames`, `minProperties`, `maxProperties`
 - `allOf` between disjoint object subschemas, `anyOf`, `oneOf`
 - `not`, `if`/`then`/`else`, `contains`, `dependencies` (applied as filters)
 - `$ref`, `$defs`, `definitions`
@@ -172,7 +172,7 @@ before generation.
 for schemas that do not rely on properties evaluated by applicators.
 
 Unsupported keywords throw `UnsupportedEffectSchemaFeatureError`:
-`patternProperties`, `minContains`, `maxContains`.
+`minContains`, `maxContains`.
 
 `$ref` siblings follow the dialect: draft-07 and older ignore them, 2019-09 and
 newer merge disjoint object siblings into one struct. Other siblings (a

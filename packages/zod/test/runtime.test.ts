@@ -51,6 +51,34 @@ describe('generated schemas at runtime', () => {
 		).toBe(false);
 	});
 
+	test('validates patternProperties and lets unmatched keys use additionalProperties', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: { id: { type: 'string' } },
+			patternProperties: {
+				'^S_': { type: 'string' },
+				'^I_': { type: 'integer' },
+			},
+			additionalProperties: { type: 'boolean' },
+		});
+
+		expect(Root.safeParse({ id: 'x', S_name: 'a', I_count: 2, flag: true }).success).toBe(true);
+		expect(Root.safeParse({ S_name: 1 }).success).toBe(false);
+		expect(Root.safeParse({ I_count: 'a' }).success).toBe(false);
+		expect(Root.safeParse({ other: 'a' }).success).toBe(false);
+	});
+
+	test('rejects unmatched keys when patternProperties closes the object', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			patternProperties: { '^S_': { type: 'string' } },
+			additionalProperties: false,
+		});
+
+		expect(Root.safeParse({ S_name: 'a' }).success).toBe(true);
+		expect(Root.safeParse({ other: 'a' }).success).toBe(false);
+	});
+
 	test('parses an allOf intersection of refs, objects and defaults', async () => {
 		const Root = await compileToZod({
 			allOf: [

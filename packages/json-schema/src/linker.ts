@@ -3,6 +3,7 @@ import type { $Refs } from '@apidevtools/json-schema-ref-parser';
 import { join as pathJoin, dirname } from 'path';
 
 import { resolveDialect } from './dialect';
+import type { SchemaIndex } from './identifiers';
 import {
 	Meta,
 	type JSONSchema,
@@ -19,6 +20,7 @@ export interface LinkNodeOptions {
 	path: Path;
 	filePath: string;
 	$refs: $Refs;
+	identifiers: SchemaIndex;
 	stack: Set<JSONSchema>;
 	fileName: string;
 	/**
@@ -33,6 +35,7 @@ export function link({
 	parent = null,
 	path,
 	$refs,
+	identifiers,
 	stack,
 	filePath,
 	fileName,
@@ -48,18 +51,27 @@ export function link({
 	const ref = typeof schema.$ref === 'string' ? schema.$ref : undefined;
 
 	if (ref) {
-		if (filePath !== '#' && ref.startsWith('#')) {
-			pointer = filePath + '#' + ref.slice(1);
-		} else if (ref.startsWith('./')) {
-			pointer = pathJoin(dirname(filePath), ref);
-		} else {
-			pointer = ref;
-		}
+		// `$id` establishes a base URI for its whole resource, so a `$ref` has
+		// to be resolved against it rather than against the file that happens
+		// to contain the schema.
+		reference = identifiers.resolve(ref, identifiers.baseUriOf(schema) ?? filePath) as
+			| ParsedJSONSchemaObject
+			| undefined;
 
-		if ($refs.exists(pointer, {})) {
-			reference = $refs.get(pointer) as unknown as ParsedJSONSchema;
-			if (reference === undefined) {
-				throw new Error(`Reference not found: ${pointer}`);
+		if (reference === undefined) {
+			if (filePath !== '#' && ref.startsWith('#')) {
+				pointer = filePath + '#' + ref.slice(1);
+			} else if (ref.startsWith('./')) {
+				pointer = pathJoin(dirname(filePath), ref);
+			} else {
+				pointer = ref;
+			}
+
+			if ($refs.exists(pointer, {})) {
+				reference = $refs.get(pointer) as unknown as ParsedJSONSchema;
+				if (reference === undefined) {
+					throw new Error(`Reference not found: ${pointer}`);
+				}
 			}
 		}
 	}
@@ -90,10 +102,9 @@ export function link({
 		...dialectMeta(schema, parent, dialects),
 	};
 
-	if (ref && $refs.exists(pointer, {})) {
-		const referencedSchema = $refs.get(pointer) as JSONSchema;
-		meta.reference = referencedSchema as unknown as ParsedJSONSchema;
-		meta.isCircular = stack.has(referencedSchema);
+	if (ref && reference !== undefined) {
+		meta.reference = reference as ParsedJSONSchema;
+		meta.isCircular = stack.has(reference as JSONSchema);
 
 		Object.defineProperty(schema, Meta, {
 			enumerable: false,
@@ -116,6 +127,7 @@ export function link({
 				path: [...path, key],
 				filePath,
 				$refs,
+				identifiers,
 				stack,
 				fileName,
 				dialects,
@@ -143,6 +155,7 @@ export function link({
 				path: [...path, index],
 				filePath,
 				$refs,
+				identifiers,
 				stack,
 				fileName,
 				dialects,
@@ -157,6 +170,7 @@ export function link({
 			path: [...path, key],
 			filePath,
 			$refs,
+			identifiers,
 			stack,
 			fileName,
 			dialects,

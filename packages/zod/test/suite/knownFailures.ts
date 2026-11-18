@@ -10,8 +10,6 @@
  * empty.
  */
 
-const patternProperties = 'patternProperties is not generated yet';
-
 const format = 'format validation disagrees with the Zod helpers (strict or loose)';
 
 const prototypeNames =
@@ -24,20 +22,6 @@ const idCycle = 'a self-referencing $id or URN schema is reported as an unsuppor
 const typelessCycle = 'a typeless recursive root cannot be represented as a type-safe Zod schema';
 
 export const knownFailures: Record<string, string> = {
-	// patternProperties
-	'additionalProperties.json :: additionalProperties being false does not allow other properties':
-		patternProperties,
-	'additionalProperties.json :: non-ASCII pattern with additionalProperties': patternProperties,
-	'patternProperties.json :: multiple simultaneous patternProperties are validated':
-		patternProperties,
-	'patternProperties.json :: patternProperties validates properties matching a regex':
-		patternProperties,
-	'patternProperties.json :: patternProperties with boolean schemas': patternProperties,
-	'patternProperties.json :: regexes are not anchored by default and are case sensitive':
-		patternProperties,
-	'properties.json :: properties, patternProperties, additionalProperties interaction':
-		patternProperties,
-
 	// format
 	'format-date-time.json :: validation of date-time strings': format,
 	'format-email.json :: validation of e-mail addresses': format,
@@ -57,13 +41,7 @@ export const knownFailures: Record<string, string> = {
 	'format-uri.json :: validation of URIs': format,
 
 	// $id / $anchor resolution
-	'anchor-legacy.json :: Location-independent identifier': idRefs,
-	'anchor-legacy.json :: Location-independent identifier with base URI change in subschema': idRefs,
-	'anchor-legacy.json :: Reference an anchor with a non-relative URI': idRefs,
-	'anchor-legacy.json :: URN base URI with URN and anchor ref': idRefs,
-	'id-legacy.json :: $ref prevents a sibling $id from changing the base uri': idRefs,
 	'id-legacy.json :: URN ref with nested pointer ref': idRefs,
-	'id-legacy.json :: ref with absolute-path-reference': idRefs,
 	'id-legacy.json :: refs with relative uris and defs': idRefs,
 	'id-legacy.json :: relative refs with absolute uris and defs': idRefs,
 	'id.json :: simple URN base URI with $ref via the URN': idCycle,

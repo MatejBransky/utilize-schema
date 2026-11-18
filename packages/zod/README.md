@@ -8,9 +8,11 @@ TypeScript types.
 
 - Generates standalone Zod schemas for the root and all definitions
 - Infers TypeScript types from Zod schemas, including recursive ones
-- Handles local, external, and cyclic `$ref`s
+- Handles local, external, cyclic, `$id` and `$anchor` based `$ref`s
 - Applies `$ref` siblings only in dialects that define them: 2019-09 and newer
   intersect them, draft-07 and older ignore them
+- Validates `patternProperties`, including overlapping patterns and their
+  interaction with `additionalProperties`
 - Emits getters or typed `z.lazy()` for recursive schemas
 - Topologically sorts schemas by dependency
 - Supports most of JSON Schema Draft 7 (see the root README for keyword
@@ -144,7 +146,7 @@ The suite is pinned to a commit and installed as a dev dependency. Each test
 case is compiled to a Zod schema in memory and every instance from the suite is
 run through `safeParse`.
 
-Today it passes **233 of 271 draft-07 cases (1,323 of 1,605 assertions)**.
+Today it passes **246 of 271 draft-07 cases (1,343 of 1,605 assertions)**.
 
 Cases the generator does not handle yet are listed in
 `test/suite/knownFailures.ts`, together with the exact instances that fail in

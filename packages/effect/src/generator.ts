@@ -48,7 +48,7 @@ type Context = {
 };
 
 /** Keywords that have no Effect Schema equivalent and are rejected instead of ignored. */
-const UNSUPPORTED_KEYWORDS = ['patternProperties', 'minContains', 'maxContains'] as const;
+const UNSUPPORTED_KEYWORDS = ['minContains', 'maxContains'] as const;
 
 /** Names the generated code uses besides the declarations. */
 const RESERVED_NAMES = ['Schema'];
@@ -550,29 +550,36 @@ function generateObject(schema: ParsedJSONSchemaObject, context: Context): strin
 	);
 	const keys = [...new Set([...Object.keys(properties), ...required])];
 	const additional = schema.additionalProperties;
+	const patterns = patternEntries(schema, context);
 	const checks = objectChecks(schema, context);
 
 	if (keys.length === 0) {
 		const expression =
-			additional === false
-				? 'Schema.Record(Schema.String, Schema.Never)'
-				: isPlainObject(additional)
-					? `Schema.Record(Schema.String, ${generateSchema(additional, context)})`
-					: 'Schema.Record(Schema.String, Schema.Json)';
+			patterns.length > 0
+				? 'Schema.Record(Schema.String, Schema.Json)'
+				: additional === false
+					? 'Schema.Record(Schema.String, Schema.Never)'
+					: isPlainObject(additional)
+						? `Schema.Record(Schema.String, ${generateSchema(additional, context)})`
+						: 'Schema.Record(Schema.String, Schema.Json)';
 
-		return applyChecks(expression, checks);
+		const additionalChecks =
+			patterns.length > 0 ? additionalChecksFor([], additional, context, patterns) : [];
+
+		return applyChecks(expression, [...patternChecks(patterns), ...additionalChecks, ...checks]);
 	}
 
 	const fields = keys.map((key) => {
 		const property = Object.hasOwn(properties, key) ? properties[key] : undefined;
-		// A required key without a `properties` entry is still validated by
-		// `additionalProperties`, and is unsatisfiable when that is `false`.
+		// A required key without a `properties` entry is validated by a matching
+		// pattern or by `additionalProperties`, so the placeholder must not make
+		// it unsatisfiable when a pattern applies.
 		const expression =
 			property !== undefined
 				? generateSchema(property, context)
-				: additional === false
+				: additional === false && patterns.length === 0
 					? 'Schema.Never'
-					: isPlainObject(additional)
+					: isPlainObject(additional) && patterns.length === 0
 						? generateSchema(additional, context)
 						: 'Schema.Json';
 
@@ -580,12 +587,61 @@ function generateObject(schema: ParsedJSONSchemaObject, context: Context): strin
 			required.has(key) ? expression : `Schema.optionalKey(${expression})`
 		}`;
 	});
-	const additionalChecks = additionalChecksFor(keys, additional, context);
+	const additionalChecks = additionalChecksFor(
+		Object.keys(properties),
+		additional,
+		context,
+		patterns
+	);
 
 	return applyChecks(
 		`Schema.StructWithRest(Schema.Struct({ ${fields.join(', ')} }), [Schema.Record(Schema.String, Schema.Json)])`,
-		[...additionalChecks, ...checks]
+		[...patternChecks(patterns), ...additionalChecks, ...checks]
 	);
+}
+
+interface PatternEntry {
+	pattern: string;
+	expression: string;
+}
+
+function patternEntries(schema: ParsedJSONSchemaObject, context: Context): PatternEntry[] {
+	if (!isPlainObject(schema.patternProperties)) {
+		return [];
+	}
+
+	return Object.entries(schema.patternProperties).map(([pattern, subschema]) => ({
+		pattern,
+		expression: generateSchema(subschema, context),
+	}));
+}
+
+/**
+ * `patternProperties` applies every matching pattern to a key, so the object is
+ * kept open and a filter validates the matching entries.
+ */
+function patternChecks(patterns: PatternEntry[]): string[] {
+	if (patterns.length === 0) {
+		return [];
+	}
+
+	const pairs = patterns
+		.map(({ pattern, expression }) => `[${patternExpression(pattern)}, ${expression}]`)
+		.join(', ');
+
+	return [
+		`Schema.makeFilter((value) => {
+      for (const [key, entry] of Object.entries(value)) {
+        for (const [pattern, schema] of [${pairs}]) {
+          if (pattern.test(key) && !Schema.is(schema)(entry)) {
+            return 'Property does not match the pattern schema';
+          }
+        }
+      }
+
+      return undefined;
+    })`,
+	];
 }
 
 /**
@@ -595,25 +651,38 @@ function generateObject(schema: ParsedJSONSchemaObject, context: Context): strin
 function additionalChecksFor(
 	keys: string[],
 	additional: ParsedJSONSchemaObject['additionalProperties'],
-	context: Context
+	context: Context,
+	patterns: PatternEntry[] = []
 ): string[] {
 	if (additional === undefined || additional === true) {
 		return [];
 	}
 
 	const declared = JSON.stringify(keys);
+	const patternTest = patternTestExpression(patterns);
+	const isDeclared = patternTest
+		? `${declared}.includes(key) || ${patternTest}`
+		: `${declared}.includes(key)`;
 
 	if (additional === false) {
 		return [
-			`Schema.makeFilter((value) => Object.keys(value).every((key) => ${declared}.includes(key)) ? undefined : 'Unexpected property')`,
+			`Schema.makeFilter((value) => Object.keys(value).every((key) => ${isDeclared}) ? undefined : 'Unexpected property')`,
 		];
 	}
 
 	const additionalSchema = generateSchema(additional, context);
 
 	return [
-		`Schema.makeFilter((value) => Object.entries(value).every(([key, entry]) => ${declared}.includes(key) || Schema.is(${additionalSchema})(entry)) ? undefined : 'Property does not match the schema')`,
+		`Schema.makeFilter((value) => Object.entries(value).every(([key, entry]) => ${isDeclared} || Schema.is(${additionalSchema})(entry)) ? undefined : 'Property does not match the schema')`,
 	];
+}
+
+function patternTestExpression(patterns: PatternEntry[]): string {
+	if (patterns.length === 0) {
+		return '';
+	}
+
+	return `[${patterns.map(({ pattern }) => patternExpression(pattern)).join(', ')}].some((pattern) => pattern.test(key))`;
 }
 
 function objectChecks(schema: ParsedJSONSchemaObject, context: Context): string[] {
@@ -759,6 +828,7 @@ function appliesTo(schema: ParsedJSONSchemaObject, type: JSONValueType, dialect:
 		case 'object':
 			return anyKeyword([
 				'properties',
+				'patternProperties',
 				'required',
 				'additionalProperties',
 				'minProperties',

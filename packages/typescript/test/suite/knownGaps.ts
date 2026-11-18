@@ -18,15 +18,8 @@ const inference =
 
 export const knownGaps: Record<string, string> = {
 	// Shared parser: $id/$anchor and URN resolution.
-	'anchor-legacy.json :: Location-independent identifier': parserId,
-	'anchor-legacy.json :: Location-independent identifier with base URI change in subschema':
-		parserId,
-	'anchor-legacy.json :: Reference an anchor with a non-relative URI': parserId,
-	'anchor-legacy.json :: URN base URI with URN and anchor ref': parserId,
-	'id-legacy.json :: $ref prevents a sibling $id from changing the base uri': parserId,
 	'id-legacy.json :: refs with relative uris and defs': parserId,
 	'id-legacy.json :: relative refs with absolute uris and defs': parserId,
-	'id-legacy.json :: ref with absolute-path-reference': parserId,
 	'id-legacy.json :: URN ref with nested pointer ref': parserId,
 
 	// Shared parser: boolean schemas behind $ref.

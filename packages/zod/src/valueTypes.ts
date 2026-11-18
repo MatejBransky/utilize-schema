@@ -277,7 +277,11 @@ function renderObjectMembers(
 	const additionalProperties = schema.additionalProperties;
 	let index: string | undefined;
 
-	if (additionalProperties === true) {
+	if (schema.patternProperties && Object.keys(schema.patternProperties).length > 0) {
+		// The generator keeps the object open so that matching keys survive the
+		// parse, so an index signature is the closest representation.
+		index = 'unknown';
+	} else if (additionalProperties === true) {
 		index = 'unknown';
 	} else if (isPlainObject(additionalProperties)) {
 		const type = renderType(additionalProperties as ParsedJSONSchemaObject, context);

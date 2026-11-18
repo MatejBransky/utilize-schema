@@ -180,6 +180,93 @@ test('circular references', async () => {
 	`);
 });
 
+test('resolves a $ref to a fragment-only $id', async () => {
+	const schema = {
+		allOf: [{ $ref: '#foo' }],
+		definitions: {
+			A: { $id: '#foo', type: 'integer' },
+		},
+	} as JSONSchema;
+	const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Unknown' });
+
+	assert(typeof parsed.root === 'object' && parsed.root !== null);
+	const reference = parsed.root.allOf?.[0]?.[Meta].reference;
+
+	assert(typeof reference === 'object' && reference !== null);
+	expect(reference.type).toBe('integer');
+});
+
+test('resolves a $ref against the nearest $id', async () => {
+	const schema = {
+		$id: 'http://example.com/root/',
+		properties: {
+			value: { $ref: 'nested/child.json' },
+		},
+		definitions: {
+			child: { $id: 'nested/child.json', type: 'string' },
+		},
+	} as JSONSchema;
+	const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Unknown' });
+
+	assert(typeof parsed.root === 'object' && parsed.root !== null);
+	const reference = parsed.root.properties?.value?.[Meta].reference;
+
+	assert(typeof reference === 'object' && reference !== null);
+	expect(reference.type).toBe('string');
+});
+
+test('resolves a $ref to an $anchor', async () => {
+	const schema = {
+		$id: 'https://example.com/schema',
+		$defs: {
+			A: { $anchor: 'foo', type: 'boolean' },
+		},
+		allOf: [{ $ref: '#foo' }],
+	} as JSONSchema;
+	const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Unknown' });
+
+	assert(typeof parsed.root === 'object' && parsed.root !== null);
+	const reference = parsed.root.allOf?.[0]?.[Meta].reference;
+
+	assert(typeof reference === 'object' && reference !== null);
+	expect(reference.type).toBe('boolean');
+});
+
+test('resolves an anchor declared under a nested $id', async () => {
+	const schema = {
+		$id: 'http://localhost:1234/root',
+		allOf: [{ $ref: 'http://localhost:1234/nested.json#foo' }],
+		definitions: {
+			A: {
+				$id: 'nested.json',
+				definitions: {
+					B: { $id: '#foo', type: 'integer' },
+				},
+			},
+		},
+	} as JSONSchema;
+	const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Unknown' });
+
+	assert(typeof parsed.root === 'object' && parsed.root !== null);
+	const reference = parsed.root.allOf?.[0]?.[Meta].reference;
+
+	assert(typeof reference === 'object' && reference !== null);
+	expect(reference.type).toBe('integer');
+});
+
+test('resolves a URN reference to its resource', async () => {
+	const schema = {
+		$id: 'urn:uuid:deadbeef-1234-ffff-ffff-4321feebdaed',
+		type: 'number',
+		definitions: { unused: { type: 'string' } },
+		allOf: [{ $ref: 'urn:uuid:deadbeef-1234-ffff-ffff-4321feebdaed' }],
+	} as JSONSchema;
+	const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Unknown' });
+
+	assert(typeof parsed.root === 'object' && parsed.root !== null);
+	expect(parsed.root.allOf?.[0]?.[Meta].reference).toBe(parsed.root);
+});
+
 test('a $ref to a boolean schema keeps the boolean as its reference', async () => {
 	const schema = {
 		type: 'object',

@@ -2,9 +2,6 @@
 export type KnownFailureInstances = Record<string, string[] | 'compile'>;
 
 export const knownFailureInstances: KnownFailureInstances = {
-	'additionalProperties.json :: additionalProperties being false does not allow other properties':
-		'compile',
-	'additionalProperties.json :: non-ASCII pattern with additionalProperties': 'compile',
 	'additionalProperties.json :: additionalProperties does not look in applicators': [
 		'properties defined in allOf are not examined',
 	],
@@ -21,7 +18,6 @@ export const knownFailureInstances: KnownFailureInstances = {
 	'anchor-legacy.json :: Location-independent identifier with base URI change in subschema':
 		'compile',
 	'anchor-legacy.json :: Reference an anchor with a non-relative URI': 'compile',
-	'anchor-legacy.json :: URN base URI with URN and anchor ref': 'compile',
 	'anyOf.json :: anyOf with base schema': ['mismatch base schema'],
 	'const.json :: const with object': 'compile',
 	'const.json :: const with array': 'compile',
@@ -83,12 +79,6 @@ export const knownFailureInstances: KnownFailureInstances = {
 	'items.json :: additionalItems does not look in applicators, invalid case': 'compile',
 	'oneOf.json :: oneOf with boolean schemas, all true': ['any value is invalid'],
 	'oneOf.json :: oneOf with boolean schemas, more than one true': ['any value is invalid'],
-	'patternProperties.json :: patternProperties validates properties matching a regex': 'compile',
-	'patternProperties.json :: multiple simultaneous patternProperties are validated': 'compile',
-	'patternProperties.json :: regexes are not anchored by default and are case sensitive': 'compile',
-	'patternProperties.json :: patternProperties with boolean schemas': 'compile',
-	'patternProperties.json :: patternProperties with null valued instance properties': 'compile',
-	'properties.json :: properties, patternProperties, additionalProperties interaction': 'compile',
 	'properties.json :: properties whose names are Javascript object property names': [
 		'__proto__ not valid',
 	],
