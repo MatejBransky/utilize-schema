@@ -264,11 +264,7 @@ export default function App() {
 
 	useEffect(() => {
 		const onPopState = () => {
-			const next = readHash() ?? readUrlState() ?? loadSavedState();
-
-			if (next) {
-				applyState(next);
-			}
+			applyState(loadState());
 		};
 
 		window.addEventListener('popstate', onPopState);
@@ -813,19 +809,12 @@ function defaultState(): AppState {
 }
 
 function loadState(): AppState {
-	const fromHash = readHash();
+	const fromHash = readHash() ?? readUrlState() ?? loadSavedState() ?? defaultState();
+	const keywordPolicy = readKeywordPolicyParam();
 
-	if (fromHash) {
-		return fromHash;
-	}
-
-	const fromUrl = readUrlState();
-
-	if (fromUrl) {
-		return fromUrl;
-	}
-
-	return loadSavedState() ?? defaultState();
+	// The `keyword-policy` query parameter wins over the policy stored in the
+	// shared `#data=` hash so the setting can be changed without editing the hash.
+	return keywordPolicy ? { ...fromHash, keywordPolicy } : fromHash;
 }
 
 function readUrlState(): AppState | null {

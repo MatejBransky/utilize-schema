@@ -409,6 +409,35 @@ test('the keyword-policy URL parameter sets the policy', async () => {
 	expect(problemsText()).toContain('Error');
 });
 
+test('the keyword-policy query parameter overrides the hash state', async () => {
+	const state = {
+		files: [
+			{
+				id: 'root',
+				name: 'root.json',
+				content: JSON.stringify({
+					$schema: 'http://json-schema.org/draft-07/schema#',
+					type: 'array',
+					prefixItems: [{ type: 'string' }],
+				}),
+			},
+		],
+		target: 'zod',
+		keywordPolicy: 'warn',
+	};
+	const encoded = btoa(JSON.stringify(state))
+		.replace(/\+/g, '-')
+		.replace(/\//g, '_')
+		.replace(/=+$/, '');
+	history.replaceState(null, '', `/?keyword-policy=error#data=${encoded}`);
+	await render(<App />);
+
+	const problemsText = () => document.querySelector('[data-testid="problems"]')?.textContent ?? '';
+
+	await vi.waitFor(() => expect(problemsText()).toContain('"prefixItems" is not part of draft-07'));
+	expect(problemsText()).toContain('1 errors, 0 warnings');
+});
+
 test('share includes the keyword policy in the URL', async () => {
 	Object.defineProperty(navigator, 'clipboard', {
 		configurable: true,
