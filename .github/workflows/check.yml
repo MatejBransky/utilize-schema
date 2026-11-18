@@ -39,12 +39,15 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-playwright-shell-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-playwright-
+            ${{ runner.os }}-playwright-shell-
 
       - name: Install Playwright browsers
-        run: pnpm --filter playground exec playwright install --with-deps chromium
+        # Browser tests run headless, so the headless shell is enough and skips
+        # the `--with-deps` apt install (fonts and X libraries) that dominated
+        # the job runtime on image updates. See playground/vitest.config.ts.
+        run: pnpm --filter playground exec playwright install --only-shell chromium
 
       - name: Build packages
         run: pnpm build:dev

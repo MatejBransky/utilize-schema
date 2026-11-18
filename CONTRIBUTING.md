@@ -77,6 +77,12 @@ To set this up on a fork or a new repository:
   ```sh
   pnpm test -- --watch
   ```
+- Playground tests use two projects: most files run in Node, while React
+  rendering and the Monaco TypeScript worker need a real browser. Install it
+  once (the same headless shell CI uses):
+  ```sh
+  pnpm --filter playground exec playwright install --only-shell chromium
+  ```
 - Run the official JSON Schema Test Suite for the Zod generator:
   ```sh
   pnpm --filter @utilize/zod test:suite
