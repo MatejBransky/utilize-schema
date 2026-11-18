@@ -1,8 +1,10 @@
+import { isKeywordApplicable } from '@utilize/json-schema';
+
 import { createGenerator } from './createGenerator';
 import { renderLiteral } from './renderLiteral';
 
 export const generator = createGenerator<{ const: unknown }>(
-	(schema) => schema.const !== undefined,
+	(schema, dialect) => schema.const !== undefined && isKeywordApplicable(dialect, 'const'),
 	(schema) => {
 		return renderLiteral(schema.const);
 	}

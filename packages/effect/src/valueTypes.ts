@@ -1,11 +1,22 @@
 import {
+	type Dialect,
+	dialectOf,
+	isKeywordApplicable,
 	isPlainObject,
 	Meta,
 	type ParsedJSONSchema,
 	type ParsedJSONSchemaObject,
 } from '@utilize/json-schema';
 
+import { planReferenceSiblings } from './refSiblings';
+
 export interface ValueTypeContext {
+	/**
+	 * Dialect of the document root. Each node is rendered with its own dialect,
+	 * `dialectOf(node, dialect)`; copies keep the `Meta` of their source, so this
+	 * fallback only applies to nodes built from scratch.
+	 */
+	dialect: Dialect;
 	/** The value-type alias of a schema in a cycle, when it has one. */
 	aliasFor(schema: ParsedJSONSchemaObject): string | undefined;
 	/** The exported type alias of a schema outside of a cycle. */
@@ -95,6 +106,8 @@ export function renderValueType(
 		return 'Schema.Json';
 	}
 
+	const dialect = dialectOf(schema, context.dialect);
+
 	if (typeof schema.$ref === 'string') {
 		const reference = schema[Meta]?.reference;
 
@@ -107,15 +120,29 @@ export function renderValueType(
 		}
 
 		const alias = context.aliasFor(reference);
+		const referenceType =
+			alias === undefined
+				? context.typeNameFor(reference)
+				: alias === self && !deferred
+					? 'Schema.Json'
+					: alias;
+		const siblings = planReferenceSiblings(
+			schema,
+			dialect,
+			(target) => context.aliasFor(target) !== undefined
+		);
 
-		if (alias === undefined) {
-			return context.typeNameFor(reference);
+		// A `merge` generates the merged object, so its value type is rendered from
+		// the same schema. A `check` keeps the reference's type: a filter does not
+		// change it.
+		if (siblings.kind === 'merge') {
+			return renderValueType(siblings.merged, context, self, deferred);
 		}
 
-		return alias === self && !deferred ? 'Schema.Json' : alias;
+		return referenceType;
 	}
 
-	if (Object.hasOwn(schema, 'const')) {
+	if (Object.hasOwn(schema, 'const') && isKeywordApplicable(dialect, 'const')) {
 		return literalType(schema.const);
 	}
 
@@ -168,12 +195,16 @@ function renderArray(
 	context: ValueTypeContext,
 	self: string | undefined
 ): string {
+	const dialect = dialectOf(schema, context.dialect);
 	const items = schema.items as unknown as ParsedJSONSchema | ParsedJSONSchema[] | undefined;
-	const prefixItems = Array.isArray(schema.prefixItems)
-		? (schema.prefixItems as ParsedJSONSchema[])
-		: Array.isArray(items)
-			? items
-			: undefined;
+	const prefixItems =
+		dialect.tuple === 'prefixItems'
+			? Array.isArray(schema.prefixItems)
+				? (schema.prefixItems as ParsedJSONSchema[])
+				: undefined
+			: Array.isArray(items)
+				? items
+				: undefined;
 
 	const singleItem = Array.isArray(items) ? undefined : items;
 
@@ -192,7 +223,7 @@ function renderArray(
 
 		return index < minItems ? type : `${parenthesize(type)}?`;
 	});
-	const rest = arrayRest(schema, items);
+	const rest = arrayRest(schema, items, dialect);
 
 	if (rest === false) {
 		return `readonly [${elements.join(', ')}]`;
@@ -203,10 +234,15 @@ function renderArray(
 
 function arrayRest(
 	schema: ParsedJSONSchemaObject,
-	items: ParsedJSONSchema | ParsedJSONSchema[] | undefined
+	items: ParsedJSONSchema | ParsedJSONSchema[] | undefined,
+	dialect: Dialect
 ): ParsedJSONSchema {
-	if (!Array.isArray(items) && Array.isArray(schema.prefixItems)) {
-		return items === false ? false : (items ?? true);
+	if (dialect.tuple === 'prefixItems') {
+		if (items === false) {
+			return false;
+		}
+
+		return Array.isArray(items) ? true : (items ?? true);
 	}
 
 	if (schema.additionalItems === false) {

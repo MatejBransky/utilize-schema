@@ -20,6 +20,7 @@ export {
 	resolveDialect,
 	warnDialectIssue,
 } from './dialect';
+export * from './keywords';
 export * from './linker';
 export * from './model';
 export * from './normalize';

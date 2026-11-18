@@ -95,8 +95,11 @@ export async function compile(schema: TestSchema, options: CompileOptions = {}) 
  * module is written next to the tests, so `effect` resolves from this package,
  * and removed after it is loaded.
  */
-export async function compileModule(schema: TestSchema): Promise<Record<string, GeneratedSchema>> {
-	const code = await compile(schema, { importEffect: true });
+export async function compileModule(
+	schema: TestSchema,
+	options?: CompileOptions
+): Promise<Record<string, GeneratedSchema>> {
+	const code = await compile(schema, { ...options, importEffect: true });
 	const directory = await mkdtemp(join(__dirname, '__generated__-'));
 
 	try {
@@ -108,8 +111,11 @@ export async function compileModule(schema: TestSchema): Promise<Record<string, 
 	}
 }
 
-export async function compileToSchema(schema: TestSchema): Promise<GeneratedSchema> {
-	const module = await compileModule(schema);
+export async function compileToSchema(
+	schema: TestSchema,
+	options?: CompileOptions
+): Promise<GeneratedSchema> {
+	const module = await compileModule(schema, options);
 	return module.Root!;
 }
 

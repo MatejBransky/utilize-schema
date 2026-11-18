@@ -83,8 +83,11 @@ export async function compile(schema: JSONSchema, options?: CompileOptions & Dia
  * schema. The module is written next to the tests, so `zod` resolves from
  * this package, and removed after it is loaded.
  */
-export async function compileModule(schema: JSONSchema): Promise<Record<string, z.ZodType>> {
-	const code = await compile(schema, { importZod: true });
+export async function compileModule(
+	schema: JSONSchema,
+	options?: CompileOptions & DialectOptions
+): Promise<Record<string, z.ZodType>> {
+	const code = await compile(schema, { ...options, importZod: true });
 	const directory = await mkdtemp(join(__dirname, '__generated__-'));
 
 	try {
@@ -96,7 +99,10 @@ export async function compileModule(schema: JSONSchema): Promise<Record<string, 
 	}
 }
 
-export async function compileToZod(schema: JSONSchema): Promise<z.ZodType> {
-	const module = await compileModule(schema);
+export async function compileToZod(
+	schema: JSONSchema,
+	options?: CompileOptions & DialectOptions
+): Promise<z.ZodType> {
+	const module = await compileModule(schema, options);
 	return module.Root!;
 }

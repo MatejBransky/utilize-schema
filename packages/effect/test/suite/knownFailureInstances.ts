@@ -93,7 +93,6 @@ export const knownFailureInstances: KnownFailureInstances = {
 		'__proto__ not valid',
 	],
 	'ref-legacy.json :: relative pointer ref to array': ['match array'],
-	'ref-legacy.json :: ref overrides any sibling keywords': 'compile',
 	'ref-legacy.json :: naive replacement of $ref with its destination is not correct': 'compile',
 	'ref-legacy.json :: $ref to boolean schema true': 'compile',
 	'ref.json :: ref to if': 'compile',

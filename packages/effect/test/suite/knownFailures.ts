@@ -104,7 +104,6 @@ export const knownFailures: Record<string, string> = {
 	'properties.json :: properties whose names are Javascript object property names':
 		'keyword is not covered by the Effect Schema generator yet',
 	'ref-legacy.json :: relative pointer ref to array': 'reference resolution gap',
-	'ref-legacy.json :: ref overrides any sibling keywords': 'reference resolution gap',
 	'ref-legacy.json :: naive replacement of $ref with its destination is not correct':
 		'reference resolution gap',
 	'ref-legacy.json :: $ref to boolean schema true': 'reference resolution gap',

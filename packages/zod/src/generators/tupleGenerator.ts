@@ -1,4 +1,4 @@
-import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
+import type { Dialect, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
 import { generateSchema } from './generateSchema';
@@ -6,17 +6,17 @@ import { generateSchema } from './generateSchema';
 import { NEWLINE, ts } from '../utils';
 
 export const generator = createGenerator(
-	(schema) => {
+	(schema, dialect) => {
 		if (schema.type !== 'array') {
 			return false;
 		}
 
-		return tupleItems(schema) !== undefined;
+		return tupleItems(schema, dialect) !== undefined;
 	},
 	(schema, context) => {
-		const items = tupleItems(schema)!;
+		const items = tupleItems(schema, context.dialect)!;
 		const minItems = schema.minItems ?? 0;
-		const rest = tupleRest(schema);
+		const rest = tupleRest(schema, context.dialect);
 		// The tuple's own maximum is `items.length` when there is no rest schema.
 		const noRest =
 			rest === false || (schema.maxItems !== undefined && schema.maxItems === items.length);
@@ -52,23 +52,33 @@ export const generator = createGenerator(
 	}
 );
 
-export function tupleItems(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject[] | undefined {
-	if (Array.isArray(schema.prefixItems)) {
-		return schema.prefixItems;
+export function tupleItems(
+	schema: ParsedJSONSchemaObject,
+	dialect: Dialect
+): ParsedJSONSchemaObject[] | undefined {
+	if (dialect.tuple === 'prefixItems') {
+		if (Array.isArray(schema.prefixItems)) {
+			return schema.prefixItems;
+		}
+
+		// The tuple form of `items` was removed in 2020-12. With a lenient
+		// keyword policy it is ignored instead of generated.
+		return undefined;
 	}
 
-	if (Array.isArray(schema.items)) {
-		return schema.items;
-	}
-
-	return undefined;
+	return Array.isArray(schema.items) ? schema.items : undefined;
 }
 
 export function tupleRest(
-	schema: ParsedJSONSchemaObject
+	schema: ParsedJSONSchemaObject,
+	dialect: Dialect
 ): ParsedJSONSchemaObject | boolean | undefined {
-	if (Array.isArray(schema.prefixItems)) {
-		return Array.isArray(schema.items) ? undefined : schema.items;
+	if (dialect.tuple === 'prefixItems') {
+		if (Array.isArray(schema.prefixItems)) {
+			return Array.isArray(schema.items) ? undefined : schema.items;
+		}
+
+		return undefined;
 	}
 
 	return schema.additionalItems;

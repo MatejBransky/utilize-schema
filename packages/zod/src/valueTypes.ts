@@ -1,4 +1,10 @@
-import { isPlainObject, Meta, type ParsedJSONSchemaObject } from '@utilize/json-schema';
+import {
+	type Dialect,
+	dialectOf,
+	isPlainObject,
+	Meta,
+	type ParsedJSONSchemaObject,
+} from '@utilize/json-schema';
 
 import { generator as allOfGenerator } from './generators/allOfGenerator';
 import { generator as anyGenerator } from './generators/anyGenerator';
@@ -14,12 +20,18 @@ import { generator as objectGenerator } from './generators/objectGenerator';
 import { generator as oneOfGenerator } from './generators/oneOfGenerator';
 import { generator as recordGenerator } from './generators/recordGenerator';
 import { generator as refGenerator } from './generators/refGenerator';
-import { composedSchemaParts } from './generators/generateSchema';
+import { composedSchemaParts, refSiblingConstraints } from './generators/generateSchema';
 import { selectGenerator } from './generators/selectGenerator';
 import { generator as stringGenerator } from './generators/stringGenerator';
 import { generator as tupleGenerator, tupleItems, tupleRest } from './generators/tupleGenerator';
 
 export interface ValueTypeContext {
+	/**
+	 * Dialect of the document root. Each node is rendered with its own dialect,
+	 * `dialectOf(node, dialect)`; copies keep the `Meta` of their source, so this
+	 * fallback only applies to nodes built from scratch.
+	 */
+	dialect: Dialect;
 	/** The generated value-type alias of a schema in a cycle, when it has one. */
 	aliasFor(schema: ParsedJSONSchemaObject): string | undefined;
 	/** The exported type alias of a schema, for schemas outside of a cycle. */
@@ -55,6 +67,8 @@ function renderType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): 
 		return schema ? 'unknown' : 'never';
 	}
 
+	const dialect = dialectOf(schema, context.dialect);
+
 	if (context.readOnlyKeyword && schema.readOnly === true && !('$ref' in schema)) {
 		return renderReadOnlyType(schema, context);
 	}
@@ -67,7 +81,7 @@ function renderType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): 
 		)}`;
 	}
 
-	const generator = selectGenerator(schema);
+	const generator = selectGenerator(schema, dialect);
 
 	if (generator === refGenerator) {
 		const reference = schema[Meta]?.reference;
@@ -80,7 +94,14 @@ function renderType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): 
 			return reference ? 'unknown' : 'never';
 		}
 
-		return context.aliasFor(reference) ?? context.typeNameFor(reference);
+		const referenceType = context.aliasFor(reference) ?? context.typeNameFor(reference);
+		const siblings = dialect.refSiblings === 'apply' ? refSiblingConstraints(schema) : undefined;
+
+		if (siblings) {
+			return `${referenceType} & ${parenthesize(renderType(siblings, context))}`;
+		}
+
+		return referenceType;
 	}
 
 	if (generator === multipleTypeGenerator) {
@@ -156,10 +177,10 @@ function renderType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): 
 	}
 
 	if (generator === tupleGenerator) {
-		const items = (tupleItems(schema) ?? []).map(
+		const items = (tupleItems(schema, dialect) ?? []).map(
 			(item) => `${parenthesize(renderType(item, context))}?`
 		);
-		const rest = renderTupleRest(schema, context);
+		const rest = renderTupleRest(schema, context, dialect);
 
 		return `[${[...items, rest].filter(Boolean).join(', ')}]`;
 	}
@@ -184,7 +205,7 @@ function renderType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): 
 }
 
 function renderReadOnlyType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): string {
-	const generator = selectGenerator(schema);
+	const generator = selectGenerator(schema, dialectOf(schema, context.dialect));
 
 	if (generator === arrayGenerator) {
 		const items = schema.items
@@ -214,7 +235,7 @@ function renderInterfaceBody(
 	schema: ParsedJSONSchemaObject,
 	context: ValueTypeContext
 ): string | undefined {
-	const generator = selectGenerator(schema);
+	const generator = selectGenerator(schema, dialectOf(schema, context.dialect));
 
 	if (generator === recordGenerator) {
 		const additionalProperties = schema.additionalProperties as ParsedJSONSchemaObject;
@@ -281,8 +302,12 @@ function renderObjectMembers(
 	return { lines, index };
 }
 
-function renderTupleRest(schema: ParsedJSONSchemaObject, context: ValueTypeContext): string {
-	const rest = tupleRest(schema);
+function renderTupleRest(
+	schema: ParsedJSONSchemaObject,
+	context: ValueTypeContext,
+	dialect: Dialect
+): string {
+	const rest = tupleRest(schema, dialect);
 
 	if (rest === false) {
 		return '';

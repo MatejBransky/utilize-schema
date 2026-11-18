@@ -1,12 +1,20 @@
-import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
+import {
+	ANNOTATION_KEYWORDS,
+	type Dialect,
+	dialectOf,
+	type ParsedJSONSchema,
+	type ParsedJSONSchemaObject,
+	withSourceMeta,
+} from '@utilize/json-schema';
 
+import { generator as refGenerator } from './refGenerator';
 import { selectGenerator } from './selectGenerator';
 import type { GeneratorContext } from './types';
 
 import { applyRefinements } from '../refinements';
 import { NEWLINE, ts } from '../utils';
 
-export const generateSchema = (schema: ParsedJSONSchema, context: GeneratorContext) => {
+export const generateSchema = (schema: ParsedJSONSchema | undefined, context: GeneratorContext) => {
 	if (schema === undefined) {
 		return ts`z.unknown()`;
 	}
@@ -15,9 +23,14 @@ export const generateSchema = (schema: ParsedJSONSchema, context: GeneratorConte
 		return schema === true ? ts`z.any()` : schema === false ? ts`z.never()` : ts`z.unknown()`;
 	}
 
-	let expression = generateCore(schema, context);
+	const dialect = dialectOf(schema, context.dialect);
+	const nodeContext = dialect === context.dialect ? context : { ...context, dialect };
 
-	expression = applyRefinements(expression, schema, context, generateSchema);
+	let expression = generateCore(schema, nodeContext);
+
+	if (!ignoresRefSiblings(schema, dialect)) {
+		expression = applyRefinements(expression, schema, nodeContext, generateSchema);
+	}
 
 	if (
 		schema.$id ||
@@ -41,6 +54,14 @@ export const generateSchema = (schema: ParsedJSONSchema, context: GeneratorConte
 };
 
 /**
+ * True for a `$ref` node in a dialect that ignores every keyword next to the
+ * reference (draft-07 and older), so no refinement may be applied to it.
+ */
+function ignoresRefSiblings(schema: ParsedJSONSchemaObject, dialect: Dialect): boolean {
+	return typeof schema.$ref === 'string' && dialect.refSiblings === 'ignore';
+}
+
+/**
  * Generates the schema without applying refinements or metadata, and combines
  * keywords that would otherwise be lost.
  *
@@ -48,8 +69,28 @@ export const generateSchema = (schema: ParsedJSONSchema, context: GeneratorConte
  * `{ allOf: [...], properties: {...} }` or `{ $ref: "#/x", maxItems: 2 }`. The
  * generator for the reference/combinator only reads its own keyword, so the
  * siblings are intersected with it, matching JSON Schema semantics.
+ *
+ * `$ref` siblings are dialect-specific: draft-07 and older override them, while
+ * 2019-09 and newer apply them. Refinement keywords (`not`, `if`, ...) are left
+ * for `applyRefinements`, which knows whether the dialect allows them.
  */
 function generateCore(schema: ParsedJSONSchemaObject, context: GeneratorContext): string {
+	const { dialect } = context;
+
+	if (typeof schema.$ref === 'string') {
+		const reference = refGenerator.generate(schema, context);
+
+		if (dialect.refSiblings === 'apply') {
+			const rest = refSiblingConstraints(schema);
+
+			if (rest) {
+				return ts`z.intersection(${reference},${NEWLINE}${generateSchema(rest, context)})`;
+			}
+		}
+
+		return reference;
+	}
+
 	const parts = composedSchemaParts(schema);
 
 	if (parts) {
@@ -59,7 +100,20 @@ function generateCore(schema: ParsedJSONSchemaObject, context: GeneratorContext)
 		)})`;
 	}
 
-	return selectGenerator(schema).generate(schema, context);
+	return selectGenerator(schema, context.dialect).generate(schema, context);
+}
+
+/**
+ * The structural keywords of a `$ref` node, or `undefined` when the dialect
+ * should ignore them or only annotations/refinements are present. Refinements
+ * are applied by `applyRefinements` on the whole node instead.
+ */
+export function refSiblingConstraints(
+	schema: ParsedJSONSchemaObject
+): ParsedJSONSchemaObject | undefined {
+	const rest = withoutKeys(schema, ['$ref', ...ANNOTATION_KEYWORDS, ...refinementKeywords]);
+
+	return hasStructuralKeywords(rest) ? rest : undefined;
 }
 
 /**
@@ -77,7 +131,7 @@ export function composedSchemaParts(
 		return undefined;
 	}
 
-	const rest = withoutKeys(schema, [keyword, ...ownAnnotationKeywords, ...refinementKeywords]);
+	const rest = withoutKeys(schema, [keyword, ...ANNOTATION_KEYWORDS, ...refinementKeywords]);
 
 	if (!hasStructuralKeywords(rest)) {
 		return undefined;
@@ -95,15 +149,11 @@ export function composedSchemaParts(
 type CombinatorKeyword = 'allOf' | 'anyOf' | 'oneOf' | 'const' | 'enum';
 
 /**
- * The keyword whose generator ignores the rest of the schema. `$ref` takes
- * precedence and, in draft-07, overrides every sibling keyword, so it is not
- * split: the generator emits only the reference.
+ * The keyword whose generator ignores the rest of the schema. `$ref` is handled
+ * by `generateCore`, which reads the dialect before deciding whether siblings
+ * apply.
  */
 function pickCombinatorKeyword(schema: ParsedJSONSchemaObject): CombinatorKeyword | undefined {
-	if ('$ref' in schema) {
-		return undefined;
-	}
-
 	if (schema.anyOf) {
 		return 'anyOf';
 	}
@@ -174,7 +224,7 @@ function withoutKeys(
 	schema: ParsedJSONSchemaObject,
 	keys: readonly string[]
 ): ParsedJSONSchemaObject {
-	const clone = { ...schema } as unknown as Record<string, unknown>;
+	const clone = withSourceMeta(schema, { ...schema }) as unknown as Record<string, unknown>;
 
 	for (const key of keys) {
 		delete clone[key];
@@ -182,23 +232,6 @@ function withoutKeys(
 
 	return clone as unknown as ParsedJSONSchemaObject;
 }
-
-/**
- * Keywords applied by `generateSchema` itself. They are removed from the
- * intersected part so they are emitted once, on the whole schema.
- */
-const ownAnnotationKeywords = [
-	'$id',
-	'title',
-	'description',
-	'examples',
-	'default',
-	'$comment',
-	'$schema',
-	'deprecated',
-	'readOnly',
-	'writeOnly',
-] as const;
 
 /** Keywords handled by `applyRefinements` on the whole schema. */
 const refinementKeywords = [

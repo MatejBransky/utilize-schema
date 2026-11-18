@@ -1,4 +1,4 @@
-import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
+import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
 import { generateSchema } from './generateSchema';
@@ -8,15 +8,21 @@ import { ts } from '../utils';
 export const generator = createGenerator<
 	ParsedJSONSchemaObject & { items: ParsedJSONSchemaObject }
 >(
-	(schema) => {
-		if (schema.type === 'array' && !Array.isArray(schema.items)) {
-			return true;
+	(schema, dialect) => {
+		if (schema.type !== 'array') {
+			return false;
 		}
 
-		return false;
+		return dialect.tuple === 'prefixItems'
+			? schema.prefixItems === undefined
+			: !Array.isArray(schema.items);
 	},
 	(schema, context) => {
-		const itemsPart = generateSchema(schema.items, context);
+		const items =
+			context.dialect.tuple === 'prefixItems' && Array.isArray(schema.items)
+				? undefined
+				: schema.items;
+		const itemsPart = generateSchema(items as ParsedJSONSchema | undefined, context);
 		let expression = ts`z.array(${itemsPart})`;
 
 		if (schema.minItems !== undefined) {

@@ -1,4 +1,11 @@
-import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
+import {
+	type Dialect,
+	dialectOf,
+	isKeywordApplicable,
+	type ParsedJSONSchema,
+	type ParsedJSONSchemaObject,
+	withSourceMeta,
+} from '@utilize/json-schema';
 
 import type { GeneratorContext } from './generators/types';
 import { inferTypeKeyword } from './inferTypes';
@@ -23,10 +30,10 @@ export function applyRefinements(
 ): string {
 	const checks: string[] = [];
 	const contextType = typeof schema.type === 'string' ? schema.type : undefined;
-	const implicitType = inferTypeKeyword(schema);
+	const implicitType = inferTypeKeyword(schema, context.dialect);
 
 	if (implicitType) {
-		const typedSchema = {
+		const typedSchema = withSourceMeta(schema, {
 			...schema,
 			type: implicitType,
 			default: undefined,
@@ -40,7 +47,7 @@ export function applyRefinements(
 			contains: undefined,
 			propertyNames: undefined,
 			dependencies: undefined,
-		} as ParsedJSONSchemaObject;
+		} as ParsedJSONSchemaObject);
 		const typeCheck =
 			implicitType === 'object'
 				? `typeof value === 'object' && value !== null && !Array.isArray(value)`
@@ -58,7 +65,7 @@ export function applyRefinements(
 	}
 
 	if (schema.not !== undefined) {
-		const not = generate(withContextType(schema.not, contextType), context);
+		const not = generate(withContextType(schema.not, contextType, context.dialect), context);
 
 		checks.push(ts`{
       const notResult = ${not}.safeParse(value);
@@ -73,20 +80,20 @@ export function applyRefinements(
     }`);
 	}
 
-	if (schema.if !== undefined) {
+	if (schema.if !== undefined && isKeywordApplicable(context.dialect, 'if')) {
 		const condition = generate(
-			withContextType(schema.if as unknown as ParsedJSONSchema, contextType),
+			withContextType(schema.if as unknown as ParsedJSONSchema, contextType, context.dialect),
 			context
 		);
 		const thenSchema = schema.then as unknown as ParsedJSONSchema | undefined;
 		const elseSchema = schema.else as unknown as ParsedJSONSchema | undefined;
 		const thenBlock =
 			thenSchema !== undefined
-				? checkBlock(generate(withContextType(thenSchema, contextType), context))
+				? checkBlock(generate(withContextType(thenSchema, contextType, context.dialect), context))
 				: '';
 		const elseBlock =
 			elseSchema !== undefined
-				? checkBlock(generate(withContextType(elseSchema, contextType), context))
+				? checkBlock(generate(withContextType(elseSchema, contextType, context.dialect), context))
 				: '';
 
 		checks.push(ts`{
@@ -98,7 +105,7 @@ export function applyRefinements(
     }`);
 	}
 
-	if (schema.contains !== undefined) {
+	if (schema.contains !== undefined && isKeywordApplicable(context.dialect, 'contains')) {
 		const contains = generate(schema.contains, context);
 
 		checks.push(ts`{
@@ -172,8 +179,11 @@ export function applyRefinements(
     }`);
 	}
 
-	if (schema.propertyNames !== undefined) {
-		const propertyNames = generate(withContextType(schema.propertyNames, 'string'), context);
+	if (schema.propertyNames !== undefined && isKeywordApplicable(context.dialect, 'propertyNames')) {
+		const propertyNames = generate(
+			withContextType(schema.propertyNames, 'string', context.dialect),
+			context
+		);
 
 		checks.push(ts`{
       if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
@@ -188,6 +198,9 @@ export function applyRefinements(
     }`);
 	}
 
+	// `dependencies` is either native to the dialect or merged from
+	// `dependentRequired` / `dependentSchemas` by the normalizer. A foreign
+	// `dependencies` keyword was already dropped by the parser.
 	if (schema.dependencies) {
 		const dependencyChecks: string[] = [];
 
@@ -208,7 +221,7 @@ export function applyRefinements(
 			}
 
 			const dependencySchema = generate(
-				withContextType(dependency as ParsedJSONSchema, 'object'),
+				withContextType(dependency as ParsedJSONSchema, 'object', context.dialect),
 				context
 			);
 
@@ -264,7 +277,11 @@ function issueBlock(resultName: string, pathPrefix?: string): string {
  * type (`propertyNames` always validates strings, a schema dependency always
  * validates objects, and `not`/`if`/`then`/`else` inherit the parent type).
  */
-function withContextType(schema: ParsedJSONSchema, type: string | undefined): ParsedJSONSchema {
+function withContextType(
+	schema: ParsedJSONSchema,
+	type: string | undefined,
+	fallback: Dialect
+): ParsedJSONSchema {
 	if (type === undefined || typeof schema !== 'object' || schema === null) {
 		return schema;
 	}
@@ -281,11 +298,13 @@ function withContextType(schema: ParsedJSONSchema, type: string | undefined): Pa
 		return schema;
 	}
 
-	if (!hasTypeSpecificKeywords(schema)) {
+	const dialect = dialectOf(schema, fallback);
+
+	if (!hasTypeSpecificKeywords(schema, dialect)) {
 		return schema;
 	}
 
-	return { ...schema, type } as ParsedJSONSchema;
+	return withSourceMeta(schema, { ...schema, type }) as ParsedJSONSchema;
 }
 
 const typeSpecificKeywords = [
@@ -313,8 +332,10 @@ const typeSpecificKeywords = [
 	'multipleOf',
 ] as const;
 
-function hasTypeSpecificKeywords(schema: ParsedJSONSchemaObject): boolean {
+function hasTypeSpecificKeywords(schema: ParsedJSONSchemaObject, dialect: Dialect): boolean {
 	const record = schema as unknown as Record<string, unknown>;
 
-	return typeSpecificKeywords.some((keyword) => record[keyword] !== undefined);
+	return typeSpecificKeywords.some(
+		(keyword) => record[keyword] !== undefined && isKeywordApplicable(dialect, keyword)
+	);
 }

@@ -9,6 +9,8 @@ TypeScript types.
 - Generates standalone Zod schemas for the root and all definitions
 - Infers TypeScript types from Zod schemas, including recursive ones
 - Handles local, external, and cyclic `$ref`s
+- Applies `$ref` siblings only in dialects that define them: 2019-09 and newer
+  intersect them, draft-07 and older ignore them
 - Emits getters or typed `z.lazy()` for recursive schemas
 - Topologically sorts schemas by dependency
 - Supports most of JSON Schema Draft 7 (see the root README for keyword
