@@ -3,14 +3,13 @@ import {
 	type Dialect,
 	dialectOf,
 	isKeywordApplicable,
-	isPlainObject,
-	type JSONSchemaTypeName,
 	type ParsedJSONSchema,
 	type ParsedJSONSchemaObject,
 	withSourceMeta,
 } from '@utilize/json-schema';
 
 import { withoutAlwaysValidAnyOf } from './alwaysValidAnyOf';
+import { valueHasType } from './jsonValues';
 import { generator as refGenerator } from './refGenerator';
 import { selectGenerator } from './selectGenerator';
 import type { GeneratorContext } from './types';
@@ -188,21 +187,6 @@ export function isTypedLiteral(schema: ParsedJSONSchemaObject): boolean {
 	const values = keyword === 'const' ? [schema.const] : (schema.enum ?? []);
 
 	return values.every((value) => types.some((type) => valueHasType(value, type)));
-}
-
-function valueHasType(value: unknown, type: JSONSchemaTypeName): boolean {
-	switch (type) {
-		case 'null':
-			return value === null;
-		case 'array':
-			return Array.isArray(value);
-		case 'object':
-			return isPlainObject(value);
-		case 'integer':
-			return Number.isInteger(value);
-		default:
-			return typeof value === type;
-	}
 }
 
 type CombinatorKeyword = 'allOf' | 'anyOf' | 'oneOf' | 'const' | 'enum';

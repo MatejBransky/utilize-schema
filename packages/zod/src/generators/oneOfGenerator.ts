@@ -1,6 +1,7 @@
 import { dialectOf, type ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
+import { areMutuallyExclusive } from './exclusiveBranches';
 import { composedSchemaParts, generateSchema } from './generateSchema';
 import { generator as objectGenerator } from './objectGenerator';
 import { selectGenerator } from './selectGenerator';
@@ -35,6 +36,15 @@ export const generator = createGenerator<
 
 		if (subschemas.length === 1) {
 			return subschemas[0]!;
+		}
+
+		const exclusive = areMutuallyExclusive(schema.oneOf, {
+			dialect: context.dialect,
+			isOpaque: (node) => context.customSchemaResolver?.(node) !== undefined,
+		});
+
+		if (exclusive) {
+			return ts`z.union([${subschemas.join(', ')}])`;
 		}
 
 		// `oneOf` matches exactly one branch, while `z.union()` accepts a value

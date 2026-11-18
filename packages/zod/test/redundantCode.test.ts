@@ -140,3 +140,99 @@ describe('an anyOf with a branch that accepts every value', () => {
 		expect(Root.safeParse({ type: 'int', value: 1 }).success).toBe(false);
 	});
 });
+
+describe('a oneOf whose branches cannot match the same value', () => {
+	const tag = (value: string, valueType: 'integer' | 'string'): JSONSchema => ({
+		type: 'object',
+		properties: { type: { type: 'string', const: value }, value: { type: valueType } },
+		required: ['type', 'value'],
+	});
+
+	test('different consts become a plain union', async () => {
+		await expect(
+			compile({
+				description: 'The kind of shape',
+				oneOf: [
+					{ description: 'A circle', type: 'string', const: 'circle' },
+					{ description: 'A square', type: 'string', const: 'square' },
+				],
+			})
+		).toMatchCode(ts`
+			export const Root = z
+				.union([
+					z.literal('circle').meta({ description: 'A circle' }),
+					z.literal('square').meta({ description: 'A square' }),
+				])
+				.meta({ description: 'The kind of shape' });
+			export type Root = z.infer<typeof Root>;
+		`);
+	});
+
+	test('objects with a different const on the same required property become a plain union', async () => {
+		await expect(compile({ oneOf: [tag('int', 'integer'), tag('text', 'string')] })).toMatchCode(ts`
+			export const Root = z.union([
+				z.object({ type: z.literal('int'), value: z.int() }),
+				z.object({ type: z.literal('text'), value: z.string() }),
+			]);
+			export type Root = z.infer<typeof Root>;
+		`);
+	});
+
+	test('branches of different types become a plain union', async () => {
+		await expect(compile({ oneOf: [{ type: 'string' }, { type: 'boolean' }, { enum: [1, 2] }] }))
+			.toMatchCode(ts`
+			export const Root = z.union([z.string(), z.boolean(), z.literal([1, 2])]);
+			export type Root = z.infer<typeof Root>;
+		`);
+	});
+
+	test('follows a $ref to tell the branches apart', async () => {
+		await expect(
+			compile({
+				oneOf: [{ $ref: '#/definitions/Int' }, { $ref: '#/definitions/Text' }],
+				definitions: { Int: tag('int', 'integer'), Text: tag('text', 'string') },
+			})
+		).toMatchCode(ts`
+			export const Text = z.object({ type: z.literal('text'), value: z.string() });
+			export type Text = z.infer<typeof Text>;
+
+			export const Int = z.object({ type: z.literal('int'), value: z.int() });
+			export type Int = z.infer<typeof Int>;
+
+			export const Root = z.union([Int, Text]);
+			export type Root = z.infer<typeof Root>;
+		`);
+	});
+
+	test.each<[string, JSONSchema[]]>([
+		['enums share a value', [{ enum: ['a', 'b'] }, { enum: ['b', 'c'] }]],
+		['an integer is also a number', [{ type: 'integer' }, { type: 'number' }]],
+		['a const has the type of the other branch', [{ const: 'a' }, { type: 'string' }]],
+		[
+			'the tag is not required',
+			[
+				{ type: 'object', properties: { kind: { const: 'a' } } },
+				{ type: 'object', properties: { kind: { const: 'b' } } },
+			],
+		],
+		[
+			'non-objects match both tagged branches',
+			[
+				{ properties: { kind: { const: 'a' } }, required: ['kind'] },
+				{ properties: { kind: { const: 'b' } }, required: ['kind'] },
+			],
+		],
+		['a branch has no constraint', [{ const: 'a' }, {}]],
+	])('keeps the exactly-one check when %s', async (_, oneOf) => {
+		expect(await compile({ oneOf })).toContain('oneOfSchema([');
+	});
+
+	test('the union accepts and rejects the same values as oneOf', async () => {
+		const Root = await compileToZod({ oneOf: [tag('int', 'integer'), tag('text', 'string')] });
+
+		expect(Root.safeParse({ type: 'int', value: 1 }).success).toBe(true);
+		expect(Root.safeParse({ type: 'text', value: 'a' }).success).toBe(true);
+		expect(Root.safeParse({ type: 'int', value: 'a' }).success).toBe(false);
+		expect(Root.safeParse({ type: 'other', value: 1 }).success).toBe(false);
+	});
+});
