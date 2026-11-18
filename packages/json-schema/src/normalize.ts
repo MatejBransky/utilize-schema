@@ -7,7 +7,7 @@ import {
 	type DialectOptions,
 	type DialectSource,
 	formatIssue,
-	keywordIssue,
+	keywordIssues,
 	resolveDialect,
 	type ResolvedDialect,
 } from './dialect';
@@ -130,13 +130,16 @@ export function prepareSchema(schema: unknown, options: PrepareSchemaOptions = {
 
 		map.set(node, resolved);
 
-		const issue = keywordIssue(node, resolved.dialect);
-		const bestEffortUnevaluated =
-			resolved.source === 'fallback' &&
-			(issue?.keyword === 'unevaluatedProperties' || issue?.keyword === 'unevaluatedItems');
+		for (const issue of keywordIssues(node, resolved.dialect)) {
+			// Without a declared dialect `unevaluated*` is mapped best effort
+			// (see `normalizeNode`), so it is not reported.
+			const bestEffortUnevaluated =
+				resolved.source === 'fallback' &&
+				(issue.keyword === 'unevaluatedProperties' || issue.keyword === 'unevaluatedItems');
 
-		if (issue && !bestEffortUnevaluated) {
-			report({ ...issue, path }, resolved);
+			if (!bestEffortUnevaluated) {
+				report({ ...issue, path }, resolved);
+			}
 		}
 
 		normalizeNode(node, resolved.dialect, resolved.source);

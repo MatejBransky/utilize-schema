@@ -430,56 +430,40 @@ export function isKeywordApplicable(dialect: Dialect, keyword: string): boolean 
 	return dialect.keywords.has(keyword);
 }
 
-/** Describes why a keyword does not belong to the dialect. */
-export function keywordIssue(
-	schema: Record<string, unknown>,
-	dialect: Dialect
-):
-	| {
-			kind: 'unknown-keyword' | 'invalid-keyword' | 'ignored-ref-siblings';
-			keyword?: string;
-			message: string;
-	  }
-	| undefined {
+type KeywordIssue = Pick<DialectIssue, 'kind' | 'keyword' | 'message'>;
+
+/** Lists every keyword of a node that does not belong to the dialect. */
+export function keywordIssues(schema: Record<string, unknown>, dialect: Dialect): KeywordIssue[] {
+	const issues: KeywordIssue[] = [];
+
 	for (const { keyword, applies } of keywordsThatNeed) {
 		if (schema[keyword] !== undefined && !applies(dialect)) {
-			return {
+			issues.push({
 				kind: 'unknown-keyword',
 				keyword,
 				message: `"${keyword}" is not part of ${dialect.label}.`,
-			};
+			});
 		}
 	}
 
 	if (Array.isArray(schema.items) && dialect.tuple === 'prefixItems') {
-		return {
+		issues.push({
 			kind: 'invalid-keyword',
 			keyword: 'items',
 			message: `The tuple form of "items" was removed in ${dialect.label}; use "prefixItems".`,
-		};
+		});
 	}
 
 	for (const keyword of ['exclusiveMinimum', 'exclusiveMaximum'] as const) {
 		const value = schema[keyword];
+		const expected = dialect.exclusiveBounds === 'numeric' ? 'number' : 'boolean';
 
-		if (value === undefined) {
-			continue;
-		}
-
-		if (dialect.exclusiveBounds === 'numeric' && typeof value !== 'number') {
-			return {
+		if (value !== undefined && typeof value !== expected) {
+			issues.push({
 				kind: 'invalid-keyword',
 				keyword,
-				message: `"${keyword}" must be a number in ${dialect.label}.`,
-			};
-		}
-
-		if (dialect.exclusiveBounds === 'boolean' && typeof value !== 'boolean') {
-			return {
-				kind: 'invalid-keyword',
-				keyword,
-				message: `"${keyword}" must be a boolean in ${dialect.label}.`,
-			};
+				message: `"${keyword}" must be a ${expected} in ${dialect.label}.`,
+			});
 		}
 	}
 
@@ -490,17 +474,17 @@ export function keywordIssue(
 		);
 
 		if (siblings.length > 0) {
-			return {
+			issues.push({
 				kind: 'ignored-ref-siblings',
 				keyword: siblings[0],
 				message: `${dialect.label} ignores keywords next to "$ref": ${siblings
 					.map((keyword) => `"${keyword}"`)
 					.join(', ')}.`,
-			};
+			});
 		}
 	}
 
-	return undefined;
+	return issues;
 }
 
 function isReferenceAnnotation(keyword: string): boolean {

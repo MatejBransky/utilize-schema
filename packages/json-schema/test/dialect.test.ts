@@ -287,6 +287,33 @@ describe('prepareSchema', () => {
 		]);
 	});
 
+	test('reports every foreign keyword on a node', () => {
+		const issues: DialectIssue[] = [];
+
+		prepareSchema(
+			{
+				$schema: draft07,
+				type: 'array',
+				prefixItems: [{ type: 'string' }],
+				dependentRequired: { a: ['b'] },
+			},
+			{ onDialectIssue: (issue) => issues.push(issue) }
+		);
+
+		expect(issues.map((issue) => issue.keyword)).toEqual(['prefixItems', 'dependentRequired']);
+	});
+
+	test('keeps reporting other issues next to a best-effort unevaluated keyword', () => {
+		const issues: DialectIssue[] = [];
+
+		prepareSchema(
+			{ type: 'number', minimum: 0, exclusiveMinimum: true, unevaluatedProperties: false },
+			{ onDialectIssue: (issue) => issues.push(issue) }
+		);
+
+		expect(issues.map((issue) => issue.keyword)).toEqual(['exclusiveMinimum']);
+	});
+
 	test('still rejects unsupported keywords of the dialect with keywordPolicy ignore', () => {
 		expect(() =>
 			prepareSchema(
