@@ -3,6 +3,7 @@ import {
 	dialectOf,
 	type ParsedJSONSchema,
 	type ParsedJSONSchemaObject,
+	withSourceMeta,
 } from '@utilize/json-schema';
 
 import { generator as refGenerator } from './refGenerator';
@@ -222,7 +223,7 @@ function withoutKeys(
 	schema: ParsedJSONSchemaObject,
 	keys: readonly string[]
 ): ParsedJSONSchemaObject {
-	const clone = { ...schema } as unknown as Record<string, unknown>;
+	const clone = withSourceMeta(schema, { ...schema }) as unknown as Record<string, unknown>;
 
 	for (const key of keys) {
 		delete clone[key];

@@ -102,6 +102,28 @@ describe('$ref siblings', () => {
 		expect(Root.safeParse({ list: [1, 1] }).success).toBe(false);
 	});
 
+	test('value types keep the dialect of an embedded resource', async () => {
+		const schema = {
+			$schema: draft07,
+			definitions: {
+				List: {
+					$schema: twentyTwentyTwelve,
+					type: 'array',
+					items: {
+						$ref: '#/definitions/List',
+						type: 'array',
+						prefixItems: [{ type: 'string' }],
+					},
+				},
+			},
+			$ref: '#/definitions/List',
+		} as unknown as JSONSchema;
+
+		await expect(compile(schema)).resolves.toContain(
+			'type ListValue = (ListValue & [string?, ...unknown[]])[];'
+		);
+	});
+
 	test('2020-12 generates an intersection', async () => {
 		await expect(compile(refWithSiblings(twentyTwentyTwelve))).resolves.toContain('.intersection(');
 		await expect(compile(refWithSiblings(draft07))).resolves.not.toContain('.intersection(');

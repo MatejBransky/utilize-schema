@@ -1,4 +1,4 @@
-import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
+import { type ParsedJSONSchemaObject, withSourceMeta } from '@utilize/json-schema';
 
 /** Keys that describe a node rather than constrain its value. */
 const REF_ANNOTATIONS = new Set([
@@ -38,5 +38,5 @@ export function referenceConstraints(schema: ParsedJSONSchemaObject): ParsedJSON
 		}
 	}
 
-	return rest as unknown as ParsedJSONSchemaObject;
+	return withSourceMeta(schema, rest) as unknown as ParsedJSONSchemaObject;
 }

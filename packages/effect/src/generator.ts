@@ -6,6 +6,7 @@ import {
 	Meta,
 	type ParsedJSONSchema,
 	type ParsedJSONSchemaObject,
+	withSourceMeta,
 } from '@utilize/json-schema';
 
 import { collectStandaloneSchemas, type SchemaEdge } from './collectStandaloneSchemas';
@@ -276,7 +277,7 @@ function generateExpression(schema: ParsedJSONSchemaObject, context: Context): s
 		const branches = [
 			target as ParsedJSONSchemaObject,
 			...(Array.isArray(rest.allOf) ? rest.allOf : []),
-			{ ...rest, allOf: undefined } as unknown as ParsedJSONSchemaObject,
+			withSourceMeta(schema, { ...rest, allOf: undefined }) as unknown as ParsedJSONSchemaObject,
 		];
 
 		return generateIntersection(branches, context);
