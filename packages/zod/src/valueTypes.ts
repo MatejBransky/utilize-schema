@@ -22,6 +22,7 @@ import { generator as recordGenerator } from './generators/recordGenerator';
 import { generator as refGenerator } from './generators/refGenerator';
 import { composedSchemaParts, refSiblingConstraints } from './generators/generateSchema';
 import { selectGenerator } from './generators/selectGenerator';
+import type { CustomSchemaResolver } from './generators/types';
 import { generator as stringGenerator } from './generators/stringGenerator';
 import { generator as tupleGenerator, tupleItems, tupleRest } from './generators/tupleGenerator';
 
@@ -38,6 +39,8 @@ export interface ValueTypeContext {
 	typeNameFor(schema: ParsedJSONSchemaObject): string;
 	/** Mirror `readOnlyKeyword` in the value types. */
 	readOnlyKeyword?: boolean;
+	/** Nodes it replaces hold caller code of an unknown type, so they render as `unknown`. */
+	customSchemaResolver?: CustomSchemaResolver;
 }
 
 /**
@@ -49,6 +52,10 @@ export function renderValueTypeDeclaration(
 	schema: ParsedJSONSchemaObject,
 	context: ValueTypeContext
 ): string {
+	if (isResolvedByCaller(schema, context)) {
+		return `type ${name} = unknown;`;
+	}
+
 	if (context.readOnlyKeyword && schema.readOnly === true) {
 		return `type ${name} = ${renderType(schema, context)};`;
 	}
@@ -62,9 +69,18 @@ export function renderValueTypeDeclaration(
 	return `type ${name} = ${renderType(schema, context)};`;
 }
 
+/** True when `customSchemaResolver` replaces the node with an expression of its own. */
+function isResolvedByCaller(schema: ParsedJSONSchemaObject, context: ValueTypeContext): boolean {
+	return context.customSchemaResolver?.(schema) !== undefined;
+}
+
 function renderType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): string {
 	if (typeof schema !== 'object' || schema === null) {
 		return schema ? 'unknown' : 'never';
+	}
+
+	if (isResolvedByCaller(schema, context)) {
+		return 'unknown';
 	}
 
 	const dialect = dialectOf(schema, context.dialect);

@@ -99,6 +99,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 
 	const valueTypeContext: ValueTypeContext = {
 		dialect: dialectOf(root),
+		customSchemaResolver: options.customSchemaResolver,
 		aliasFor: (schema) => {
 			if (!cyclicSchemas.has(schema)) {
 				return undefined;

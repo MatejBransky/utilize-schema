@@ -298,7 +298,53 @@ describe('generated recursive schemas type-check', () => {
 			)
 		).resolves.toBeUndefined();
 	});
+
+	test('type-check nodes replaced by customSchemaResolver', async () => {
+		await expect(
+			typeCheck(
+				{
+					'Plain.ts': { type: 'object', properties: { created: dateTime } },
+					'RecursiveObject.ts': {
+						type: 'object',
+						properties: {
+							created: dateTime,
+							children: { type: 'array', items: { $ref: '#' } },
+						},
+						required: ['created'],
+					},
+					'RecursiveTypeList.ts': {
+						type: 'object',
+						properties: {
+							created: { ...dateTime, type: ['string', 'null'] },
+							next: { $ref: '#' },
+						},
+					},
+					'ReplacedReference.ts': {
+						type: 'object',
+						properties: { children: { type: 'array', items: { $ref: '#', title: 'Child' } } },
+					},
+					'ReplacedRecursiveRoot.ts': {
+						type: 'object',
+						title: 'Replaced',
+						properties: { children: { type: 'array', items: { $ref: '#' } } },
+					},
+				},
+				{
+					customSchemaResolver: (schema) =>
+						schema.type === 'string' && schema.format === 'date-time'
+							? 'z.coerce.date()'
+							: schema.title === 'Child'
+								? 'z.number()'
+								: schema.title === 'Replaced'
+									? 'z.string()'
+									: undefined,
+				}
+			)
+		).resolves.toBeUndefined();
+	});
 });
+
+const dateTime: JSONSchema = { type: 'string', format: 'date-time' };
 
 async function typeCheck(schemas: Record<string, JSONSchema>, options: CompileOptions = {}) {
 	const directory = await mkdtemp(join(__dirname, '__generated__-'));
