@@ -194,18 +194,13 @@ export default function App() {
 						onDialectIssue: () => {},
 					});
 
-					const rawCode = generateCodeFor(
-						target,
-						root,
-						exampleId ? exampleGeneratorOptions[exampleId] : undefined
-					);
+					const generatorOptions = exampleId ? exampleGeneratorOptions[exampleId] : undefined;
+					const rawCode = generateCodeFor(target, root, generatorOptions);
+					const formatCode =
+						generatorOptions?.format ??
+						((source: string) => formatTypeScript(source).catch(() => source));
 
-					const exampleOptions = exampleId ? exampleGeneratorOptions[exampleId] : undefined;
-					const formatted = exampleOptions?.format
-						? await exampleOptions.format(rawCode)
-						: await formatTypeScript(rawCode).catch(() => rawCode);
-
-					nextCode = cancelled ? nextCode : formatted;
+					nextCode = cancelled ? nextCode : await formatCode(rawCode);
 				} catch (error) {
 					nextProblems.push({
 						severity: 'error',
