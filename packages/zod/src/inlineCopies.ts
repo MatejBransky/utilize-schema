@@ -20,12 +20,27 @@ const compositeKeywords = [
 	'if',
 ] as const;
 
+export interface InlineCopiesResult {
+	/** Every inline subschema that is generated as a reference instead. */
+	copies: InlineCopies;
+	/**
+	 * Declarations created for inline subschemas that repeat without a named
+	 * schema, in the order their first copy appears.
+	 */
+	hoisted: ParsedJSONSchemaObject[];
+}
+
 /**
- * Finds inline subschemas that are identical to a standalone schema, e.g. a
- * `oneOf` that schemars inlined next to the definition it came from. The
- * generator refers to the standalone schema instead of generating the copy
- * again. Only schemas with subschemas count: a lone `{ "type": "string" }` is
- * shorter than a reference.
+ * Finds inline subschemas that the generator refers to instead of generating
+ * them again:
+ *
+ * - a copy of a standalone schema, e.g. a `oneOf` that schemars inlined next to
+ *   the definition it came from, refers to that schema;
+ * - a subschema that appears several times but has no named schema is hoisted
+ *   into a declaration of its own, which every copy refers to.
+ *
+ * Only schemas with subschemas count: a lone `{ "type": "string" }` is shorter
+ * than a reference.
  *
  * Two schemas are identical when they have the same keywords and values, the
  * same dialect, and every `$ref` resolves to the same schema.
@@ -33,42 +48,179 @@ const compositeKeywords = [
 export function findInlineCopies(
 	standaloneSchemas: ParsedJSONSchemaObject[],
 	isOpaque: (schema: ParsedJSONSchemaObject) => boolean
-): InlineCopies {
+): InlineCopiesResult {
 	const keys = new StructuralKeys();
 	const containsOpaque = opaqueSubtreeCheck(isOpaque);
-	const standalone = new Set(standaloneSchemas);
+	const isCandidate = (schema: ParsedJSONSchemaObject) =>
+		isComposite(schema) && !containsOpaque(schema);
 	const declarations = new Map<string, ParsedJSONSchemaObject>();
-	const copies = new Map<ParsedJSONSchemaObject, ParsedJSONSchemaObject>();
 
 	for (const schema of standaloneSchemas) {
 		const key = keys.of(schema);
 
-		if (isComposite(schema) && !containsOpaque(schema) && !declarations.has(key)) {
+		if (isCandidate(schema) && !declarations.has(key)) {
 			declarations.set(key, schema);
 		}
 	}
 
-	function visit(schema: ParsedJSONSchemaObject) {
+	const copies = new Map<ParsedJSONSchemaObject, ParsedJSONSchemaObject>();
+	const inline = collectInlineCandidates(standaloneSchemas, isCandidate, keys, declarations);
+
+	for (const [key, occurrences] of inline.occurrences) {
+		const declaration = declarations.get(key);
+
+		if (declaration) {
+			for (const occurrence of occurrences) {
+				copies.set(occurrence, declaration);
+			}
+		}
+	}
+
+	const hoisted = hoistRepeatedSchemas(inline, declarations, copies);
+
+	return { copies, hoisted };
+}
+
+interface InlineCandidates {
+	/** Inline candidates grouped by structural key, in the order they appear. */
+	occurrences: Map<string, ParsedJSONSchemaObject[]>;
+	/** The nearest enclosing inline candidate of each candidate. */
+	enclosing: Map<ParsedJSONSchemaObject, ParsedJSONSchemaObject>;
+	/** Position of each candidate in a depth-first walk. */
+	order: Map<ParsedJSONSchemaObject, number>;
+}
+
+/**
+ * Collects the inline subschemas that may become a reference. A subschema
+ * inside a copy of a standalone schema is generated as part of that schema, so
+ * the walk does not enter such a copy.
+ */
+function collectInlineCandidates(
+	standaloneSchemas: ParsedJSONSchemaObject[],
+	isCandidate: (schema: ParsedJSONSchemaObject) => boolean,
+	keys: StructuralKeys,
+	declarations: ReadonlyMap<string, ParsedJSONSchemaObject>
+): InlineCandidates {
+	const standalone = new Set(standaloneSchemas);
+	const candidates: InlineCandidates = {
+		occurrences: new Map(),
+		enclosing: new Map(),
+		order: new Map(),
+	};
+
+	function visit(schema: ParsedJSONSchemaObject, enclosing: ParsedJSONSchemaObject | undefined) {
 		for (const child of childSchemasOf(schema)) {
-			if (typeof child !== 'object' || child === null || standalone.has(child)) {
+			if (standalone.has(child)) {
 				continue;
 			}
 
-			const declaration = isComposite(child) ? declarations.get(keys.of(child)) : undefined;
+			if (!isCandidate(child)) {
+				visit(child, enclosing);
+				continue;
+			}
 
-			if (declaration && !containsOpaque(child)) {
-				copies.set(child, declaration);
+			const key = keys.of(child);
+			const occurrences = candidates.occurrences.get(key);
+
+			if (occurrences) {
+				occurrences.push(child);
 			} else {
-				visit(child);
+				candidates.occurrences.set(key, [child]);
+			}
+
+			candidates.order.set(child, candidates.order.size);
+
+			if (enclosing) {
+				candidates.enclosing.set(child, enclosing);
+			}
+
+			if (!declarations.has(key)) {
+				visit(child, child);
 			}
 		}
 	}
 
 	for (const schema of standaloneSchemas) {
-		visit(schema);
+		visit(schema, undefined);
 	}
 
-	return copies;
+	return candidates;
+}
+
+/**
+ * Creates a declaration for every inline subschema that is generated at least
+ * twice and adds its copies to `copies`. A subschema counts only where it is
+ * generated: inside the first copy of a hoisted schema, which becomes the
+ * declaration, but not inside the other copies, which become references.
+ */
+function hoistRepeatedSchemas(
+	{ occurrences, enclosing, order }: InlineCandidates,
+	declarations: ReadonlyMap<string, ParsedJSONSchemaObject>,
+	copies: Map<ParsedJSONSchemaObject, ParsedJSONSchemaObject>
+): ParsedJSONSchemaObject[] {
+	/** Each hoisted declaration and the first copy it was made from. */
+	const hoisted = new Map<ParsedJSONSchemaObject, ParsedJSONSchemaObject>();
+
+	const isGenerated = (schema: ParsedJSONSchemaObject) => {
+		for (let outer = enclosing.get(schema); outer; outer = enclosing.get(outer)) {
+			const declaration = copies.get(outer);
+
+			if (declaration && hoisted.get(declaration) !== outer) {
+				return false;
+			}
+		}
+
+		return true;
+	};
+
+	// A schema's key contains the keys of its subschemas, so sorting by length
+	// decides every schema before the schemas inside it.
+	const repeated = [...occurrences]
+		.filter(([key, schemas]) => schemas.length > 1 && !declarations.has(key))
+		// eslint-disable-next-line unicorn/no-array-sort -- spread creates a fresh array
+		.sort(([a], [b]) => b.length - a.length);
+
+	for (const [, schemas] of repeated) {
+		const generated = schemas.filter(isGenerated);
+
+		if (generated.length < 2) {
+			continue;
+		}
+
+		const source = generated[0]!;
+		const declaration = declarationFrom(source);
+		hoisted.set(declaration, source);
+
+		for (const schema of generated) {
+			copies.set(schema, declaration);
+		}
+	}
+
+	return (
+		[...hoisted]
+			.map(([declaration, source]) => ({ declaration, position: order.get(source)! }))
+			// eslint-disable-next-line unicorn/no-array-sort -- map creates a fresh array
+			.sort((a, b) => a.position - b.position)
+			.map(({ declaration }) => declaration)
+	);
+}
+
+/**
+ * A declaration with the keywords of its first copy. It is a new object, so the
+ * generator can tell the declaration from the reference that replaces the copy.
+ */
+function declarationFrom(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject {
+	const { isCircular: _isCircular, resolvedName: _resolvedName, ...meta } = schema[Meta];
+	const declaration = { ...schema };
+
+	Object.defineProperty(declaration, Meta, {
+		enumerable: false,
+		configurable: true,
+		writable: true,
+		value: meta,
+	});
+
+	return declaration as ParsedJSONSchemaObject;
 }
 
 /**

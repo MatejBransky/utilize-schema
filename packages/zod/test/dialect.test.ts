@@ -119,8 +119,9 @@ describe('$ref siblings', () => {
 			$ref: '#/definitions/List',
 		} as unknown as JSONSchema;
 
+		// The parser inlines the root `$ref`, so the items repeat and get a declaration.
 		await expect(compile(schema)).resolves.toContain(
-			'type ListValue = (ListValue & [string?, ...unknown[]])[];'
+			'type ListItemValue = ListValue & [string?, ...unknown[]];'
 		);
 	});
 

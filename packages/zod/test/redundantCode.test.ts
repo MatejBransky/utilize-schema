@@ -354,3 +354,235 @@ describe('an inline subschema identical to a named schema', () => {
 		expect(Root.safeParse({ wrapper: { node: { next: { node: 1 } } } }).success).toBe(false);
 	});
 });
+
+describe('an inline subschema repeated without a named schema', () => {
+	const point: JSONSchema = {
+		type: 'object',
+		properties: { x: { type: 'number' }, y: { type: 'number' } },
+		required: ['x', 'y'],
+	};
+
+	test('is declared once and referenced where it appears', async () => {
+		await expect(
+			compile({
+				type: 'object',
+				properties: { start: structuredClone(point), end: structuredClone(point) },
+			})
+		).toMatchCode(ts`
+			export const Start = z.object({ x: z.number(), y: z.number() });
+			export type Start = z.infer<typeof Start>;
+
+			export const Root = z.object({ start: Start.optional(), end: Start.optional() });
+			export type Root = z.infer<typeof Root>;
+		`);
+	});
+
+	test('validates every place it appears', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: { start: structuredClone(point), end: structuredClone(point) },
+		});
+
+		expect(Root.safeParse({ start: { x: 1, y: 2 }, end: { x: 3, y: 4 } }).success).toBe(true);
+		expect(Root.safeParse({ start: { x: 1, y: 2 }, end: { x: 3 } }).success).toBe(false);
+		expect(Root.safeParse({ start: { x: '1', y: 2 } }).success).toBe(false);
+	});
+
+	test('is shared between named schemas', async () => {
+		await expect(
+			compile({
+				type: 'object',
+				properties: { a: { $ref: '#/definitions/A' }, b: { $ref: '#/definitions/B' } },
+				definitions: {
+					A: { type: 'object', properties: { position: structuredClone(point) } },
+					B: { type: 'object', properties: { location: structuredClone(point) } },
+				},
+			})
+		).toMatchCode(ts`
+			export const Position = z.object({ x: z.number(), y: z.number() });
+			export type Position = z.infer<typeof Position>;
+
+			export const B = z.object({ location: Position.optional() });
+			export type B = z.infer<typeof B>;
+
+			export const A = z.object({ position: Position.optional() });
+			export type A = z.infer<typeof A>;
+
+			export const Root = z.object({ a: A.optional(), b: B.optional() });
+			export type Root = z.infer<typeof Root>;
+		`);
+	});
+
+	test('is named after its title', async () => {
+		const titled = { ...structuredClone(point), title: 'Point' };
+		const code = await compile({
+			type: 'object',
+			properties: { start: titled, end: structuredClone(titled) },
+		});
+
+		expect(code).toContain('export const Point = z');
+		expect(code).toContain('start: Point.optional(), end: Point.optional()');
+	});
+
+	test('is named after array items and map values', async () => {
+		const code = await compile({
+			type: 'object',
+			properties: {
+				tags: { type: 'array', items: structuredClone(point) },
+				byName: { type: 'object', additionalProperties: structuredClone(point) },
+			},
+		});
+
+		expect(code).toContain('export const TagsItem = z.object({ x: z.number(), y: z.number() });');
+		expect(code).toContain('tags: z.array(TagsItem).optional()');
+		expect(code).toContain('byName: z.record(z.string(), TagsItem).optional()');
+	});
+
+	test('takes a free name next to a named schema', async () => {
+		await expect(
+			compile({
+				type: 'object',
+				properties: {
+					start: structuredClone(point),
+					end: structuredClone(point),
+					other: { $ref: '#/definitions/Start' },
+				},
+				definitions: { Start: { type: 'string' } },
+			})
+		).toMatchCode(ts`
+			export const Start = z.string();
+			export type Start = z.infer<typeof Start>;
+
+			export const Start1 = z.object({ x: z.number(), y: z.number() });
+			export type Start1 = z.infer<typeof Start1>;
+
+			export const Root = z.object({
+				start: Start1.optional(),
+				end: Start1.optional(),
+				other: Start.optional(),
+			});
+			export type Root = z.infer<typeof Root>;
+		`);
+	});
+
+	test('passes the hoisted name through schemaName and typeName', async () => {
+		const code = await compile(
+			{
+				type: 'object',
+				properties: { start: structuredClone(point), end: structuredClone(point) },
+			},
+			{ schemaName: (name) => `${name}Schema`, typeName: (name) => `${name}Type` }
+		);
+
+		expect(code).toContain('export const StartSchema = z.object(');
+		expect(code).toContain('export type StartType = z.infer<typeof StartSchema>;');
+		expect(code).toContain('start: StartSchema.optional(), end: StartSchema.optional()');
+	});
+
+	test('declares only the outer schema when the inner one repeats only inside it', async () => {
+		const line: JSONSchema = {
+			type: 'object',
+			properties: { from: structuredClone(point), to: structuredClone(point) },
+		};
+
+		await expect(
+			compile({
+				type: 'object',
+				properties: { first: structuredClone(line), second: structuredClone(line) },
+			})
+		).toMatchCode(ts`
+			export const From = z.object({ x: z.number(), y: z.number() });
+			export type From = z.infer<typeof From>;
+
+			export const First = z.object({ from: From.optional(), to: From.optional() });
+			export type First = z.infer<typeof First>;
+
+			export const Root = z.object({ first: First.optional(), second: First.optional() });
+			export type Root = z.infer<typeof Root>;
+		`);
+	});
+
+	test('declares an inner schema that repeats once inside an outer one and once elsewhere', async () => {
+		const line: JSONSchema = { type: 'object', properties: { from: structuredClone(point) } };
+
+		await expect(
+			compile({
+				type: 'object',
+				properties: {
+					first: structuredClone(line),
+					second: structuredClone(line),
+					center: structuredClone(point),
+				},
+			})
+		).toMatchCode(ts`
+			export const From = z.object({ x: z.number(), y: z.number() });
+			export type From = z.infer<typeof From>;
+
+			export const First = z.object({ from: From.optional() });
+			export type First = z.infer<typeof First>;
+
+			export const Root = z.object({
+				first: First.optional(),
+				second: First.optional(),
+				center: From.optional(),
+			});
+			export type Root = z.infer<typeof Root>;
+		`);
+	});
+
+	test('keeps a single keyword such as a type inline', async () => {
+		await expect(
+			compile({
+				type: 'object',
+				properties: { a: { type: 'string' }, b: { type: 'string' } },
+			})
+		).toMatchCode(ts`
+			export const Root = z.object({ a: z.string().optional(), b: z.string().optional() });
+			export type Root = z.infer<typeof Root>;
+		`);
+	});
+
+	test('keeps the copies when customSchemaResolver replaces a node inside one', async () => {
+		const code = await compile(
+			{
+				type: 'object',
+				properties: { start: structuredClone(point), end: structuredClone(point) },
+			},
+			{
+				customSchemaResolver: (schema) =>
+					schema[Meta].path.join('/') === 'properties/end/properties/x'
+						? "z.literal('custom')"
+						: undefined,
+			}
+		);
+
+		expect(code).not.toContain('export const Start');
+		expect(code).toContain("x: z.literal('custom')");
+	});
+
+	test('breaks a cycle through a repeated array of the recursive schema', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: {
+				left: { type: 'array', items: { $ref: '#' } },
+				right: { type: 'array', items: { $ref: '#' } },
+			},
+		});
+
+		expect(Root.safeParse({ left: [{ right: [{}] }], right: [] }).success).toBe(true);
+		expect(Root.safeParse({ left: [{ right: [1] }] }).success).toBe(false);
+	});
+
+	test('breaks a cycle through a repeated record of the recursive schema with z.lazy', async () => {
+		const Root = await compileToZod({
+			type: 'array',
+			items: [
+				{ type: 'object', additionalProperties: { type: 'array', items: { $ref: '#' } } },
+				{ type: 'object', additionalProperties: { type: 'array', items: { $ref: '#' } } },
+			],
+		});
+
+		expect(Root.safeParse([{ a: [[]] }, { b: [] }]).success).toBe(true);
+		expect(Root.safeParse([{ a: [[1]] }]).success).toBe(false);
+	});
+});

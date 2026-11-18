@@ -59,13 +59,13 @@ export function breakReferenceCycles(
 		// outright. If it cannot be deferred with a getter, look for any other
 		// $ref on the cycle that can. When none can, fall back to z.lazy().
 		const circularRef =
-			isBreakable(backEdge[0]) && isPropertyBacked(backEdge[0], standaloneSchemas)
+			isBreakable(backEdge[0]) && isPropertyBacked(backEdge[0], standaloneSchemas, copies)
 				? backEdge[0]
-				: (refs.find((ref) => isPropertyBacked(ref, standaloneSchemas)) ?? refs[0]!);
+				: (refs.find((ref) => isPropertyBacked(ref, standaloneSchemas, copies)) ?? refs[0]!);
 
 		circularRef[Meta].isCircular = true;
 
-		if (!isPropertyBacked(circularRef, standaloneSchemas)) {
+		if (!isPropertyBacked(circularRef, standaloneSchemas, copies)) {
 			lazyRefs.add(circularRef);
 		}
 

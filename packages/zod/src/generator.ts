@@ -18,6 +18,7 @@ export type { CustomSchemaResolver, FormatMap } from './generators/types';
 import {
 	allocateName,
 	mapDeclarationNames,
+	resolveHoistedName,
 	resolveName,
 	type CustomNameResolver,
 	type DeclarationNames,
@@ -65,7 +66,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		});
 	}
 
-	const copies = findInlineCopies(collectStandaloneSchemas(root).schemas, (schema) =>
+	const { copies, hoisted } = findInlineCopies(collectStandaloneSchemas(root).schemas, (schema) =>
 		isResolvedByCaller(options.customSchemaResolver, schema)
 	);
 	const { schemas: standaloneSchemas, edges } = collectStandaloneSchemas(root, copies);
@@ -81,8 +82,12 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		.filter((schema) => standaloneSchemas.includes(schema))
 		.reverse();
 
+	const hoistedSet = new Set(hoisted);
 	const { names, typeNames } = nameDeclarations(
-		[...sorted, ...standaloneSchemas.filter((schema) => !sorted.includes(schema))],
+		[...sorted, ...standaloneSchemas.filter((schema) => !sorted.includes(schema))].filter(
+			(schema) => !hoistedSet.has(schema)
+		),
+		hoisted,
 		options
 	);
 	const aliases = new Map<ParsedJSONSchemaObject, string>();
@@ -166,13 +171,22 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
  * stay unique among themselves, then the mapped names, which are allocated only
  * once every resolved name is known. A mapped name therefore never depends on
  * the order in which schemas are generated.
+ *
+ * Hoisted schemas are named last, so a schema the input names keeps its name
+ * and a hoisted one takes the next free name.
  */
-function nameDeclarations(schemas: ParsedJSONSchemaObject[], options: GenerateOptions) {
+function nameDeclarations(
+	namedSchemas: ParsedJSONSchemaObject[],
+	hoistedSchemas: ParsedJSONSchemaObject[],
+	options: GenerateOptions
+) {
 	const usedResolvedNames = new Set(RESERVED_NAMES);
-	const resolvedNames = schemas.map((schema) => {
+	const schemas = [...namedSchemas, ...hoistedSchemas];
+	const resolvedNames = schemas.map((schema, index) => {
+		const resolve = index < namedSchemas.length ? resolveName : resolveHoistedName;
 		const resolvedName =
 			schema[Meta].resolvedName ??
-			resolveName({
+			resolve({
 				schema,
 				usedNames: usedResolvedNames,
 				customResolver: options.customNameResolver,

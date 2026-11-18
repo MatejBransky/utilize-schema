@@ -45,6 +45,26 @@ const refWithIgnoredLiteralSchema: JSONSchema = {
 	definitions: { Kind: { type: 'string' } },
 };
 
+/** Both arrays of the recursive schema are hoisted into one declaration. */
+const hoistedCycleSchema: JSONSchema = {
+	type: 'object',
+	properties: {
+		name: { type: 'string' },
+		left: { type: 'array', items: { $ref: '#' } },
+		right: { type: 'array', items: { $ref: '#' } },
+	},
+	required: ['name'],
+};
+
+/** The hoisted arrays sit in records, so the cycle is broken with `z.lazy()`. */
+const hoistedLazyCycleSchema: JSONSchema = {
+	type: 'array',
+	items: [
+		{ type: 'object', additionalProperties: { type: 'array', items: { $ref: '#' } } },
+		{ type: 'object', additionalProperties: { type: 'array', items: { $ref: '#' } } },
+	],
+};
+
 const objectArraySchema: JSONSchema = {
 	type: 'object',
 	properties: { list: { $ref: './definitions/ListCycle.json' } },
@@ -263,6 +283,8 @@ describe('generated recursive schemas type-check', () => {
 				'RecursivePatternProperties.ts': recursivePatternPropertiesSchema,
 				'InlineCopyCycle.ts': inlineCopyCycleSchema,
 				'RefWithIgnoredLiteral.ts': refWithIgnoredLiteralSchema,
+				'HoistedCycle.ts': hoistedCycleSchema,
+				'HoistedLazyCycle.ts': hoistedLazyCycleSchema,
 			})
 		).resolves.toBeUndefined();
 	});
