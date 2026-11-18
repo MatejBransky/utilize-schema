@@ -9,6 +9,19 @@ import { generateSchema, isTypedLiteral } from './generateSchema';
 
 import { NEWLINE, ts } from '../utils';
 
+/**
+ * `generateSchema` adds the metadata and the default to the whole union, so
+ * the branch for each type must not repeat them.
+ */
+const withoutUnionAnnotations = {
+	$id: undefined,
+	title: undefined,
+	description: undefined,
+	examples: undefined,
+	deprecated: undefined,
+	default: undefined,
+};
+
 export const generator = createGenerator<
 	ParsedJSONSchemaObject & {
 		type: JSONSchemaTypeName[];
@@ -18,7 +31,7 @@ export const generator = createGenerator<
 	(schema, context) => {
 		const subschemas = schema.type.map((type) =>
 			generateSchema(
-				withSourceMeta(schema, { ...schema, type, default: undefined, title: undefined }),
+				withSourceMeta(schema, { ...schema, type, ...withoutUnionAnnotations }),
 				context
 			)
 		);

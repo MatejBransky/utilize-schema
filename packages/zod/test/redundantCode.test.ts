@@ -57,3 +57,29 @@ describe('const and enum next to a type they already satisfy', () => {
 		expect(Root.safeParse('a').success).toBe(false);
 	});
 });
+
+describe('a type array with annotations', () => {
+	test('puts the annotations on the union only, not on every type', async () => {
+		await expect(
+			compile({
+				type: 'object',
+				properties: {
+					label: {
+						$id: 'label',
+						description: 'An optional label',
+						examples: ['a'],
+						type: ['string', 'null'],
+					},
+				},
+			})
+		).toMatchCode(ts`
+			export const Root = z.object({
+				label: z
+					.union([z.string(), z.null()])
+					.meta({ id: 'label', description: 'An optional label', examples: ['a'] })
+					.optional(),
+			});
+			export type Root = z.infer<typeof Root>;
+		`);
+	});
+});

@@ -189,17 +189,15 @@ type SchemaValue =
 	| boolean;
 export const Schema: z.ZodType<SchemaValue> = z
 	.union([
-		z
-			.object({
-				$id: z.string().optional(),
-				maxLength: NonNegativeInteger.optional(),
-				minLength: NonNegativeIntegerDefault0.optional(),
-				get items() {
-					return z.union([Schema, SchemaArray]).default(true);
-				},
-			})
-			.meta({ id: 'http://json-schema.org/draft-07/schema#' }),
-		z.boolean().meta({ id: 'http://json-schema.org/draft-07/schema#' }),
+		z.object({
+			$id: z.string().optional(),
+			maxLength: NonNegativeInteger.optional(),
+			minLength: NonNegativeIntegerDefault0.optional(),
+			get items() {
+				return z.union([Schema, SchemaArray]).default(true);
+			},
+		}),
+		z.boolean(),
 	])
 	.meta({ id: 'http://json-schema.org/draft-07/schema#', title: 'Core schema meta-schema' });
 export type Schema = z.infer<typeof Schema>;
