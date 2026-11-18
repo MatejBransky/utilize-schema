@@ -181,7 +181,7 @@ The suite is pinned to a commit and installed as a dev dependency. Each test
 case is compiled to a Zod schema in memory and every instance from the suite is
 run through `safeParse`.
 
-Today it passes **246 of 271 draft-07 cases (1,343 of 1,605 assertions)**.
+Today it passes **248 of 271 draft-07 cases (1,347 of 1,605 assertions)**.
 
 Cases the generator does not handle yet are listed in
 `test/suite/knownFailures.ts`, together with the exact instances that fail in

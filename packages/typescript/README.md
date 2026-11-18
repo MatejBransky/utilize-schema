@@ -160,14 +160,14 @@ pnpm test:suite # official JSON Schema Test Suite
 
 Current baseline on suite commit `e2a68a1`:
 
-- **173 of 288 cases** pass in both directions.
-- **794 of 820** spec-valid instances are accepted.
-- **215 of 794** spec-invalid instances are rejected.
+- **175 of 288 cases** pass in both directions.
+- **796 of 822** spec-valid instances are accepted.
+- **219 of 798** spec-invalid instances are rejected.
 - **100 cases** differ only because an invalid instance is accepted. TypeScript
   cannot express `minimum`, `pattern`, `format`, `uniqueItems`, `dependencies`,
   `if`/`then`/`else`, and similar value constraints, so these are inherent to
   the target.
-- **15 cases** are listed in `test/suite/knownGaps.ts`: 3 need URN resolution
+- **13 cases** are listed in `test/suite/knownGaps.ts`: 1 needs URN resolution
   from the shared parser, and 12 are the inference trade-off described below.
 
 The numbers are recorded in `test/suite/baseline.ts` and the test fails when
@@ -200,10 +200,10 @@ one accepted, 24 crashes and 2 invalid TypeScript files. Its instance totals are
 and case selections differ (257 groups there, 288 runnable cases here; this
 runner skips cases that need external schemas), so the numbers describe two
 different records rather than a score. On the same group metric the TypeScript
-generator is ahead (60.1% vs 54.9%), accepts more valid instances (96.8% vs
+generator is ahead (60.8% vs 54.9%), accepts more valid instances (96.8% vs
 95.0%), emits no invalid TypeScript and crashes only where the shared parser has
-the same URN resolution gap (3 cases vs 24). Instance-level invalid rejection is
-not comparable across the two revisions: this runner rejects 27.1% of 794
+the same URN resolution gap (1 case vs 24). Instance-level invalid rejection is
+not comparable across the two revisions: this runner rejects 27.4% of 798
 invalid instances, json-schema-to-typescript 57.9% of its 342, largely because
 the newer suite revision adds many more `format` cases that a type cannot
 reject.
