@@ -73,7 +73,7 @@ export const generateSchema = (schema: ParsedJSONSchema | undefined, context: Ge
  * True for a `$ref` node in a dialect that ignores every keyword next to the
  * reference (draft-07 and older), so no refinement may be applied to it.
  */
-function ignoresRefSiblings(schema: ParsedJSONSchemaObject, dialect: Dialect): boolean {
+export function ignoresRefSiblings(schema: ParsedJSONSchemaObject, dialect: Dialect): boolean {
 	return typeof schema.$ref === 'string' && dialect.refSiblings === 'ignore';
 }
 

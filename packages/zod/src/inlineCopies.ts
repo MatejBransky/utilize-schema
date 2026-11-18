@@ -1,6 +1,8 @@
-import { isPlainObject, Meta, type ParsedJSONSchemaObject } from '@utilize/json-schema';
+import { dialectOf, isPlainObject, Meta, type ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { childSchemasOf } from './collectStandaloneSchemas';
+import { withoutAlwaysValidAnyOf } from './generators/alwaysValidAnyOf';
+import { ignoresRefSiblings } from './generators/generateSchema';
 
 /** Inline subschemas mapped to the standalone schema they are identical to. */
 export type InlineCopies = ReadonlyMap<ParsedJSONSchemaObject, ParsedJSONSchemaObject>;
@@ -39,8 +41,8 @@ export interface InlineCopiesResult {
  * - a subschema that appears several times but has no named schema is hoisted
  *   into a declaration of its own, which every copy refers to.
  *
- * Only schemas with subschemas count: a lone `{ "type": "string" }` is shorter
- * than a reference.
+ * Only schemas whose generated code has subschemas count: a lone
+ * `{ "type": "string" }` is shorter than a reference.
  *
  * Two schemas are identical when they have the same keywords and values, the
  * same dialect, and every `$ref` resolves to the same schema.
@@ -122,7 +124,7 @@ function collectInlineCandidates(
 	};
 
 	function visit(schema: ParsedJSONSchemaObject, enclosing: ParsedJSONSchemaObject | undefined) {
-		for (const child of childSchemasOf(schema)) {
+		for (const child of generatedChildSchemasOf(schema)) {
 			if (standalone.has(child) || isOpaque(child)) {
 				continue;
 			}
@@ -261,7 +263,25 @@ function opaqueSubtreeCheck(
 }
 
 function isComposite(schema: ParsedJSONSchemaObject): boolean {
-	return compositeKeywords.some((keyword) => schema[keyword] !== undefined);
+	if (ignoresRefSiblings(schema, dialectOf(schema))) {
+		return false;
+	}
+
+	const generated = withoutAlwaysValidAnyOf(schema);
+
+	return compositeKeywords.some((keyword) => generated[keyword] !== undefined);
+}
+
+/**
+ * The subschemas the generator turns into code. It leaves out an `anyOf` that
+ * accepts every value and the keywords a dialect ignores next to a `$ref`.
+ */
+function generatedChildSchemasOf(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject[] {
+	if (ignoresRefSiblings(schema, dialectOf(schema))) {
+		return [];
+	}
+
+	return childSchemasOf(withoutAlwaysValidAnyOf(schema));
 }
 
 /** Serializes schemas so that identical schemas, and only those, share a key. */

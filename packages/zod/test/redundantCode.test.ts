@@ -583,6 +583,45 @@ describe('an inline subschema repeated without a named schema', () => {
 		`);
 	});
 
+	test('declares nothing for a repeated anyOf with a branch that accepts every value', async () => {
+		const anything: JSONSchema = { anyOf: [structuredClone(point), {}] };
+
+		await expect(
+			compile({
+				type: 'object',
+				properties: { a: structuredClone(anything), b: structuredClone(anything) },
+			})
+		).toMatchCode(ts`
+			export const Root = z.object({ a: z.unknown().optional(), b: z.unknown().optional() });
+			export type Root = z.infer<typeof Root>;
+		`);
+	});
+
+	test('declares nothing for keywords that draft-07 ignores next to a $ref', async () => {
+		const reference: JSONSchema = {
+			$ref: '#/definitions/Def',
+			properties: { p: structuredClone(point) },
+		};
+
+		await expect(
+			compile({
+				type: 'object',
+				properties: {
+					a: structuredClone(reference),
+					b: structuredClone(reference),
+					c: structuredClone(reference),
+				},
+				definitions: { Def: { type: 'string' } },
+			})
+		).toMatchCode(ts`
+			export const Def = z.string();
+			export type Def = z.infer<typeof Def>;
+
+			export const Root = z.object({ a: Def.optional(), b: Def.optional(), c: Def.optional() });
+			export type Root = z.infer<typeof Root>;
+		`);
+	});
+
 	test('breaks a cycle through a repeated array of the recursive schema', async () => {
 		const Root = await compileToZod({
 			type: 'object',
