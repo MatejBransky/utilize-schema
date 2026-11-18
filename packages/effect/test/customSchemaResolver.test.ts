@@ -26,6 +26,38 @@ describe('customSchemaResolver', () => {
     `);
 	});
 
+	test('types a replaced node as unknown in the value type of a recursive schema', async () => {
+		await expect(
+			compile(
+				{
+					type: 'object',
+					title: 'Node',
+					properties: {
+						created: { type: 'string', format: 'date-time' },
+						children: { type: 'array', items: { $ref: '#' } },
+					},
+					required: ['created'],
+				},
+				{
+					customSchemaResolver: (schema) =>
+						schema.format === 'date-time' ? 'Schema.Finite' : undefined,
+				}
+			)
+		).toMatchCode(ts`
+      type NodeValue = { created: unknown; children?: ReadonlyArray<NodeValue> };
+
+      export const Node: Schema.Codec<NodeValue> = Schema.StructWithRest(
+        Schema.Struct({
+          created: Schema.Finite,
+          children: Schema.optionalKey(Schema.Array(Schema.suspend(() => Node))),
+        }),
+        [Schema.Record(Schema.String, Schema.Json)]
+      ).annotate({ title: 'Node' });
+
+      export type Node = typeof Node.Type;
+    `);
+	});
+
 	test('leaves unmatched nodes to the generator', async () => {
 		await expect(compile({ type: 'string' }, { customSchemaResolver: () => undefined }))
 			.toMatchCode(ts`
