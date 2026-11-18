@@ -103,21 +103,10 @@ export function resolveName({
 	usedNames = new Set(),
 	customResolver,
 }: ResolveNameOptions): string {
-	// 0. If user provided a custom resolver, use it first
-	if (customResolver) {
-		const customName = customResolver(schema, usedNames);
-		if (customName) {
-			return customName;
-		}
-	}
+	const explicitName = resolveExplicitName({ schema, usedNames, customResolver });
 
-	// 1. Prefer $id or title if present
-	if (schema.$id) {
-		const id = schema.$id.split(/[/#]/).filter(Boolean).pop()!;
-		return generateName(id, usedNames);
-	}
-	if (schema.title) {
-		return generateName(schema.title, usedNames);
+	if (explicitName !== undefined) {
+		return explicitName;
 	}
 
 	// 2. If schema is in $defs/definitions, use the key name from path
@@ -138,6 +127,32 @@ export function resolveName({
 	// 4. Fallback
 	const base = 'Unknown';
 	return generateName(base, usedNames);
+}
+
+/** The name from the custom resolver, `$id` or `title`, if there is one. */
+function resolveExplicitName({
+	schema,
+	usedNames = new Set(),
+	customResolver,
+}: ResolveNameOptions): string | undefined {
+	// 0. If user provided a custom resolver, use it first
+	if (customResolver) {
+		const customName = customResolver(schema, usedNames);
+		if (customName) {
+			return customName;
+		}
+	}
+
+	// 1. Prefer $id or title if present
+	if (schema.$id) {
+		const id = schema.$id.split(/[/#]/).filter(Boolean).pop()!;
+		return generateName(id, usedNames);
+	}
+	if (schema.title) {
+		return generateName(schema.title, usedNames);
+	}
+
+	return undefined;
 }
 
 export function generateName(from: string, usedNames: Set<string>) {
