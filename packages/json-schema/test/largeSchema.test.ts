@@ -11,7 +11,7 @@ import {
 	writeAzureTemplate,
 } from '../bench/fixtures';
 
-import { parse } from '../src';
+import { Meta, parse, type ParsedJSONSchemaObject } from '../src';
 
 describe('large schemas', () => {
 	test('parses an Azure-like template with linked files', async () => {
@@ -26,6 +26,20 @@ describe('large schemas', () => {
 			});
 
 			expect(parsed.referencedSchemas).toHaveLength(AZURE_RESOURCE_COUNT + 1);
+
+			const resourceRefs = asObject(asObject(parsed.root).properties?.resources).properties ?? {};
+			const resources = Array.from({ length: AZURE_RESOURCE_COUNT }, (_, index) =>
+				referenceOf(resourceRefs[`resource${index}`])
+			);
+			const [firstResource, ...dependentResources] = resources;
+
+			resources.forEach((resource, index) => {
+				expect(resource.title).toBe(`Resource${index}`);
+			});
+
+			for (const resource of dependentResources) {
+				expect(referenceOf(resource.properties?.dependsOn?.items)).toBe(firstResource);
+			}
 		} finally {
 			await rm(directory, { recursive: true, force: true });
 		}
@@ -36,11 +50,27 @@ describe('large schemas', () => {
 			cwd: '/',
 			fileName: 'fhir.json',
 		});
+		const definitions = asObject(parsed.root).definitions ?? {};
 
-		expect(
-			typeof parsed.root === 'object' && parsed.root !== null
-				? Object.keys(parsed.root.definitions ?? {})
-				: []
-		).toHaveLength(FHIR_RESOURCE_COUNT);
+		expect(Object.keys(definitions)).toHaveLength(FHIR_RESOURCE_COUNT);
+
+		for (let index = 0; index < FHIR_RESOURCE_COUNT; index += 1) {
+			const next = (index + 1) % FHIR_RESOURCE_COUNT;
+			const contained = definitions[`Resource${index}`]?.properties?.contained?.items;
+
+			expect(referenceOf(contained)).toBe(definitions[`Resource${next}`]);
+		}
 	});
 });
+
+function asObject(schema: unknown): ParsedJSONSchemaObject {
+	expect(schema).toBeTypeOf('object');
+	expect(schema).not.toBeNull();
+
+	return schema as ParsedJSONSchemaObject;
+}
+
+/** The schema a linked `$ref` node points to. */
+function referenceOf(schema: unknown): ParsedJSONSchemaObject {
+	return asObject(asObject(schema)[Meta].reference);
+}
