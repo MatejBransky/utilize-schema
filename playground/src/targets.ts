@@ -1,4 +1,4 @@
-export type TargetId = 'zod' | 'effect' | 'typescript' | 'valibot';
+export type TargetId = 'zod' | 'effect' | 'typescript';
 
 export interface Target {
 	value: TargetId;
@@ -11,7 +11,6 @@ export const targets: Target[] = [
 	{ value: 'zod', label: 'Zod', hint: 'Available' },
 	{ value: 'effect', label: 'Effect Schema', hint: 'Available' },
 	{ value: 'typescript', label: 'TypeScript', hint: 'Types only' },
-	{ value: 'valibot', label: 'Valibot', hint: 'Coming soon', disabled: true },
 ];
 
 export const defaultTarget: TargetId = 'zod';

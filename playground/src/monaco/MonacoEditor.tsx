@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 
+import { createEditorOptions } from './options';
 import { monaco, preloadEffectTypes } from './setup';
 
 import styles from './MonacoEditor.module.css';
@@ -25,8 +26,26 @@ interface MonacoEditorProps {
 	onCursorChange?: (line: number, column: number) => void;
 }
 
-const FONT_FAMILY =
-	"ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', monospace";
+function syncInputMode(host: HTMLElement | null, readOnly: boolean) {
+	if (!host) {
+		return;
+	}
+
+	for (const element of host.querySelectorAll<HTMLElement>('textarea, .native-edit-context')) {
+		if (readOnly) {
+			// `domReadOnly` covers the textarea that older browsers use, while
+			// `inputmode="none"` asks browsers using EditContext to keep the
+			// on-screen keyboard down. Neither blocks focus, selection or scrolling.
+			element.setAttribute('inputmode', 'none');
+		} else {
+			element.removeAttribute('inputmode');
+		}
+	}
+}
+
+interface VirtualKeyboardNavigator extends Navigator {
+	virtualKeyboard?: { hide(): void };
+}
 
 export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(function MonacoEditor(
 	{
@@ -69,34 +88,11 @@ export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(fu
 		);
 		const editor = monaco.editor.create(host, {
 			model,
-			theme,
-			readOnly,
-			ariaLabel,
-			automaticLayout: true,
-			fontFamily: FONT_FAMILY,
-			fontSize: 13,
-			lineHeight: 20,
-			tabSize: 2,
-			insertSpaces: true,
-			detectIndentation: false,
-			minimap: { enabled: false },
-			lineNumbersMinChars: 3,
-			lineDecorationsWidth: 10,
-			glyphMargin: false,
-			folding: true,
-			scrollBeyondLastLine: false,
-			renderLineHighlight: 'line',
-			overviewRulerLanes: 0,
-			hideCursorInOverviewRuler: true,
-			guides: { indentation: false },
-			stickyScroll: { enabled: false },
-			contextmenu: false,
-			fixedOverflowWidgets: true,
-			padding: { top: 10, bottom: 10 },
-			scrollbar: { verticalScrollbarSize: 10, horizontalScrollbarSize: 10 },
+			...createEditorOptions({ readOnly, theme, ariaLabel }),
 		});
 
 		editorRef.current = editor;
+		syncInputMode(editor.getDomNode(), readOnly);
 
 		const contentSubscription = editor.onDidChangeModelContent(() => {
 			callbacks.current.onChange?.(editor.getValue());
@@ -145,7 +141,35 @@ export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(fu
 	}, [value]);
 
 	useEffect(() => {
-		editorRef.current?.updateOptions({ readOnly });
+		const editor = editorRef.current;
+
+		if (!editor) {
+			return;
+		}
+
+		editor.updateOptions({ readOnly, domReadOnly: readOnly });
+		syncInputMode(editor.getDomNode(), readOnly);
+	}, [readOnly]);
+
+	useEffect(() => {
+		const host = hostRef.current;
+		const touchDevice =
+			navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches;
+
+		if (!host || !readOnly || !touchDevice) {
+			return;
+		}
+
+		// Some browsers (Chromium with EditContext) ignore `inputmode="none"` and
+		// still open the on-screen keyboard when a read-only editor is focused.
+		// Hide it without taking focus away, so the code stays selectable.
+		const onFocusIn = () => {
+			(navigator as VirtualKeyboardNavigator).virtualKeyboard?.hide();
+		};
+
+		host.addEventListener('focusin', onFocusIn);
+
+		return () => host.removeEventListener('focusin', onFocusIn);
 	}, [readOnly]);
 
 	useEffect(() => {
@@ -165,14 +189,14 @@ export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(fu
 		// The built-in format action is disabled in read-only editors, so unlock
 		// the editor for the duration of the format request.
 		if (wasReadOnly) {
-			editor.updateOptions({ readOnly: false });
+			editor.updateOptions({ readOnly: false, domReadOnly: false });
 		}
 
 		try {
 			await action.run();
 		} finally {
 			if (wasReadOnly) {
-				editor.updateOptions({ readOnly: true });
+				editor.updateOptions({ readOnly: true, domReadOnly: true });
 			}
 		}
 	}

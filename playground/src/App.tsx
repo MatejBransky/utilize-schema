@@ -28,9 +28,9 @@ import { formatTypeScript } from './monaco/format';
 import { MonacoEditor, type MonacoEditorHandle } from './monaco/MonacoEditor';
 import { defaultTarget, isTargetId, targets, type TargetId } from './targets';
 import { loadColorMode, THEME_STORAGE_KEY, type ColorMode } from './theme';
-import { ComboboxPicker } from './ui/ComboboxPicker';
 import { Header } from './ui/Header';
 import { CheckIcon, CloseIcon, PencilIcon, PlusIcon } from './ui/icons';
+import { SelectPicker } from './ui/SelectPicker';
 import { useFileDrop } from './useFileDrop';
 import { validateSchemas } from './validation';
 
@@ -469,10 +469,9 @@ export default function App() {
 				shared={shared}
 			>
 				<div className={styles.generatorPicker}>
-					<ComboboxPicker
+					<SelectPicker
 						label="Generator"
 						placeholder="Choose a generator"
-						triggerLabel="Show generators"
 						value={target}
 						options={targetOptions}
 						onChange={(value) => {
@@ -483,10 +482,9 @@ export default function App() {
 					/>
 				</div>
 				<div className={styles.examplePicker}>
-					<ComboboxPicker
+					<SelectPicker
 						label="Example"
-						placeholder={exampleId ? 'Search examples' : 'Custom schema'}
-						triggerLabel="Show examples"
+						placeholder="Custom schema"
 						value={exampleId}
 						options={exampleOptions}
 						onChange={applyExample}
