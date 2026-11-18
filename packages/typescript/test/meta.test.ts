@@ -15,10 +15,45 @@ describe('annotations', () => {
 			})
 		).toMatchCode(ts`
 			/**
-			 * Person
 			 * A person record.
 			 *
 			 * @deprecated
+			 */
+			export interface Person {
+				name?: string;
+			}
+		`);
+	});
+
+	test('omits a title that only repeats the declaration name', async () => {
+		await expect(
+			compile({
+				title: 'Cycle A',
+				type: 'object',
+				properties: { name: { type: 'string' } },
+				additionalProperties: false,
+			})
+		).toMatchCode(ts`
+			export interface CycleA {
+				name?: string;
+			}
+		`);
+	});
+
+	test('keeps a title that adds information beyond the declaration name', async () => {
+		await expect(
+			compile(
+				{
+					title: 'A person record.',
+					type: 'object',
+					properties: { name: { type: 'string' } },
+					additionalProperties: false,
+				},
+				{ customNameResolver: () => 'Person' }
+			)
+		).toMatchCode(ts`
+			/**
+			 * A person record.
 			 */
 			export interface Person {
 				name?: string;

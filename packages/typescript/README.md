@@ -25,7 +25,7 @@ for the cases where you want types without a schema runtime.
   the sibling keywords as constraints
 - `patternProperties` and `additionalProperties` become index signatures
 - JSDoc from `title`, `description`, `deprecated`, `default`, `format` and
-  `examples`
+  `examples`, without repeating a title that only matches the declared name
 - `readOnly` becomes a `readonly` modifier
 - Permissive schemas map to `unknown`, not `any`
 - Schema names never shadow the globals the output uses (`Array`, `Record`)
@@ -102,7 +102,7 @@ reference correctly.
 | `allOf`                                       | Intersection                                                      |
 | `anyOf`, `oneOf`                              | Union, intersected with the sibling keywords                      |
 | `$ref`, `$defs`, `definitions`                | Named declarations, including cycles                              |
-| `title`, `description`                        | JSDoc                                                             |
+| `title`, `description`                        | JSDoc, skipping a title that only repeats the name                |
 | `deprecated`, `default`, `format`, `examples` | JSDoc tags                                                        |
 | `readOnly`                                    | `readonly` modifier                                               |
 
