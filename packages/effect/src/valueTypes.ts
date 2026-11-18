@@ -73,8 +73,9 @@ function renderRecordInterface(
 	}
 
 	const additional = schema.additionalProperties;
-	const value =
-		additional === false
+	const value = hasPatternProperties(schema)
+		? 'Schema.Json'
+		: additional === false
 			? 'never'
 			: isPlainObject(additional)
 				? renderValueType(additional, context, self, true)
@@ -265,8 +266,12 @@ function renderObject(
 	);
 	const keys = [...new Set([...Object.keys(properties), ...required])];
 	const additional = schema.additionalProperties;
+	const hasPatterns = hasPatternProperties(schema);
 
 	if (keys.length === 0) {
+		if (hasPatterns) {
+			return 'Record<string, Schema.Json>';
+		}
 		if (additional === false) {
 			return 'Record<string, never>';
 		}
@@ -282,9 +287,9 @@ function renderObject(
 		const type =
 			property !== undefined
 				? renderValueType(property, context, self, true)
-				: additional === false
+				: additional === false && !hasPatterns
 					? 'never'
-					: isPlainObject(additional)
+					: isPlainObject(additional) && !hasPatterns
 						? renderValueType(additional, context, self, true)
 						: 'Schema.Json';
 
@@ -292,6 +297,16 @@ function renderObject(
 	});
 
 	return `{ ${members.join('; ')} }`;
+}
+
+/**
+ * Mirrors the generator: with `patternProperties` the object stays open and its
+ * entries are checked by a filter, so they are typed as `Schema.Json`.
+ */
+function hasPatternProperties(schema: ParsedJSONSchemaObject): boolean {
+	return (
+		isPlainObject(schema.patternProperties) && Object.keys(schema.patternProperties).length > 0
+	);
 }
 
 /** Mirrors the generator, which merges `allOf` into one object schema. */
