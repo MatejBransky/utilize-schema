@@ -10,5 +10,6 @@ dist_tests/
 
 __generated__-*/
 .vitest/
+packages/zod/test/snapshots/*.generated.ts
 
 .playwright-mcp/
