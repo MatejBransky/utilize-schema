@@ -173,14 +173,19 @@ export default function App() {
 
 			if (bundle.root !== null) {
 				try {
-					const { root } = await parse(bundle.root as never, {
-						cwd: '/',
-						fileName: bundle.rootFileName,
-					});
+					const bundleRoot = bundle.root;
+					// `parse` resolves the schema in place, so every parse gets a copy.
+					const parseRoot = async () =>
+						(
+							await parse(structuredClone(bundleRoot) as never, {
+								cwd: '/',
+								fileName: bundle.rootFileName,
+							})
+						).root;
 
-					nextRuntime = generateRuntimeCode(root);
+					nextRuntime = await generateRuntimeCode(parseRoot);
 
-					const rawCode = generateCodeFor(target, root, nextRuntime);
+					const rawCode = await generateCodeFor(target, parseRoot, nextRuntime);
 
 					nextCode = cancelled ? nextCode : await formatTypeScript(rawCode).catch(() => rawCode);
 				} catch (error) {

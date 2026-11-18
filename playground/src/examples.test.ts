@@ -116,7 +116,7 @@ for (const example of examples) {
 	});
 
 	test(`example "${example.name}" runs its test data the way the playground does`, async () => {
-		const runtime = generateRuntimeCode(await parseExample(example));
+		const runtime = await generateRuntimeCode(() => parseExample(example));
 
 		for (const target of ['zod', 'effect'] as const) {
 			const source = runtime[target];

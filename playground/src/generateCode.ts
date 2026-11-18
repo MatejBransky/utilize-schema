@@ -17,6 +17,9 @@ export type RuntimeSource =
 
 export type RuntimeCode = Record<RuntimeTargetId, RuntimeSource>;
 
+/** Parses the schema into a new object on every call. */
+export type ParseRoot = () => Promise<ParsedJSONSchema>;
+
 const runtimeGenerators: Record<RuntimeTargetId, (root: ParsedJSONSchema) => string> = {
 	zod: (root) => generateZod(root, { importZod: true }),
 	effect: (root) => generateEffect(root, { importEffect: true }),
@@ -26,22 +29,33 @@ const runtimeGenerators: Record<RuntimeTargetId, (root: ParsedJSONSchema) => str
  * Generates both runtime validators, so they can be tried out next to the
  * output even when the editor shows TypeScript or only one of them. A failing
  * generator does not stop the other one.
+ *
+ * Every generator gets its own parsed schema. The generators record the names
+ * they choose on the parsed schema and reuse them, so a shared schema would
+ * hand one generator's names to the next: Zod may name a schema `Schema`,
+ * which Effect reserves for its import and has to rename.
  */
-export function generateRuntimeCode(root: ParsedJSONSchema): RuntimeCode {
-	return {
-		zod: generateRuntimeSource(root, 'zod'),
-		effect: generateRuntimeSource(root, 'effect'),
-	};
+export async function generateRuntimeCode(parseRoot: ParseRoot): Promise<RuntimeCode> {
+	const [zod, effect] = await Promise.all([
+		parseRoot().then((root) => generateRuntimeSource(root, 'zod')),
+		parseRoot().then((root) => generateRuntimeSource(root, 'effect')),
+	]);
+
+	return { zod, effect };
 }
 
 /** Code shown in the output editor for the selected target. */
-export function generateCodeFor(target: TargetId, root: ParsedJSONSchema, runtime: RuntimeCode) {
+export async function generateCodeFor(
+	target: TargetId,
+	parseRoot: ParseRoot,
+	runtime: RuntimeCode
+): Promise<string> {
 	switch (target) {
 		case 'zod':
 		case 'effect':
 			return generatedCode(runtime[target]);
 		case 'typescript':
-			return generateTypeScript(root);
+			return generateTypeScript(await parseRoot());
 		default: {
 			const unknownTarget: never = target;
 
