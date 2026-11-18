@@ -7,6 +7,7 @@ import { generator as arrayGenerator } from './arrayGenerator';
 import { generator as booleanGenerator } from './booleanGenerator';
 import type { ExpressionGenerator } from './createGenerator';
 import { generator as enumGenerator } from './enumGenerator';
+import { isTypedLiteral } from './generateSchema';
 import { generator as literalGenerator } from './literalGenerator';
 import { generator as multipleTypeGenerator } from './multipleTypeGenerator';
 import { generator as nullGenerator } from './nullGenerator';
@@ -51,6 +52,12 @@ export function selectGenerator(
 	input: ParsedJSONSchemaObject,
 	dialect: Dialect
 ): ExpressionGenerator {
+	// The type adds nothing to the listed values, and a type generator (e.g.
+	// for objects) would otherwise ignore the `enum`.
+	if (isTypedLiteral(input, dialect)) {
+		return input.const !== undefined ? literalGenerator : enumGenerator;
+	}
+
 	const generator = getGenerators().find(({ predicate }) => predicate(input, dialect));
 
 	if (!generator) {

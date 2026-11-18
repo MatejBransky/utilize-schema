@@ -167,14 +167,17 @@ export function composedSchemaParts(
  * listed value already has that type, e.g. `{ type: 'string', const: 'a' }`.
  * The literal alone validates the same values, so the type is not generated.
  */
-export function isTypedLiteral(schema: ParsedJSONSchemaObject): boolean {
+export function isTypedLiteral(
+	schema: ParsedJSONSchemaObject,
+	dialect: Dialect = dialectOf(schema)
+): boolean {
 	const keyword = pickCombinatorKeyword(schema);
 
 	if (schema.type === undefined || (keyword !== 'const' && keyword !== 'enum')) {
 		return false;
 	}
 
-	if (keyword === 'const' && !isKeywordApplicable(dialectOf(schema), 'const')) {
+	if (keyword === 'const' && !isKeywordApplicable(dialect, 'const')) {
 		return false;
 	}
 

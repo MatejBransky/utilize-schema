@@ -32,6 +32,19 @@ describe('const and enum next to a type they already satisfy', () => {
 		`);
 	});
 
+	test.each<[string, JSONSchema, unknown, unknown]>([
+		['object', { type: 'object', enum: [{ a: 1 }, { b: 2 }] }, { b: 2 }, { c: 3 }],
+		['record', { type: 'object', additionalProperties: true, enum: [{ a: 1 }] }, { a: 1 }, {}],
+		['array', { type: 'array', enum: [[1], [2]] }, [2], [3]],
+		['tuple', { type: 'array', items: [{ type: 'number' }], enum: [[1]] }, [1], [3]],
+		['integer', { type: 'integer', enum: [1, 2] }, 2, 3],
+	])('an %s enum with its type still checks the enum', async (_, schema, valid, invalid) => {
+		const Root = await compileToZod(schema);
+
+		expect(Root.safeParse(valid).success).toBe(true);
+		expect(Root.safeParse(invalid).success).toBe(false);
+	});
+
 	test('keeps the type when a value does not satisfy it', async () => {
 		const Root = await compileToZod({ type: 'integer', enum: [1, 1.5] });
 
