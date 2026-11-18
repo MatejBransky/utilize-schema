@@ -26,6 +26,27 @@ interface MonacoEditorProps {
 	onCursorChange?: (line: number, column: number) => void;
 }
 
+function syncInputMode(host: HTMLElement | null, readOnly: boolean) {
+	if (!host) {
+		return;
+	}
+
+	for (const element of host.querySelectorAll<HTMLElement>('textarea, .native-edit-context')) {
+		if (readOnly) {
+			// `domReadOnly` covers the textarea that older browsers use, while
+			// `inputmode="none"` asks browsers using EditContext to keep the
+			// on-screen keyboard down. Neither blocks focus, selection or scrolling.
+			element.setAttribute('inputmode', 'none');
+		} else {
+			element.removeAttribute('inputmode');
+		}
+	}
+}
+
+interface VirtualKeyboardNavigator extends Navigator {
+	virtualKeyboard?: { hide(): void };
+}
+
 export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(function MonacoEditor(
 	{
 		value,
@@ -71,6 +92,7 @@ export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(fu
 		});
 
 		editorRef.current = editor;
+		syncInputMode(editor.getDomNode(), readOnly);
 
 		const contentSubscription = editor.onDidChangeModelContent(() => {
 			callbacks.current.onChange?.(editor.getValue());
@@ -126,6 +148,7 @@ export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(fu
 		}
 
 		editor.updateOptions({ readOnly, domReadOnly: readOnly });
+		syncInputMode(editor.getDomNode(), readOnly);
 	}, [readOnly]);
 
 	useEffect(() => {
@@ -137,13 +160,11 @@ export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(fu
 			return;
 		}
 
-		// A tap focuses the edit surface even when the editor is read-only, which
-		// opens the on-screen keyboard on mobile. Keep the read-only editor out of
-		// text input mode; its code can still be copied with the Copy button.
-		const onFocusIn = (event: FocusEvent) => {
-			if (event.target instanceof HTMLElement && host.contains(event.target)) {
-				event.target.blur();
-			}
+		// Some browsers (Chromium with EditContext) ignore `inputmode="none"` and
+		// still open the on-screen keyboard when a read-only editor is focused.
+		// Hide it without taking focus away, so the code stays selectable.
+		const onFocusIn = () => {
+			(navigator as VirtualKeyboardNavigator).virtualKeyboard?.hide();
 		};
 
 		host.addEventListener('focusin', onFocusIn);
