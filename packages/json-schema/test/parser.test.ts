@@ -1,3 +1,7 @@
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { assert, expect, test } from 'vitest';
 
 import RefProperties from './RefProperties.json';
@@ -332,6 +336,93 @@ test('resolves draft-04 id identifiers', async () => {
 	assert(typeof byFragment === 'object' && byFragment !== null);
 	expect(byUri.type).toBe('integer');
 	expect(byFragment.type).toBe('boolean');
+});
+
+test('resolves a JSON pointer against the embedded resource that contains it', async () => {
+	const schema = {
+		$id: 'http://example.com/root.json',
+		definitions: {
+			a: { type: 'string' },
+			nested: {
+				$id: 'http://example.com/nested.json',
+				definitions: {
+					a: { type: 'integer' },
+				},
+				properties: {
+					value: { $ref: '#/definitions/a' },
+				},
+			},
+		},
+	} as JSONSchema;
+	const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Unknown' });
+
+	assert(typeof parsed.root === 'object' && parsed.root !== null);
+	const nested = parsed.root.definitions?.nested;
+
+	assert(typeof nested === 'object' && nested !== null);
+	expect(nested.properties?.value?.[Meta].reference).toBe(nested.definitions?.a);
+});
+
+test('resolves a JSON pointer after an $id URI', async () => {
+	const schema = {
+		$id: 'http://example.com/root.json',
+		properties: {
+			value: { $ref: 'other.json#/definitions/b' },
+		},
+		definitions: {
+			other: {
+				$id: 'other.json',
+				definitions: {
+					b: { type: 'boolean' },
+				},
+			},
+		},
+	} as JSONSchema;
+	const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Unknown' });
+
+	assert(typeof parsed.root === 'object' && parsed.root !== null);
+	const other = parsed.root.definitions?.other;
+
+	assert(typeof other === 'object' && other !== null);
+	expect(parsed.root.properties?.value?.[Meta].reference).toBe(other.definitions?.b);
+});
+
+test('resolves a JSON pointer relative to the referenced file that contains it', async () => {
+	const directory = await mkdtemp(join(tmpdir(), 'utilize-pointer-'));
+
+	try {
+		await mkdir(join(directory, 'resources'));
+		await mkdir(join(directory, 'common'));
+		await writeFile(
+			join(directory, 'common', 'types.json'),
+			JSON.stringify({ definitions: { location: { type: 'string' } } })
+		);
+		await writeFile(
+			join(directory, 'resources', 'item.json'),
+			JSON.stringify({
+				properties: {
+					location: { $ref: '../common/types.json#/definitions/location' },
+				},
+			})
+		);
+		const schema = {
+			properties: {
+				item: { $ref: './resources/item.json' },
+			},
+		} as JSONSchema;
+		const parsed = await parse(schema, { cwd: directory + '/', fileName: 'root.json' });
+
+		assert(typeof parsed.root === 'object' && parsed.root !== null);
+		const item = parsed.root.properties?.item?.[Meta].reference;
+
+		assert(typeof item === 'object' && item !== null);
+		const reference = item.properties?.location?.[Meta].reference;
+
+		assert(typeof reference === 'object' && reference !== null);
+		expect(reference.type).toBe('string');
+	} finally {
+		await rm(directory, { recursive: true, force: true });
+	}
 });
 
 test('a $ref to a boolean schema keeps the boolean as its reference', async () => {

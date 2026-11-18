@@ -18,8 +18,6 @@ const inference =
 
 export const knownGaps: Record<string, string> = {
 	// Shared parser: $id/$anchor and URN resolution.
-	'id-legacy.json :: refs with relative uris and defs': parserId,
-	'id-legacy.json :: relative refs with absolute uris and defs': parserId,
 	'id-legacy.json :: URN ref with nested pointer ref': parserId,
 
 	// Shared parser: boolean schemas behind $ref.

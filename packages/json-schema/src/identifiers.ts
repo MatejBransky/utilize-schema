@@ -200,10 +200,14 @@ function* schemaChildren(node: Record<string, unknown>): Generator<unknown> {
 	}
 }
 
+/**
+ * Resolves a JSON pointer such as `/definitions/a`. The pointer starts with a
+ * `/`, so the empty token before it is skipped.
+ */
 function resolvePointer(root: JSONSchema | boolean, pointer: string) {
 	let current: unknown = root;
 
-	for (const rawToken of pointer.split('/')) {
+	for (const rawToken of pointer.split('/').slice(1)) {
 		let token: string;
 
 		try {

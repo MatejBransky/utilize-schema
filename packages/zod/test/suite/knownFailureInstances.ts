@@ -279,14 +279,6 @@ export const knownFailureInstances: KnownFailureInstances = {
 		'a trailing newline after a valid URI is invalid',
 	],
 	'id-legacy.json :: URN ref with nested pointer ref': 'compile',
-	'id-legacy.json :: refs with relative uris and defs': [
-		'invalid on inner field',
-		'invalid on outer field',
-	],
-	'id-legacy.json :: relative refs with absolute uris and defs': [
-		'invalid on inner field',
-		'invalid on outer field',
-	],
 	'id.json :: simple URN base URI with $ref via the URN': 'compile',
 	'id.json :: simple base URI using an arbitrary URI scheme with $ref to that URI': 'compile',
 	'id.json :: simple tag URI base URI with $ref via the tag URI': 'compile',
