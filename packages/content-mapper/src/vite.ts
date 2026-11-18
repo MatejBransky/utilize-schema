@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { stripTypeScriptTypes } from 'node:module';
 
 import { schemaModule, type MapperOptions } from './module';
 
@@ -26,7 +27,10 @@ export default function utilizeSchema(options: MapperOptions = {}) {
 				this.error?.(`${id}: ${result.diagnostics[0]!.messageText}`);
 			}
 
-			return { code: result.text, map: null };
+			// The generators emit TypeScript declarations for the content mapper.
+			// Bundlers only transform known script extensions, so a `.jsonschema`
+			// module must reach them without type syntax.
+			return { code: stripTypeScriptTypes(result.text), map: null };
 		},
 	};
 }
