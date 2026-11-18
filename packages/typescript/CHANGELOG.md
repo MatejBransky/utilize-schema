@@ -1,5 +1,13 @@
 # @utilize/typescript
 
+## 0.2.1
+
+### Patch Changes
+
+- Updated dependencies [8fc5c59]
+- Updated dependencies [3e62e0e]
+  - @utilize/json-schema@0.4.0
+
 ## 0.2.0
 
 ### Minor Changes
