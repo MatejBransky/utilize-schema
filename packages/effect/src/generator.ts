@@ -39,7 +39,11 @@ type Context = {
 	nameOf(schema: ParsedJSONSchemaObject, ref: string): string;
 	/** Whether a standalone schema is part of a reference cycle. */
 	isCyclic(schema: ParsedJSONSchemaObject): boolean;
-	/** Dialect of the document root, used for synthetic nodes without `Meta`. */
+	/**
+	 * Dialect of the node being generated. Starts as the document root's dialect;
+	 * `generateSchema` sets it to each node's dialect, so helpers and copies
+	 * without `Meta` read it from here instead of resolving it again.
+	 */
 	dialect: Dialect;
 };
 
@@ -223,7 +227,7 @@ function generateSchema(schema: ParsedJSONSchema, context: Context): string {
 }
 
 function generateExpression(schema: ParsedJSONSchemaObject, context: Context): string {
-	const dialect = dialectOf(schema, context.dialect);
+	const dialect = context.dialect;
 
 	if (Object.hasOwn(schema, 'const') && isKeywordApplicable(dialect, 'const')) {
 		return literal(schema.const);
@@ -441,7 +445,7 @@ function generateNumber(schema: ParsedJSONSchemaObject, integer: boolean): strin
 }
 
 function generateArray(schema: ParsedJSONSchemaObject, context: Context): string {
-	const dialect = dialectOf(schema, context.dialect);
+	const dialect = context.dialect;
 	const items = schema.items as unknown as ParsedJSONSchema | ParsedJSONSchema[] | undefined;
 	const tupleItems = Array.isArray(items) ? items : undefined;
 	const prefixItems =
@@ -506,7 +510,7 @@ function arrayRest(
 
 function arrayChecks(schema: ParsedJSONSchemaObject, context: Context): string[] {
 	const checks: string[] = [];
-	const dialect = dialectOf(schema, context.dialect);
+	const dialect = context.dialect;
 	const prefixLength =
 		dialect.tuple === 'prefixItems'
 			? Array.isArray(schema.prefixItems)
@@ -621,10 +625,7 @@ function objectChecks(schema: ParsedJSONSchemaObject, context: Context): string[
 	if (typeof schema.maxProperties === 'number') {
 		checks.push(`Schema.isMaxProperties(${schema.maxProperties})`);
 	}
-	if (
-		schema.propertyNames !== undefined &&
-		isKeywordApplicable(dialectOf(schema, context.dialect), 'propertyNames')
-	) {
+	if (schema.propertyNames !== undefined && isKeywordApplicable(context.dialect, 'propertyNames')) {
 		checks.push(`Schema.isPropertyNames(${generateSchema(schema.propertyNames, context)})`);
 	}
 
@@ -672,10 +673,7 @@ function dependencyChecks(schema: ParsedJSONSchemaObject, context: Context): str
  * as filters that evaluate the subschemas with `Schema.is`.
  */
 function filterChecks(schema: ParsedJSONSchemaObject, context: Context): string[] {
-	if (
-		typeof schema.$ref === 'string' &&
-		dialectOf(schema, context.dialect).refSiblings === 'ignore'
-	) {
+	if (typeof schema.$ref === 'string' && context.dialect.refSiblings === 'ignore') {
 		return [];
 	}
 
@@ -721,7 +719,7 @@ function parsed(schema: unknown): ParsedJSONSchema {
  * result is a union over all JSON value types, with the matching ones refined.
  */
 function generateUntyped(schema: ParsedJSONSchemaObject, context: Context): string {
-	const dialect = dialectOf(schema, context.dialect);
+	const dialect = context.dialect;
 	const constrained = JSON_VALUE_TYPES.filter((type) => appliesTo(schema, type, dialect));
 
 	if (constrained.length === 0) {

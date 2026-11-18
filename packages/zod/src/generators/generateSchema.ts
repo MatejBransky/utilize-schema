@@ -75,7 +75,7 @@ function ignoresRefSiblings(schema: ParsedJSONSchemaObject, dialect: Dialect): b
  * for `applyRefinements`, which knows whether the dialect allows them.
  */
 function generateCore(schema: ParsedJSONSchemaObject, context: GeneratorContext): string {
-	const dialect = dialectOf(schema, context.dialect);
+	const { dialect } = context;
 
 	if (typeof schema.$ref === 'string') {
 		const reference = refGenerator.generate(schema, context);

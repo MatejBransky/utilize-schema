@@ -11,7 +11,11 @@ import {
 import { planReferenceSiblings } from './refSiblings';
 
 export interface ValueTypeContext {
-	/** Dialect of the document root, used for synthetic nodes without `Meta`. */
+	/**
+	 * Dialect of the document root. Each node is rendered with its own dialect,
+	 * `dialectOf(node, dialect)`; copies keep the `Meta` of their source, so this
+	 * fallback only applies to nodes built from scratch.
+	 */
 	dialect: Dialect;
 	/** The value-type alias of a schema in a cycle, when it has one. */
 	aliasFor(schema: ParsedJSONSchemaObject): string | undefined;

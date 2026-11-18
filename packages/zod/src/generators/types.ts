@@ -9,6 +9,10 @@ export type GeneratorContext = {
 	readOnlyKeyword?: boolean;
 	/** The variable under which a referenced schema is exported. */
 	nameOf(reference: ParsedJSONSchemaObject): string;
-	/** Dialect of the document root, used for synthetic nodes without `Meta`. */
+	/**
+	 * Dialect of the node being generated. Starts as the document root's dialect;
+	 * `generateSchema` sets it to each node's dialect, so generators and copies
+	 * without `Meta` read it from here instead of resolving it again.
+	 */
 	dialect: Dialect;
 };
