@@ -418,6 +418,20 @@ describe('generated recursive schemas type-check', () => {
 	});
 });
 
+describe('value types of $ref siblings', () => {
+	test('draft-07 renders only the reference', async () => {
+		await expect(compile(refWithIgnoredCombinatorSchema)).resolves.toContain(
+			'type RootValue = { kind?: Kind; tag?: Kind; next?: RootValue };'
+		);
+	});
+
+	test('2019-09 intersects the reference with its siblings', async () => {
+		await expect(compile(refWithAppliedCombinatorSchema)).resolves.toContain(
+			"type RootValue = { kind?: Kind & ('a' & unknown); next?: RootValue };"
+		);
+	});
+});
+
 const dateTime: JSONSchema = { type: 'string', format: 'date-time' };
 
 async function typeCheck(schemas: Record<string, JSONSchema>, options: CompileOptions = {}) {
