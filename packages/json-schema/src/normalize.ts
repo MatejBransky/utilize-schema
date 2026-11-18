@@ -51,6 +51,8 @@ const SINGLE_SCHEMA_KEYWORDS = new Set([
 	'not',
 ]);
 const ARRAY_SCHEMA_KEYWORDS = new Set(['allOf', 'anyOf', 'oneOf', 'prefixItems']);
+/** Keywords whose value may be a boolean even in draft-04. */
+const BOOLEAN_FORM_KEYWORDS = new Set(['additionalProperties', 'additionalItems']);
 
 /**
  * Resolves the dialect of every schema resource, reports keywords that do not
@@ -149,6 +151,11 @@ export function prepareSchema(schema: unknown, options: PrepareSchemaOptions = {
 					visit(subschema, resolved, [...path, key, name], false);
 				}
 			} else if (SINGLE_SCHEMA_KEYWORDS.has(key)) {
+				// Every dialect accepts a boolean here, draft-04 included.
+				if (typeof value === 'boolean' && BOOLEAN_FORM_KEYWORDS.has(key)) {
+					continue;
+				}
+
 				visit(value, resolved, [...path, key], false);
 			} else if (ARRAY_SCHEMA_KEYWORDS.has(key) && Array.isArray(value)) {
 				value.forEach((item, index) => visit(item, resolved, [...path, key, index], false));

@@ -244,6 +244,34 @@ describe('prepareSchema', () => {
 		).not.toThrow();
 	});
 
+	test('accepts boolean additionalProperties and additionalItems in draft-04', () => {
+		expect(() =>
+			prepareSchema(
+				{
+					$schema: 'http://json-schema.org/draft-04/schema#',
+					type: 'object',
+					additionalProperties: false,
+					items: [{ type: 'string' }],
+					additionalItems: false,
+				},
+				{ keywordPolicy: 'error' }
+			)
+		).not.toThrow();
+	});
+
+	test('rejects other boolean schemas in draft-04 with keywordPolicy error', () => {
+		expect(() =>
+			prepareSchema(
+				{
+					$schema: 'http://json-schema.org/draft-04/schema#',
+					type: 'object',
+					properties: { name: true },
+				},
+				{ keywordPolicy: 'error' }
+			)
+		).toThrow(/draft-04 does not allow boolean schemas/);
+	});
+
 	test('still rejects unsupported keywords of the dialect with keywordPolicy ignore', () => {
 		expect(() =>
 			prepareSchema(
