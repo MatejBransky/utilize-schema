@@ -1,0 +1,82 @@
+{
+	"name": "@utilize/content-mapper",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Import .schema.json files as Zod or Effect Schema modules in TypeScript.",
+	"license": "MIT",
+	"author": {
+		"name": "Matej Bransky",
+		"email": "matej.bransky@gmail.com"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/MatejBransky/utilize-schema.git",
+		"directory": "packages/content-mapper"
+	},
+	"files": [
+		"dist"
+	],
+	"type": "module",
+	"main": "./dist/index.mjs",
+	"module": "./dist/index.mjs",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": "./dist/index.mjs",
+		"./mapper": "./dist/mapper.mjs",
+		"./register": "./dist/register.mjs",
+		"./vite": "./dist/vite.mjs"
+	},
+	"scripts": {
+		"build": "tsdown",
+		"build:dev": "tsdown",
+		"check:types": "tsc --noEmit",
+		"pretest": "pnpm build",
+		"test": "vitest",
+		"ci:test": "pnpm build && vitest run",
+		"dev": "tsdown --watch"
+	},
+	"dependencies": {
+		"@utilize/effect": "workspace:*",
+		"@utilize/json-schema": "workspace:*",
+		"@utilize/typescript": "workspace:*",
+		"@utilize/zod": "workspace:*"
+	},
+	"devDependencies": {
+		"@total-typescript/tsconfig": "catalog:",
+		"@types/node": "catalog:",
+		"effect": "catalog:",
+		"oxfmt": "catalog:",
+		"tsdown": "catalog:",
+		"typescript": "7.1.0-beta",
+		"vitest": "catalog:",
+		"zod": "catalog:"
+	},
+	"peerDependencies": {
+		"effect": ">=4.0.0 <5",
+		"typescript": ">=7.1.0-beta",
+		"zod": ">=4.0.0 <5"
+	},
+	"peerDependenciesMeta": {
+		"effect": {
+			"optional": true
+		},
+		"typescript": {
+			"optional": true
+		},
+		"zod": {
+			"optional": true
+		}
+	},
+	"typescript": {
+		"contentMapper": {
+			"compilerOptions": [],
+			"exec": [
+				"node",
+				"dist/mapper.mjs"
+			]
+		}
+	},
+	"engines": {
+		"node": ">=24"
+	}
+}
