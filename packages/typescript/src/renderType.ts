@@ -6,6 +6,7 @@ import {
 } from '@utilize/json-schema';
 
 import { UnresolvedReferenceError } from './errors';
+import { toSafeString } from './resolveName';
 
 export interface TypeContext {
 	/** Name of an already declared standalone schema. */
@@ -595,8 +596,16 @@ export function isObjectDeclaration(schema: ParsedJSONSchemaObject): boolean {
  * Validation keywords are intentionally omitted: they cannot be expressed in a
  * TypeScript type, so repeating them in a comment would imply guarantees the
  * type does not make.
+ *
+ * `declarationName` is the name of the emitted declaration. A title that would
+ * only repeat it is left out, because the generator derives that name from the
+ * title in the first place.
  */
-export function renderJsDoc(schema: ParsedJSONSchema | undefined, level = 0): string[] {
+export function renderJsDoc(
+	schema: ParsedJSONSchema | undefined,
+	level = 0,
+	declarationName?: string
+): string[] {
 	if (!isPlainObject(schema)) {
 		return [];
 	}
@@ -604,8 +613,10 @@ export function renderJsDoc(schema: ParsedJSONSchema | undefined, level = 0): st
 	const lines: string[] = [];
 	const title = typeof schema.title === 'string' ? schema.title.trim() : '';
 	const description = typeof schema.description === 'string' ? schema.description.trim() : '';
+	const titleRepeatsName =
+		declarationName !== undefined && title.length > 0 && toSafeString(title) === declarationName;
 
-	for (const text of [title, description]) {
+	for (const text of [titleRepeatsName ? '' : title, description]) {
 		if (text.length > 0) {
 			lines.push(...text.split('\n'));
 		}
