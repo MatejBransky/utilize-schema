@@ -2,6 +2,11 @@ import type { RuntimeResult } from '../runtime';
 
 import styles from './ValidatorResults.module.css';
 
+/** What happened to one generated validator. */
+export type ValidatorOutcome =
+	| { status: 'unavailable'; reason: string }
+	| { status: 'checked'; result: RuntimeResult };
+
 export type ValidationState =
 	| { status: 'running' }
 	| { status: 'unavailable' }
@@ -9,8 +14,8 @@ export type ValidationState =
 	| { status: 'error'; message: string }
 	| {
 			status: 'ready';
-			zod: RuntimeResult | null;
-			effect: RuntimeResult | null;
+			zod: ValidatorOutcome;
+			effect: ValidatorOutcome;
 	  };
 
 interface ValidatorResultsProps {
@@ -46,13 +51,8 @@ export function ValidatorResults({ state }: ValidatorResultsProps) {
 
 	return (
 		<div className={styles.results} data-testid="validator-results">
-			<ValidatorCard id="zod" name="Zod" running={!ready} result={ready ? state.zod : undefined} />
-			<ValidatorCard
-				id="effect"
-				name="Effect Schema"
-				running={!ready}
-				result={ready ? state.effect : undefined}
-			/>
+			<ValidatorCard id="zod" name="Zod" outcome={ready ? state.zod : undefined} />
+			<ValidatorCard id="effect" name="Effect Schema" outcome={ready ? state.effect : undefined} />
 		</div>
 	);
 }
@@ -60,12 +60,19 @@ export function ValidatorResults({ state }: ValidatorResultsProps) {
 interface ValidatorCardProps {
 	id: string;
 	name: string;
-	running: boolean;
-	result: RuntimeResult | null | undefined;
+	/** Missing while the validators are still running. */
+	outcome: ValidatorOutcome | undefined;
 }
 
-function ValidatorCard({ id, name, running, result }: ValidatorCardProps) {
-	const status = running ? 'running' : !result ? 'unavailable' : result.ok ? 'valid' : 'invalid';
+function ValidatorCard({ id, name, outcome }: ValidatorCardProps) {
+	const result = outcome?.status === 'checked' ? outcome.result : undefined;
+	const status = !outcome
+		? 'running'
+		: outcome.status === 'unavailable'
+			? 'unavailable'
+			: outcome.result.ok
+				? 'valid'
+				: 'invalid';
 
 	return (
 		<section
@@ -86,8 +93,11 @@ function ValidatorCard({ id, name, running, result }: ValidatorCardProps) {
 								: 'Invalid'}
 				</span>
 			</div>
-			{status === 'unavailable' ? (
-				<p className={styles.note}>The generator did not produce a runtime schema.</p>
+			{outcome?.status === 'unavailable' ? (
+				<>
+					<p className={styles.note}>The generator did not produce a runtime schema.</p>
+					<p className={styles.message}>{outcome.reason}</p>
+				</>
 			) : status === 'running' ? (
 				<p className={styles.note}>Compiling the generated schema…</p>
 			) : result?.ok ? (
