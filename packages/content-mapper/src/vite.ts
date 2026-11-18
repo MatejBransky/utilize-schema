@@ -8,6 +8,9 @@ interface PluginContext {
 	error?(message: string): never;
 }
 
+/** Vite appends `?t=<timestamp>` when it re-requests a module after a change. */
+const RE_REQUEST_QUERY = /\?t=\d+$/;
+
 /**
  * Vite/Rollup/Rolldown plugin that turns `.jsonschema` imports into the same
  * module the content mapper shows to TypeScript.
@@ -17,14 +20,23 @@ export default function utilizeSchema(options: MapperOptions = {}) {
 		name: 'utilize-schema',
 		enforce: 'pre' as const,
 		async load(this: PluginContext, id: string) {
-			if (!id.endsWith('.jsonschema')) {
+			const reRequest = RE_REQUEST_QUERY.test(id);
+			const file = reRequest ? id.slice(0, id.indexOf('?')) : id;
+
+			// Other queries (`?raw`, `?url`, ...) belong to Vite's own plugins.
+			if (!file.endsWith('.jsonschema')) {
 				return null;
 			}
 
-			const result = await schemaModule(id, await readFile(id, 'utf8'), options);
+			const result = await schemaModule(file, await readFile(file, 'utf8'), options);
 
 			if (result.diagnostics?.length) {
-				this.error?.(`${id}: ${result.diagnostics[0]!.messageText}`);
+				this.error?.(`${file}: ${result.diagnostics[0]!.messageText}`);
+			}
+
+			// The generated module depends on the files it resolved through `$ref`.
+			for (const dependency of result.dependencies ?? []) {
+				this.addWatchFile?.(dependency);
 			}
 
 			// The generators emit TypeScript declarations for the content mapper.
