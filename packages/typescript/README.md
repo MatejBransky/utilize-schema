@@ -29,6 +29,8 @@ for the cases where you want types without a schema runtime.
 - `readOnly` becomes a `readonly` modifier
 - Permissive schemas map to `unknown`, not `any`
 - Schema names never shadow the globals the output uses (`Array`, `Record`)
+- Ships a `utilize-typescript` CLI that reads JSON or YAML from a file,
+  directory, glob or stdin
 
 ## Usage
 
@@ -50,6 +52,18 @@ import { generate } from '@utilize/typescript';
 const { root } = await parse(schema, { cwd: process.cwd(), fileName: 'schema.json' });
 const code = generate(root);
 ```
+
+## CLI
+
+```sh
+utilize-typescript schema.json schema.generated.ts
+utilize-typescript --input 'schemas/**/*.json' --output generated/
+cat schema.yaml | utilize-typescript > schema.generated.ts
+```
+
+Input can be a file, a directory or a glob; JSON and YAML are supported. Output
+defaults to stdout. Every generated file starts with a "do not edit" banner
+(`--no-banner` omits it).
 
 ## Output
 
