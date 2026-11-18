@@ -41,6 +41,11 @@ node --import @utilize/content-mapper/register main.mjs
 
 `UTILIZE_SCHEMA_TARGET` selects `zod`, `effect` or `typescript` for the loader. Defaults to `zod`.
 
+The loader does not read `tsconfig.json`, so keep this env var in sync with the
+mapper `options.target`. Otherwise the editor type-checks the target from
+`tsconfig.json` while the runtime imports the module generated for another one
+(for example an Effect `Schema` in the editor and a Zod schema at runtime).
+
 For Vite, Rollup or Rolldown:
 
 ```ts
