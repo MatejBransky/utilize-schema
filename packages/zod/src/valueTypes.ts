@@ -20,13 +20,12 @@ import { generator as numberGenerator } from './generators/numberGenerator';
 import { generator as objectGenerator } from './generators/objectGenerator';
 import { generator as oneOfGenerator } from './generators/oneOfGenerator';
 import { generator as recordGenerator } from './generators/recordGenerator';
-import { generator as refGenerator } from './generators/refGenerator';
 import { composedSchemaParts, refSiblingConstraints } from './generators/generateSchema';
 import { selectGenerator } from './generators/selectGenerator';
 import type { CustomSchemaResolver } from './generators/types';
 import { generator as stringGenerator } from './generators/stringGenerator';
 import { generator as tupleGenerator, tupleItems, tupleRest } from './generators/tupleGenerator';
-import { isResolvedByCaller } from './utils';
+import { isRefNode, isResolvedByCaller } from './utils';
 
 export interface ValueTypeContext {
 	/**
@@ -94,7 +93,11 @@ function renderType(node: ParsedJSONSchemaObject, context: ValueTypeContext): st
 
 	const dialect = dialectOf(schema, context.dialect);
 
-	if (context.readOnlyKeyword && schema.readOnly === true && !('$ref' in schema)) {
+	if (isRefNode(schema)) {
+		return renderReferenceType(schema, dialect, context);
+	}
+
+	if (context.readOnlyKeyword && schema.readOnly === true) {
 		return renderReadOnlyType(schema, context);
 	}
 
@@ -107,27 +110,6 @@ function renderType(node: ParsedJSONSchemaObject, context: ValueTypeContext): st
 	}
 
 	const generator = selectGenerator(schema, dialect);
-
-	if (generator === refGenerator) {
-		const reference = schema[Meta]?.reference;
-
-		if (reference === undefined || reference === null) {
-			return 'unknown';
-		}
-
-		if (typeof reference !== 'object') {
-			return reference ? 'unknown' : 'never';
-		}
-
-		const referenceType = context.aliasFor(reference) ?? context.typeNameFor(reference);
-		const siblings = dialect.refSiblings === 'apply' ? refSiblingConstraints(schema) : undefined;
-
-		if (siblings) {
-			return `${referenceType} & ${parenthesize(renderType(siblings, context))}`;
-		}
-
-		return referenceType;
-	}
 
 	if (generator === multipleTypeGenerator) {
 		return renderTypeList(schema, context);
@@ -213,6 +195,35 @@ function renderType(node: ParsedJSONSchemaObject, context: ValueTypeContext): st
 	}
 
 	return 'unknown';
+}
+
+/**
+ * Mirrors `generateCore`: the referenced type, intersected with the keywords
+ * next to `$ref` only when the dialect applies them (2019-09 and newer).
+ */
+function renderReferenceType(
+	schema: ParsedJSONSchemaObject,
+	dialect: Dialect,
+	context: ValueTypeContext
+): string {
+	const reference = schema[Meta]?.reference;
+
+	if (reference === undefined || reference === null) {
+		return 'unknown';
+	}
+
+	if (typeof reference !== 'object') {
+		return reference ? 'unknown' : 'never';
+	}
+
+	const referenceType = context.aliasFor(reference) ?? context.typeNameFor(reference);
+	const siblings = dialect.refSiblings === 'apply' ? refSiblingConstraints(schema) : undefined;
+
+	if (siblings) {
+		return `${referenceType} & ${parenthesize(renderType(siblings, context))}`;
+	}
+
+	return referenceType;
 }
 
 /** The union of a `type` list; each branch keeps `readOnly`, like `.readonly()` on the union. */

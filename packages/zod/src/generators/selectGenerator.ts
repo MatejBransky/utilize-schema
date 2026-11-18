@@ -19,6 +19,8 @@ import { generator as refGenerator } from './refGenerator';
 import { generator as stringGenerator } from './stringGenerator';
 import { generator as tupleGenerator } from './tupleGenerator';
 
+import { isRefNode } from '../utils';
+
 let generators: ExpressionGenerator[] | undefined;
 
 /**
@@ -55,7 +57,7 @@ export function selectGenerator(
 	// The type adds nothing to the listed values, and a type generator (e.g.
 	// for objects) would otherwise ignore the `enum`. A `$ref` node keeps the
 	// reference generator, which decides whether the dialect applies siblings.
-	if (!('$ref' in input) && isTypedLiteral(input, dialect)) {
+	if (!isRefNode(input) && isTypedLiteral(input, dialect)) {
 		return input.const !== undefined ? literalGenerator : enumGenerator;
 	}
 

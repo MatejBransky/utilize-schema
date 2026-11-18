@@ -15,7 +15,7 @@ import { selectGenerator } from './selectGenerator';
 import type { GeneratorContext } from './types';
 
 import { applyRefinements } from '../refinements';
-import { NEWLINE, ts } from '../utils';
+import { isRefNode, NEWLINE, ts } from '../utils';
 
 export const generateSchema = (schema: ParsedJSONSchema | undefined, context: GeneratorContext) => {
 	if (schema === undefined) {
@@ -74,7 +74,7 @@ export const generateSchema = (schema: ParsedJSONSchema | undefined, context: Ge
  * reference (draft-07 and older), so no refinement may be applied to it.
  */
 export function ignoresRefSiblings(schema: ParsedJSONSchemaObject, dialect: Dialect): boolean {
-	return typeof schema.$ref === 'string' && dialect.refSiblings === 'ignore';
+	return isRefNode(schema) && dialect.refSiblings === 'ignore';
 }
 
 /**
@@ -93,7 +93,7 @@ export function ignoresRefSiblings(schema: ParsedJSONSchemaObject, dialect: Dial
 function generateCore(schema: ParsedJSONSchemaObject, context: GeneratorContext): string {
 	const { dialect } = context;
 
-	if (typeof schema.$ref === 'string') {
+	if (isRefNode(schema)) {
 		const reference = refGenerator.generate(schema, context);
 
 		if (dialect.refSiblings === 'apply') {
@@ -138,15 +138,14 @@ export function refSiblingConstraints(
  * when there is nothing to intersect. The value-type renderer mirrors this
  * split, so generated types match runtime validation.
  *
- * A `$ref` node is never split: the reference decides whether the dialect
- * applies its siblings (see `generateCore`).
+ * Callers handle a `$ref` node first (see `isRefNode`), so it never gets here.
  */
 export function composedSchemaParts(
 	schema: ParsedJSONSchemaObject
 ): { main: ParsedJSONSchemaObject; rest: ParsedJSONSchemaObject } | undefined {
 	const keyword = pickCombinatorKeyword(schema);
 
-	if (!keyword || '$ref' in schema) {
+	if (!keyword) {
 		return undefined;
 	}
 
