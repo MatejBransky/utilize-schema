@@ -7,7 +7,12 @@ type Handler = (params: unknown) => unknown | Promise<unknown>;
 export function serve(handlers: Record<string, Handler>): void {
 	let buffer = Buffer.alloc(0);
 
-	process.stdin.on('end', () => process.exit(0));
+	// `process.exit()` drops writes that are still queued, which can lose the
+	// answer to the last request. Setting the code lets the event loop drain
+	// stdout first and exit on its own.
+	process.stdin.on('end', () => {
+		process.exitCode = 0;
+	});
 	process.stdin.on('data', (chunk: Buffer) => {
 		buffer = Buffer.concat([buffer, chunk]);
 
