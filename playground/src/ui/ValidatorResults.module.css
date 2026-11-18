@@ -1,0 +1,134 @@
+.results {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	flex: 1;
+	min-height: 0;
+}
+
+.card {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+	overflow: auto;
+	border-right: 1px solid var(--ui-border);
+}
+
+.card:last-child {
+	border-right: 0;
+}
+
+.cardHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: calc(var(--ui-spacing) * 2);
+	padding: calc(var(--ui-spacing) * 2) calc(var(--ui-spacing) * 3);
+	border-bottom: 1px solid var(--ui-border);
+}
+
+.name {
+	font-size: 0.75rem;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.badge {
+	flex: none;
+	padding: 2px calc(var(--ui-spacing) * 1.5);
+	border: 1px solid currentColor;
+	font-size: 0.625rem;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.card[data-status='valid'] .badge {
+	color: #15803d;
+}
+
+.card[data-status='invalid'] .badge {
+	color: #b91c1c;
+}
+
+.card[data-status='running'] .badge,
+.card[data-status='unavailable'] .badge {
+	color: var(--ui-muted-foreground);
+}
+
+.note {
+	padding: calc(var(--ui-spacing) * 2) calc(var(--ui-spacing) * 3) 0;
+	font-size: 0.6875rem;
+	color: var(--ui-muted-foreground);
+}
+
+.value {
+	flex: 1;
+	min-height: 0;
+	margin: 0;
+	padding: calc(var(--ui-spacing) * 1) calc(var(--ui-spacing) * 3) calc(var(--ui-spacing) * 3);
+	font-family: var(--ui-font-mono);
+	font-size: 0.75rem;
+	line-height: 1.5;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.issues {
+	display: flex;
+	flex-direction: column;
+	margin: 0;
+	padding: calc(var(--ui-spacing) * 1) 0 calc(var(--ui-spacing) * 3);
+	list-style: none;
+}
+
+.issue {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: calc(var(--ui-spacing) * 2);
+	padding: calc(var(--ui-spacing) * 1) calc(var(--ui-spacing) * 3);
+	border-bottom: 1px solid var(--ui-border);
+	font-size: 0.75rem;
+	line-height: 1.4;
+}
+
+.issue:last-child {
+	border-bottom: 0;
+}
+
+.path {
+	flex: none;
+	font-family: var(--ui-font-mono);
+	font-size: 0.6875rem;
+	font-weight: 600;
+}
+
+.issueMessage {
+	flex: 1 1 8rem;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.message {
+	padding: calc(var(--ui-spacing) * 3);
+	color: var(--ui-foreground);
+	font-size: 0.8125rem;
+	line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+	.results {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.card {
+		border-right: 0;
+		border-bottom: 1px solid var(--ui-border);
+	}
+
+	.card:last-child {
+		border-bottom: 0;
+	}
+}
