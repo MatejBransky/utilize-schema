@@ -73,11 +73,11 @@ export class DialectError extends Error {
 /**
  * What to do with keywords that do not belong to the node's dialect.
  *
- * `error` (default) follows the rule that a dialect only defines its own
- * keywords: applying a keyword from another dialect would generate code that is
- * either stricter or looser than the standard. `warn` reports and then ignores
- * the keyword, `ignore` silently ignores it, which is what the specification
- * requires for unknown keywords.
+ * `warn` (default) reports and then ignores the keyword: applying a keyword
+ * from another dialect would generate code that is either stricter or looser
+ * than the standard, but failing the whole build for it is too strict for most
+ * schemas. `error` fails instead, `ignore` silently ignores it, which is what
+ * the specification requires for unknown keywords.
  */
 export type KeywordPolicy = 'error' | 'warn' | 'ignore';
 
@@ -86,9 +86,9 @@ export interface DialectOptions {
 	dialect?: DialectId | 'auto';
 	/** Dialect used when a schema omits `$schema`. Default `draft-07`. */
 	fallbackDialect?: DialectId;
-	/** What to do with an unrecognized `$schema`. Default `error`. */
+	/** What to do with an unrecognized `$schema`. Default `fallback`. */
 	unknownDialect?: 'fallback' | 'error';
-	/** What to do with keywords outside the node's dialect. Default `error`. */
+	/** What to do with keywords outside the node's dialect. Default `warn`. */
 	keywordPolicy?: KeywordPolicy;
 	/** Receives diagnostics produced by `keywordPolicy: 'warn'`. */
 	onDialectIssue?: (issue: DialectIssue) => void;
@@ -394,7 +394,7 @@ export function resolveDialect(schema: unknown, options: DialectOptions = {}): R
 	const fallback = dialects[options.fallbackDialect ?? 'draft-07'];
 
 	if (
-		options.unknownDialect !== 'fallback' &&
+		options.unknownDialect === 'error' &&
 		isPlainObject(schema) &&
 		typeof schema.$schema === 'string'
 	) {

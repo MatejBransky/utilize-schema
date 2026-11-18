@@ -58,7 +58,7 @@ const ARRAY_SCHEMA_KEYWORDS = new Set(['allOf', 'anyOf', 'oneOf', 'prefixItems']
 export function prepareSchema(schema: unknown, options: PrepareSchemaOptions = {}): DialectMap {
 	const map: DialectMap = new WeakMap();
 	const seen = new Set<unknown>();
-	const policy = options.keywordPolicy ?? 'error';
+	const policy = options.keywordPolicy ?? 'warn';
 	const root = resolveDialect(schema, options);
 
 	visit(schema, root, [], true);

@@ -72,7 +72,7 @@ export function parseJsonFile(file: SchemaFile): ParsedFile {
 export function buildBundle(
 	parsedFiles: ParsedFile[],
 	rootId: string,
-	keywordPolicy: KeywordPolicy = 'error'
+	keywordPolicy: KeywordPolicy = 'warn'
 ): BundleResult {
 	const problems = parsedFiles.flatMap((parsed) => parsed.problems);
 	const rootParsed = parsedFiles.find((parsed) => parsed.file.id === rootId) ?? parsedFiles[0];

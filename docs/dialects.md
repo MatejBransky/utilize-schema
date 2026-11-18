@@ -37,11 +37,12 @@ otherwise.
 `$id` only affect naming, so they never fail strict validation. Every other
 keyword above is treated as belonging to the dialects marked "defined".
 
-## Strict by default
+## Keyword policy
 
 Generating code that applies a keyword the dialect does not define makes the
-output stricter than the standard. The parser therefore rejects foreign
-keywords and invalid keyword shapes by default:
+output stricter than the standard, so the parser reports foreign keywords and
+invalid keyword shapes. Reporting is a warning by default: the keyword is
+reported and then ignored, and compilation continues:
 
 ```ts
 await compile({
@@ -49,7 +50,7 @@ await compile({
 	// draft-07 declares `prefixItems`, which 2020-12 replaced `items[]` with
 	output: './schema.generated.ts',
 });
-// DialectError: "prefixItems" is not part of draft-07. (schema.json/prefixItems)
+// warning: "prefixItems" is not part of draft-07. (schema.json/prefixItems)
 ```
 
 `DialectOptions` on `parse()` and `compile()` controls this:
@@ -58,13 +59,14 @@ await compile({
 await compile({
 	input: './schema.json',
 	output: './schema.generated.ts',
-	keywordPolicy: 'error', // default
+	keywordPolicy: 'warn', // default
 });
 ```
 
-- `keywordPolicy: 'error'` (default) fails validation.
-- `keywordPolicy: 'warn'` reports through `onDialectIssue` (or `console.warn`)
-  and then ignores the keyword.
+- `keywordPolicy: 'warn'` (default) reports through `onDialectIssue` (or
+  `console.warn`) and then ignores the keyword.
+- `keywordPolicy: 'error'` fails validation instead, which is useful in CI to
+  keep generated code faithful to the declared dialect.
 - `keywordPolicy: 'ignore'` ignores foreign keywords silently, which is what the
   specification requires for keywords a dialect does not define.
 
@@ -73,19 +75,19 @@ The other options:
 - `dialect`: `'auto'` (default) reads `$schema` per resource; any `DialectId`
   forces one dialect for the whole document.
 - `fallbackDialect`: used when a schema omits `$schema`. Default `draft-07`.
-- `unknownDialect`: `'error'` (default) rejects an unrecognized `$schema`;
-  `'fallback'` uses `fallbackDialect` instead.
+- `unknownDialect`: `'fallback'` (default) uses `fallbackDialect` for an
+  unrecognized `$schema`; `'error'` rejects it.
 
 The CLIs expose the same options:
 
 ```sh
-utilize-zod --keyword-policy warn --dialect 2020-12 schema.json
+utilize-zod --keyword-policy error --dialect 2020-12 schema.json
 utilize-effect --fallback-dialect draft-06 schema.yaml
 ```
 
 `$ref` siblings are not an error in dialects that ignore them — the
-specification only says they are ignored. With `keywordPolicy: 'warn'` they are
-reported as `ignored-ref-siblings`.
+specification only says they are ignored. They are reported as
+`ignored-ref-siblings` with the default `keywordPolicy: 'warn'`.
 
 ## Metadata
 

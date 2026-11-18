@@ -47,6 +47,7 @@ import styles from './App.module.css';
 const STORAGE_KEY = 'utilize-schema-playground';
 const EXAMPLE_PARAM = 'example';
 const GENERATOR_PARAM = 'generator';
+const KEYWORD_POLICY_PARAM = 'keyword-policy';
 
 interface AppState {
 	files: SchemaFile[];
@@ -254,6 +255,14 @@ export default function App() {
 	}, []);
 
 	useEffect(() => {
+		const url = new URL(location.href);
+
+		if (!url.hash && url.searchParams.get(KEYWORD_POLICY_PARAM) !== keywordPolicy) {
+			updateUrl({ [KEYWORD_POLICY_PARAM]: keywordPolicy }, 'replace');
+		}
+	}, [keywordPolicy]);
+
+	useEffect(() => {
 		const onPopState = () => {
 			const next = readHash() ?? readUrlState() ?? loadSavedState();
 
@@ -414,6 +423,11 @@ export default function App() {
 		updateUrl({ [GENERATOR_PARAM]: id }, 'push');
 	}
 
+	function applyKeywordPolicy(policy: KeywordPolicy) {
+		setKeywordPolicy(policy);
+		updateUrl({ [KEYWORD_POLICY_PARAM]: policy }, 'push');
+	}
+
 	function setExampleUrl(id: string | null, mode: 'push' | 'replace') {
 		updateUrl({ [EXAMPLE_PARAM]: id }, mode);
 	}
@@ -464,6 +478,7 @@ export default function App() {
 
 		url.searchParams.delete(EXAMPLE_PARAM);
 		url.searchParams.delete(GENERATOR_PARAM);
+		url.searchParams.set(KEYWORD_POLICY_PARAM, keywordPolicy);
 		url.hash = `data=${encoded}`;
 		history.replaceState(null, '', url);
 		setShared(true);
@@ -526,7 +541,7 @@ export default function App() {
 						value={keywordPolicy}
 						onValueChange={(value) => {
 							if (isKeywordPolicy(value)) {
-								setKeywordPolicy(value);
+								applyKeywordPolicy(value);
 							}
 						}}
 					>
@@ -793,7 +808,7 @@ function defaultState(): AppState {
 	return {
 		files: example.files,
 		target: defaultTarget,
-		keywordPolicy: 'error',
+		keywordPolicy: 'warn',
 	};
 }
 
@@ -816,19 +831,25 @@ function loadState(): AppState {
 function readUrlState(): AppState | null {
 	const url = new URL(location.href);
 	const target = readGeneratorParam();
+	const keywordPolicy = readKeywordPolicyParam();
 	const example = exampleById(url.searchParams.get(EXAMPLE_PARAM));
 	const base = loadSavedState() ?? defaultState();
+	const policy = keywordPolicy ?? base.keywordPolicy;
 
 	if (example) {
 		return {
 			files: example.files,
 			target: target ?? defaultTarget,
-			keywordPolicy: base.keywordPolicy,
+			keywordPolicy: policy,
 		};
 	}
 
-	if (target) {
-		return { files: base.files, target, keywordPolicy: base.keywordPolicy };
+	if (target || keywordPolicy) {
+		return {
+			files: base.files,
+			target: target ?? base.target,
+			keywordPolicy: policy,
+		};
 	}
 
 	return null;
@@ -838,6 +859,12 @@ function readGeneratorParam(): TargetId | null {
 	const id = new URL(location.href).searchParams.get(GENERATOR_PARAM);
 
 	return isAvailableTarget(id) ? id : null;
+}
+
+function readKeywordPolicyParam(): KeywordPolicy | null {
+	const value = new URL(location.href).searchParams.get(KEYWORD_POLICY_PARAM);
+
+	return isKeywordPolicy(value) ? value : null;
 }
 
 function loadSavedState(): AppState | null {
@@ -887,7 +914,7 @@ function normalizeState(value: unknown): AppState | null {
 	return {
 		files: state.files,
 		target: isAvailableTarget(state.target) ? state.target : defaultTarget,
-		keywordPolicy: isKeywordPolicy(state.keywordPolicy) ? state.keywordPolicy : 'error',
+		keywordPolicy: isKeywordPolicy(state.keywordPolicy) ? state.keywordPolicy : 'warn',
 	};
 }
 

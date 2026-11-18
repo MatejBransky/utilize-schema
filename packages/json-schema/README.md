@@ -60,10 +60,11 @@ console.log(root[Meta]);
 ## Dialects
 
 The dialect is resolved per schema resource from `$schema` and copied into
-`Meta`. Keywords that do not belong to the node's dialect are rejected by
-default, so generated code cannot silently apply draft-2020-12 syntax to a
-draft-07 schema. `keywordPolicy: 'warn'` reports them, `'ignore'` drops them
-like the specification requires for unknown keywords.
+`Meta`. Keywords that do not belong to the node's dialect are reported and
+ignored by default, so generated code cannot silently apply draft-2020-12
+syntax to a draft-07 schema. `keywordPolicy: 'error'` fails instead, `'ignore'`
+drops them without a warning, like the specification requires for unknown
+keywords.
 
 ```ts
 await parse(schema, {
@@ -71,8 +72,8 @@ await parse(schema, {
 	fileName: 'schema.json',
 	// dialect: '2020-12',              // force one dialect
 	fallbackDialect: 'draft-07', // used when `$schema` is missing
-	unknownDialect: 'error', // or 'fallback'
-	keywordPolicy: 'error', // or 'warn' / 'ignore'
+	unknownDialect: 'fallback', // or 'error'
+	keywordPolicy: 'warn', // or 'error' / 'ignore'
 	onDialectIssue: (issue) => console.warn(issue),
 });
 ```

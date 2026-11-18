@@ -43,8 +43,8 @@ Options:
   --no-banner           omit the generated-file banner
   --dialect <id>        force a dialect (draft-04, draft-06, draft-07, 2019-09, 2020-12)
   --fallback-dialect    dialect for schemas without $schema (default: draft-07)
-  --unknown-dialect     error (default) or fallback for an unrecognized $schema
-  --keyword-policy      error (default), warn or ignore foreign keywords
+  --unknown-dialect     fallback (default) or error for an unrecognized $schema
+  --keyword-policy      warn (default), error or ignore foreign keywords
   -h, --help            show this help
 `;
 

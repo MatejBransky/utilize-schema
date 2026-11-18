@@ -147,8 +147,8 @@ describe('CLI path handling', () => {
 		expect(stderr()).toContain('Refusing to overwrite');
 	});
 
-	test('rejects a foreign keyword by default', async () => {
-		const { io, stderr } = createIo(
+	test('reports a foreign keyword by default', async () => {
+		const { io, stdout, stderr } = createIo(
 			JSON.stringify({
 				$schema: 'http://json-schema.org/draft-07/schema#',
 				type: 'array',
@@ -157,6 +157,22 @@ describe('CLI path handling', () => {
 		);
 
 		const exitCode = await run(['--no-banner'], io);
+
+		expect(exitCode).toBe(0);
+		expect(stderr()).toContain('"prefixItems" is not part of draft-07');
+		expect(stdout()).toContain('export const Root');
+	});
+
+	test('--keyword-policy error rejects a foreign keyword', async () => {
+		const { io, stderr } = createIo(
+			JSON.stringify({
+				$schema: 'http://json-schema.org/draft-07/schema#',
+				type: 'array',
+				prefixItems: [{ type: 'string' }],
+			})
+		);
+
+		const exitCode = await run(['--no-banner', '--keyword-policy', 'error'], io);
 
 		expect(exitCode).toBe(1);
 		expect(stderr()).toContain('"prefixItems" is not part of draft-07');

@@ -82,7 +82,7 @@ test('generates a root schema that only contains a $ref', async () => {
 	expect(code).toContain('export const');
 });
 
-test('reports foreign keywords as errors by default', () => {
+test('reports foreign keywords as warnings by default', () => {
 	const root = file('root', 'root.json', {
 		$schema: 'http://json-schema.org/draft-07/schema#',
 		type: 'array',
@@ -90,6 +90,24 @@ test('reports foreign keywords as errors by default', () => {
 	});
 
 	const bundle = buildBundle([parseJsonFile(root)], 'root');
+
+	expect(bundle.problems).toEqual([
+		{
+			fileId: 'root',
+			severity: 'warning',
+			message: expect.stringContaining('"prefixItems" is not part of draft-07'),
+		},
+	]);
+});
+
+test('reports foreign keywords as errors with keywordPolicy error', () => {
+	const root = file('root', 'root.json', {
+		$schema: 'http://json-schema.org/draft-07/schema#',
+		type: 'array',
+		prefixItems: [{ type: 'string' }],
+	});
+
+	const bundle = buildBundle([parseJsonFile(root)], 'root', 'error');
 
 	expect(bundle.problems).toContainEqual(
 		expect.objectContaining({

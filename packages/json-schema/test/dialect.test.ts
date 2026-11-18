@@ -65,14 +65,23 @@ describe('resolveDialect', () => {
 		});
 	});
 
-	test('rejects an unknown $schema by default', () => {
-		expect(() => resolveDialect({ $schema: 'https://example.com/meta' })).toThrow(DialectError);
+	test('falls back for an unknown $schema by default', () => {
+		const resolved = resolveDialect({ $schema: 'https://example.com/meta' });
+
+		expect(resolved.dialect.id).toBe('draft-07');
+		expect(resolved.source).toBe('fallback');
 	});
 
-	test('allows an unknown $schema to fall back', () => {
+	test('rejects an unknown $schema with unknownDialect error', () => {
+		expect(() =>
+			resolveDialect({ $schema: 'https://example.com/meta' }, { unknownDialect: 'error' })
+		).toThrow(DialectError);
+	});
+
+	test('allows an unknown $schema to use another fallback dialect', () => {
 		const resolved = resolveDialect(
 			{ $schema: 'https://example.com/meta' },
-			{ unknownDialect: 'fallback', fallbackDialect: 'draft-06' }
+			{ fallbackDialect: 'draft-06' }
 		);
 
 		expect(resolved.dialect.id).toBe('draft-06');
@@ -132,48 +141,80 @@ describe('prepareSchema', () => {
 		});
 	});
 
-	test('rejects prefixItems outside 2020-12 by default', () => {
+	test('rejects prefixItems outside 2020-12 with keywordPolicy error', () => {
 		expect(() =>
-			prepareSchema({ $schema: draft07, type: 'array', prefixItems: [{ type: 'string' }] })
+			prepareSchema(
+				{ $schema: draft07, type: 'array', prefixItems: [{ type: 'string' }] },
+				{ keywordPolicy: 'error' }
+			)
 		).toThrow(DialectError);
 	});
 
-	test('rejects the tuple form of items in 2020-12 by default', () => {
+	test('rejects the tuple form of items in 2020-12 with keywordPolicy error', () => {
 		expect(() =>
-			prepareSchema({
-				$schema: twentyTwentyTwelve,
-				type: 'array',
-				items: [{ type: 'string' }],
-			})
+			prepareSchema(
+				{
+					$schema: twentyTwentyTwelve,
+					type: 'array',
+					items: [{ type: 'string' }],
+				},
+				{ keywordPolicy: 'error' }
+			)
 		).toThrow(/"items" was removed/);
 	});
 
-	test('rejects const in draft-04 by default', () => {
+	test('rejects const in draft-04 with keywordPolicy error', () => {
 		expect(() =>
-			prepareSchema({ $schema: draft07.replace('07', '04'), type: 'string', const: 'x' })
+			prepareSchema(
+				{ $schema: draft07.replace('07', '04'), type: 'string', const: 'x' },
+				{ keywordPolicy: 'error' }
+			)
 		).toThrow(/"const" is not part of draft-04/);
 	});
 
-	test('rejects dependentRequired outside 2019-09 by default', () => {
+	test('rejects dependentRequired outside 2019-09 with keywordPolicy error', () => {
 		expect(() =>
-			prepareSchema({
-				$schema: draft07,
-				type: 'object',
-				dependentRequired: { a: ['b'] },
-			})
+			prepareSchema(
+				{
+					$schema: draft07,
+					type: 'object',
+					dependentRequired: { a: ['b'] },
+				},
+				{ keywordPolicy: 'error' }
+			)
 		).toThrow(/"dependentRequired" is not part of draft-07/);
 	});
 
-	test('rejects unevaluatedProperties outside 2019-09 by default', () => {
+	test('rejects unevaluatedProperties outside 2019-09 with keywordPolicy error', () => {
 		expect(() =>
-			prepareSchema({ $schema: draft07, type: 'object', unevaluatedProperties: false })
+			prepareSchema(
+				{ $schema: draft07, type: 'object', unevaluatedProperties: false },
+				{ keywordPolicy: 'error' }
+			)
 		).toThrow(/"unevaluatedProperties" is not part of draft-07/);
 	});
 
-	test('rejects boolean exclusive bounds outside draft-04 by default', () => {
+	test('rejects boolean exclusive bounds outside draft-04 with keywordPolicy error', () => {
 		expect(() =>
-			prepareSchema({ $schema: draft07, type: 'number', minimum: 0, exclusiveMinimum: true })
+			prepareSchema(
+				{ $schema: draft07, type: 'number', minimum: 0, exclusiveMinimum: true },
+				{ keywordPolicy: 'error' }
+			)
 		).toThrow(/"exclusiveMinimum" must be a number/);
+	});
+
+	test('warns instead of failing by default', () => {
+		const issues: DialectIssue[] = [];
+
+		expect(() =>
+			prepareSchema(
+				{ $schema: draft07, type: 'array', prefixItems: [{ type: 'string' }] },
+				{ onDialectIssue: (issue) => issues.push(issue) }
+			)
+		).not.toThrow();
+
+		expect(issues).toHaveLength(1);
+		expect(issues[0]).toMatchObject({ keyword: 'prefixItems', dialect: 'draft-07' });
 	});
 
 	test('reports issues instead of failing with keywordPolicy warn', () => {
