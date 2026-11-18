@@ -22,23 +22,20 @@ catalog:
 minimumReleaseAge: 1440
 minimumReleaseAgeStrict: true
 trustPolicy: no-downgrade
-# These old transitive versions have weaker provenance than their
-# predecessors. They are widely used, stable releases; remove an exclusion
-# after the package publishes a version with restored trust evidence.
-trustPolicyExclude:
-  - semver@6.3.1
-  - undici-types@6.21.0
 blockExoticSubdeps: true
 
-# Keep transitive tooling on patched releases. These are dev-only builds and
-# tests, but an audit gate should still pass.
+# monaco-editor@0.57.0 pins dompurify to exactly 3.4.15, which is affected by
+# critical and high XSS advisories (GHSA-cg2g-xh64-v4q7, GHSA-mrv2-3pqr-j5jr).
+# Remove this override once monaco-editor depends on dompurify >=3.4.17.
 overrides:
-  dompurify: 3.4.18
-  nanoid: 3.3.20
-  picomatch: 4.0.7
-  postcss: 8.5.33
-  source-map-js: 1.2.2
-  vite: 8.3.8
+  dompurify: '^3.4.18'
+
+# GHSA-fc5q-39xc-vjpf is disputed upstream and revoked by Snyk; picomatch has
+# no patched release yet. Without this the weekly Audit workflow stays red for
+# a dev-only advisory. Remove it once 4.0.8 ships or the advisory is withdrawn.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-fc5q-39xc-vjpf
 
 # Only these reviewed packages may run install scripts.
 strictDepBuilds: true

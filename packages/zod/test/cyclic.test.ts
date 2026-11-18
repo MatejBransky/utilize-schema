@@ -292,3 +292,33 @@ describe('array-only cycles', () => {
 		expect(Root.safeParse({ list: [1] }).success).toBe(false);
 	});
 });
+
+describe('oneOf cycles through an object and an array', () => {
+	const filterSchema: JSONSchema = {
+		oneOf: [
+			{
+				type: 'object',
+				properties: { type: { const: 'Id' }, search: { type: 'string' } },
+				required: ['type', 'search'],
+			},
+			{
+				type: 'object',
+				properties: {
+					type: { const: 'And' },
+					filters: { type: 'array', items: { $ref: '#' } },
+				},
+				required: ['type', 'filters'],
+			},
+		],
+	};
+
+	test('compiles and validates nested data', async () => {
+		const Root = await compileToZod(filterSchema);
+
+		expect(Root.safeParse({ type: 'And', filters: [{ type: 'Id', search: 'x' }] }).success).toBe(
+			true
+		);
+		expect(Root.safeParse({ type: 'And', filters: [{ type: 'Id' }] }).success).toBe(false);
+		expect(Root.safeParse({ type: 'And', filters: [1] }).success).toBe(false);
+	});
+});
