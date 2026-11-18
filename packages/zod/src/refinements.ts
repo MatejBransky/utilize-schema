@@ -4,11 +4,12 @@ import {
 	isKeywordApplicable,
 	type ParsedJSONSchema,
 	type ParsedJSONSchemaObject,
+	withSourceMeta,
 } from '@utilize/json-schema';
 
 import type { GeneratorContext } from './generators/types';
 import { inferTypeKeyword } from './inferTypes';
-import { ts, withSourceMeta } from './utils';
+import { ts } from './utils';
 
 type Generate = (schema: ParsedJSONSchema, context: GeneratorContext) => string;
 

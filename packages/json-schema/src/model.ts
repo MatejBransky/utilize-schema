@@ -112,3 +112,26 @@ export interface ParsedJSONSchemaObject
 }
 
 export type ParsedJSONSchema = ParsedJSONSchemaObject | boolean | null;
+
+/**
+ * Copies the non-enumerable `Meta` from a source node to a synthetic node.
+ * Generators create shallow copies while applying a type or splitting a `$ref`
+ * from its siblings; object spread drops `Meta`, and with it the dialect of the
+ * resource the copy came from.
+ */
+export function withSourceMeta<T extends object>(
+	source: ParsedJSONSchemaObject,
+	value: T
+): T & ParsedJSONSchemaObject {
+	const meta = source[Meta];
+
+	if (meta) {
+		Object.defineProperty(value, Meta, {
+			enumerable: false,
+			configurable: true,
+			value: meta,
+		});
+	}
+
+	return value as T & ParsedJSONSchemaObject;
+}

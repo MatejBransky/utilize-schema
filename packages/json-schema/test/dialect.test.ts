@@ -6,12 +6,15 @@ import {
 	Meta,
 	detectDialect,
 	detectSchemaVersion,
+	dialectOf,
 	type JSONSchema,
 	normalizeSchema,
 	parse,
+	type ParsedJSONSchemaObject,
 	prepareSchema,
 	readDialectCliOptions,
 	resolveDialect,
+	withSourceMeta,
 } from '../src';
 import { dialects } from '../src/dialect';
 
@@ -366,6 +369,17 @@ describe('parse metadata', () => {
 		expect(typeof root).toBe('object');
 		expect((root as { [Meta]: { dialect: string } })[Meta].dialect).toBe('2020-12');
 		expect((root as { [Meta]: { dialectSource: string } })[Meta].dialectSource).toBe('declared');
+	});
+
+	test('withSourceMeta keeps the dialect on a shallow copy', async () => {
+		const schema = { $schema: twentyTwentyTwelve, type: 'object' } as JSONSchema;
+		const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Root.json' });
+		const root = parsed.root as ParsedJSONSchemaObject;
+		const copy = withSourceMeta(root, { ...root, title: 'Copy' });
+
+		expect(dialectOf({ ...root }).id).toBe('draft-07');
+		expect(dialectOf(copy).id).toBe('2020-12');
+		expect(Object.getOwnPropertyDescriptor(copy, Meta)?.enumerable).toBe(false);
 	});
 
 	test('gives nodes outside the visited keywords the dialect of their parent', async () => {

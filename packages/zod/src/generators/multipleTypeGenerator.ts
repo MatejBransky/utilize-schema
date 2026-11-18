@@ -1,9 +1,13 @@
-import type { JSONSchemaTypeName, ParsedJSONSchemaObject } from '@utilize/json-schema';
+import {
+	type JSONSchemaTypeName,
+	type ParsedJSONSchemaObject,
+	withSourceMeta,
+} from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
 import { generateSchema } from './generateSchema';
 
-import { NEWLINE, ts, withSourceMeta } from '../utils';
+import { NEWLINE, ts } from '../utils';
 
 export const generator = createGenerator<
 	ParsedJSONSchemaObject & {
