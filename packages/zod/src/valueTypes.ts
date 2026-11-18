@@ -134,21 +134,7 @@ function renderType(node: ParsedJSONSchemaObject, context: ValueTypeContext): st
 	}
 
 	if (generator === multipleTypeGenerator) {
-		const types = schema.type as unknown as string[];
-
-		return union(
-			types.map((type) =>
-				renderType(
-					{
-						...schema,
-						type,
-						default: undefined,
-						title: undefined,
-					} as ParsedJSONSchemaObject,
-					context
-				)
-			)
-		);
+		return renderTypeList(schema, context);
 	}
 
 	if (generator === anyOfGenerator || generator === oneOfGenerator) {
@@ -233,8 +219,26 @@ function renderType(node: ParsedJSONSchemaObject, context: ValueTypeContext): st
 	return 'unknown';
 }
 
+/** The union of a `type` list; each branch keeps `readOnly`, like `.readonly()` on the union. */
+function renderTypeList(schema: ParsedJSONSchemaObject, context: ValueTypeContext): string {
+	const types = schema.type as unknown as string[];
+
+	return union(
+		types.map((type) =>
+			renderType(
+				{ ...schema, type, default: undefined, title: undefined } as ParsedJSONSchemaObject,
+				context
+			)
+		)
+	);
+}
+
 function renderReadOnlyType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): string {
 	const generator = selectGenerator(schema, dialectOf(schema, context.dialect));
+
+	if (generator === multipleTypeGenerator) {
+		return renderTypeList(schema, context);
+	}
 
 	if (generator === arrayGenerator) {
 		const items = schema.items
