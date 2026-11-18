@@ -406,6 +406,38 @@ test('resolves a JSON pointer relative to the referenced file that contains it',
 	expect(item.properties?.location?.[Meta].reference).toBe(types.definitions?.location);
 });
 
+test('decodes escaped tokens in a JSON pointer', async () => {
+	// The definitions live in an embedded resource, so only the identifier index
+	// can resolve them; the `$RefParser` fallback would look in the root.
+	const schema = {
+		$id: 'http://example.com/root.json',
+		definitions: {
+			nested: {
+				$id: 'http://example.com/nested.json',
+				definitions: {
+					'tilde~field': { type: 'string' },
+					'slash/field': { type: 'integer' },
+					'percent%field': { type: 'boolean' },
+				},
+				properties: {
+					tilde: { $ref: '#/definitions/tilde~0field' },
+					slash: { $ref: '#/definitions/slash~1field' },
+					percent: { $ref: '#/definitions/percent%25field' },
+				},
+			},
+		},
+	} as JSONSchema;
+	const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Unknown' });
+
+	assert(typeof parsed.root === 'object' && parsed.root !== null);
+	const nested = parsed.root.definitions?.nested;
+
+	assert(typeof nested === 'object' && nested !== null);
+	expect(nested.properties?.tilde?.[Meta].reference).toBe(nested.definitions?.['tilde~field']);
+	expect(nested.properties?.slash?.[Meta].reference).toBe(nested.definitions?.['slash/field']);
+	expect(nested.properties?.percent?.[Meta].reference).toBe(nested.definitions?.['percent%field']);
+});
+
 test('a $ref to a boolean schema keeps the boolean as its reference', async () => {
 	const schema = {
 		type: 'object',
