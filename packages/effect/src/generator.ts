@@ -587,8 +587,10 @@ function generateObject(schema: ParsedJSONSchemaObject, context: Context): strin
 			required.has(key) ? expression : `Schema.optionalKey(${expression})`
 		}`;
 	});
+	// With patterns, a required key without a `properties` entry is checked by
+	// its pattern or by `additionalProperties`, so only `properties` are declared.
 	const additionalChecks = additionalChecksFor(
-		Object.keys(properties),
+		patterns.length > 0 ? Object.keys(properties) : keys,
 		additional,
 		context,
 		patterns
@@ -625,18 +627,23 @@ function patternChecks(patterns: PatternEntry[]): string[] {
 		return [];
 	}
 
-	const pairs = patterns
-		.map(({ pattern, expression }) => `[${patternExpression(pattern)}, ${expression}]`)
-		.join(', ');
+	// One check per pattern keeps every regex and schema at its own type; an
+	// array of `[regex, schema]` pairs would widen to a union of both.
+	const checks = patterns
+		.map(
+			({
+				pattern,
+				expression,
+			}) => `if (${patternExpression(pattern)}.test(key) && !Schema.is(${expression})(entry)) {
+          return 'Property does not match the pattern schema';
+        }`
+		)
+		.join('\n');
 
 	return [
 		`Schema.makeFilter((value) => {
       for (const [key, entry] of Object.entries(value)) {
-        for (const [pattern, schema] of [${pairs}]) {
-          if (pattern.test(key) && !Schema.is(schema)(entry)) {
-            return 'Property does not match the pattern schema';
-          }
-        }
+        ${checks}
       }
 
       return undefined;
@@ -658,11 +665,7 @@ function additionalChecksFor(
 		return [];
 	}
 
-	const declared = JSON.stringify(keys);
-	const patternTest = patternTestExpression(patterns);
-	const isDeclared = patternTest
-		? `${declared}.includes(key) || ${patternTest}`
-		: `${declared}.includes(key)`;
+	const isDeclared = knownKeyExpression(keys, patterns);
 
 	if (additional === false) {
 		return [
@@ -677,12 +680,17 @@ function additionalChecksFor(
 	];
 }
 
-function patternTestExpression(patterns: PatternEntry[]): string {
-	if (patterns.length === 0) {
-		return '';
-	}
+/**
+ * Tests whether `key` is declared or matches a pattern. An empty array literal
+ * is typed `never[]`, so `[].includes(key)` would not type-check and is left out.
+ */
+function knownKeyExpression(keys: string[], patterns: PatternEntry[]): string {
+	const tests = [
+		...(keys.length > 0 ? [`${JSON.stringify(keys)}.includes(key)`] : []),
+		...patterns.map(({ pattern }) => `${patternExpression(pattern)}.test(key)`),
+	];
 
-	return `[${patterns.map(({ pattern }) => patternExpression(pattern)).join(', ')}].some((pattern) => pattern.test(key))`;
+	return tests.length > 0 ? tests.join(' || ') : 'false';
 }
 
 function objectChecks(schema: ParsedJSONSchemaObject, context: Context): string[] {
