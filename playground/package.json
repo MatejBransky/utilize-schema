@@ -22,6 +22,7 @@
 		"ajv-draft-04": "1.0.0",
 		"buffer": "6.0.3",
 		"effect": "catalog:",
+		"es-module-lexer": "2.3.2",
 		"monaco-editor": "0.57.0",
 		"path-browserify": "1.0.1",
 		"prettier": "3.10.1",

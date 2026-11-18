@@ -1,4 +1,4 @@
-import { evaluateModule } from '../runtime';
+import { loadModule } from '../runtime';
 
 import { monaco } from './setup';
 
@@ -13,7 +13,7 @@ export function compileModule(source: string): Promise<Record<string, unknown>> 
 	let module = modules.get(source);
 
 	if (!module) {
-		module = emitJavaScript(source).then(evaluateModule);
+		module = emitJavaScript(source).then(loadModule);
 
 		module.catch(() => modules.delete(source));
 		modules.set(source, module);
