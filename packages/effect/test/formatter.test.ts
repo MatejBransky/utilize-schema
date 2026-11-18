@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { describe, expect, test } from 'vitest';
 
-import { compile, compileSchema, DEFAULT_BANNER } from '../src';
+import { type CodeFormatter, compile, compileSchema, DEFAULT_BANNER } from '../src';
 
 describe('format hook', () => {
 	test('runs a synchronous formatter over generated code', async () => {
@@ -36,16 +36,18 @@ describe('format hook', () => {
 	test('is passed on by compile() and runs before the banner is prepended', async () => {
 		const directory = await mkdtemp(join(tmpdir(), 'utilize-effect-format-'));
 		const formatterInputs: string[] = [];
+		// Typed with the package export, so dropping the export fails `check:types`.
+		const formatter: CodeFormatter = (generated) => {
+			formatterInputs.push(generated);
+			return '// formatted\n';
+		};
 
 		try {
 			await writeFile(join(directory, 'schema.json'), JSON.stringify({ type: 'string' }));
 			await compile({
 				input: 'schema.json',
 				cwd: directory,
-				format: (generated) => {
-					formatterInputs.push(generated);
-					return '// formatted\n';
-				},
+				format: formatter,
 			});
 
 			expect(await readFile(join(directory, 'schema.generated.ts'), 'utf8')).toBe(
