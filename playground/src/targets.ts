@@ -20,3 +20,7 @@ export const defaultTarget: TargetId = 'zod';
 export function isTargetId(value: unknown): value is TargetId {
 	return typeof value === 'string' && targets.some((target) => target.value === value);
 }
+
+export function isRuntimeTarget(value: TargetId): value is RuntimeTargetId {
+	return value === 'zod' || value === 'effect';
+}

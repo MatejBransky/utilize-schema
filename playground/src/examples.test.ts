@@ -14,7 +14,7 @@ import './polyfills';
 import { buildBundle, parseJsonFile } from './bundle';
 import { exampleGeneratorOptions, type ExampleGeneratorOptions } from './exampleOptions';
 import { examples, type Example } from './examples';
-import { generateRuntimeCode, rootDeclarationName } from './generateCode';
+import { generateCodeFor } from './generateCode';
 import {
 	loadModule,
 	rootValidator,
@@ -99,33 +99,41 @@ for (const example of examples) {
 	}
 
 	test(`example "${example.name}" accepts and rejects its test data`, async () => {
-		const root = await parseExample(example);
-		const options = exampleGeneratorOptions[example.id];
-		const zod = await importModule(generateZod(root, { importZod: true, ...options?.zod }));
-		const effect = await importModule(
-			generateEffect(root, { importEffect: true, ...options?.effect })
-		);
-		const rootName = rootDeclarationName(root)!;
-
 		expect(example.cases.length).toBeGreaterThan(0);
 
-		for (const item of example.cases) {
-			const zodResult = validateWithZod(rootValidator(zod, rootName), item.data);
-			const effectResult = validateWithEffect(rootValidator(effect, rootName), item.data);
-			const expected = item.expect === 'valid';
+		for (const target of ['zod', 'effect'] as const) {
+			const { runtime } = generateCodeFor(
+				target,
+				await parseExample(example),
+				exampleGeneratorOptions[example.id]
+			);
 
-			expect(zodResult.ok, `${example.name} / ${item.label} (Zod)`).toBe(expected);
-			expect(effectResult.ok, `${example.name} / ${item.label} (Effect Schema)`).toBe(expected);
+			if (!runtime || runtime.status !== 'generated' || !runtime.rootName) {
+				throw new Error(`${example.name}: the ${target} validator was not generated.`);
+			}
+
+			const module = await importModule(runtime.code);
+			const schema = rootValidator(module, runtime.rootName);
+			const validate = target === 'zod' ? validateWithZod : validateWithEffect;
+
+			for (const item of example.cases) {
+				const result = validate(schema, item.data);
+				const expected = item.expect === 'valid';
+
+				expect(result.ok, `${example.name} / ${item.label} (${target})`).toBe(expected);
+			}
 		}
 	});
 
 	test(`example "${example.name}" runs its test data the way the playground does`, async () => {
-		const runtime = generateRuntimeCode(await parseExample(example));
-
 		for (const target of ['zod', 'effect'] as const) {
-			const source = runtime[target];
+			const { runtime: source } = generateCodeFor(
+				target,
+				await parseExample(example),
+				exampleGeneratorOptions[example.id]
+			);
 
-			if (source.status !== 'generated' || !source.rootName) {
+			if (!source || source.status !== 'generated' || !source.rootName) {
 				throw new Error(`${example.name}: the ${target} validator was not generated.`);
 			}
 
