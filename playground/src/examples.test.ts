@@ -23,12 +23,12 @@ const generators: Array<{
 	{
 		name: 'Effect Schema',
 		marker: 'export const',
-		generate: (root) => generateEffect(root, { importEffect: true }),
+		generate: (root, options) => generateEffect(root, { importEffect: true, ...options?.effect }),
 	},
 	{
 		name: 'TypeScript',
 		marker: 'export ',
-		generate: (root) => generateTypeScript(root),
+		generate: (root, options) => generateTypeScript(root, { ...options?.typescript }),
 	},
 ];
 

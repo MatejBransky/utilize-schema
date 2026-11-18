@@ -326,6 +326,11 @@ export const examples: Example[] = [
 		type: 'string',
 		format: 'phone-number',
 	}),
+	single('custom-resolver', 'Custom schema resolver', 'Advanced', {
+		title: 'Timestamp',
+		type: 'string',
+		format: 'date-time',
+	}),
 	single('external-ref', 'External $ref', 'References', {
 		title: 'Release',
 		type: 'object',
