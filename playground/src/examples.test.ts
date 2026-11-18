@@ -13,6 +13,7 @@ import './polyfills';
 import { buildBundle, parseJsonFile } from './bundle';
 import { exampleGeneratorOptions, type ExampleGeneratorOptions } from './exampleOptions';
 import { examples, type Example } from './examples';
+import { rootDeclarationName } from './generateCode';
 import { rootValidator, validateWithEffect, validateWithZod } from './runtime';
 
 const directories: string[] = [];
@@ -64,7 +65,7 @@ async function parseExample(example: Example) {
 }
 
 /** Runs generated code the same way a consumer would import it. */
-async function loadModule(code: string): Promise<Record<string, unknown>> {
+async function importModule(code: string): Promise<Record<string, unknown>> {
 	const directory = await mkdtemp(join(__dirname, '__generated__-'));
 
 	directories.push(directory);
@@ -93,20 +94,22 @@ for (const example of examples) {
 	test(`example "${example.name}" accepts and rejects its test data`, async () => {
 		const root = await parseExample(example);
 		const options = exampleGeneratorOptions[example.id];
-		const zod = await loadModule(generateZod(root, { importZod: true, ...options?.zod }));
-		const effect = await loadModule(
+		const zod = await importModule(generateZod(root, { importZod: true, ...options?.zod }));
+		const effect = await importModule(
 			generateEffect(root, { importEffect: true, ...options?.effect })
 		);
+		const rootName = rootDeclarationName(root)!;
 
 		expect(example.cases.length).toBeGreaterThan(0);
 
 		for (const item of example.cases) {
-			const zodResult = validateWithZod(rootValidator(zod), item.data);
-			const effectResult = validateWithEffect(rootValidator(effect), item.data);
+			const zodResult = validateWithZod(rootValidator(zod, rootName), item.data);
+			const effectResult = validateWithEffect(rootValidator(effect, rootName), item.data);
 			const expected = item.expect === 'valid';
 
 			expect(zodResult.ok, `${example.name} / ${item.label} (Zod)`).toBe(expected);
 			expect(effectResult.ok, `${example.name} / ${item.label} (Effect Schema)`).toBe(expected);
 		}
 	});
+
 }
