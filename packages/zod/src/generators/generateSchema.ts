@@ -137,13 +137,16 @@ export function refSiblingConstraints(
  * combinator alone and the remaining structural keywords. Returns `undefined`
  * when there is nothing to intersect. The value-type renderer mirrors this
  * split, so generated types match runtime validation.
+ *
+ * A `$ref` node is never split: the reference decides whether the dialect
+ * applies its siblings (see `generateCore`).
  */
 export function composedSchemaParts(
 	schema: ParsedJSONSchemaObject
 ): { main: ParsedJSONSchemaObject; rest: ParsedJSONSchemaObject } | undefined {
 	const keyword = pickCombinatorKeyword(schema);
 
-	if (!keyword) {
+	if (!keyword || '$ref' in schema) {
 		return undefined;
 	}
 

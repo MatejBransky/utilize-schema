@@ -45,6 +45,29 @@ const refWithIgnoredLiteralSchema: JSONSchema = {
 	definitions: { Kind: { type: 'string' } },
 };
 
+/** draft-07 ignores a `const` or `allOf` next to `$ref` with another sibling too (issue 88). */
+const refWithIgnoredCombinatorSchema: JSONSchema = {
+	$schema: 'http://json-schema.org/draft-07/schema#',
+	type: 'object',
+	properties: {
+		kind: { $ref: '#/definitions/Kind', const: 'a', minLength: 1 } as JSONSchema,
+		tag: { $ref: '#/definitions/Kind', allOf: [{ const: 'b' }], type: 'string' } as JSONSchema,
+		next: { $ref: '#' },
+	},
+	definitions: { Kind: { type: 'string' } },
+};
+
+/** 2019-09 applies the keywords next to `$ref`, so the value type keeps them. */
+const refWithAppliedCombinatorSchema = {
+	$schema: 'https://json-schema.org/draft/2019-09/schema',
+	type: 'object',
+	properties: {
+		kind: { $ref: '#/$defs/Kind', const: 'a', minLength: 1 },
+		next: { $ref: '#' },
+	},
+	$defs: { Kind: { type: 'string' } },
+} as unknown as JSONSchema;
+
 /** Both arrays of the recursive schema are hoisted into one declaration. */
 const hoistedCycleSchema: JSONSchema = {
 	type: 'object',
@@ -283,6 +306,8 @@ describe('generated recursive schemas type-check', () => {
 				'RecursivePatternProperties.ts': recursivePatternPropertiesSchema,
 				'InlineCopyCycle.ts': inlineCopyCycleSchema,
 				'RefWithIgnoredLiteral.ts': refWithIgnoredLiteralSchema,
+				'RefWithIgnoredCombinator.ts': refWithIgnoredCombinatorSchema,
+				'RefWithAppliedCombinator.ts': refWithAppliedCombinatorSchema,
 				'HoistedCycle.ts': hoistedCycleSchema,
 				'HoistedLazyCycle.ts': hoistedLazyCycleSchema,
 			})
