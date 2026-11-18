@@ -27,7 +27,7 @@ export const exampleGeneratorOptions: Record<string, ExampleGeneratorOptions> = 
 	'custom-resolver': {
 		zod: {
 			customSchemaResolver: (schema) =>
-				schema.format === 'date-time' ? 'z.string().datetime({ offset: true })' : undefined,
+				schema.format === 'date-time' ? 'z.iso.datetime({ offset: true })' : undefined,
 		},
 		effect: {
 			customSchemaResolver: (schema) =>

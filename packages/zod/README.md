@@ -66,7 +66,7 @@ pnpm add zod
   await compile({
   	input: './schema.json',
   	customSchemaResolver: (schema) =>
-  		schema.format === 'date-time' ? 'z.string().datetime({ offset: true })' : undefined,
+  		schema.format === 'date-time' ? 'z.iso.datetime({ offset: true })' : undefined,
   });
   ```
 

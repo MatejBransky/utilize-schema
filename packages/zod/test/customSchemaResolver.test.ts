@@ -12,13 +12,13 @@ describe('customSchemaResolver', () => {
 			},
 			{
 				customSchemaResolver: (schema) =>
-					schema.format === 'date-time' ? 'z.string().datetime({ offset: true })' : undefined,
+					schema.format === 'date-time' ? 'z.iso.datetime({ offset: true })' : undefined,
 			}
 		);
 
 		await expect(result).toMatchCode(ts`
       export const Root = z.object({
-        created: z.string().datetime({ offset: true }),
+        created: z.iso.datetime({ offset: true }),
       });
       export type Root = z.infer<typeof Root>;
     `);
