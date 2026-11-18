@@ -1,11 +1,11 @@
-# Every change needs Matej's review. Repository admins can bypass the branch
+# Every change needs Matej's or Phil's review. Repository admins can bypass the branch
 # ruleset, which keeps the solo release path usable.
-* @MatejBransky
+* @MatejBransky @philfreshman
 
 # Release-sensitive paths are listed explicitly so it is obvious which files
 # can change what gets published.
 /.github/ @MatejBransky
-/.changeset/ @MatejBransky
+/.changeset/ @MatejBransky @philfreshman
 /pnpm-workspace.yaml @MatejBransky
 /pnpm-lock.yaml @MatejBransky
 /package.json @MatejBransky
