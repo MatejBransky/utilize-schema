@@ -262,9 +262,10 @@ test('the header pickers are selects rather than text inputs', async () => {
 	const screen = await render(<App />);
 
 	expect(document.querySelector('[data-slot="combobox-input"]')).toBeNull();
-	expect(document.querySelectorAll('[data-slot="select-trigger"]')).toHaveLength(2);
+	expect(document.querySelectorAll('[data-slot="select-trigger"]')).toHaveLength(3);
 	await expect.element(screen.getByRole('combobox', { name: 'Generator' })).toBeVisible();
 	await expect.element(screen.getByRole('combobox', { name: 'Example' })).toBeVisible();
+	await expect.element(screen.getByRole('combobox', { name: 'Keyword policy' })).toBeVisible();
 });
 
 test('the generator select offers only implemented generators', async () => {
