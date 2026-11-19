@@ -89,6 +89,132 @@ describe('code generation', () => {
 		`);
 	});
 
+	test('checks schema dependencies against the object branch only', async () => {
+		const result = await compile({
+			type: 'object',
+			properties: {
+				card: { type: 'string' },
+				billingAddress: { type: 'string' },
+				coupon: { type: 'string' },
+			},
+			dependencies: {
+				card: ['billingAddress'],
+				coupon: { properties: { card: { type: 'string' } }, required: ['card'] },
+			},
+		});
+
+		await expect(result).toMatchCode(ts`
+			export const Root = Schema.StructWithRest(
+				Schema.Struct({
+					card: Schema.optionalKey(Schema.String),
+					billingAddress: Schema.optionalKey(Schema.String),
+					coupon: Schema.optionalKey(Schema.String),
+				}),
+				[Schema.Record(Schema.String, Schema.Json)]
+			).check(
+				Schema.makeFilter((value) =>
+					(!Object.hasOwn(value, 'card') || Object.hasOwn(value, 'billingAddress')) &&
+					(!Object.hasOwn(value, 'coupon') ||
+						Schema.is(
+							Schema.StructWithRest(Schema.Struct({ card: Schema.String }), [
+								Schema.Record(Schema.String, Schema.Json),
+							])
+						)(value))
+						? undefined
+						: 'Object does not satisfy its dependencies'
+				)
+			);
+
+			export type Root = typeof Root.Type;
+		`);
+	});
+
+	test('keeps every() for a dependency on several keys', async () => {
+		const result = await compile({
+			type: 'object',
+			properties: { a: { type: 'string' }, b: { type: 'string' }, c: { type: 'string' } },
+			dependencies: { a: ['b', 'c'] },
+		});
+
+		await expect(result).toMatchCode(ts`
+			export const Root = Schema.StructWithRest(
+				Schema.Struct({
+					a: Schema.optionalKey(Schema.String),
+					b: Schema.optionalKey(Schema.String),
+					c: Schema.optionalKey(Schema.String),
+				}),
+				[Schema.Record(Schema.String, Schema.Json)]
+			).check(
+				Schema.makeFilter((value) =>
+					!Object.hasOwn(value, 'a') || ['b', 'c'].every((key) => Object.hasOwn(value, key))
+						? undefined
+						: 'Object does not satisfy its dependencies'
+				)
+			);
+
+			export type Root = typeof Root.Type;
+		`);
+	});
+
+	test('narrows a dependency that only constrains another type', async () => {
+		const result = await compile({
+			type: 'object',
+			properties: { a: { type: 'string' }, b: { type: 'string' } },
+			dependencies: { a: { minLength: 2 } },
+		});
+
+		await expect(result).toMatchCode(ts`
+			export const Root = Schema.StructWithRest(
+				Schema.Struct({ a: Schema.optionalKey(Schema.String), b: Schema.optionalKey(Schema.String) }),
+				[Schema.Record(Schema.String, Schema.Json)]
+			).check(
+				Schema.makeFilter((value) =>
+					!Object.hasOwn(value, 'a') || Schema.is(Schema.Record(Schema.String, Schema.Json))(value)
+						? undefined
+						: 'Object does not satisfy its dependencies'
+				)
+			);
+
+			export type Root = typeof Root.Type;
+		`);
+	});
+
+	test('narrows a dependency that only declares another dependency', async () => {
+		const result = await compile({
+			type: 'object',
+			properties: { a: { type: 'string' }, b: { type: 'string' }, c: { type: 'string' } },
+			dependencies: { a: { dependencies: { b: ['c'] } } },
+		});
+
+		await expect(result).toMatchCode(ts`
+			export const Root = Schema.StructWithRest(
+				Schema.Struct({
+					a: Schema.optionalKey(Schema.String),
+					b: Schema.optionalKey(Schema.String),
+					c: Schema.optionalKey(Schema.String),
+				}),
+				[Schema.Record(Schema.String, Schema.Json)]
+			).check(
+				Schema.makeFilter((value) =>
+					!Object.hasOwn(value, 'a') ||
+					Schema.is(
+						Schema.Record(Schema.String, Schema.Json).check(
+							Schema.makeFilter((value) =>
+								!Object.hasOwn(value, 'b') || Object.hasOwn(value, 'c')
+									? undefined
+									: 'Object does not satisfy its dependencies'
+							)
+						)
+					)(value)
+						? undefined
+						: 'Object does not satisfy its dependencies'
+				)
+			);
+
+			export type Root = typeof Root.Type;
+		`);
+	});
+
 	test('decodes a single record when only additionalProperties is given', async () => {
 		const result = await compile({ type: 'object', additionalProperties: { type: 'string' } });
 

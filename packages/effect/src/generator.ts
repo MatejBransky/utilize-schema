@@ -4,6 +4,7 @@ import {
 	isKeywordApplicable,
 	isPlainObject,
 	Meta,
+	narrowUntypedSchema,
 	type ParsedJSONSchema,
 	type ParsedJSONSchemaObject,
 } from '@utilize/json-schema';
@@ -820,13 +821,17 @@ function dependencyChecks(schema: ParsedJSONSchemaObject, context: Context): str
 		if (Array.isArray(dependency)) {
 			const required = dependency.filter((item): item is string => typeof item === 'string');
 
-			if (required.length > 0) {
+			if (required.length === 1) {
+				conditions.push(`(!${present} || Object.hasOwn(value, ${JSON.stringify(required[0]!)}))`);
+			} else if (required.length > 1) {
 				conditions.push(
 					`(!${present} || ${JSON.stringify(required)}.every((key) => Object.hasOwn(value, key)))`
 				);
 			}
 		} else if (dependency !== undefined && dependency !== null) {
-			conditions.push(`(!${present} || Schema.is(${generateSchema(dependency, context)})(value))`);
+			conditions.push(
+				`(!${present} || Schema.is(${generateDependencySchema(dependency, context)})(value))`
+			);
 		}
 	}
 
@@ -835,6 +840,27 @@ function dependencyChecks(schema: ParsedJSONSchemaObject, context: Context): str
 	}
 
 	return `Schema.makeFilter((value) => ${conditions.join(' && ')} ? undefined : 'Object does not satisfy its dependencies')`;
+}
+
+/**
+ * A schema dependency is evaluated against the object under validation, so an
+ * untyped subschema only needs its object branch: type-specific keywords
+ * constrain their own type, and no other type can match here. The Zod
+ * generator narrows the same way, through `narrowUntypedSchema`.
+ */
+function generateDependencySchema(dependency: ParsedJSONSchema, context: Context): string {
+	if (!isPlainObject(dependency)) {
+		return generateSchema(dependency, context);
+	}
+
+	// A resolver that keys on the node itself has already had its chance on the
+	// original node; asking it again about the narrowed copy would run user code
+	// twice for every dependency.
+	const custom = context.customSchemaResolver?.(dependency as ParsedJSONSchemaObject);
+
+	return (
+		custom ?? generateSchema(narrowUntypedSchema(dependency, 'object', context.dialect), context)
+	);
 }
 
 /**

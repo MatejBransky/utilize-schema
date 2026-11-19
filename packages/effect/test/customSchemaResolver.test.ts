@@ -94,6 +94,28 @@ describe('customSchemaResolver', () => {
     `);
 	});
 
+	test('asks a schema resolver once per dependency', async () => {
+		const seen: string[] = [];
+
+		await compile(
+			{
+				type: 'object',
+				properties: { a: { type: 'string' } },
+				dependencies: { a: { required: ['b'] } },
+			},
+			{
+				customSchemaResolver: (schema) => {
+					seen.push(JSON.stringify(schema));
+					return undefined;
+				},
+			}
+		);
+
+		// The narrowed copy reaches the resolver through `generateSchema`, but the
+		// original node must not be resolved twice before it is narrowed.
+		expect(seen.filter((node) => node === '{"required":["b"]}')).toHaveLength(1);
+	});
+
 	test('leaves unmatched nodes to the generator', async () => {
 		await expect(compile({ type: 'string' }, { customSchemaResolver: () => undefined }))
 			.toMatchCode(ts`
