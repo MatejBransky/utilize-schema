@@ -2,49 +2,12 @@
 export type KnownFailureInstances = Record<string, string[] | 'compile'>;
 
 export const knownFailureInstances: KnownFailureInstances = {
-	'anyOf.json :: anyOf with base schema': ['mismatch base schema'],
 	'const.json :: const with object': 'compile',
 	'const.json :: const with array': 'compile',
 	'const.json :: const with [false] does not match [0]': 'compile',
 	'const.json :: const with [true] does not match [1]': 'compile',
 	'const.json :: const with {"a": false} does not match {"a": 0}': 'compile',
 	'const.json :: const with {"a": true} does not match {"a": 1}': 'compile',
-	'contains.json :: contains keyword validation': [
-		'array without items matching schema is invalid',
-		'empty array is invalid',
-	],
-	'contains.json :: contains keyword with const keyword': ['array without item 5 is invalid'],
-	'contains.json :: contains keyword with boolean schema true': ['empty array is invalid'],
-	'contains.json :: contains keyword with boolean schema false': [
-		'any non-empty array is invalid',
-		'empty array is invalid',
-	],
-	'contains.json :: contains with false if subschema': ['empty array is invalid'],
-	'dependentRequired.json :: single dependency (dependencies)': ['missing dependency'],
-	'dependentRequired.json :: multiple dependents required (dependencies)': [
-		'missing dependency',
-		'missing other dependency',
-		'missing both dependencies',
-	],
-	'dependentRequired.json :: dependencies with escaped characters (dependencies)': [
-		'CRLF missing dependent',
-		'quoted quotes missing dependent',
-	],
-	'dependentSchemas.json :: single dependency (dependencies)': [
-		'wrong type',
-		'wrong type other',
-		'wrong type both',
-	],
-	'dependentSchemas.json :: boolean subschemas (dependencies)': [
-		'object with property having schema false is invalid',
-		'object with both properties is invalid',
-	],
-	'dependentSchemas.json :: dependents with escaped characters (dependencies)': [
-		'invalid object 1',
-		'invalid object 2',
-		'invalid object 3',
-		'invalid object 4',
-	],
 	'enum.json :: heterogeneous enum validation': 'compile',
 	'enum.json :: enum with [false] does not match [0]': 'compile',
 	'enum.json :: enum with [true] does not match [1]': 'compile',
@@ -335,11 +298,6 @@ export const knownFailureInstances: KnownFailureInstances = {
 		'a trailing newline after a valid URI is invalid',
 	],
 	'id-legacy.json :: URN ref with nested pointer ref': 'compile',
-	'oneOf.json :: oneOf with boolean schemas, all true': ['any value is invalid'],
-	'oneOf.json :: oneOf with boolean schemas, more than one true': ['any value is invalid'],
-	'properties.json :: properties whose names are Javascript object property names': [
-		'__proto__ not valid',
-	],
 	'ref-legacy.json :: relative pointer ref to array': ['match array'],
 	'ref-legacy.json :: naive replacement of $ref with its destination is not correct': 'compile',
 };
