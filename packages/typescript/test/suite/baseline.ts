@@ -14,5 +14,5 @@
  */
 export const baseline = {
 	conformant: 175,
-	typeGaps: 100,
+	typeGaps: 81,
 };

@@ -49,6 +49,7 @@ const stats = {
 	invalidAssertions: 0,
 	invalidPassed: 0,
 	skippedExternal: 0,
+	skippedFormat: 0,
 	skippedDialect: 0,
 };
 
@@ -83,6 +84,13 @@ describe('JSON Schema Test Suite (draft-07, type level)', () => {
 
 				if (testCase.externalSchemas) {
 					stats.skippedExternal++;
+					continue;
+				}
+
+				// A type cannot check a format either way, so assertion cases are
+				// measured by the runtime generators instead of here.
+				if (testCase.tags?.includes('format-assertion')) {
+					stats.skippedFormat++;
 					continue;
 				}
 
@@ -166,6 +174,7 @@ describe('JSON Schema Test Suite (draft-07, type level)', () => {
 				`${stats.typeGaps} type gaps`,
 				`${stats.known} known gaps`,
 				`${stats.skippedExternal} skipped (external schemas)`,
+				`${stats.skippedFormat} skipped (format assertion)`,
 				`${stats.skippedDialect} filtered out (other dialects)`,
 			].join(' · '),
 		];

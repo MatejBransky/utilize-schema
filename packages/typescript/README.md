@@ -163,10 +163,10 @@ pnpm test:suite # official JSON Schema Test Suite
 
 Current baseline on suite commit `e2a68a1`:
 
-- **175 of 288 cases** pass in both directions.
-- **796 of 822** spec-valid instances are accepted.
-- **219 of 798** spec-invalid instances are rejected.
-- **100 cases** differ only because an invalid instance is accepted. TypeScript
+- **175 of 269 cases** pass in both directions.
+- **541 of 567** spec-valid instances are accepted.
+- **219 of 370** spec-invalid instances are rejected.
+- **81 cases** differ only because an invalid instance is accepted. TypeScript
   cannot express `minimum`, `pattern`, `format`, `uniqueItems`, `dependencies`,
   `if`/`then`/`else`, and similar value constraints, so these are inherent to
   the target.
@@ -190,7 +190,7 @@ by that schema; the generated type rejects it.
 Scalar constraints do not infer a type. `maximum` only applies to numbers, so
 `{ maximum: 3 }` also accepts `"foo"`; typing it as `number` would reject a
 spec-valid instance. A schema that only bounds values therefore stays `unknown`,
-which is why the valid-instance rate is above 96% while the object/array shape
+which is why the valid-instance rate is above 95% while the object/array shape
 inference remains the only source of rejected valid instances in this
 generator.
 
@@ -200,16 +200,15 @@ At its own pinned revision (`5caacfc`, suite `3c25e5f`) json-schema-to-typescrip
 records 141 of 257 draft-07 groups with no valid instance rejected and no invalid
 one accepted, 24 crashes and 2 invalid TypeScript files. Its instance totals are
 490 of 516 valid accepted and 198 of 342 invalid rejected. The suite revisions
-and case selections differ (257 groups there, 288 runnable cases here; this
-runner skips cases that need external schemas), so the numbers describe two
-different records rather than a score. On the same group metric the TypeScript
-generator is ahead (60.8% vs 54.9%), accepts more valid instances (96.8% vs
-95.0%), emits no invalid TypeScript and crashes only where the shared parser has
-the same URN resolution gap (1 case vs 24). Instance-level invalid rejection is
-not comparable across the two revisions: this runner rejects 27.4% of 798
-invalid instances, json-schema-to-typescript 57.9% of its 342, largely because
-the newer suite revision adds many more `format` cases that a type cannot
-reject.
+and case selections differ (257 groups there, 269 runnable cases here; this
+runner skips cases that need external schemas and `format-assertion` cases), so
+the numbers describe two different records rather than a score. On the same
+group metric the TypeScript generator is ahead (65.1% vs 54.9%), accepts more
+valid instances (95.4% vs 95.0%), emits no invalid TypeScript and crashes only
+where the shared parser has the same URN resolution gap (1 case vs 24).
+Instance-level invalid rejection is not comparable across the two revisions:
+this runner rejects 59.2% of 370 invalid instances, json-schema-to-typescript
+57.9% of its 342.
 
 ## Differences from json-schema-to-typescript
 
