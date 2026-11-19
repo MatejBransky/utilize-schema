@@ -80,15 +80,16 @@ describe('customSchemaResolver', () => {
 	});
 
 	test('replaces a node the generator rejects', async () => {
-		const schema: TestSchema = { allOf: [{ type: 'string' }, { minLength: 2 }] };
+		const schema: TestSchema = { allOf: [{ type: 'array' }, { minItems: 1 }] };
 
 		await expect(compile(schema)).rejects.toThrow(/allOf/);
 		await expect(
 			compile(schema, {
-				customSchemaResolver: (node) => (Array.isArray(node.allOf) ? 'Schema.String' : undefined),
+				customSchemaResolver: (node) =>
+					Array.isArray(node.allOf) ? 'Schema.Array(Schema.Finite)' : undefined,
 			})
 		).toMatchCode(ts`
-      export const Root = Schema.String;
+      export const Root = Schema.Array(Schema.Finite);
 
       export type Root = typeof Root.Type;
     `);

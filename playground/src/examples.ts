@@ -97,6 +97,10 @@ export const examples: Example[] = [
 		type: 'object',
 		additionalProperties: { type: 'number' },
 	}),
+	single('all-of-scalar', 'Scalar allOf', 'Advanced', {
+		title: 'Score',
+		allOf: [{ minimum: 20 }, { maximum: 30 }],
+	}),
 	single('all-of', 'All of', 'Common', {
 		title: 'Employee',
 		allOf: [

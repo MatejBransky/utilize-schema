@@ -2,19 +2,6 @@
 export const knownFailures: Record<string, string> = {
 	'additionalProperties.json :: additionalProperties does not look in applicators':
 		'keyword is not covered by the Effect Schema generator yet',
-	'allOf.json :: allOf simple types': 'allOf is limited to disjoint object subschemas',
-	'allOf.json :: allOf with boolean schemas, all true':
-		'allOf is limited to disjoint object subschemas',
-	'allOf.json :: allOf with boolean schemas, some false':
-		'allOf is limited to disjoint object subschemas',
-	'allOf.json :: allOf with one empty schema': 'allOf is limited to disjoint object subschemas',
-	'allOf.json :: allOf with two empty schemas': 'allOf is limited to disjoint object subschemas',
-	'allOf.json :: allOf with the first empty schema':
-		'allOf is limited to disjoint object subschemas',
-	'allOf.json :: allOf with the last empty schema':
-		'allOf is limited to disjoint object subschemas',
-	'allOf.json :: nested allOf, to check validation semantics':
-		'allOf is limited to disjoint object subschemas',
 	'allOf.json :: allOf combined with anyOf, oneOf':
 		'allOf is limited to disjoint object subschemas',
 	'anchor-legacy.json :: Location-independent identifier': 'reference resolution gap',
@@ -68,16 +55,8 @@ export const knownFailures: Record<string, string> = {
 		'keyword is not covered by the Effect Schema generator yet',
 	'enum.json :: enum with [1] does not match [true]':
 		'keyword is not covered by the Effect Schema generator yet',
-	'id-legacy.json :: $ref prevents a sibling $id from changing the base uri':
-		'reference resolution gap',
 	'id-legacy.json :: refs with relative uris and defs': 'reference resolution gap',
 	'id-legacy.json :: relative refs with absolute uris and defs': 'reference resolution gap',
-	'id-legacy.json :: $id must be resolved against nearest parent, not just immediate parent':
-		'reference resolution gap',
-	'id-legacy.json :: ref with absolute-path-reference': 'reference resolution gap',
-	'id-legacy.json :: $id with file URI still resolves pointers - *nix': 'reference resolution gap',
-	'id-legacy.json :: $id with file URI still resolves pointers - windows':
-		'reference resolution gap',
 	'id-legacy.json :: URN ref with nested pointer ref': 'reference resolution gap',
 	'id-legacy.json :: remote HTTP ref with different $id': 'reference resolution gap',
 	'id-legacy.json :: remote HTTP ref with different URN $id': 'reference resolution gap',
@@ -100,6 +79,4 @@ export const knownFailures: Record<string, string> = {
 	'ref-legacy.json :: ref within remote ref': 'reference resolution gap',
 	'ref-legacy.json :: remote ref with ref to definitions': 'reference resolution gap',
 	'ref.json :: ref to if': 'reference resolution gap',
-	'ref.json :: ref to then': 'reference resolution gap',
-	'ref.json :: ref to else': 'reference resolution gap',
 };

@@ -44,8 +44,7 @@ Options:
   schema node, or `undefined` to let the generator handle it. It is called for
   every object node (including `$ref` nodes and the per-type copies of a `type`
   list, never boolean schemas) before the built-in generator, so it can also
-  replace a node the generator rejects, such as an `allOf` of non-object
-  schemas. Keywords the parser rejects never reach it. The returned
+  replace a node the generator rejects, such as `minContains`. Keywords the parser rejects never reach it. The returned
   expression replaces the whole node, including its `.annotate({ … })`, while
   `Schema.optionalKey` for a non-required property is still added. Inside a
   recursive schema the value type types the node as `unknown`, because the
@@ -179,7 +178,8 @@ Supported keywords:
   `uniqueItems`
 - `object`: `properties`, `patternProperties`, `required`,
   `additionalProperties`, `propertyNames`, `minProperties`, `maxProperties`
-- `allOf` between disjoint object subschemas, `anyOf`, `oneOf`
+- `allOf` between disjoint object subschemas or combinable scalar
+  constraints, `anyOf`, `oneOf`
 - `not`, `if`/`then`/`else`, `contains`, `dependencies` (applied as filters)
 - `$ref`, `$defs`, `definitions`
 - `title`, `description`, `default`, `examples`, `$id`, `readOnly`,
@@ -204,7 +204,8 @@ non-object or recursive target, `not`, `if`, ...) are checked with a filter on
 the reference, which keeps the reference's type.
 
 Effect has no generic intersection, so `allOf` is limited to merging object
-subschemas that do not declare the same property.
+subschemas that do not declare the same property, and scalar subschemas whose
+bounds, `pattern` and `multipleOf` can be combined.
 
 ## Notes
 

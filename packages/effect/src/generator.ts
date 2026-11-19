@@ -11,6 +11,7 @@ import {
 import { collectStandaloneSchemas, type SchemaEdge } from './collectStandaloneSchemas';
 import { UnresolvedReferenceError, UnsupportedEffectSchemaFeatureError } from './errors';
 import { findCyclicSchemas } from './findCyclicSchemas';
+import { ANNOTATION_KEYWORDS } from './keywords';
 import { mergeObjectSchemas } from './mergeObjects';
 import { planReferenceSiblings } from './refSiblings';
 import {
@@ -877,18 +878,247 @@ function appliesTo(schema: ParsedJSONSchemaObject, type: JSONValueType, dialect:
 }
 
 /**
- * Merges object subschemas from `allOf` (or a `$ref` with `allOf` siblings).
- * Effect Schema has no generic intersection, so only disjoint object schemas
- * can be combined.
+ * Merges `allOf` subschemas. Effect Schema has no generic intersection, so the
+ * members have to reduce to either disjoint object schemas or one scalar type
+ * with combinable constraints.
  */
 function generateIntersection(schemas: ParsedJSONSchema[], context: Context): string {
-	const result = mergeObjectSchemas(schemas);
+	const flattened = flattenAllOf(schemas);
 
-	if (result.merged === undefined) {
-		throw new UnsupportedEffectSchemaFeatureError('allOf', result.reason);
+	if (flattened.includes(false)) {
+		return 'Schema.Never';
 	}
 
-	return result.merged === false ? 'Schema.Never' : generateObject(result.merged, context);
+	const members = flattened.filter(
+		(schema): schema is ParsedJSONSchemaObject =>
+			isPlainObject(schema) && !isEmptySchema(schema as unknown as ParsedJSONSchemaObject)
+	);
+
+	if (members.length === 0) {
+		return 'Schema.Json';
+	}
+
+	if (members.length === 1) {
+		return generateSchema(members[0]!, context);
+	}
+
+	const result = mergeObjectSchemas(members);
+
+	if (result.merged !== undefined) {
+		return result.merged === false ? 'Schema.Never' : generateObject(result.merged, context);
+	}
+
+	const scalar = mergeScalarSchemas(members);
+
+	if (scalar !== undefined) {
+		return generateSchema(scalar, context);
+	}
+
+	throw new UnsupportedEffectSchemaFeatureError('allOf', result.reason);
+}
+
+/** Keywords a `number` or `string` subschema may use and still be merged. */
+const SCALAR_KEYWORDS: Record<'number' | 'string', ReadonlySet<string>> = {
+	number: new Set(['minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf']),
+	string: new Set(['minLength', 'maxLength', 'pattern']),
+};
+
+/** Expands nested `allOf`, splitting the keywords declared next to it. */
+function flattenAllOf(schemas: ParsedJSONSchema[]): ParsedJSONSchema[] {
+	const flattened: ParsedJSONSchema[] = [];
+
+	for (const schema of schemas) {
+		if (!isPlainObject(schema)) {
+			flattened.push(schema);
+			continue;
+		}
+
+		const node = schema as ParsedJSONSchemaObject;
+
+		if (!Array.isArray(node.allOf) || node.allOf.length === 0) {
+			flattened.push(schema);
+			continue;
+		}
+
+		const parent = parentSchema(node);
+
+		if (!isEmptySchema(parent)) {
+			flattened.push(parent);
+		}
+
+		flattened.push(...flattenAllOf(node.allOf as unknown as ParsedJSONSchema[]));
+	}
+
+	return flattened;
+}
+
+/** A schema that only carries metadata, `true`, or no keywords at all. */
+function isEmptySchema(schema: ParsedJSONSchemaObject): boolean {
+	return Object.entries(schema).every(
+		([keyword, value]) => value === undefined || ANNOTATION_KEYWORDS.has(keyword)
+	);
+}
+
+/**
+ * Merges subschemas that constrain one scalar type. Bounds are combined into
+ * the strictest one; a keyword that cannot be combined (`pattern`, a different
+ * `multipleOf`) keeps the intersection unsupported.
+ */
+function mergeScalarSchemas(members: ParsedJSONSchemaObject[]): ParsedJSONSchemaObject | undefined {
+	let type: 'number' | 'integer' | 'string' | undefined;
+
+	for (const member of members) {
+		if (member.$ref !== undefined) {
+			return undefined;
+		}
+
+		const memberType = scalarType(member);
+
+		if (memberType === undefined) {
+			return undefined;
+		}
+
+		if (
+			type === undefined ||
+			type === memberType ||
+			(type === 'number' && memberType === 'integer')
+		) {
+			type = type === 'integer' || memberType === 'integer' ? 'integer' : memberType;
+		} else {
+			return undefined;
+		}
+
+		const allowed = SCALAR_KEYWORDS[memberType === 'integer' ? 'number' : memberType];
+
+		for (const [keyword, value] of Object.entries(member)) {
+			if (value === undefined || ANNOTATION_KEYWORDS.has(keyword) || keyword === 'type') {
+				continue;
+			}
+
+			if (!allowed.has(keyword)) {
+				return undefined;
+			}
+		}
+	}
+
+	if (type === undefined) {
+		return undefined;
+	}
+
+	const merged: Record<string, unknown> = { type };
+	let minimum: number | undefined;
+	let maximum: number | undefined;
+	let exclusiveMinimum: number | undefined;
+	let exclusiveMaximum: number | undefined;
+	let multipleOf: number | undefined;
+	let minLength: number | undefined;
+	let maxLength: number | undefined;
+	let pattern: string | undefined;
+
+	for (const member of members) {
+		if (typeof member.minimum === 'number') {
+			minimum = minimum === undefined ? member.minimum : Math.max(minimum, member.minimum);
+		}
+
+		if (typeof member.maximum === 'number') {
+			maximum = maximum === undefined ? member.maximum : Math.min(maximum, member.maximum);
+		}
+
+		// The draft-04 boolean form cannot be combined with numbers.
+		if (member.exclusiveMinimum !== undefined) {
+			if (typeof member.exclusiveMinimum !== 'number') {
+				return undefined;
+			}
+
+			exclusiveMinimum =
+				exclusiveMinimum === undefined
+					? member.exclusiveMinimum
+					: Math.max(exclusiveMinimum, member.exclusiveMinimum);
+		}
+
+		if (member.exclusiveMaximum !== undefined) {
+			if (typeof member.exclusiveMaximum !== 'number') {
+				return undefined;
+			}
+
+			exclusiveMaximum =
+				exclusiveMaximum === undefined
+					? member.exclusiveMaximum
+					: Math.min(exclusiveMaximum, member.exclusiveMaximum);
+		}
+
+		if (typeof member.multipleOf === 'number') {
+			if (multipleOf !== undefined && multipleOf !== member.multipleOf) {
+				return undefined;
+			}
+
+			multipleOf = member.multipleOf;
+		}
+
+		if (typeof member.minLength === 'number') {
+			minLength =
+				minLength === undefined ? member.minLength : Math.max(minLength, member.minLength);
+		}
+
+		if (typeof member.maxLength === 'number') {
+			maxLength =
+				maxLength === undefined ? member.maxLength : Math.min(maxLength, member.maxLength);
+		}
+
+		if (typeof member.pattern === 'string') {
+			if (pattern !== undefined && pattern !== member.pattern) {
+				return undefined;
+			}
+
+			pattern = member.pattern;
+		}
+	}
+
+	for (const [keyword, value] of Object.entries({
+		minimum,
+		maximum,
+		exclusiveMinimum,
+		exclusiveMaximum,
+		multipleOf,
+		minLength,
+		maxLength,
+		pattern,
+	})) {
+		if (value !== undefined) {
+			merged[keyword] = value;
+		}
+	}
+
+	return merged as unknown as ParsedJSONSchemaObject;
+}
+
+/** The scalar type a subschema constrains, from `type` or its keyword family. */
+function scalarType(schema: ParsedJSONSchemaObject): 'number' | 'integer' | 'string' | undefined {
+	if (schema.type === 'number' || schema.type === 'integer' || schema.type === 'string') {
+		return schema.type;
+	}
+
+	if (schema.type !== undefined) {
+		return undefined;
+	}
+
+	const hasNumberKeyword = [
+		'minimum',
+		'maximum',
+		'exclusiveMinimum',
+		'exclusiveMaximum',
+		'multipleOf',
+	].some((keyword) => (schema as unknown as Record<string, unknown>)[keyword] !== undefined);
+
+	if (hasNumberKeyword) {
+		return 'number';
+	}
+
+	const hasStringKeyword = ['minLength', 'maxLength', 'pattern'].some(
+		(keyword) => (schema as unknown as Record<string, unknown>)[keyword] !== undefined
+	);
+
+	return hasStringKeyword ? 'string' : undefined;
 }
 
 function reference(schema: ParsedJSONSchemaObject, context: Context): string {

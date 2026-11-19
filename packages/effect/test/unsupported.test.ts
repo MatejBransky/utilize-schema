@@ -53,8 +53,8 @@ describe('unsupported keywords', () => {
 		).rejects.toThrow(/declared by more than one subschema/);
 	});
 
-	test('rejects allOf branches that are not objects', async () => {
-		await expect(compile({ allOf: [{ type: 'string' }] })).rejects.toThrow(
+	test('rejects allOf branches that cannot be merged', async () => {
+		await expect(compile({ allOf: [{ type: 'array' }, { minItems: 1 }] })).rejects.toThrow(
 			/only object subschemas can be merged/
 		);
 	});

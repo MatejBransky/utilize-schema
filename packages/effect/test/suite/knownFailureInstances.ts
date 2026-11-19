@@ -5,14 +5,6 @@ export const knownFailureInstances: KnownFailureInstances = {
 	'additionalProperties.json :: additionalProperties does not look in applicators': [
 		'properties defined in allOf are not examined',
 	],
-	'allOf.json :: allOf simple types': 'compile',
-	'allOf.json :: allOf with boolean schemas, all true': 'compile',
-	'allOf.json :: allOf with boolean schemas, some false': 'compile',
-	'allOf.json :: allOf with one empty schema': ['any data is valid'],
-	'allOf.json :: allOf with two empty schemas': ['any data is valid'],
-	'allOf.json :: allOf with the first empty schema': 'compile',
-	'allOf.json :: allOf with the last empty schema': 'compile',
-	'allOf.json :: nested allOf, to check validation semantics': 'compile',
 	'allOf.json :: allOf combined with anyOf, oneOf': 'compile',
 	'anchor-legacy.json :: Location-independent identifier': 'compile',
 	'anchor-legacy.json :: Location-independent identifier with base URI change in subschema':
@@ -69,14 +61,8 @@ export const knownFailureInstances: KnownFailureInstances = {
 	'enum.json :: enum with [true] does not match [1]': 'compile',
 	'enum.json :: enum with [0] does not match [false]': 'compile',
 	'enum.json :: enum with [1] does not match [true]': 'compile',
-	'id-legacy.json :: $ref prevents a sibling $id from changing the base uri': 'compile',
 	'id-legacy.json :: refs with relative uris and defs': 'compile',
 	'id-legacy.json :: relative refs with absolute uris and defs': 'compile',
-	'id-legacy.json :: $id must be resolved against nearest parent, not just immediate parent':
-		'compile',
-	'id-legacy.json :: ref with absolute-path-reference': 'compile',
-	'id-legacy.json :: $id with file URI still resolves pointers - *nix': 'compile',
-	'id-legacy.json :: $id with file URI still resolves pointers - windows': 'compile',
 	'id-legacy.json :: URN ref with nested pointer ref': 'compile',
 	'id-legacy.json :: remote HTTP ref with different $id': 'compile',
 	'id-legacy.json :: remote HTTP ref with different URN $id': 'compile',
@@ -95,6 +81,4 @@ export const knownFailureInstances: KnownFailureInstances = {
 	'ref-legacy.json :: ref within remote ref': 'compile',
 	'ref-legacy.json :: remote ref with ref to definitions': 'compile',
 	'ref.json :: ref to if': 'compile',
-	'ref.json :: ref to then': 'compile',
-	'ref.json :: ref to else': 'compile',
 };
