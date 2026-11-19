@@ -920,7 +920,10 @@ function generateIntersection(schemas: ParsedJSONSchema[], context: Context): st
 		return conjunction;
 	}
 
-	throw new UnsupportedEffectSchemaFeatureError('allOf', result.reason);
+	throw new UnsupportedEffectSchemaFeatureError(
+		'allOf',
+		`the subschemas could not be merged or checked as filters (${result.reason})`
+	);
 }
 
 /**
@@ -937,12 +940,11 @@ function generateConjunction(
 	for (const member of members) {
 		if (Array.isArray(member.anyOf) || Array.isArray(member.oneOf)) {
 			const { anyOf, oneOf, ...rest } = member;
-			const unsupported = Object.entries(rest).some(
-				([keyword, value]) => value !== undefined && !ANNOTATION_KEYWORDS.has(keyword)
-			);
 
-			if (unsupported) {
-				return undefined;
+			// Keywords next to the union constrain the value as well, so they stay
+			// a separate member instead of being dropped with the union.
+			if (!isEmptySchema(rest as ParsedJSONSchemaObject)) {
+				parts.push(rest as ParsedJSONSchemaObject);
 			}
 
 			// `anyOf` and `oneOf` both constrain the value, so they stay separate.
@@ -982,7 +984,16 @@ const MERGEABLE_KEYWORDS: Record<'number' | 'string' | 'array', ReadonlySet<stri
 	array: new Set(['minItems', 'maxItems', 'uniqueItems']),
 };
 
-/** Expands nested `allOf`, splitting the keywords declared next to it. */
+/** Removes the `allOf` that is being flattened and keeps every other keyword. */
+function withoutAllOf(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject {
+	return { ...schema, allOf: undefined };
+}
+
+/**
+ * Expands nested `allOf`, splitting the keywords declared next to it. Refinements
+ * such as `not` and `if`/`then`/`else` stay on the split-off member, which is
+ * generated as a normal member and turns them into filters.
+ */
 function flattenAllOf(schemas: ParsedJSONSchema[]): ParsedJSONSchema[] {
 	const flattened: ParsedJSONSchema[] = [];
 
@@ -999,7 +1010,7 @@ function flattenAllOf(schemas: ParsedJSONSchema[]): ParsedJSONSchema[] {
 			continue;
 		}
 
-		const parent = parentSchema(node);
+		const parent = withoutAllOf(node);
 
 		if (!isEmptySchema(parent)) {
 			flattened.push(parent);

@@ -155,6 +155,34 @@ describe('allOf', () => {
 		expect(decode(schema, { foo: 1, bar: true })).toBeUndefined();
 	});
 
+	test('keeps refinements declared next to a nested allOf', async () => {
+		const negated = await compileToSchema({
+			allOf: [{ allOf: [{ type: 'string' }], not: { const: 'x' } }],
+		});
+
+		expect(decode(negated, 'y')).toBe('y');
+		expect(decode(negated, 'x')).toBeUndefined();
+
+		const conditional = await compileToSchema({
+			allOf: [{ allOf: [{ type: 'string' }], if: { const: 'x' }, then: { minLength: 5 } }],
+		});
+
+		expect(decode(conditional, 'abc')).toBe('abc');
+		expect(decode(conditional, 'x')).toBeUndefined();
+	});
+
+	test('applies a member whose anyOf has sibling keywords', async () => {
+		const schema = await compileToSchema({
+			allOf: [{ type: 'number', anyOf: [{ multipleOf: 2 }, { multipleOf: 3 }] }, { minimum: 1 }],
+		});
+
+		expect(decode(schema, 4)).toBe(4);
+		expect(decode(schema, 9)).toBe(9);
+		expect(decode(schema, 5)).toBeUndefined();
+		expect(decode(schema, 0)).toBeUndefined();
+		expect(decode(schema, '6')).toBeUndefined();
+	});
+
 	test('checks a referenced member that cannot be merged', async () => {
 		const schema = await compileToSchema({
 			allOf: [{ $ref: '#/if' }],
