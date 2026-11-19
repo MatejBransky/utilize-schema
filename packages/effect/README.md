@@ -1,5 +1,8 @@
 # @utilize/effect
 
+[![npm version](https://img.shields.io/npm/v/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)
+[![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)
+
 TypeScript/Effect Schema code generator for JSON Schema. Converts a JSON Schema
 (with references, `$defs` and `definitions`) into standalone Effect Schema
 codecs and TypeScript types.

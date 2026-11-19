@@ -2,6 +2,9 @@
 
 Generate robust, type-safe Zod or Effect Schema codecs — or plain TypeScript types — from JSON Schema, with first-class support for references, standalone definitions, and modern validation features.
 
+[![Check](https://img.shields.io/github/actions/workflow/status/MatejBransky/utilize-schema/check.yml?branch=main&label=check)](https://github.com/MatejBransky/utilize-schema/actions/workflows/check.yml)
+[![License](https://img.shields.io/github/license/MatejBransky/utilize-schema)](./LICENSE)
+
 ---
 
 ## ✨ Features
@@ -22,17 +25,29 @@ Generate robust, type-safe Zod or Effect Schema codecs — or plain TypeScript t
 
 ### [`@utilize/json-schema`](./packages/json-schema)
 
+[![npm version](https://img.shields.io/npm/v/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
+[![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
+
 > Core utilities for resolving $refs and linking JSON Schema. Provides a generator-agnostic pipeline for schema transformation.
 
 ### [`@utilize/zod`](./packages/zod)
+
+[![npm version](https://img.shields.io/npm/v/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
+[![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
 
 > Zod code generator. Walks the parsed JSON Schema and emits Zod schemas + TypeScript types.
 
 ### [`@utilize/effect`](./packages/effect)
 
+[![npm version](https://img.shields.io/npm/v/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)
+[![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)
+
 > Effect Schema code generator. Walks the parsed JSON Schema and emits Effect Schema codecs + TypeScript types, with every `$ref` emitted through `Schema.suspend`.
 
 ### [`@utilize/typescript`](./packages/typescript)
+
+[![npm version](https://img.shields.io/npm/v/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)
+[![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)
 
 > TypeScript type generator. Walks the parsed JSON Schema and emits interfaces and type aliases, with no runtime dependency.
 

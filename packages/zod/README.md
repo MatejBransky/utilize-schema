@@ -1,5 +1,8 @@
 # @utilize/zod
 
+[![npm version](https://img.shields.io/npm/v/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
+[![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
+
 TypeScript/Zod code generator for JSON Schema. Converts a JSON Schema (with
 references, `$defs` and `definitions`) into standalone Zod schemas and
 TypeScript types.
