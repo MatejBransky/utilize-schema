@@ -456,3 +456,20 @@ test('a $ref to a boolean schema keeps the boolean as its reference', async () =
 	expect(parsed.root.properties?.allowed?.[Meta].reference).toBe(true);
 	expect(parsed.root.properties?.denied?.[Meta].reference).toBe(false);
 });
+
+test('keeps the document root when it is a $ref', async () => {
+	const schema = {
+		$ref: '#/definitions/name',
+		title: 'Root title',
+		definitions: { name: { type: 'string' } },
+	} as unknown as JSONSchema;
+	const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Root.json' });
+
+	assert(typeof parsed.root === 'object' && parsed.root !== null);
+	expect(parsed.root[Meta]).toMatchObject({ parent: null, fileName: 'Root.json', path: [] });
+	expect(parsed.root.$ref).toBe('#/definitions/name');
+	expect(parsed.root[Meta].reference).toMatchObject({ type: 'string' });
+	expect(parsed.get('#')).toMatchObject({ type: 'string' });
+	// The root document is not an external schema.
+	expect(parsed.referencedSchemas).toEqual([]);
+});

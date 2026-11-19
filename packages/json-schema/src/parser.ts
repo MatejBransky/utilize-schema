@@ -48,7 +48,11 @@ export async function parse(
 		options.onDialectIssue?.(issue);
 	};
 
-	const rootSchema = $refs.get('#');
+	// Keep the document root even when it is a `$ref`: `$refs.get('#')` resolves
+	// a root pointer and would return its target, which loses the root node and
+	// its metadata. The root document is the object handed to `resolve`.
+	const rootDocument = entries.find(([, value]) => value === input)?.[1];
+	const rootSchema = rootDocument ?? ($refs.get('#') as JSONSchema);
 	const identifiers = createSchemaIndex();
 
 	// Every document is normalized and indexed before linking, so a `$ref` can
@@ -92,7 +96,7 @@ export async function parse(
 		});
 	}
 
-	const root = $refs.get('#') as unknown as ParsedJSONSchema;
+	const root = rootSchema as unknown as ParsedJSONSchema;
 
 	if (typeof root === 'object' && root !== null && !Object.hasOwnProperty.call(root, Meta)) {
 		link({
