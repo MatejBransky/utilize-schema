@@ -5,7 +5,6 @@ export const knownFailureInstances: KnownFailureInstances = {
 	'anchor-legacy.json :: anchor within remote ref': 'compile',
 	'anchor-legacy.json :: Location-independent identifier in remote ref': 'compile',
 	'anchor-legacy.json :: $ref to $ref finds detached $anchor': 'compile',
-	'anyOf.json :: anyOf with base schema': ['mismatch base schema'],
 	'const.json :: const with object': 'compile',
 	'const.json :: const with array': 'compile',
 	'const.json :: const with [false] does not match [0]': 'compile',

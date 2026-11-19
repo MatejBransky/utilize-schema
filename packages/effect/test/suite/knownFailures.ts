@@ -3,8 +3,6 @@ export const knownFailures: Record<string, string> = {
 	'anchor-legacy.json :: anchor within remote ref': 'reference resolution gap',
 	'anchor-legacy.json :: Location-independent identifier in remote ref': 'reference resolution gap',
 	'anchor-legacy.json :: $ref to $ref finds detached $anchor': 'reference resolution gap',
-	'anyOf.json :: anyOf with base schema':
-		'keyword is not covered by the Effect Schema generator yet',
 	'const.json :: const with object': 'keyword is not covered by the Effect Schema generator yet',
 	'const.json :: const with array': 'keyword is not covered by the Effect Schema generator yet',
 	'const.json :: const with [false] does not match [0]':
