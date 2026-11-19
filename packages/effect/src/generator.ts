@@ -925,8 +925,8 @@ function generateIntersection(schemas: ParsedJSONSchema[], context: Context): st
 
 /**
  * Combines `allOf` members that cannot be merged into one schema by checking
- * the value against each member instead. Covers applicators (`anyOf`, `oneOf`)
- * and scalar constraints, whose keywords only apply to their own JSON type.
+ * the value against each member instead. `anyOf` and `oneOf` are split so both
+ * constrain the value; every other member is applied as a filter.
  */
 function generateConjunction(
 	members: ParsedJSONSchemaObject[],
@@ -955,10 +955,6 @@ function generateConjunction(
 			}
 
 			continue;
-		}
-
-		if (scalarType(member) === undefined) {
-			return undefined;
 		}
 
 		parts.push(member);

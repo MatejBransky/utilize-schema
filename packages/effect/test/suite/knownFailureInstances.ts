@@ -61,8 +61,6 @@ export const knownFailureInstances: KnownFailureInstances = {
 	'enum.json :: enum with [true] does not match [1]': 'compile',
 	'enum.json :: enum with [0] does not match [false]': 'compile',
 	'enum.json :: enum with [1] does not match [true]': 'compile',
-	'id-legacy.json :: refs with relative uris and defs': 'compile',
-	'id-legacy.json :: relative refs with absolute uris and defs': 'compile',
 	'id-legacy.json :: URN ref with nested pointer ref': 'compile',
 	'id-legacy.json :: remote HTTP ref with different $id': 'compile',
 	'id-legacy.json :: remote HTTP ref with different URN $id': 'compile',

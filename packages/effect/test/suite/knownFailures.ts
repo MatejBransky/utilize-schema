@@ -55,8 +55,6 @@ export const knownFailures: Record<string, string> = {
 		'keyword is not covered by the Effect Schema generator yet',
 	'enum.json :: enum with [1] does not match [true]':
 		'keyword is not covered by the Effect Schema generator yet',
-	'id-legacy.json :: refs with relative uris and defs': 'reference resolution gap',
-	'id-legacy.json :: relative refs with absolute uris and defs': 'reference resolution gap',
 	'id-legacy.json :: URN ref with nested pointer ref': 'reference resolution gap',
 	'id-legacy.json :: remote HTTP ref with different $id': 'reference resolution gap',
 	'id-legacy.json :: remote HTTP ref with different URN $id': 'reference resolution gap',

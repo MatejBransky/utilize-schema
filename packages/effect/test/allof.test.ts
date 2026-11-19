@@ -79,6 +79,14 @@ describe('allOf', () => {
 		expect(decode(schema, 'text')).toBe('text');
 	});
 
+	test('intersects members that cannot be merged', async () => {
+		const schema = await compileToSchema({ allOf: [{ type: 'array' }, { minItems: 1 }] });
+
+		expect(decode(schema, [1])).toEqual([1]);
+		expect(decode(schema, [])).toBeUndefined();
+		expect(decode(schema, 'text')).toBeUndefined();
+	});
+
 	test('combines patterns that cannot be merged into one regex', async () => {
 		const schema = await compileToSchema({ allOf: [{ pattern: '^a' }, { pattern: 'b$' }] });
 

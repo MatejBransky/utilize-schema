@@ -178,8 +178,8 @@ Supported keywords:
   `uniqueItems`
 - `object`: `properties`, `patternProperties`, `required`,
   `additionalProperties`, `propertyNames`, `minProperties`, `maxProperties`
-- `allOf` between disjoint object subschemas, scalar bounds, applicators and
-  filters, `anyOf`, `oneOf`
+- `allOf` between object subschemas, scalar bounds, applicators and any other
+  member, `anyOf`, `oneOf`
 - `not`, `if`/`then`/`else`, `contains`, `dependencies` (applied as filters)
 - `$ref`, `$defs`, `definitions`
 - `title`, `description`, `default`, `examples`, `$id`, `readOnly`,
@@ -205,9 +205,7 @@ the reference, which keeps the reference's type.
 
 Effect has no generic intersection, so `allOf` first merges disjoint object
 subschemas and scalar bounds. Anything left (applicators, patterns, mixed
-members) is checked with `Schema.makeFilter` over each member; a member that is
-not a scalar, an applicator or a mergeable object still throws
-`UnsupportedEffectSchemaFeatureError`.
+members) is checked with `Schema.makeFilter` over each member.
 
 ## Notes
 
