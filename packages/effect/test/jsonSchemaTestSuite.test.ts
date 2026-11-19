@@ -141,6 +141,7 @@ for (const file of files) {
 
 					stats.failedAssertions += failures.length;
 
+					// eslint-disable-next-line unicorn/no-array-sort -- both arrays are fresh
 					expect([...failures].sort()).toEqual([...(expected as string[])].sort());
 				});
 				continue;

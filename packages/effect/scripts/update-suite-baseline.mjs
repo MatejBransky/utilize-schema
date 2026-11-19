@@ -59,7 +59,7 @@ function isCompatible(compatibility, version = VERSION) {
 		return true;
 	}
 
-	let isValid = true;
+	let compatible = true;
 
 	for (const constraint of compatibility.split(',')) {
 		const match = /^(<=|=)?(\d+)$/.exec(constraint.trim());
@@ -72,11 +72,11 @@ function isCompatible(compatibility, version = VERSION) {
 		const dialect = Number(digits);
 
 		if (operator === '') {
-			isValid = version >= dialect;
+			compatible = version >= dialect;
 		} else if (operator === '<=') {
-			isValid = version <= dialect;
+			compatible = version <= dialect;
 		} else {
-			isValid = version === dialect;
+			compatible = version === dialect;
 		}
 
 		if (version <= dialect) {
@@ -84,7 +84,7 @@ function isCompatible(compatibility, version = VERSION) {
 		}
 	}
 
-	return isValid;
+	return compatible;
 }
 
 function reasonFor(file) {
@@ -121,7 +121,7 @@ function isValid(schema, value) {
 
 const files = readdirSync(suiteRoot)
 	.filter((file) => file.endsWith('.json'))
-	.sort();
+	.toSorted();
 
 const reasons = {};
 const instances = {};
