@@ -40,6 +40,8 @@ Options:
   -i, --input <path>    schema file, directory or glob
   -o, --output <path>   output file or directory
   --cwd <path>          directory used to resolve paths
+  --format-mode <mode>  assert (default) validates known formats,
+                        annotate keeps format as metadata
   --no-banner           omit the generated-file banner
 ${dialectCliHelp}
   -h, --help            show this help
@@ -59,6 +61,7 @@ export async function run(
 				input: { type: 'string', short: 'i' },
 				output: { type: 'string', short: 'o' },
 				cwd: { type: 'string' },
+				'format-mode': { type: 'string', default: 'assert' },
 				'no-banner': { type: 'boolean', default: false },
 				...dialectCliOptions,
 				help: { type: 'boolean', short: 'h', default: false },
@@ -80,10 +83,16 @@ export async function run(
 	const input = values.input ?? positionals[0];
 	const output = values.output ?? positionals[1];
 	const banner = values['no-banner'] ? false : undefined;
+	const formatMode = values['format-mode'];
 	const dialectCli = readDialectCliOptions(values);
 
 	if (!dialectCli.ok) {
 		io.stderr.write(`${dialectCli.error}\n`);
+		return 1;
+	}
+
+	if (formatMode !== 'annotate' && formatMode !== 'assert') {
+		io.stderr.write(`Unknown format mode "${formatMode}"; expected "annotate" or "assert".\n`);
 		return 1;
 	}
 
@@ -98,6 +107,7 @@ export async function run(
 			const code = await compileSchema(parseSchema(source), {
 				cwd,
 				fileName: 'Root.json',
+				formatMode,
 				...dialectOptions,
 			});
 			const content = withBanner(code, banner);
@@ -142,7 +152,7 @@ export async function run(
 		}
 
 		for (const [index, file] of files.entries()) {
-			const code = await compileFile(file.path, { ...dialectOptions });
+			const code = await compileFile(file.path, { formatMode, ...dialectOptions });
 			const content = withBanner(code, banner);
 
 			if (!output) {

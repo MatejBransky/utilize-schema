@@ -9,10 +9,21 @@ import {
 } from '@utilize/json-schema';
 
 import type { GeneratorContext } from './generators/types';
-import { inferTypeKeyword } from './inferTypes';
+import { inferTypeKeywords } from './inferTypes';
 import { ts } from './utils';
 
 type Generate = (schema: ParsedJSONSchema, context: GeneratorContext) => string;
+
+/**
+ * Guards for the types `inferTypeKeywords` can infer. Keywords on an untyped
+ * schema must not reject values of other types.
+ */
+const typeGuards: Record<string, string> = {
+	object: `typeof value === 'object' && value !== null && !Array.isArray(value)`,
+	array: 'Array.isArray(value)',
+	string: `typeof value === 'string'`,
+	number: `typeof value === 'number'`,
+};
 
 /**
  * Appends Zod refinements for keywords that constrain an already generated
@@ -31,9 +42,11 @@ export function applyRefinements(
 ): string {
 	const checks: string[] = [];
 	const contextType = typeof schema.type === 'string' ? schema.type : undefined;
-	const implicitType = inferTypeKeyword(schema, context.dialect);
 
-	if (implicitType) {
+	// Keywords on a schema without `type` only apply to their own type, so each
+	// constrained type gets a separate guarded check. A schema can constrain
+	// more than one type, e.g. `{ minLength: 2, minimum: 5 }`.
+	for (const implicitType of inferTypeKeywords(schema, context.dialect)) {
 		const typedSchema = withSourceMeta(schema, {
 			...schema,
 			type: implicitType,
@@ -48,18 +61,16 @@ export function applyRefinements(
 			contains: undefined,
 			propertyNames: undefined,
 			dependencies: undefined,
+			// Applied by the node-level blocks below for typed and untyped
+			// schemas alike, so keeping them on the typed copy would duplicate
+			// every issue.
+			minProperties: undefined,
+			maxProperties: undefined,
+			uniqueItems: undefined,
 		} as ParsedJSONSchemaObject);
-		const typeCheck =
-			implicitType === 'object'
-				? `typeof value === 'object' && value !== null && !Array.isArray(value)`
-				: implicitType === 'array'
-					? 'Array.isArray(value)'
-					: implicitType === 'string'
-						? `typeof value === 'string'`
-						: `typeof value === 'number'`;
 
 		checks.push(ts`{
-      if (${typeCheck}) {
+      if (${typeGuards[implicitType]}) {
         ${checkBlock(generate(typedSchema, context))}
       }
     }`);

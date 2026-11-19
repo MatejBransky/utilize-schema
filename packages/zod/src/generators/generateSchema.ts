@@ -53,7 +53,8 @@ export const generateSchema = (schema: ParsedJSONSchema | undefined, context: Ge
 		schema.title ||
 		schema.description ||
 		schema.examples !== undefined ||
-		schema.deprecated !== undefined
+		schema.deprecated !== undefined ||
+		schema.format !== undefined
 	) {
 		expression = withMetadata(expression, schema);
 	}
@@ -303,9 +304,9 @@ const refinementKeywords = [
 
 function withMetadata(
 	expression: string,
-	{ $id, title, description, examples, deprecated }: ParsedJSONSchemaObject
+	{ $id, title, description, examples, deprecated, format }: ParsedJSONSchemaObject
 ) {
-	return ts`${expression}.meta(${JSON.stringify({ id: $id, title, description, examples, deprecated })})`;
+	return ts`${expression}.meta(${JSON.stringify({ id: $id, title, description, examples, deprecated, format })})`;
 }
 
 function withDefault(expression: string, defaultValue: unknown, schema: ParsedJSONSchemaObject) {

@@ -1,9 +1,9 @@
-import { Meta, type JSONSchema, parse } from '@utilize/json-schema';
+import { type ExternalSchemas, Meta, type JSONSchema, parse } from '@utilize/json-schema';
 import { Schema } from 'effect';
 
 import { stripTypeScriptTypes } from 'node:module';
 
-import { generate } from '../../src/generator';
+import { type FormatMode, generate } from '../../src/generator';
 
 type GeneratedSchema = Parameters<typeof Schema.decodeUnknownSync>[0];
 
@@ -12,17 +12,25 @@ type GeneratedSchema = Parameters<typeof Schema.decodeUnknownSync>[0];
  * its TypeScript syntax and evaluated with `Schema` in scope, which keeps the
  * suite fast: hundreds of schemas compile without touching the filesystem.
  */
-export async function compileToSchema(schema: JSONSchema | boolean): Promise<GeneratedSchema> {
+export async function compileToSchema(
+	schema: JSONSchema | boolean,
+	externalSchemas?: ExternalSchemas,
+	formatMode?: FormatMode
+): Promise<GeneratedSchema> {
 	const { root } = await parse(schema as JSONSchema, {
 		cwd: `${import.meta.dirname}/`,
 		fileName: 'Root.json',
+		externalSchemas,
 	});
 
 	const code = generate(root, {
 		importEffect: false,
+		formatMode,
 		// The suite has schemas with `$id` or `title`, so pin the root name.
 		customNameResolver: (parsedSchema) =>
-			parsedSchema[Meta]?.parent === null ? 'Root' : undefined,
+			parsedSchema[Meta]?.parent === null && parsedSchema[Meta]?.fileName === 'Root.json'
+				? 'Root'
+				: undefined,
 	});
 
 	return evaluate(code);

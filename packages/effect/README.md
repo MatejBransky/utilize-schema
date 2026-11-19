@@ -37,6 +37,9 @@ Options:
 
 - `customNameResolver(schema, usedNames)` — override the name allocated for a
   standalone schema.
+- `externalSchemas` — documents served for absolute `$ref` URIs, keyed by
+  retrieval URI. A URI present here is read from memory instead of disk or the
+  network.
 - `customSchemaResolver(schema)` — return an Effect Schema expression for a
   schema node, or `undefined` to let the generator handle it. It is called for
   every object node (including `$ref` nodes and the per-type copies of a `type`
@@ -47,6 +50,12 @@ Options:
   `Schema.optionalKey` for a non-required property is still added. Inside a
   recursive schema the value type types the node as `unknown`, because the
   generator cannot know your expression's type.
+- `formatMode` — what `format` becomes in the generated code. `'assert'`
+  (default) adds a check for the formats the generator knows (email, uuid, url,
+  ipv4/ipv6, date, date-time, duration, …); `'annotate'` keeps `format` as
+  `.annotate({ format })`. Unknown formats stay annotations in both modes. Each
+  format becomes one module-level constant (`const formatEmail = …`) reused by
+  every property that uses it.
 - `format(code)` — optional synchronous or asynchronous formatter (for example
   Prettier) applied to the generated code before the banner is prepended.
 - `importEffect` — emit `import { Schema } from 'effect';`; on by default.
@@ -149,9 +158,10 @@ pnpm test:suite    # official JSON Schema Test Suite (draft-07)
 
 The generator is checked against the official
 [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
-Today it passes **219 of 269 draft-07 cases (825 of 939 assertions)**. Cases
-tagged `format-assertion` are skipped because `format` is kept as an annotation;
-cases that need external schemas are not wired up yet.
+Today it passes **259 of 304 draft-07 cases (1,335 of 1,655 assertions)**. Format
+cases run in the mode they are tagged for, so both the annotation and the
+assertion cases are measured; cases that need external schemas are served from
+`externalSchemas`.
 
 Known gaps live in `test/suite/knownFailures.ts` and
 `test/suite/knownFailureInstances.ts`. Refresh the baseline after a fix or a
@@ -169,7 +179,7 @@ The script reads the built `dist/`, so build the package first.
 Supported keywords:
 
 - `type` (including unions of types), `const`, `enum` (primitives only for `const`/`enum`)
-- `string`: `minLength`, `maxLength`, `pattern`, `format` (annotation)
+- `string`: `minLength`, `maxLength`, `pattern`, `format` (checked by default, annotation with `formatMode: 'annotate'`)
 - `number`/`integer`: `minimum`, `maximum`, `exclusiveMinimum`,
   `exclusiveMaximum`, `multipleOf`
 - `array`: `items`, `prefixItems`, `additionalItems`, `minItems`, `maxItems`,
@@ -188,12 +198,12 @@ Effect has no schema constructor for negation, conditionals or "contains", so
 `dependentRequired` and `dependentSchemas` are normalized to `dependencies`
 before generation.
 
-`minContains` and `maxContains` extend the `contains` filter with the number of
-matching items.
-
 `unevaluatedProperties` and `unevaluatedItems` are normalized to
 `additionalProperties` and the items rest before generation, as a best effort
 for schemas that do not rely on properties evaluated by applicators.
+
+Unsupported keywords throw `UnsupportedEffectSchemaFeatureError`:
+`minContains`, `maxContains`.
 
 `$ref` siblings follow the dialect: draft-07 and older ignore them, 2019-09 and
 newer merge disjoint object siblings into one struct. Other siblings (a

@@ -33,6 +33,7 @@ import {
 import { collectDroppedFiles, readDroppedSchemas, type DropMode } from './drop';
 import { exampleGeneratorOptions, type ExampleGeneratorOptions } from './exampleOptions';
 import { defaultExampleId, exampleById, examples } from './examples';
+import { defaultFormatMode, formatModes, isFormatMode, type FormatMode } from './formatMode';
 import { formatTypeScript } from './monaco/format';
 import { MonacoEditor, type MonacoEditorHandle } from './monaco/MonacoEditor';
 import { defaultTarget, isTargetId, targets, type TargetId } from './targets';
@@ -49,11 +50,13 @@ const STORAGE_KEY = 'utilize-schema-playground';
 const EXAMPLE_PARAM = 'example';
 const GENERATOR_PARAM = 'generator';
 const KEYWORD_POLICY_PARAM = 'keyword-policy';
+const FORMAT_MODE_PARAM = 'format-mode';
 
 interface AppState {
 	files: SchemaFile[];
 	target: TargetId;
 	keywordPolicy: KeywordPolicy;
+	formatMode: FormatMode;
 }
 
 const keywordPolicyOptions: Array<{ value: KeywordPolicy; label: string; hint: string }> = [
@@ -67,6 +70,7 @@ export default function App() {
 	const [files, setFiles] = useState<SchemaFile[]>(initial.files);
 	const [target, setTarget] = useState<TargetId>(initial.target);
 	const [keywordPolicy, setKeywordPolicy] = useState<KeywordPolicy>(initial.keywordPolicy);
+	const [formatMode, setFormatMode] = useState<FormatMode>(initial.formatMode);
 	const [activeId, setActiveId] = useState(initial.files[0]?.id ?? '');
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [draftName, setDraftName] = useState('');
@@ -156,11 +160,14 @@ export default function App() {
 
 	useEffect(() => {
 		try {
-			localStorage.setItem(STORAGE_KEY, JSON.stringify({ files, target, keywordPolicy }));
+			localStorage.setItem(
+				STORAGE_KEY,
+				JSON.stringify({ files, target, keywordPolicy, formatMode })
+			);
 		} catch {
 			// Storage can be full or denied. Keep the workspace in memory.
 		}
-	}, [files, target, keywordPolicy]);
+	}, [files, target, keywordPolicy, formatMode]);
 
 	useEffect(() => {
 		setShared(false);
@@ -195,7 +202,7 @@ export default function App() {
 					});
 
 					const generatorOptions = exampleId ? exampleGeneratorOptions[exampleId] : undefined;
-					const rawCode = generateCodeFor(target, root, generatorOptions);
+					const rawCode = generateCodeFor(target, root, generatorOptions, formatMode);
 					const formatCode =
 						generatorOptions?.format ??
 						((source: string) => formatTypeScript(source).catch(() => source));
@@ -220,7 +227,7 @@ export default function App() {
 			cancelled = true;
 			clearTimeout(timer);
 		};
-	}, [bundle, exampleId, target, keywordPolicy]);
+	}, [bundle, exampleId, target, keywordPolicy, formatMode]);
 
 	useEffect(() => {
 		const query = window.matchMedia('(prefers-color-scheme: dark)');
@@ -268,6 +275,14 @@ export default function App() {
 	}, [keywordPolicy]);
 
 	useEffect(() => {
+		const url = new URL(location.href);
+
+		if (!url.hash && url.searchParams.get(FORMAT_MODE_PARAM) !== formatMode) {
+			updateUrl({ [FORMAT_MODE_PARAM]: formatMode }, 'replace');
+		}
+	}, [formatMode]);
+
+	useEffect(() => {
 		const onPopState = () => {
 			applyState(loadState());
 		};
@@ -281,6 +296,7 @@ export default function App() {
 		setFiles(next.files);
 		setTarget(next.target);
 		setKeywordPolicy(next.keywordPolicy);
+		setFormatMode(next.formatMode);
 		setActiveId(next.files[0]?.id ?? '');
 		setEditingId(null);
 	}
@@ -429,6 +445,11 @@ export default function App() {
 		updateUrl({ [KEYWORD_POLICY_PARAM]: policy }, 'push');
 	}
 
+	function applyFormatMode(mode: FormatMode) {
+		setFormatMode(mode);
+		updateUrl({ [FORMAT_MODE_PARAM]: mode }, 'push');
+	}
+
 	function setExampleUrl(id: string | null, mode: 'push' | 'replace') {
 		updateUrl({ [EXAMPLE_PARAM]: id }, mode);
 	}
@@ -474,12 +495,13 @@ export default function App() {
 	}
 
 	async function share() {
-		const encoded = encodeState({ files, target, keywordPolicy });
+		const encoded = encodeState({ files, target, keywordPolicy, formatMode });
 		const url = new URL(location.href);
 
 		url.searchParams.delete(EXAMPLE_PARAM);
 		url.searchParams.delete(GENERATOR_PARAM);
 		url.searchParams.set(KEYWORD_POLICY_PARAM, keywordPolicy);
+		url.searchParams.set(FORMAT_MODE_PARAM, formatMode);
 		url.hash = `data=${encoded}`;
 		history.replaceState(null, '', url);
 		setShared(true);
@@ -552,6 +574,29 @@ export default function App() {
 						</SelectTrigger>
 						<SelectContent className={styles.policyContent}>
 							{keywordPolicyOptions.map((option) => (
+								<SelectItem key={option.value} value={option.value} title={option.hint}>
+									{option.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
+				<div className={styles.policyPicker}>
+					<Select
+						items={formatModes.map(({ value, label }) => ({ value, label }))}
+						value={formatMode}
+						onValueChange={(value) => {
+							if (isFormatMode(value)) {
+								applyFormatMode(value);
+							}
+						}}
+					>
+						<SelectLabel>Format</SelectLabel>
+						<SelectTrigger disabled={target === 'typescript'}>
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent className={styles.policyContent}>
+							{formatModes.map((option) => (
 								<SelectItem key={option.value} value={option.value} title={option.hint}>
 									{option.label}
 								</SelectItem>
@@ -810,39 +855,49 @@ function defaultState(): AppState {
 		files: example.files,
 		target: defaultTarget,
 		keywordPolicy: 'warn',
+		formatMode: defaultFormatMode,
 	};
 }
 
 function loadState(): AppState {
 	const fromHash = readHash() ?? readUrlState() ?? loadSavedState() ?? defaultState();
 	const keywordPolicy = readKeywordPolicyParam();
+	const formatMode = readFormatModeParam();
 
-	// The `keyword-policy` query parameter wins over the policy stored in the
-	// shared `#data=` hash so the setting can be changed without editing the hash.
-	return keywordPolicy ? { ...fromHash, keywordPolicy } : fromHash;
+	// The query parameters win over the settings stored in the shared `#data=`
+	// hash so they can be changed without editing the hash.
+	return {
+		...fromHash,
+		...(keywordPolicy ? { keywordPolicy } : {}),
+		...(formatMode ? { formatMode } : {}),
+	};
 }
 
 function readUrlState(): AppState | null {
 	const url = new URL(location.href);
 	const target = readGeneratorParam();
 	const keywordPolicy = readKeywordPolicyParam();
+	const formatMode = readFormatModeParam();
 	const example = exampleById(url.searchParams.get(EXAMPLE_PARAM));
 	const base = loadSavedState() ?? defaultState();
 	const policy = keywordPolicy ?? base.keywordPolicy;
+	const format = formatMode ?? base.formatMode;
 
 	if (example) {
 		return {
 			files: example.files,
 			target: target ?? defaultTarget,
 			keywordPolicy: policy,
+			formatMode: format,
 		};
 	}
 
-	if (target || keywordPolicy) {
+	if (target || keywordPolicy || formatMode) {
 		return {
 			files: base.files,
 			target: target ?? base.target,
 			keywordPolicy: policy,
+			formatMode: format,
 		};
 	}
 
@@ -859,6 +914,12 @@ function readKeywordPolicyParam(): KeywordPolicy | null {
 	const value = new URL(location.href).searchParams.get(KEYWORD_POLICY_PARAM);
 
 	return isKeywordPolicy(value) ? value : null;
+}
+
+function readFormatModeParam(): FormatMode | null {
+	const value = new URL(location.href).searchParams.get(FORMAT_MODE_PARAM);
+
+	return isFormatMode(value) ? value : null;
 }
 
 function loadSavedState(): AppState | null {
@@ -909,6 +970,7 @@ function normalizeState(value: unknown): AppState | null {
 		files: state.files,
 		target: isAvailableTarget(state.target) ? state.target : defaultTarget,
 		keywordPolicy: isKeywordPolicy(state.keywordPolicy) ? state.keywordPolicy : 'warn',
+		formatMode: isFormatMode(state.formatMode) ? state.formatMode : defaultFormatMode,
 	};
 }
 
@@ -988,15 +1050,17 @@ function uniqueName(base: string, files: SchemaFile[]): string {
 function generateCodeFor(
 	target: TargetId,
 	root: ParsedJSONSchema,
-	options?: ExampleGeneratorOptions
+	options: ExampleGeneratorOptions | undefined,
+	formatMode: FormatMode
 ): string {
 	switch (target) {
 		case 'effect':
-			return generateEffect(root, { importEffect: true, ...options?.effect });
+			return generateEffect(root, { importEffect: true, formatMode, ...options?.effect });
 		case 'typescript':
+			// A type cannot check a format, so the option does not apply here.
 			return generateTypeScript(root, { ...options?.typescript });
 		case 'zod':
-			return generateZod(root, { importZod: true, ...options?.zod });
+			return generateZod(root, { importZod: true, formatMode, ...options?.zod });
 		default:
 			throw new Error(`The ${target} generator is not available yet.`);
 	}

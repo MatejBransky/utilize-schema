@@ -31,14 +31,16 @@ const stringKeywords = ['pattern', 'minLength', 'maxLength', 'format'];
 const numberKeywords = ['minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf'];
 
 /**
- * Returns the single type a keyword-only schema constrains, if there is one.
- * The schema itself stays untyped: JSON Schema keywords only apply to values of
- * their own type and must not reject other types.
+ * Returns the types a keyword-only schema constrains. The schema itself stays
+ * untyped: JSON Schema keywords only apply to values of their own type and
+ * must not reject other types, so each constrained type needs its own guarded
+ * check. A schema can constrain more than one type, e.g.
+ * `{ minLength: 2, minimum: 5 }` constrains strings and numbers.
  */
-export function inferTypeKeyword(
+export function inferTypeKeywords(
 	schema: ParsedJSONSchemaObject,
 	dialect: Dialect
-): JSONSchemaTypeName | undefined {
+): JSONSchemaTypeName[] {
 	if (
 		schema.type !== undefined ||
 		'$ref' in schema ||
@@ -48,7 +50,7 @@ export function inferTypeKeyword(
 		(schema.const !== undefined && isKeywordApplicable(dialect, 'const')) ||
 		schema.enum
 	) {
-		return undefined;
+		return [];
 	}
 
 	const record = schema as unknown as Record<string, unknown>;
@@ -59,15 +61,11 @@ export function inferTypeKeyword(
 		['number', numberKeywords],
 	] as const;
 
-	const inferred = categories.filter(([, keywords]) =>
-		keywords.some(
-			(keyword) => record[keyword] !== undefined && isKeywordApplicable(dialect, keyword)
+	return categories
+		.filter(([, keywords]) =>
+			keywords.some(
+				(keyword) => record[keyword] !== undefined && isKeywordApplicable(dialect, keyword)
+			)
 		)
-	);
-
-	if (inferred.length === 1) {
-		return inferred[0]![0] as JSONSchemaTypeName;
-	}
-
-	return undefined;
+		.map(([type]) => type as JSONSchemaTypeName);
 }

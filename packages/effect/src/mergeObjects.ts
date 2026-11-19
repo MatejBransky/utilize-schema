@@ -11,6 +11,9 @@ import { ANNOTATION_KEYWORDS } from './keywords';
 /** Keywords an object subschema may use and still be merged into another one. */
 const MERGEABLE_KEYWORDS = new Set(['type', 'properties', 'required', 'additionalProperties']);
 
+const additionalPropertiesReason =
+	'"additionalProperties" does not consider properties declared by another subschema';
+
 export type MergeResult =
 	| { merged: ParsedJSONSchemaObject | false }
 	| { merged?: undefined; reason: string };
@@ -23,11 +26,13 @@ export type MergeResult =
  */
 export function mergeObjectSchemas(schemas: ParsedJSONSchema[]): MergeResult {
 	const properties: Record<string, ParsedJSONSchema> = {};
+	const propertyOwners = new Map<string, number>();
 	const required = new Set<string>();
 	let additionalProperties: ParsedJSONSchemaObject['additionalProperties'];
+	let additionalOwner: number | undefined;
 	let additionalDeclared = false;
 
-	for (const raw of schemas) {
+	for (const [index, raw] of schemas.entries()) {
 		const dereferenced = dereference(raw);
 
 		if (dereferenced === false) {
@@ -45,14 +50,24 @@ export function mergeObjectSchemas(schemas: ParsedJSONSchema[]): MergeResult {
 			return { reason: unmergeable };
 		}
 
-		for (const [key, property] of Object.entries(
+		const declaredProperties = Object.entries(
 			(schema.properties ?? {}) as Record<string, ParsedJSONSchema>
-		)) {
+		);
+
+		// `additionalProperties` only considers the `properties` declared next to
+		// it, so merging it with properties from another subschema would accept
+		// keys the schema rejects.
+		if (additionalDeclared && additionalOwner !== index && declaredProperties.length > 0) {
+			return { reason: additionalPropertiesReason };
+		}
+
+		for (const [key, property] of declaredProperties) {
 			if (Object.hasOwn(properties, key)) {
 				return { reason: `property ${JSON.stringify(key)} is declared by more than one subschema` };
 			}
 
 			properties[key] = property;
+			propertyOwners.set(key, index);
 		}
 
 		for (const key of schema.required ?? []) {
@@ -70,7 +85,12 @@ export function mergeObjectSchemas(schemas: ParsedJSONSchema[]): MergeResult {
 				};
 			}
 
+			if ([...propertyOwners.values()].some((owner) => owner !== index)) {
+				return { reason: additionalPropertiesReason };
+			}
+
 			additionalProperties = additional;
+			additionalOwner = index;
 			additionalDeclared = true;
 		}
 	}

@@ -97,6 +97,24 @@ export const examples: Example[] = [
 		type: 'object',
 		additionalProperties: { type: 'number' },
 	}),
+	single('all-of-scalar', 'Scalar allOf', 'Advanced', {
+		title: 'Score',
+		allOf: [{ minimum: 20 }, { maximum: 30 }],
+	}),
+	single('all-of-ref-filter', 'All of with $ref and if', 'Advanced', {
+		title: 'Port',
+		allOf: [{ $ref: '#/definitions/port' }],
+		if: { maximum: 65535 },
+		then: { minimum: 1 },
+		definitions: {
+			port: { type: 'integer' },
+		},
+	}),
+	single('all-of-additional-properties', 'All of and additionalProperties', 'Advanced', {
+		title: 'Flags',
+		allOf: [{ properties: { label: {} } }],
+		additionalProperties: { type: 'boolean' },
+	}),
 	single('all-of', 'All of', 'Common', {
 		title: 'Employee',
 		allOf: [
@@ -227,6 +245,13 @@ export const examples: Example[] = [
 		type: 'string',
 		not: { enum: ['admin', 'api'] },
 	}),
+	single('root-ref', 'Root $ref', 'References', {
+		title: 'Alias',
+		definitions: {
+			name: { title: 'Name', type: 'string' },
+		},
+		$ref: '#/definitions/name',
+	}),
 	single('local-ref', 'Local $ref', 'References', {
 		title: 'Order',
 		type: 'object',
@@ -334,6 +359,17 @@ export const examples: Example[] = [
 		},
 		additionalProperties: false,
 		required: ['name'],
+	}),
+	single('format-modes', 'Format modes', 'Advanced', {
+		title: 'Contact',
+		type: 'object',
+		properties: {
+			email: { type: 'string', format: 'email' },
+			website: { type: 'string', format: 'uri' },
+			id: { type: 'string', format: 'uuid' },
+			createdAt: { type: 'string', format: 'date-time' },
+		},
+		required: ['email'],
 	}),
 	single('format-map', 'Custom format map', 'Advanced', {
 		title: 'Phone',

@@ -14,9 +14,10 @@ import { loadSuiteFiles, type SuiteCase, suiteCaseKey } from './suite/loadSuite'
  * dialects in one file and marks each case with `compatibility`, so cases for
  * older and newer releases are filtered out here.
  *
- * Cases tagged `format-assertion` are not run: the Effect generator keeps
- * `format` as an annotation, while those cases expect it to reject values. Cases that need
- * `externalSchemas` are skipped until the parser can be given schemas by URI.
+ * Format cases are compiled in the mode they describe: `format-annotation`
+ * cases with `formatMode: 'annotate'` and `format-assertion` cases with
+ * `formatMode: 'assert'`. Both groups run, so neither half of the format
+ * coverage is skipped.
  *
  * Known gaps live in `suite/knownFailures.ts` and run as expected failures, so
  * CI stays green until the gap is fixed.
@@ -31,29 +32,29 @@ const stats = {
 	assertions: 0,
 	failedAssertions: 0,
 	skippedDialect: 0,
-	skippedExternalSchemas: 0,
-	skippedFormatAnnotation: 0,
 };
 
-type SkipKind = 'dialect' | 'external' | 'format';
+type SkipKind = 'dialect';
 
 function skipReason(testCase: SuiteCase): { kind: SkipKind; reason: string } | undefined {
 	if (!isCompatible(testCase.compatibility, DRAFT_7)) {
 		return { kind: 'dialect', reason: 'not part of draft-07' };
 	}
 
-	if (testCase.externalSchemas) {
-		return {
-			kind: 'external',
-			reason: 'external schemas are not wired into the parser yet',
-		};
+	return undefined;
+}
+
+/**
+ * The suite tags each format case with the behaviour it expects, so compile it
+ * in that mode instead of the generator default.
+ */
+function formatModeFor(testCase: SuiteCase): 'annotate' | 'assert' | undefined {
+	if (testCase.tags?.includes('format-assertion')) {
+		return 'assert';
 	}
 
-	if (testCase.tags?.includes('format-assertion')) {
-		return {
-			kind: 'format',
-			reason: 'the Effect generator keeps formats as annotations, so assertion cases do not apply',
-		};
+	if (testCase.tags?.includes('format-annotation')) {
+		return 'annotate';
 	}
 
 	return undefined;
@@ -66,8 +67,6 @@ afterAll(() => {
 			`${stats.run - stats.knownGaps}/${stats.run} cases, ${
 				stats.assertions - stats.failedAssertions
 			}/${stats.assertions} assertions`,
-			`${stats.skippedExternalSchemas} skipped (external schemas)`,
-			`${stats.skippedFormatAnnotation} skipped (format assertion)`,
 			`${stats.skippedDialect} filtered out (other dialects)`,
 		].join(' · ')
 	);
@@ -97,12 +96,6 @@ for (const file of files) {
 	describe(file.name, () => {
 		for (const { testCase, skip } of runnable) {
 			if (skip) {
-				if (skip.kind === 'external') {
-					stats.skippedExternalSchemas++;
-				} else {
-					stats.skippedFormatAnnotation++;
-				}
-
 				test.skip(`${testCase.description} — skipped: ${skip.reason}`, () => {});
 				continue;
 			}
@@ -120,7 +113,9 @@ for (const file of files) {
 				test(`${testCase.description} — known gap: ${gap}`, async () => {
 					if (expected === 'compile') {
 						stats.failedAssertions += testCase.tests.length;
-						await expect(compileToSchema(testCase.schema)).rejects.toThrow();
+						await expect(
+							compileToSchema(testCase.schema, testCase.externalSchemas, formatModeFor(testCase))
+						).rejects.toThrow();
 						return;
 					}
 
@@ -133,7 +128,11 @@ for (const file of files) {
 						`"${key}" no longer fails; remove the entry`
 					).toBeGreaterThan(0);
 
-					const schema = await compileToSchema(testCase.schema);
+					const schema = await compileToSchema(
+						testCase.schema,
+						testCase.externalSchemas,
+						formatModeFor(testCase)
+					);
 					const failures = testCase.tests
 						.filter(
 							(suiteTest) => (decode(schema, suiteTest.data) !== undefined) !== suiteTest.valid
@@ -142,6 +141,7 @@ for (const file of files) {
 
 					stats.failedAssertions += failures.length;
 
+					// eslint-disable-next-line unicorn/no-array-sort -- both arrays are fresh
 					expect([...failures].sort()).toEqual([...(expected as string[])].sort());
 				});
 				continue;
@@ -151,7 +151,11 @@ for (const file of files) {
 				let failures: string[];
 
 				try {
-					const schema = await compileToSchema(testCase.schema);
+					const schema = await compileToSchema(
+						testCase.schema,
+						testCase.externalSchemas,
+						formatModeFor(testCase)
+					);
 
 					failures = testCase.tests
 						.filter(

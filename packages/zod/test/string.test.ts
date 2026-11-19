@@ -70,7 +70,7 @@ describe('string constraints', () => {
 		return {
 			schema: { type: 'string', format } satisfies JSONSchema,
 			expected: ts`
-        export const ${name} = z${zod};
+        export const ${name} = z${zod}.meta({ format: '${format}' });
         export type ${name} = z.infer<typeof ${name}>;
       `,
 			name: format,
@@ -80,12 +80,35 @@ describe('string constraints', () => {
 	describe('format', () => {
 		testCases.forEach((testCase) => {
 			test(testCase.name, async () => {
-				expect(
+				await expect(
 					compile(testCase.schema, {
 						fileName: `Format ${testCase.name}.json`,
+						formatMode: 'assert',
 					})
 				).toMatchCode(testCase.expected);
 			});
+		});
+
+		test('validates a known format by default', async () => {
+			await expect(compile({ type: 'string', format: 'email' })).toMatchCode(ts`
+        export const Root = z.email().meta({ format: 'email' });
+        export type Root = z.infer<typeof Root>;
+      `);
+		});
+
+		test('keeps a known format as metadata in annotate mode', async () => {
+			await expect(compile({ type: 'string', format: 'email' }, { formatMode: 'annotate' }))
+				.toMatchCode(ts`
+        export const Root = z.string().meta({ format: 'email' });
+        export type Root = z.infer<typeof Root>;
+      `);
+		});
+
+		test('keeps string constraints next to an asserted format', async () => {
+			await expect(compile({ type: 'string', format: 'email', minLength: 5 })).toMatchCode(ts`
+        export const Root = z.email().min(5).meta({ format: 'email' });
+        export type Root = z.infer<typeof Root>;
+      `);
 		});
 
 		test('maps a custom format to a Zod expression', async () => {
@@ -99,7 +122,7 @@ describe('string constraints', () => {
 					}
 				)
 			).toMatchCode(ts`
-        export const Root = z.string().regex(/^\d{3}-\d{4}$/);
+        export const Root = z.string().regex(/^\d{3}-\d{4}$/).meta({ format: 'phone-number' });
         export type Root = z.infer<typeof Root>;
       `);
 		});
@@ -108,7 +131,7 @@ describe('string constraints', () => {
 			'treats the inherited object key %s as an unknown format',
 			async (format) => {
 				const expected = ts`
-          export const Root = z.string();
+          export const Root = z.string().meta({ format: '${format}' });
           export type Root = z.infer<typeof Root>;
         `;
 
@@ -124,7 +147,7 @@ describe('string constraints', () => {
 					{ formatMap: { email: 'z.string().endsWith("@example.com")' } }
 				)
 			).toMatchCode(ts`
-        export const Root = z.string().endsWith('@example.com').min(5);
+        export const Root = z.string().endsWith('@example.com').min(5).meta({ format: 'email' });
         export type Root = z.infer<typeof Root>;
       `);
 		});
