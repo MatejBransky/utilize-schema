@@ -135,6 +135,29 @@ test('keyword-only schemas keep object and array keywords together', async () =>
 	expect(Root.safeParse('anything').success).toBe(true);
 });
 
+test('keyword-only schemas report each issue once', async () => {
+	const minProperties = await compileToZod({ minProperties: 1 });
+	const missingProperty = minProperties.safeParse({});
+
+	expect(missingProperty.success).toBe(false);
+	expect(missingProperty.success ? [] : missingProperty.error.issues).toHaveLength(1);
+
+	const uniqueItems = await compileToZod({ uniqueItems: true });
+	const duplicateItems = uniqueItems.safeParse([1, 1]);
+
+	expect(duplicateItems.success).toBe(false);
+	expect(duplicateItems.success ? [] : duplicateItems.error.issues).toHaveLength(1);
+
+	const mixed = await compileToZod({ minProperties: 1, minLength: 2 });
+	const shortString = mixed.safeParse('');
+	const emptyObject = mixed.safeParse({});
+
+	expect(shortString.success).toBe(false);
+	expect(shortString.success ? [] : shortString.error.issues).toHaveLength(1);
+	expect(emptyObject.success).toBe(false);
+	expect(emptyObject.success ? [] : emptyObject.error.issues).toHaveLength(1);
+});
+
 test('not narrows a keyword-only subschema to the parent type', async () => {
 	const Root = await compileToZod({ type: 'object', not: { pattern: 'x' } });
 

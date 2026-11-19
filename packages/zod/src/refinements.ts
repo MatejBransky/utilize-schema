@@ -60,6 +60,12 @@ export function applyRefinements(
 			contains: undefined,
 			propertyNames: undefined,
 			dependencies: undefined,
+			// Applied by the node-level blocks below for typed and untyped
+			// schemas alike, so keeping them on the typed copy would duplicate
+			// every issue.
+			minProperties: undefined,
+			maxProperties: undefined,
+			uniqueItems: undefined,
 		} as ParsedJSONSchemaObject);
 
 		checks.push(ts`{
