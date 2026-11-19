@@ -2,6 +2,7 @@ import { $RefParser } from '@apidevtools/json-schema-ref-parser';
 
 import type { DialectIssue, DialectOptions } from './dialect';
 import { resolveDialect } from './dialect';
+import { type ExternalSchemas, indexExternalSchemas, normalizeUri } from './externalSchemas';
 import { createSchemaIndex } from './identifiers';
 import { link } from './linker';
 import { Meta, type JSONSchema, type ParsedJSONSchema } from './model';
@@ -12,6 +13,12 @@ type SchemaPath = string;
 export interface ParseOptions extends DialectOptions {
 	cwd: string;
 	fileName: string;
+	/**
+	 * Documents served for absolute `$ref` URIs, keyed by retrieval URI. A URI
+	 * present here is never read from disk or the network. Identifiers declared
+	 * inside a document (`$id`, or the draft-04 `id`) are served too.
+	 */
+	externalSchemas?: ExternalSchemas;
 }
 
 export async function parse(
@@ -35,7 +42,32 @@ export async function parse(
 	// Parsing normalizes and links in place. Clone the input so the same schema
 	// object can be compiled again, and with another dialect, without leftovers.
 	const input = structuredClone(schema);
-	const $refs = await parser.resolve(cwd, input, {});
+
+	const provided = options.externalSchemas
+		? indexExternalSchemas(options.externalSchemas)
+		: undefined;
+	const providedSchema = (url: string) => provided?.get(url) ?? provided?.get(normalizeUri(url));
+
+	const $refs = await parser.resolve(
+		cwd,
+		input,
+		provided
+			? {
+					resolve: {
+						external: true,
+						// Runs before the built-in file and HTTP resolvers, so a provided
+						// URI is served from memory instead of being fetched.
+						provided: {
+							order: 1,
+							canRead: (file: { url: string }) => providedSchema(file.url) !== undefined,
+							// A boolean schema is a valid document, but the resolver type
+							// only admits objects.
+							read: (file: { url: string }) => providedSchema(file.url) as JSONSchema,
+						},
+					},
+				}
+			: {}
+	);
 
 	const entries = Object.entries($refs.values()) as Array<[SchemaPath, JSONSchema]>;
 

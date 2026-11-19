@@ -37,6 +37,9 @@ Options:
 
 - `customNameResolver(schema, usedNames)` — override the name allocated for a
   standalone schema.
+- `externalSchemas` — documents served for absolute `$ref` URIs, keyed by
+  retrieval URI. A URI present here is read from memory instead of disk or the
+  network.
 - `customSchemaResolver(schema)` — return an Effect Schema expression for a
   schema node, or `undefined` to let the generator handle it. It is called for
   every object node (including `$ref` nodes and the per-type copies of a `type`
@@ -149,9 +152,9 @@ pnpm test:suite    # official JSON Schema Test Suite (draft-07)
 
 The generator is checked against the official
 [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
-Today it passes **214 of 269 draft-07 cases (818 of 939 assertions)**. Cases
+Today it passes **221 of 285 draft-07 cases (833 of 972 assertions)**. Cases
 tagged `format-assertion` are skipped because `format` is kept as an annotation;
-cases that need external schemas are not wired up yet.
+cases that need external schemas are served from `externalSchemas`.
 
 Known gaps live in `test/suite/knownFailures.ts` and
 `test/suite/knownFailureInstances.ts`. Refresh the baseline after a fix or a

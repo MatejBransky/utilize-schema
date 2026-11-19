@@ -89,6 +89,10 @@ pnpm add zod
   Prettier) applied to the generated code before the banner is prepended. Pass
   `false` or omit it to keep the generator output as-is.
 - `bannerComment` — header prepended to written files; `false` disables it.
+- `externalSchemas` — documents served for absolute `$ref` URIs, keyed by
+  retrieval URI. A URI present here is read from memory instead of disk or the
+  network. Identifiers declared inside a document (`$id`, or the draft-04 `id`)
+  are served too.
 
 For custom pipelines, `compileFile()` and `compileSchema()` return the generated
 code without writing anything, and `withBanner()` applies the default header.
@@ -209,7 +213,7 @@ The suite is pinned to a commit and installed as a dev dependency. Each test
 case is compiled to a Zod schema in memory and every instance from the suite is
 run through `safeParse`.
 
-Today it passes **248 of 271 draft-07 cases (1,347 of 1,605 assertions)**.
+Today it passes **259 of 287 draft-07 cases (1,370 of 1,638 assertions)**.
 
 Cases the generator does not handle yet are listed in
 `test/suite/knownFailures.ts`, together with the exact instances that fail in

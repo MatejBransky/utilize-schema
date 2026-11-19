@@ -21,6 +21,12 @@ const idCycle = 'a self-referencing $id or URN schema is reported as an unsuppor
 
 const typelessCycle = 'a typeless recursive root cannot be represented as a type-safe Zod schema';
 
+const remoteAnchor =
+	'a $ref to a plain-name anchor in a remote document is rejected by the $ref parser';
+
+const remoteRootRef =
+	'a root that is only a $ref into a remote document is parsed as the referenced value, so no Root declaration is emitted';
+
 export const knownFailures: Record<string, string> = {
 	// format
 	'format-date-time.json :: validation of date-time strings': format,
@@ -53,4 +59,11 @@ export const knownFailures: Record<string, string> = {
 
 	// recursion
 	'ref.json :: root pointer ref': typelessCycle,
+
+	// remote documents
+	'anchor-legacy.json :: anchor within remote ref': remoteAnchor,
+	'anchor-legacy.json :: Location-independent identifier in remote ref': remoteRootRef,
+	'anchor-legacy.json :: $ref to $ref finds detached $anchor': remoteRootRef,
+	'ref-legacy.json :: fragment within remote ref': remoteRootRef,
+	'ref-legacy.json :: ref within remote ref': remoteRootRef,
 };
