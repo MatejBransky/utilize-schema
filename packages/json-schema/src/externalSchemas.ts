@@ -1,3 +1,5 @@
+import { resolveDialect, type Dialect } from './dialect';
+import { schemaChildren } from './identifiers';
 import type { JSONSchema } from './model';
 
 /** Documents served for absolute `$ref` URIs, keyed by retrieval URI. */
@@ -25,7 +27,7 @@ export function indexExternalSchemas(schemas: ExternalSchemas): Map<string, JSON
 	}
 
 	for (const [uri, schema] of documents) {
-		indexIdentifiers(uri, schema, index, new WeakSet());
+		indexIdentifiers(uri, schema, index, new WeakSet(), resolveDialect(schema).dialect);
 	}
 
 	return index;
@@ -63,7 +65,8 @@ function indexIdentifiers(
 	baseUri: string,
 	schema: JSONSchema | boolean,
 	index: Map<string, JSONSchema | boolean>,
-	seen: WeakSet<object>
+	seen: WeakSet<object>,
+	dialect: Dialect
 ): void {
 	if (typeof schema !== 'object' || schema === null || seen.has(schema)) {
 		return;
@@ -71,7 +74,12 @@ function indexIdentifiers(
 
 	seen.add(schema);
 
-	const identifier = identifierOf(schema);
+	const record = schema as Record<string, unknown>;
+	const nodeDialect = typeof record.$schema === 'string' ? resolveDialect(schema).dialect : dialect;
+	// In draft-07 and older `$ref` replaces the rest of the schema, so a sibling
+	// `$id` does not declare a resource there. The linker makes the same check.
+	const ignoresSiblings = typeof record.$ref === 'string' && nodeDialect.refSiblings === 'ignore';
+	const identifier = ignoresSiblings ? undefined : identifierOf(schema);
 	let nextBase = baseUri;
 
 	if (identifier) {
@@ -83,9 +91,7 @@ function indexIdentifiers(
 		}
 	}
 
-	for (const value of Object.values(schema)) {
-		if (typeof value === 'object' && value !== null) {
-			indexIdentifiers(nextBase, value as JSONSchema, index, seen);
-		}
+	for (const value of schemaChildren(record)) {
+		indexIdentifiers(nextBase, value as JSONSchema, index, seen, nodeDialect);
 	}
 }

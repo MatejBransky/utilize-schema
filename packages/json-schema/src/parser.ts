@@ -3,7 +3,7 @@ import { $RefParser } from '@apidevtools/json-schema-ref-parser';
 import type { DialectIssue, DialectOptions } from './dialect';
 import { resolveDialect } from './dialect';
 import { type ExternalSchemas, indexExternalSchemas, normalizeUri } from './externalSchemas';
-import { createSchemaIndex } from './identifiers';
+import { createSchemaIndex, schemaChildren } from './identifiers';
 import { link } from './linker';
 import { Meta, type JSONSchema, type ParsedJSONSchema } from './model';
 import { type DialectMap, prepareSchema } from './normalize';
@@ -70,6 +70,11 @@ export async function parse(
 	);
 
 	const entries = Object.entries($refs.values()) as Array<[SchemaPath, JSONSchema]>;
+	// `$RefParser` registers a nested `$id` as its own entry whose value is a node
+	// inside another document. Preparing and linking both would normalize that
+	// node twice and report its dialect issues twice, so keep the entry that
+	// contains the others.
+	const documentEntries = outerEntries(entries);
 
 	const rootDialect = resolveDialect(schema, options).dialect.id;
 
@@ -85,7 +90,7 @@ export async function parse(
 
 	// Every document is normalized and indexed before linking, so a `$ref` can
 	// resolve to an `$id` declared in a file that is linked later.
-	const documents = entries.map(([filePath, entrySchema]) => {
+	const documents = documentEntries.map(([filePath, entrySchema]) => {
 		const isRootSchema = entrySchema === rootSchema;
 		const prefixPath = isRootSchema ? '#' : filePath.replace(cwd, '');
 		const fileName = isRootSchema ? rootFileName : (filePath.split(/[\\/]/).at(-1) ?? 'Unknown');
@@ -143,9 +148,62 @@ export async function parse(
 	return {
 		root,
 		get: ($ref: string) => $refs.get($ref) as unknown as ParsedJSONSchema,
-		referencedSchemas: entries
+		referencedSchemas: documentEntries
 			.filter(([, entrySchema]) => entrySchema !== root)
 			.map(([, entrySchema]) => entrySchema) as ParsedJSONSchema[],
 		issues,
 	};
+}
+
+/**
+ * Drops `$RefParser` entries that point at a node inside another entry, and
+ * duplicate entries for the same document. A nested `$id` is registered as its
+ * own URI, but prepare and link already reach the node through its document.
+ */
+function outerEntries(entries: Array<[SchemaPath, JSONSchema]>): Array<[SchemaPath, JSONSchema]> {
+	const descendants = new Map<JSONSchema, Set<unknown>>();
+
+	for (const [, entrySchema] of entries) {
+		if (!descendants.has(entrySchema)) {
+			const nodes = new Set<unknown>();
+
+			markSchemaNodes(entrySchema, nodes);
+			descendants.set(entrySchema, nodes);
+		}
+	}
+
+	const seen = new Set<JSONSchema>();
+
+	return entries.filter(([, entrySchema]) => {
+		if (seen.has(entrySchema)) {
+			return false;
+		}
+
+		seen.add(entrySchema);
+
+		return !entries.some(
+			([, other]) => other !== entrySchema && descendants.get(other)?.has(entrySchema) === true
+		);
+	});
+}
+
+/** Collects a schema node and every schema-bearing node below it. */
+function markSchemaNodes(node: unknown, nodes: Set<unknown>): void {
+	if (Array.isArray(node)) {
+		for (const item of node) {
+			markSchemaNodes(item, nodes);
+		}
+
+		return;
+	}
+
+	if (typeof node !== 'object' || node === null || nodes.has(node)) {
+		return;
+	}
+
+	nodes.add(node);
+
+	for (const child of schemaChildren(node as Record<string, unknown>)) {
+		markSchemaNodes(child, nodes);
+	}
 }

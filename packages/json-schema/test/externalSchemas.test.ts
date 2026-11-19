@@ -1,6 +1,12 @@
 import { expect, test } from 'vitest';
 
-import { type JSONSchema, Meta, parse, type ParsedJSONSchemaObject } from '../src';
+import {
+	type JSONSchema,
+	Meta,
+	parse,
+	type ParsedJSONSchemaObject,
+	indexExternalSchemas,
+} from '../src';
 
 test('serves external schemas by retrieval URI', async () => {
 	const externalSchemas = {
@@ -65,6 +71,88 @@ test('serves identifiers declared inside a provided document', async () => {
 	const name = bundle.allOf?.[0] as ParsedJSONSchemaObject;
 
 	expect(name[Meta].reference).toMatchObject({ type: 'string' });
+});
+
+test('reports a nested identifier once when it is also referenced directly', async () => {
+	const parsed = await parse(
+		{
+			allOf: [
+				{ $ref: 'https://example.com/bundle.json' },
+				{ $ref: 'https://example.com/name.json' },
+			],
+		} as JSONSchema,
+		{
+			cwd: __dirname + '/',
+			fileName: 'Root.json',
+			keywordPolicy: 'warn',
+			externalSchemas: {
+				'https://example.com/bundle.json': {
+					$id: 'https://example.com/bundle.json',
+					prefixItems: [{}],
+					definitions: {
+						name: { $id: 'https://example.com/name.json', prefixItems: [{}] },
+					},
+				} as unknown as JSONSchema,
+			},
+		}
+	);
+
+	expect(parsed.issues.map((issue) => issue.path.join('/'))).toEqual(['', 'definitions/name']);
+	expect(parsed.referencedSchemas).toHaveLength(1);
+});
+
+test('does not index identifiers that live in schema data', () => {
+	const index = indexExternalSchemas({
+		'https://example.com/doc.json': {
+			type: 'object',
+			properties: {
+				kind: { enum: [{ $id: 'https://example.com/enum.json', label: 'x' }] },
+				fallback: { default: { $id: 'https://example.com/default.json' } },
+				samples: { examples: [{ id: 'https://example.com/examples.json' }] },
+			},
+		} as unknown as JSONSchema,
+	});
+
+	expect(index.has('https://example.com/enum.json')).toBe(false);
+	expect(index.has('https://example.com/default.json')).toBe(false);
+	expect(index.has('https://example.com/examples.json')).toBe(false);
+});
+
+test('indexes identifiers declared in schema positions', () => {
+	const index = indexExternalSchemas({
+		'https://example.com/bundle.json': {
+			definitions: { name: { $id: 'https://example.com/name.json', type: 'string' } },
+		} as unknown as JSONSchema,
+	});
+
+	expect(index.get('https://example.com/name.json')).toMatchObject({ type: 'string' });
+});
+
+test('ignores identifiers next to a $ref in draft-07 and older', () => {
+	const legacy = indexExternalSchemas({
+		'https://example.com/bundle.json': {
+			$schema: 'http://json-schema.org/draft-07/schema#',
+			definitions: {
+				sibling: { $ref: '#/definitions/name', $id: 'https://example.com/ignored.json' },
+				name: { type: 'string' },
+			},
+		} as unknown as JSONSchema,
+	});
+
+	expect(legacy.has('https://example.com/ignored.json')).toBe(false);
+
+	// 2019-09 and newer apply the keywords next to `$ref`, so the identifier counts.
+	const modern = indexExternalSchemas({
+		'https://example.com/modern.json': {
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			$defs: {
+				sibling: { $ref: '#/$defs/name', $id: 'https://example.com/kept.json' },
+				name: { type: 'string' },
+			},
+		} as unknown as JSONSchema,
+	});
+
+	expect(modern.has('https://example.com/kept.json')).toBe(true);
 });
 
 test('indexes the draft-04 id keyword', async () => {
