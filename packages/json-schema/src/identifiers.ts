@@ -169,8 +169,11 @@ const SINGLE_SCHEMA_KEYWORDS = new Set([
 
 const ARRAY_SCHEMA_KEYWORDS = new Set(['allOf', 'anyOf', 'oneOf', 'prefixItems']);
 
-/** Yields only schema-bearing children, so `$id` in `default` or `examples` is ignored. */
-function* schemaChildren(node: Record<string, unknown>): Generator<unknown> {
+/**
+ * Yields only schema-bearing children, so `$id` in `default` or `examples` is
+ * ignored. Exported so every indexer walks the same keywords.
+ */
+export function* schemaChildren(node: Record<string, unknown>): Generator<unknown> {
 	for (const [keyword, value] of Object.entries(node)) {
 		if (keyword === 'items') {
 			if (Array.isArray(value)) {

@@ -19,14 +19,18 @@ const { parse, Meta } = await import(
 );
 const { generate } = await import(pathToFileURL(join(root, 'dist/index.mjs')).href);
 
-async function compileToSchema(schema) {
+async function compileToSchema(schema, externalSchemas) {
 	const { root: parsedRoot } = await parse(schema, {
 		cwd: `${join(root, 'test/suite')}/`,
 		fileName: 'Root.json',
+		externalSchemas,
 	});
 	const code = generate(parsedRoot, {
 		importEffect: false,
-		customNameResolver: (candidate) => (candidate[Meta]?.parent === null ? 'Root' : undefined),
+		customNameResolver: (candidate) =>
+			candidate[Meta]?.parent === null && candidate[Meta]?.fileName === 'Root.json'
+				? 'Root'
+				: undefined,
 	});
 
 	if (!code.includes('export ')) {
@@ -123,7 +127,6 @@ for (const file of files) {
 
 	for (const testCase of json.tests) {
 		if (!isCompatible(testCase.compatibility)) continue;
-		if (testCase.externalSchemas) continue;
 		if (testCase.tags?.includes('format-assertion')) continue;
 
 		cases++;
@@ -133,7 +136,7 @@ for (const file of files) {
 		let schema;
 
 		try {
-			schema = await compileToSchema(testCase.schema);
+			schema = await compileToSchema(testCase.schema, testCase.externalSchemas);
 		} catch {
 			reasons[key] = reasonFor(file);
 			instances[key] = 'compile';
