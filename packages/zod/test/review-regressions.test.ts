@@ -111,6 +111,30 @@ test('keyword-only schemas do not reject other types', async () => {
 	expect(Root.safeParse(42).success).toBe(true);
 });
 
+test('keyword-only schemas check every type their keywords constrain', async () => {
+	const Root = await compileToZod({ minLength: 2, minimum: 5 });
+
+	expect(Root.safeParse('a').success).toBe(false);
+	expect(Root.safeParse('ab').success).toBe(true);
+	expect(Root.safeParse(1).success).toBe(false);
+	expect(Root.safeParse(5).success).toBe(true);
+	expect(Root.safeParse(null).success).toBe(true);
+	expect(Root.safeParse({}).success).toBe(true);
+});
+
+test('keyword-only schemas keep object and array keywords together', async () => {
+	const Root = await compileToZod({
+		properties: { a: { type: 'string' } },
+		minItems: 1,
+	});
+
+	expect(Root.safeParse({ a: 'x' }).success).toBe(true);
+	expect(Root.safeParse({ a: 1 }).success).toBe(false);
+	expect(Root.safeParse(['x']).success).toBe(true);
+	expect(Root.safeParse([]).success).toBe(false);
+	expect(Root.safeParse('anything').success).toBe(true);
+});
+
 test('not narrows a keyword-only subschema to the parent type', async () => {
 	const Root = await compileToZod({ type: 'object', not: { pattern: 'x' } });
 
