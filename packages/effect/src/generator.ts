@@ -1244,7 +1244,18 @@ function assertSupportedKeywords(schema: ParsedJSONSchemaObject, dialect: Dialec
 }
 
 function applyChecks(expression: string, checks: string[]): string {
-	return checks.length > 0 ? `${expression}.check(${checks.join(', ')})` : expression;
+	if (checks.length === 0) {
+		return expression;
+	}
+
+	// Effect cannot attach checks to `Schema.suspend`, so a checked reference is
+	// wrapped in a single-member union. The union keeps the reference's type and
+	// its declaration stays shared, which also works for recursive schemas.
+	const target = expression.startsWith('Schema.suspend(')
+		? `Schema.Union([${expression}])`
+		: expression;
+
+	return `${target}.check(${checks.join(', ')})`;
 }
 
 function applyAnnotations(expression: string, schema: ParsedJSONSchemaObject): string {

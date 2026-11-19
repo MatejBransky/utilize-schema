@@ -94,4 +94,26 @@ describe('allOf', () => {
 		expect(decode(schema, 'a')).toBeUndefined();
 		expect(decode(schema, 'ba')).toBeUndefined();
 	});
+
+	test('does not merge additionalProperties with properties from another member', async () => {
+		const schema = await compileToSchema({
+			allOf: [{ properties: { foo: {} } }],
+			additionalProperties: { type: 'boolean' },
+		});
+
+		expect(decode(schema, { bar: true })).toEqual({ bar: true });
+		// `additionalProperties` only considers the properties declared next to
+		// it, so the allOf member's `foo` is still an additional property here.
+		expect(decode(schema, { foo: 1, bar: true })).toBeUndefined();
+	});
+
+	test('checks a referenced member that cannot be merged', async () => {
+		const schema = await compileToSchema({
+			allOf: [{ $ref: '#/if' }],
+			if: { type: 'integer' },
+		});
+
+		expect(decode(schema, 12)).toBe(12);
+		expect(decode(schema, 'text')).toBeUndefined();
+	});
 });
