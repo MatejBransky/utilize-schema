@@ -10,14 +10,13 @@ Generate robust, type-safe Zod or Effect Schema codecs — or plain TypeScript t
 ## ✨ Features
 
 - **Pluggable generators:** the parser is generator-agnostic, so a new target only needs a generator. `@utilize/zod`, `@utilize/effect` and `@utilize/typescript` share the same pipeline.
-- **$ref support:** Local, external, and cyclic references. Each generator picks its own strategy: Zod uses getters or typed `z.lazy()`, Effect Schema always emits `Schema.suspend`, and the TypeScript generator emits recursive interfaces.
+- **$ref support:** Local, external, and cyclic references. External documents can be fetched or supplied in memory with `externalSchemas`. Each generator picks its own strategy: Zod uses getters or typed `z.lazy()`, Effect Schema always emits `Schema.suspend`, and the TypeScript generator emits recursive interfaces.
 - **Standalone schema generation:** Every definition gets its own schema or type.
 - **Configurable names:** rewrite generated Zod and Effect schema variables and types
   with a callback, e.g. to suffix schemas with `Schema`.
 - **TypeScript-first:** Generates runtime schemas and TypeScript types, including recursive ones. `@utilize/typescript` emits the types alone, with no runtime dependency.
 - **Draft support:** Draft-04/06/07, with normalization for 2019-09 and 2020-12.
-- **Conformance:** all generators are tested against the official [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite) for draft-07 — Zod passes 248 of 271 cases (1,347 of 1,605 assertions), Effect Schema 200 of 271 cases (1,232 of 1,605 assertions), and TypeScript 175 of 269 cases at the type level; remaining gaps are tracked per keyword.
-- **Format is a choice:** both runtime generators validate known formats by default and keep `format` as metadata with `formatMode: 'annotate'`. `formatMap` overrides individual formats.
+- **Conformance:** all generators are tested against the official [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite) for draft-07 — Zod passes 264 of 287 cases (1,380 of 1,638 assertions), Effect Schema 226 of 285 cases (843 of 972 assertions), and TypeScript 191 of 304 cases at the type level; remaining gaps are tracked per keyword.
 - **Dialect-aware:** `$schema` is resolved per schema resource — the document root and every subschema with its own `$id`/`$schema` — not once per file. Supported dialects are draft-04, draft-06, draft-07, 2019-09 and 2020-12; nodes carry their dialect in metadata, and keywords outside it are reported as warnings by default and not applied to generated code. See [docs/dialects.md](./docs/dialects.md).
 
 ---
@@ -128,15 +127,10 @@ against each other by a differential test suite
 CI. All three generators are also checked against the official JSON Schema Test
 Suite for draft-07:
 
-- **Zod:** 248 of 271 cases (1,347 of 1,605 assertions) pass.
-- **Effect Schema:** 200 of 271 cases (1,232 of 1,605 assertions) pass.
-- **TypeScript:** 175 of 269 cases pass at the type level.
-
-All three skip the 16 cases that need external schemas. The runtime generators
-assert known formats by default, so they skip the 17 cases tagged
-`format-annotation`, which expect `format` to be ignored; `formatMode:
-'annotate'` turns that back off. A type cannot check a format either way, so the
-TypeScript generator skips the 19 `format-assertion` cases instead.
+- **Zod:** 264 of 287 cases (1,380 of 1,638 assertions) pass.
+- **Effect Schema:** 226 of 285 cases (843 of 972 assertions) pass. Cases tagged
+  `format-assertion` are skipped because `format` is kept as an annotation.
+- **TypeScript:** 191 of 304 cases pass at the type level.
 
 The remaining gaps are recorded in each package's `test/suite/` directory:
 `knownFailures.ts` for the runtime generators, `knownGaps.ts` for the type-level
@@ -164,7 +158,7 @@ for the full numbers and methodology.
 | `multipleOf`                                 | ✅  | ✅            | Supported                                                                    |
 | `minLength` / `maxLength`                    | ✅  | ✅            | Effect counts code points, like JSON Schema                                  |
 | `pattern`                                    | ✅  | ✅            | Zod `.regex()`, Effect `Schema.isPattern`                                    |
-| `format`                                     | ✅  | ✅            | Asserted by default; `formatMode: 'annotate'` keeps it as metadata           |
+| `format`                                     | ✅  | —             | Zod validates known formats; Effect keeps it as an annotation                |
 | `properties`                                 | ✅  | ✅            | Supported                                                                    |
 | `required`                                   | ✅  | ✅            | Supported                                                                    |
 | `additionalProperties`                       | ✅  | ✅            | Zod `z.strictObject`/`.catchall`, Effect keeps excess keys and filters them  |

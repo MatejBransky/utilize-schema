@@ -20,8 +20,6 @@ export const knownGaps: Record<string, string> = {
 	// Shared parser: $id/$anchor and URN resolution.
 	'id-legacy.json :: URN ref with nested pointer ref': parserId,
 
-	// Shared parser: boolean schemas behind $ref.
-
 	// Untyped schemas: object and array keywords infer an object or an array.
 	'additionalProperties.json :: additionalProperties being false does not allow other properties':
 		inference,

@@ -40,14 +40,18 @@ function evaluate(code) {
 	return new Function('z', `${javascript}\nreturn Root;`)(z);
 }
 
-async function compile(schema) {
+async function compile(schema, externalSchemas) {
 	const { root: parsedRoot } = await parse(schema, {
 		cwd: suiteRoot + '/',
 		fileName: 'Root.json',
+		externalSchemas,
 	});
 	const code = generate(parsedRoot, {
 		importZod: false,
-		customNameResolver: (candidate) => (candidate[Meta]?.parent === null ? 'Root' : undefined),
+		customNameResolver: (candidate) =>
+			candidate[Meta]?.parent === null && candidate[Meta]?.fileName === 'Root.json'
+				? 'Root'
+				: undefined,
 	});
 
 	return evaluate(code);
@@ -80,7 +84,7 @@ for (const key of Object.keys(knownFailures)) {
 	}
 
 	try {
-		const schema = await compile(entry.testCase.schema);
+		const schema = await compile(entry.testCase.schema, entry.testCase.externalSchemas);
 		const failures = entry.testCase.tests
 			.filter((suiteTest) => schema.safeParse(suiteTest.data).success !== suiteTest.valid)
 			.map((suiteTest) => suiteTest.description);

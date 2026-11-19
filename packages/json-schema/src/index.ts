@@ -1,4 +1,5 @@
 export * from './cliOptions';
+export * from './externalSchemas';
 export {
 	type DetectedDialect,
 	type Dialect,

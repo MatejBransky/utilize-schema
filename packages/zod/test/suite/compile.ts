@@ -1,4 +1,4 @@
-import { Meta, type JSONSchema, parse } from '@utilize/json-schema';
+import { type ExternalSchemas, Meta, type JSONSchema, parse } from '@utilize/json-schema';
 
 import { stripTypeScriptTypes } from 'node:module';
 
@@ -14,10 +14,14 @@ import { generate } from '../../src/generator';
  * The existing `compileToZod` helper writes a module and imports it. That is
  * the right tool for a handful of schemas; the suite runs over hundreds.
  */
-export async function compileToZodSchema(schema: JSONSchema | boolean): Promise<z.ZodType> {
+export async function compileToZodSchema(
+	schema: JSONSchema | boolean,
+	externalSchemas?: ExternalSchemas
+): Promise<z.ZodType> {
 	const { root } = await parse(schema as JSONSchema, {
 		cwd: __dirname + '/',
 		fileName: 'Root.json',
+		externalSchemas,
 	});
 
 	const code = generate(root, {
@@ -25,7 +29,9 @@ export async function compileToZodSchema(schema: JSONSchema | boolean): Promise<
 		// The suite has schemas with `$id` or `title`, so pin the root name and
 		// keep the lookup in `evaluate` stable.
 		customNameResolver: (parsedSchema) =>
-			parsedSchema[Meta]?.parent === null ? 'Root' : undefined,
+			parsedSchema[Meta]?.parent === null && parsedSchema[Meta]?.fileName === 'Root.json'
+				? 'Root'
+				: undefined,
 	});
 
 	return evaluate(code);

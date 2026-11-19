@@ -46,14 +46,10 @@ pnpm add zod
   standalone schema.
 - `readOnlyKeyword` — map `readOnly: true` to `.readonly()`. Off by default,
   because it freezes values and changes the inferred type.
-- `formatMode` — what `format` becomes in the generated code. `'assert'`
-  (default) turns known formats into validation (`.email()`, `.uuid()`,
-  `.iso.datetime()`, …); `'annotate'` keeps `format` as `.meta({ format })`.
-  Unknown formats stay annotations in both modes.
-- `formatMap` — map `format` names to your own Zod string expressions. An entry
-  applies in both modes, so it can validate a format that `formatMode` would
-  leave as an annotation. Formats you do not list follow `formatMode`.
-  `minLength`, `maxLength` and `pattern` are still appended:
+- `formatMap` — map `format` names to your own Zod string expressions. Each
+  entry overrides the built-in mapping for that format (known formats too);
+  formats you do not list keep the built-in mapping. `minLength`, `maxLength`
+  and `pattern` are still appended:
 
   ```ts
   await compile({
@@ -93,6 +89,10 @@ pnpm add zod
   Prettier) applied to the generated code before the banner is prepended. Pass
   `false` or omit it to keep the generator output as-is.
 - `bannerComment` — header prepended to written files; `false` disables it.
+- `externalSchemas` — documents served for absolute `$ref` URIs, keyed by
+  retrieval URI. A URI present here is read from memory instead of disk or the
+  network. Identifiers declared inside a document (`$id`, or the draft-04 `id`)
+  are served too.
 
 For custom pipelines, `compileFile()` and `compileSchema()` return the generated
 code without writing anything, and `withBanner()` applies the default header.
@@ -197,9 +197,8 @@ cat schema.yaml | utilize-zod > schema.generated.ts
 Input can be a file, a directory or a glob; JSON and YAML are supported. Output
 defaults to stdout. Every generated file starts with a "do not edit" banner
 (`--no-banner` omits it). Pass `--readonly` to map `readOnly: true` to
-`.readonly()`, `--format-mode assert` to validate known formats, and
-`--runtime-import @utilize/zod/runtime` to import the `oneOf` helper instead of
-declaring it in every file.
+`.readonly()`, and `--runtime-import @utilize/zod/runtime` to import the
+`oneOf` helper instead of declaring it in every file.
 
 ## Testing
 
@@ -214,9 +213,7 @@ The suite is pinned to a commit and installed as a dev dependency. Each test
 case is compiled to a Zod schema in memory and every instance from the suite is
 run through `safeParse`.
 
-Today it passes **248 of 271 draft-07 cases (1,347 of 1,605 assertions)**.
-The 16 cases that need external schemas and the 17 tagged `format-annotation` are
-not run: the default `formatMode` asserts known formats.
+Today it passes **264 of 287 draft-07 cases (1,380 of 1,638 assertions)**.
 
 Cases the generator does not handle yet are listed in
 `test/suite/knownFailures.ts`, together with the exact instances that fail in

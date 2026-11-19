@@ -119,10 +119,12 @@ describe('$ref siblings', () => {
 			$ref: '#/definitions/List',
 		} as unknown as JSONSchema;
 
-		// The parser inlines the root `$ref`, so the items repeat and get a declaration.
+		// The root keeps a `Root` alias to the referenced resource, whose dialect
+		// still decides how its items are generated.
 		await expect(compile(schema)).resolves.toContain(
-			'type ListItemValue = ListValue & [string?, ...unknown[]];'
+			'type ListValue = (ListValue & [string?, ...unknown[]])[];'
 		);
+		await expect(compile(schema)).resolves.toContain('export const Root = List;');
 	});
 
 	test('2020-12 generates an intersection', async () => {

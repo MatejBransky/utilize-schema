@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { type JSONSchema, parse } from '@utilize/json-schema';
+import { type ExternalSchemas, type JSONSchema, parse } from '@utilize/json-schema';
 
 import { load as loadYaml } from 'js-yaml';
 
@@ -23,6 +23,8 @@ export interface CompileOptions {
 	format?: CodeFormatter | false;
 	/** Header prepended to the generated file. Pass `false` to omit it. */
 	bannerComment?: string | false;
+	/** Documents served for absolute `$ref` URIs, keyed by retrieval URI. */
+	externalSchemas?: ExternalSchemas;
 }
 
 export interface CompileSchemaOptions {
@@ -31,6 +33,8 @@ export interface CompileSchemaOptions {
 	customNameResolver?: CustomNameResolver;
 	customSchemaResolver?: CustomSchemaResolver;
 	format?: CodeFormatter | false;
+	/** Documents served for absolute `$ref` URIs, keyed by retrieval URI. */
+	externalSchemas?: ExternalSchemas;
 }
 
 /** A synchronous or asynchronous formatter applied to generated code. */
@@ -57,6 +61,7 @@ export async function compile(options: CompileOptions): Promise<void> {
 		customNameResolver: options.customNameResolver,
 		customSchemaResolver: options.customSchemaResolver,
 		format: options.format,
+		externalSchemas: options.externalSchemas,
 	});
 
 	writeFileSync(outputPath, withBanner(code, options.bannerComment), 'utf8');
@@ -76,6 +81,7 @@ export async function compileSchema(schema: JSONSchema, options: CompileSchemaOp
 	const { root } = await parse(schema, {
 		cwd: options.cwd,
 		fileName: options.fileName,
+		externalSchemas: options.externalSchemas,
 	});
 
 	const code = generate(root, {
