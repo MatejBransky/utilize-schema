@@ -44,8 +44,20 @@ describe('formatMode', () => {
 
 	test.each([
 		['uuid', '2f8a1b3c-4d5e-6f70-8a9b-0c1d2e3f4a5b', 'not-a-uuid'],
+		['url', 'https://example.com/a?b=1', 'not a url'],
+		['emoji', '😀', 'abc'],
+		['base64', 'aGVsbG8=', 'not base64!'],
+		['base64url', 'aGVsbG8', 'a+b/c'],
+		['nanoid', 'V1StGXR8_Z5jdHi6B-myT', 'short'],
+		['cuid', 'cjld2cjxh0000qzrmn831i7rn', 'not-cuid'],
+		['cuid2', 'tz4a98xxat96iws9zmbrgj3a', '!'],
+		['ulid', '01ARZ3NDEKTSV4RRFFQ69G5FAV', 'not-a-ulid'],
 		['ipv4', '192.168.0.1', '999.168.0.1'],
+		['ipv6', '::1', 'not-ip'],
+		['cidrv4', '192.168.0.0/24', '192.168.0.0/33'],
+		['cidrv6', '::1/128', '::1/129'],
 		['date', '2024-02-29', '2023-02-29'],
+		['time', '12:00:00Z', '12:00'],
 		['date-time', '2024-02-29T12:00:00Z', '2024-02-29 12:00:00'],
 		['duration', 'P3DT4H', 'three days'],
 	])('asserts %s', async (format, valid, invalid) => {

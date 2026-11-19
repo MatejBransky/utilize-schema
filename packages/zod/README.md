@@ -50,10 +50,10 @@ pnpm add zod
   (default) keeps it as `.meta({ format })`, which is what JSON Schema asks for.
   `'assert'` turns known formats into validation (`.email()`, `.uuid()`,
   `.iso.datetime()`, …); unknown formats stay annotations in both modes.
-- `formatMap` — map `format` names to your own Zod string expressions. Each
-  entry overrides the built-in mapping for that format (known formats too);
-  formats you do not list keep the built-in mapping. `minLength`, `maxLength`
-  and `pattern` are still appended:
+- `formatMap` — map `format` names to your own Zod string expressions. An entry
+  applies in both modes, so it is also a way to validate one format while
+  leaving the others as annotations. Formats you do not list follow
+  `formatMode`. `minLength`, `maxLength` and `pattern` are still appended:
 
   ```ts
   await compile({

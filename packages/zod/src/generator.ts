@@ -43,7 +43,7 @@ export interface GenerateOptions {
 	typeName?: NameMapper;
 	/** Map `readOnly: true` to `.readonly()`; off by default because it changes the value type. */
 	readOnlyKeyword?: boolean;
-	/** Overrides the built-in `format` to Zod mapping per format; unlisted formats keep it. */
+	/** Maps a `format` to a Zod expression; it applies in both modes, other formats follow `formatMode`. */
 	formatMap?: FormatMap;
 	/**
 	 * What `format` becomes in the generated code: `annotate` (default) keeps it
