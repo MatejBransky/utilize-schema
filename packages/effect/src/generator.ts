@@ -914,7 +914,69 @@ function generateIntersection(schemas: ParsedJSONSchema[], context: Context): st
 		return generateSchema(scalar, context);
 	}
 
+	const conjunction = generateConjunction(members, context);
+
+	if (conjunction !== undefined) {
+		return conjunction;
+	}
+
 	throw new UnsupportedEffectSchemaFeatureError('allOf', result.reason);
+}
+
+/**
+ * Combines `allOf` members that cannot be merged into one schema by checking
+ * the value against each member instead. Covers applicators (`anyOf`, `oneOf`)
+ * and scalar constraints, whose keywords only apply to their own JSON type.
+ */
+function generateConjunction(
+	members: ParsedJSONSchemaObject[],
+	context: Context
+): string | undefined {
+	const parts: ParsedJSONSchemaObject[] = [];
+
+	for (const member of members) {
+		if (Array.isArray(member.anyOf) || Array.isArray(member.oneOf)) {
+			const { anyOf, oneOf, ...rest } = member;
+			const unsupported = Object.entries(rest).some(
+				([keyword, value]) => value !== undefined && !ANNOTATION_KEYWORDS.has(keyword)
+			);
+
+			if (unsupported) {
+				return undefined;
+			}
+
+			// `anyOf` and `oneOf` both constrain the value, so they stay separate.
+			if (Array.isArray(anyOf)) {
+				parts.push({ anyOf } as unknown as ParsedJSONSchemaObject);
+			}
+
+			if (Array.isArray(oneOf)) {
+				parts.push({ oneOf } as unknown as ParsedJSONSchemaObject);
+			}
+
+			continue;
+		}
+
+		if (scalarType(member) === undefined) {
+			return undefined;
+		}
+
+		parts.push(member);
+	}
+
+	if (parts.length < 2) {
+		return undefined;
+	}
+
+	const [base, ...constraints] = parts;
+
+	return applyChecks(
+		generateSchema(base!, context),
+		constraints.map(
+			(part) =>
+				`Schema.makeFilter((value) => Schema.is(${generateSchema(part, context)})(value) ? undefined : 'Value does not match every schema in "allOf"')`
+		)
+	);
 }
 
 /** Keywords a `number` or `string` subschema may use and still be merged. */

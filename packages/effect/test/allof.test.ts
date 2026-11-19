@@ -64,9 +64,26 @@ describe('allOf', () => {
 		expect(decode(schema, 'abcde')).toBeUndefined();
 	});
 
-	test('keeps an unmergeable pattern unsupported', async () => {
-		await expect(compile({ allOf: [{ pattern: '^a' }, { pattern: 'b$' }] })).rejects.toThrow(
-			/allOf/
-		);
+	test('combines allOf with anyOf and oneOf constraints', async () => {
+		const schema = await compileToSchema({
+			allOf: [{ multipleOf: 2 }],
+			anyOf: [{ multipleOf: 3 }],
+			oneOf: [{ multipleOf: 5 }],
+		});
+
+		expect(decode(schema, 30)).toBe(30);
+		expect(decode(schema, 12)).toBeUndefined();
+		expect(decode(schema, 15)).toBeUndefined();
+		expect(decode(schema, 10)).toBeUndefined();
+		// The constraints only apply to numbers.
+		expect(decode(schema, 'text')).toBe('text');
+	});
+
+	test('combines patterns that cannot be merged into one regex', async () => {
+		const schema = await compileToSchema({ allOf: [{ pattern: '^a' }, { pattern: 'b$' }] });
+
+		expect(decode(schema, 'ab')).toBe('ab');
+		expect(decode(schema, 'a')).toBeUndefined();
+		expect(decode(schema, 'ba')).toBeUndefined();
 	});
 });

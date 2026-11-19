@@ -178,8 +178,8 @@ Supported keywords:
   `uniqueItems`
 - `object`: `properties`, `patternProperties`, `required`,
   `additionalProperties`, `propertyNames`, `minProperties`, `maxProperties`
-- `allOf` between disjoint object subschemas or combinable scalar
-  constraints, `anyOf`, `oneOf`
+- `allOf` between disjoint object subschemas, scalar bounds, applicators and
+  filters, `anyOf`, `oneOf`
 - `not`, `if`/`then`/`else`, `contains`, `dependencies` (applied as filters)
 - `$ref`, `$defs`, `definitions`
 - `title`, `description`, `default`, `examples`, `$id`, `readOnly`,
@@ -203,9 +203,11 @@ newer merge disjoint object siblings into one struct. Other siblings (a
 non-object or recursive target, `not`, `if`, ...) are checked with a filter on
 the reference, which keeps the reference's type.
 
-Effect has no generic intersection, so `allOf` is limited to merging object
-subschemas that do not declare the same property, and scalar subschemas whose
-bounds, `pattern` and `multipleOf` can be combined.
+Effect has no generic intersection, so `allOf` first merges disjoint object
+subschemas and scalar bounds. Anything left (applicators, patterns, mixed
+members) is checked with `Schema.makeFilter` over each member; a member that is
+not a scalar, an applicator or a mergeable object still throws
+`UnsupportedEffectSchemaFeatureError`.
 
 ## Notes
 
