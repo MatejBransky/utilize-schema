@@ -321,6 +321,17 @@ export const examples: Example[] = [
 		additionalProperties: false,
 		required: ['name'],
 	}),
+	single('format-modes', 'Format modes', 'Advanced', {
+		title: 'Contact',
+		type: 'object',
+		properties: {
+			email: { type: 'string', format: 'email' },
+			website: { type: 'string', format: 'uri' },
+			id: { type: 'string', format: 'uuid' },
+			createdAt: { type: 'string', format: 'date-time' },
+		},
+		required: ['email'],
+	}),
 	single('format-map', 'Custom format map', 'Advanced', {
 		title: 'Phone',
 		type: 'string',

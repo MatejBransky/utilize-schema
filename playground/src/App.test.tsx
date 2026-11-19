@@ -190,6 +190,7 @@ test('an agent can find and change the playground controls', async () => {
 		'Generator',
 		'Example',
 		'Keyword policy',
+		'Format',
 		'Color mode',
 		'Schema files',
 		'Add file',
@@ -262,10 +263,11 @@ test('the header pickers are selects rather than text inputs', async () => {
 	const screen = await render(<App />);
 
 	expect(document.querySelector('[data-slot="combobox-input"]')).toBeNull();
-	expect(document.querySelectorAll('[data-slot="select-trigger"]')).toHaveLength(3);
+	expect(document.querySelectorAll('[data-slot="select-trigger"]')).toHaveLength(4);
 	await expect.element(screen.getByRole('combobox', { name: 'Generator' })).toBeVisible();
 	await expect.element(screen.getByRole('combobox', { name: 'Example' })).toBeVisible();
 	await expect.element(screen.getByRole('combobox', { name: 'Keyword policy' })).toBeVisible();
+	await expect.element(screen.getByRole('combobox', { name: 'Format' })).toBeVisible();
 });
 
 test('the generator select offers only implemented generators', async () => {
@@ -291,6 +293,33 @@ test('choosing a generator from the select updates the generated code', async ()
 	await expect
 		.element(screen.getByRole('combobox', { name: 'Generator' }))
 		.toHaveTextContent('Effect Schema');
+});
+
+test('the format select switches between annotation and assertion', async () => {
+	const screen = await render(<App />);
+
+	await vi.waitFor(() =>
+		expect(new URL(location.href).searchParams.get('format-mode')).toBe('annotate')
+	);
+
+	await screen.getByRole('combobox', { name: 'Format' }).click();
+	await screen.getByRole('option', { name: /Assert/ }).click();
+
+	await vi.waitFor(() =>
+		expect(new URL(location.href).searchParams.get('format-mode')).toBe('assert')
+	);
+	await expect
+		.element(screen.getByRole('combobox', { name: 'Format' }))
+		.toHaveTextContent('Assert');
+});
+
+test('the format select is disabled for the type generator', async () => {
+	const screen = await render(<App />);
+
+	await screen.getByRole('combobox', { name: 'Generator' }).click();
+	await screen.getByRole('option', { name: /TypeScript/ }).click();
+
+	await expect.element(screen.getByRole('combobox', { name: 'Format' })).toBeDisabled();
 });
 
 test('an example URL loads that example', async () => {
