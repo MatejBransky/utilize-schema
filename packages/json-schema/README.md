@@ -50,8 +50,10 @@ the generator. Generators derive those cycles from the `reference` links, each i
 `referencedSchemas` for the external files that were loaded.
 
 When the document root is a `$ref`, `root` stays the document node and
-`root[Meta].reference` points at the target. `get('#')` still returns the
-referenced schema, and `referencedSchemas` does not include the root document.
+`root[Meta].reference` points at the target, and `referencedSchemas` does not
+include the root document. `get('#')` is unchanged: for a local pointer root
+(`{ "$ref": "#/definitions/name" }`) it returns the referenced schema, while a
+`$ref` to another file resolves to that document.
 
 ## Usage
 

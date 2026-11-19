@@ -473,3 +473,26 @@ test('keeps the document root when it is a $ref', async () => {
 	// The root document is not an external schema.
 	expect(parsed.referencedSchemas).toEqual([]);
 });
+
+test('get("#") resolves a root pointer and returns the target document for a file reference', async () => {
+	const localPointer = await parse(
+		{
+			$ref: '#/definitions/name',
+			title: 'Root title',
+			definitions: { name: { type: 'string' } },
+		} as unknown as JSONSchema,
+		{ cwd: __dirname + '/', fileName: 'Root.json' }
+	);
+
+	expect(localPointer.get('#')).toMatchObject({ type: 'string' });
+
+	const fileReference = await parse({ $ref: './EnumSchema.json', title: 'Doc' } as JSONSchema, {
+		cwd: __dirname + '/',
+		fileName: 'Root.json',
+	});
+
+	assert(typeof fileReference.root === 'object' && fileReference.root !== null);
+	expect(fileReference.root[Meta].reference).toMatchObject({ enum: ['a', 'b', 'c'] });
+	// `#` resolves to the root of the referenced document, not to its `$ref`.
+	expect(fileReference.get('#')).toMatchObject({ title: 'Doc' });
+});
