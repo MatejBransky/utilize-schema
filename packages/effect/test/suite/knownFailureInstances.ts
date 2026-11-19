@@ -2,22 +2,6 @@
 export type KnownFailureInstances = Record<string, string[] | 'compile'>;
 
 export const knownFailureInstances: KnownFailureInstances = {
-	'additionalProperties.json :: additionalProperties does not look in applicators': [
-		'properties defined in allOf are not examined',
-	],
-	'allOf.json :: allOf simple types': 'compile',
-	'allOf.json :: allOf with boolean schemas, all true': 'compile',
-	'allOf.json :: allOf with boolean schemas, some false': 'compile',
-	'allOf.json :: allOf with one empty schema': ['any data is valid'],
-	'allOf.json :: allOf with two empty schemas': ['any data is valid'],
-	'allOf.json :: allOf with the first empty schema': 'compile',
-	'allOf.json :: allOf with the last empty schema': 'compile',
-	'allOf.json :: nested allOf, to check validation semantics': 'compile',
-	'allOf.json :: allOf combined with anyOf, oneOf': 'compile',
-	'anchor-legacy.json :: Location-independent identifier': 'compile',
-	'anchor-legacy.json :: Location-independent identifier with base URI change in subschema':
-		'compile',
-	'anchor-legacy.json :: Reference an anchor with a non-relative URI': 'compile',
 	'anyOf.json :: anyOf with base schema': ['mismatch base schema'],
 	'const.json :: const with object': 'compile',
 	'const.json :: const with array': 'compile',
@@ -350,20 +334,7 @@ export const knownFailureInstances: KnownFailureInstances = {
 		'square brackets are not allowed in a path segment',
 		'a trailing newline after a valid URI is invalid',
 	],
-	'id-legacy.json :: $ref prevents a sibling $id from changing the base uri': 'compile',
-	'id-legacy.json :: refs with relative uris and defs': 'compile',
-	'id-legacy.json :: relative refs with absolute uris and defs': 'compile',
-	'id-legacy.json :: $id must be resolved against nearest parent, not just immediate parent':
-		'compile',
-	'id-legacy.json :: ref with absolute-path-reference': 'compile',
-	'id-legacy.json :: $id with file URI still resolves pointers - *nix': 'compile',
-	'id-legacy.json :: $id with file URI still resolves pointers - windows': 'compile',
 	'id-legacy.json :: URN ref with nested pointer ref': 'compile',
-	'id-legacy.json :: remote HTTP ref with different $id': 'compile',
-	'id-legacy.json :: remote HTTP ref with different URN $id': 'compile',
-	'id-legacy.json :: remote HTTP ref with nested absolute ref': 'compile',
-	'if-then-else.json :: non-interference across combined schemas': 'compile',
-	'items.json :: additionalItems does not look in applicators, invalid case': 'compile',
 	'oneOf.json :: oneOf with boolean schemas, all true': ['any value is invalid'],
 	'oneOf.json :: oneOf with boolean schemas, more than one true': ['any value is invalid'],
 	'properties.json :: properties whose names are Javascript object property names': [
@@ -371,9 +342,4 @@ export const knownFailureInstances: KnownFailureInstances = {
 	],
 	'ref-legacy.json :: relative pointer ref to array': ['match array'],
 	'ref-legacy.json :: naive replacement of $ref with its destination is not correct': 'compile',
-	'ref-legacy.json :: $ref to boolean schema true': 'compile',
-	'ref-legacy.json :: remote ref with ref to definitions': 'compile',
-	'ref.json :: ref to if': 'compile',
-	'ref.json :: ref to then': 'compile',
-	'ref.json :: ref to else': 'compile',
 };
