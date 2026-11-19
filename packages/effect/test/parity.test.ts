@@ -356,6 +356,70 @@ describe('format handling', () => {
 	});
 });
 
+/**
+ * The two targets must accept and reject the same values for a format, so a
+ * schema can switch targets without changing validation. Each case pins the
+ * behaviour against the Zod helper instead of a hand-written expectation.
+ */
+describe('format parity in assert mode', () => {
+	const cases: Array<{ format: string; valid: string[]; invalid: string[] }> = [
+		{
+			format: 'time',
+			valid: ['12:00', '12:00:00', '23:59:59.5'],
+			invalid: ['12:00:00Z', '24:00', '99:99:99'],
+		},
+		{
+			format: 'date-time',
+			valid: ['2024-02-29T12:00:00Z', '2024-02-29T12:00:00.5Z'],
+			invalid: ['2024-02-29T12:00:00+01:00', '2023-02-29T12:00:00Z', '2024-02-29T99:99:99Z'],
+		},
+		{
+			format: 'date',
+			valid: ['0000-02-29', '0001-01-01', '2024-02-29'],
+			invalid: ['0001-02-29', '2023-02-29', '2024-13-01'],
+		},
+		{
+			format: 'emoji',
+			valid: ['😀', '🇨🇿', '1️⃣', '👨‍👩‍👧'],
+			invalid: ['\u200d', 'abc'],
+		},
+		{
+			format: 'base64url',
+			valid: ['', 'ab', 'abc', 'abcd', 'aGVsbG8'],
+			invalid: ['A', 'abcde'],
+		},
+		{
+			format: 'ipv6',
+			valid: ['::1', '2001:db8::1'],
+			invalid: ['::1]/x', '::1]#frag', 'not-ip'],
+		},
+	];
+
+	for (const { format, valid, invalid } of cases) {
+		test(format, async () => {
+			const schema: TestSchema = { type: 'string', format };
+			const [zodRoot, effectRoot] = await Promise.all([
+				loadRoot(schema, 'zod', 'assert'),
+				loadRoot(schema, 'effect', 'assert'),
+			]);
+
+			for (const value of valid) {
+				expect(zodValid(zodRoot, value), `zod should accept ${JSON.stringify(value)}`).toBe(true);
+				expect(Schema.is(effectRoot)(value), `effect should accept ${JSON.stringify(value)}`).toBe(
+					true
+				);
+			}
+
+			for (const value of invalid) {
+				expect(zodValid(zodRoot, value), `zod should reject ${JSON.stringify(value)}`).toBe(false);
+				expect(Schema.is(effectRoot)(value), `effect should reject ${JSON.stringify(value)}`).toBe(
+					false
+				);
+			}
+		});
+	}
+});
+
 describe('design differences', () => {
 	test('an empty allOf is vacuous for Effect and never for Zod', async () => {
 		const schema: TestSchema = { allOf: [] };

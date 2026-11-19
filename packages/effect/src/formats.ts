@@ -6,24 +6,37 @@
  * entry stays an annotation, which is what JSON Schema prescribes for formats
  * an implementation does not know.
  *
- * The patterns are practical rather than the full RFC grammar. They reject the
- * values people actually pass by mistake, and the suite covers the stricter
- * cases separately.
+ * Where Zod has a helper, the pattern is kept close to that helper's behaviour
+ * so switching targets does not change which values pass.
  */
+
+/** Calendar date with leap years. Same shape as Zod's `iso.date` regex, which
+ * also accepts year 0000 that `Date` would map into 1900. */
+const dateSource = String.raw`(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))`;
+
+/** `hh:mm` with optional seconds, matching `z.iso.time()`: no time zone. */
+const timeSource = String.raw`(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?`;
+
+/** The qualified form `z.iso.datetime()` accepts: seconds plus `Z`. */
+const qualifiedTimeSource = String.raw`(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?Z`;
 
 /** Formats that are a single regular expression. */
 const patterns: Record<string, string> = {
 	email: String.raw`^[^\s@]+@[^\s@]+\.[^\s@]+$`,
-	emoji: String.raw`^(?:\p{Extended_Pictographic}|\p{Emoji_Modifier}|\u200d|\ufe0f)+$`,
+	// The leading lookahead demands one anchor (a pictograph, a regional
+	// indicator or a keycap), because `\p{Emoji_Component}` alone covers ZWJ
+	// and modifiers, which are not emoji on their own.
+	emoji: String.raw`^(?=[\s\S]*[\p{Extended_Pictographic}\p{Regional_Indicator}\u20E3])[\p{Extended_Pictographic}\p{Emoji_Component}]+$`,
 	base64: String.raw`^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$`,
-	base64url: String.raw`^[A-Za-z0-9_-]*$`,
+	base64url: String.raw`^(?:[A-Za-z0-9_-]{4})*(?:[A-Za-z0-9_-]{2,3})?$`,
 	nanoid: String.raw`^[A-Za-z0-9_-]{21}$`,
 	cuid: String.raw`^c[^\s-]{8,}$`,
 	cuid2: String.raw`^[a-z][a-z0-9]*$`,
 	ulid: String.raw`^[0-9A-HJKMNP-TV-Z]{26}$`,
 	ipv4: String.raw`^(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$`,
-	time: String.raw`^\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$`,
-	'date-time': String.raw`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$`,
+	date: `^${dateSource}$`,
+	time: `^${timeSource}$`,
+	'date-time': `^${dateSource}T${qualifiedTimeSource}$`,
 	duration: String.raw`^P(?!$)(?:\d+Y)?(?:\d+M)?(?:\d+W)?(?:\d+D)?(?:T(?=\d)(?:\d+H)?(?:\d+M)?(?:\d+S)?)?$`,
 };
 
@@ -46,9 +59,6 @@ export function formatCheck(format: string): string | undefined {
 		}`
 			);
 		}
-		case 'date': {
-			return filter(dateBody);
-		}
 		case 'ipv6': {
 			return filter(ipv6Body);
 		}
@@ -59,9 +69,11 @@ export function formatCheck(format: string): string | undefined {
 			return filter(cidrv6Body);
 		}
 		default: {
-			const source = patterns[format];
+			if (!Object.hasOwn(patterns, format)) {
+				return undefined;
+			}
 
-			return source === undefined ? undefined : patternCheck(source);
+			return patternCheck(patterns[format]!);
 		}
 	}
 }
@@ -78,21 +90,14 @@ function filter(body: string) {
 	})`;
 }
 
-const dateBody = `const match = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(value);
-		if (!match) {
-			return 'Invalid date';
+/**
+ * The URL parser stops at `]`, so `::1]/x` would be accepted as a bracketed
+ * host. Reject the characters that can close the brackets early.
+ */
+const ipv6Body = `if (/[\\]\\/?#]/.test(value)) {
+			return 'Invalid IPv6 address';
 		}
-		const year = Number(match[1]);
-		const month = Number(match[2]);
-		const day = Number(match[3]);
-		const date = new Date(Date.UTC(year, month - 1, day));
-		return date.getUTCFullYear() === year &&
-			date.getUTCMonth() === month - 1 &&
-			date.getUTCDate() === day
-			? undefined
-			: 'Invalid date';`;
-
-const ipv6Body = `try {
+		try {
 			new URL('http://[' + value + ']');
 			return undefined;
 		} catch {
@@ -101,6 +106,9 @@ const ipv6Body = `try {
 
 const cidrv6Body = `const [address, prefix] = value.split('/');
 		if (prefix === undefined || !/^\\d{1,3}$/.test(prefix) || Number(prefix) > 128) {
+			return 'Invalid IPv6 CIDR';
+		}
+		if (/[\\]\\/?#]/.test(address)) {
 			return 'Invalid IPv6 CIDR';
 		}
 		try {
