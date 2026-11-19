@@ -184,6 +184,23 @@ describe('generated schemas type-check', () => {
 		).resolves.toBeUndefined();
 	});
 
+	test('type-check format assertions', async () => {
+		await expect(
+			typeCheck(
+				{
+					'Email.ts': { type: 'string', format: 'email', minLength: 5 },
+					'Uuid.ts': { type: 'string', format: 'uuid' },
+					'Date.ts': { type: 'string', format: 'date' },
+					'Duration.ts': { type: 'string', format: 'duration' },
+					'Uri.ts': { type: 'string', format: 'uri' },
+					'Ipv6.ts': { type: 'string', format: 'ipv6' },
+					'Cidrv6.ts': { type: 'string', format: 'cidrv6' },
+				},
+				{ formatMode: 'assert' }
+			)
+		).resolves.toBeUndefined();
+	});
+
 	test('type-check mapped schema and type names', async () => {
 		await expect(
 			typeCheck(

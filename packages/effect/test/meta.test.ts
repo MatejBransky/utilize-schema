@@ -33,16 +33,19 @@ describe('annotations', () => {
 		expect(decode(module.Root!, { theme: 'dark' })).toEqual({ theme: 'dark' });
 	});
 
-	test('examples, $id, format, readOnly and deprecated are annotations', async () => {
-		const result = await compile({
-			type: 'string',
-			$id: 'https://example.com/name',
-			examples: ['Jane'],
-			format: 'email',
-			readOnly: true,
-			writeOnly: false,
-			deprecated: true,
-		});
+	test('examples, $id, format, readOnly and deprecated are annotations in annotate mode', async () => {
+		const result = await compile(
+			{
+				type: 'string',
+				$id: 'https://example.com/name',
+				examples: ['Jane'],
+				format: 'email',
+				readOnly: true,
+				writeOnly: false,
+				deprecated: true,
+			},
+			{ formatMode: 'annotate' }
+		);
 
 		await expect(result).toMatchCode(ts`
 			export const Name = Schema.String.annotate({
