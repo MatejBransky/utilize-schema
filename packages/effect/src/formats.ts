@@ -71,7 +71,9 @@ function patternCheck(source: string) {
 }
 
 function filter(body: string) {
-	return `Schema.makeFilter((value) => {
+	// The value type is explicit: the check is emitted as a standalone constant,
+	// so it no longer sits in a position where `Schema.String` could infer it.
+	return `Schema.makeFilter<string>((value) => {
 		${body}
 	})`;
 }

@@ -69,6 +69,11 @@ type Context = {
 	dialect: Dialect;
 	/** Whether `format` becomes a validation or only an annotation. */
 	formatMode?: FormatMode;
+	/**
+	 * Name of the module-level constant that holds the check for a format.
+	 * Registered on first use, so one format yields one constant per file.
+	 */
+	formatOf(format: string): string;
 	customSchemaResolver?: CustomSchemaResolver;
 };
 
@@ -116,7 +121,27 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		},
 	};
 
+	const formatNames = new Map<string, string>();
+	const usedNames = new Set(['Schema']);
+
+	for (const names of [...definitionNames.values(), rootNames]) {
+		usedNames.add(names.schema);
+		usedNames.add(names.type);
+	}
+
 	const context: Context = {
+		formatOf(format) {
+			const existing = formatNames.get(format);
+
+			if (existing !== undefined) {
+				return existing;
+			}
+
+			const name = allocateName(formatConstantBase(format), usedNames);
+
+			formatNames.set(format, name);
+			return name;
+		},
 		nameOf(schema, ref) {
 			const names = namesOf(schema);
 
@@ -134,17 +159,27 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		customSchemaResolver: options.customSchemaResolver,
 	};
 
+	const declarations: string[] = [];
+
+	for (const schema of standalone) {
+		declarations.push(renderDeclaration(definitionNames.get(schema)!, schema));
+	}
+
+	declarations.push(renderDeclaration(rootNames, root));
+
 	const parts: string[] = [];
 
 	if (options.importEffect ?? true) {
 		parts.push("import { Schema } from 'effect';");
 	}
 
-	for (const schema of standalone) {
-		parts.push(renderDeclaration(definitionNames.get(schema)!, schema));
+	// Declarations rendered above registered the formats they use, so the
+	// constants can be emitted once, before any schema that references them.
+	for (const [format, name] of formatNames) {
+		parts.push(`const ${name} = ${formatCheck(format)!};`);
 	}
 
-	parts.push(renderDeclaration(rootNames, root));
+	parts.push(...declarations);
 
 	return `${parts.join('\n\n')}\n`;
 
@@ -441,8 +476,10 @@ function generateString(schema: ParsedJSONSchemaObject, context: Context): strin
 	}
 
 	const format =
-		(context.formatMode ?? 'annotate') === 'assert' && typeof schema.format === 'string'
-			? formatCheck(schema.format)
+		(context.formatMode ?? 'annotate') === 'assert' &&
+		typeof schema.format === 'string' &&
+		formatCheck(schema.format) !== undefined
+			? context.formatOf(schema.format)
 			: undefined;
 
 	if (format !== undefined) {
@@ -450,6 +487,15 @@ function generateString(schema: ParsedJSONSchemaObject, context: Context): strin
 	}
 
 	return checks.length > 0 ? `Schema.String.check(${checks.join(', ')})` : 'Schema.String';
+}
+
+/** `date-time` becomes `formatDateTime`, so one constant covers a format. */
+function formatConstantBase(format: string) {
+	const pascal = format.replace(/[^a-zA-Z0-9]+(.)?/g, (_, next: string | undefined) =>
+		next === undefined ? '' : next.toUpperCase()
+	);
+
+	return `format${pascal.charAt(0).toUpperCase()}${pascal.slice(1)}`;
 }
 
 function patternExpression(pattern: string): string {

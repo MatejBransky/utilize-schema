@@ -21,6 +21,24 @@ describe('formatMode', () => {
 		expect(code).not.toContain('isPattern');
 	});
 
+	test('emits one constant per format and reuses it', async () => {
+		const code = await compile(
+			{
+				type: 'object',
+				properties: {
+					email: { type: 'string', format: 'email' },
+					backup: { type: 'string', format: 'email' },
+					createdAt: { type: 'string', format: 'date-time' },
+				},
+			},
+			{ formatMode: 'assert' }
+		);
+
+		expect(code.match(/const formatEmail = /g)).toHaveLength(1);
+		expect(code.match(/const formatDateTime = /g)).toHaveLength(1);
+		expect(code.match(/Schema\.String\.check\(formatEmail\)/g)).toHaveLength(2);
+	});
+
 	test('asserts a known format', async () => {
 		const Root = await compileToSchema(
 			{ type: 'string', format: 'email' },
