@@ -97,6 +97,24 @@ export const examples: Example[] = [
 		type: 'object',
 		additionalProperties: { type: 'number' },
 	}),
+	single('all-of-scalar', 'Scalar allOf', 'Advanced', {
+		title: 'Score',
+		allOf: [{ minimum: 20 }, { maximum: 30 }],
+	}),
+	single('all-of-ref-filter', 'All of with $ref and if', 'Advanced', {
+		title: 'Port',
+		allOf: [{ $ref: '#/definitions/port' }],
+		if: { maximum: 65535 },
+		then: { minimum: 1 },
+		definitions: {
+			port: { type: 'integer' },
+		},
+	}),
+	single('all-of-additional-properties', 'All of and additionalProperties', 'Advanced', {
+		title: 'Flags',
+		allOf: [{ properties: { label: {} } }],
+		additionalProperties: { type: 'boolean' },
+	}),
 	single('all-of', 'All of', 'Common', {
 		title: 'Employee',
 		allOf: [

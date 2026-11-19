@@ -42,23 +42,6 @@ describe('unsupported keywords', () => {
 		await expect(result).toContain('a: Schema.Json');
 	});
 
-	test('rejects allOf branches that declare the same property', async () => {
-		await expect(
-			compile({
-				allOf: [
-					{ type: 'object', properties: { a: { type: 'string' } } },
-					{ type: 'object', properties: { a: { type: 'number' } } },
-				],
-			})
-		).rejects.toThrow(/declared by more than one subschema/);
-	});
-
-	test('rejects allOf branches that are not objects', async () => {
-		await expect(compile({ allOf: [{ type: 'string' }] })).rejects.toThrow(
-			/only object subschemas can be merged/
-		);
-	});
-
 	test('rejects non-primitive const values', async () => {
 		await expect(compile({ const: { a: 1 } })).rejects.toThrow(
 			/only primitive values are supported/
