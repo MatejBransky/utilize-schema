@@ -2,14 +2,6 @@
 export type KnownFailureInstances = Record<string, string[] | 'compile'>;
 
 export const knownFailureInstances: KnownFailureInstances = {
-	'additionalProperties.json :: additionalProperties does not look in applicators': [
-		'properties defined in allOf are not examined',
-	],
-	'allOf.json :: allOf combined with anyOf, oneOf': 'compile',
-	'anchor-legacy.json :: Location-independent identifier': 'compile',
-	'anchor-legacy.json :: Location-independent identifier with base URI change in subschema':
-		'compile',
-	'anchor-legacy.json :: Reference an anchor with a non-relative URI': 'compile',
 	'anchor-legacy.json :: anchor within remote ref': 'compile',
 	'anchor-legacy.json :: Location-independent identifier in remote ref': 'compile',
 	'anchor-legacy.json :: $ref to $ref finds detached $anchor': 'compile',
@@ -62,11 +54,6 @@ export const knownFailureInstances: KnownFailureInstances = {
 	'enum.json :: enum with [0] does not match [false]': 'compile',
 	'enum.json :: enum with [1] does not match [true]': 'compile',
 	'id-legacy.json :: URN ref with nested pointer ref': 'compile',
-	'id-legacy.json :: remote HTTP ref with different $id': 'compile',
-	'id-legacy.json :: remote HTTP ref with different URN $id': 'compile',
-	'id-legacy.json :: remote HTTP ref with nested absolute ref': 'compile',
-	'if-then-else.json :: non-interference across combined schemas': 'compile',
-	'items.json :: additionalItems does not look in applicators, invalid case': 'compile',
 	'oneOf.json :: oneOf with boolean schemas, all true': ['any value is invalid'],
 	'oneOf.json :: oneOf with boolean schemas, more than one true': ['any value is invalid'],
 	'properties.json :: properties whose names are Javascript object property names': [
@@ -74,9 +61,6 @@ export const knownFailureInstances: KnownFailureInstances = {
 	],
 	'ref-legacy.json :: relative pointer ref to array': ['match array'],
 	'ref-legacy.json :: naive replacement of $ref with its destination is not correct': 'compile',
-	'ref-legacy.json :: $ref to boolean schema true': 'compile',
 	'ref-legacy.json :: fragment within remote ref': 'compile',
 	'ref-legacy.json :: ref within remote ref': 'compile',
-	'ref-legacy.json :: remote ref with ref to definitions': 'compile',
-	'ref.json :: ref to if': 'compile',
 };
