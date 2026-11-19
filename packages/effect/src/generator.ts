@@ -888,7 +888,9 @@ function parsed(schema: unknown): ParsedJSONSchema {
  */
 function generateUntyped(schema: ParsedJSONSchemaObject, context: Context): string {
 	const dialect = context.dialect;
-	const constrained = JSON_VALUE_TYPES.filter((type) => appliesTo(schema, type, dialect));
+	const constrained = JSON_VALUE_TYPES.filter((type) =>
+		appliesTo(schema, type, dialect, (context.formatMode ?? 'annotate') === 'assert')
+	);
 
 	if (constrained.length === 0) {
 		return 'Schema.Json';
@@ -906,7 +908,12 @@ function generateUntyped(schema: ParsedJSONSchemaObject, context: Context): stri
 	return `Schema.Union([${[...new Set(members)].join(', ')}])`;
 }
 
-function appliesTo(schema: ParsedJSONSchemaObject, type: JSONValueType, dialect: Dialect): boolean {
+function appliesTo(
+	schema: ParsedJSONSchemaObject,
+	type: JSONValueType,
+	dialect: Dialect,
+	assertFormats: boolean
+): boolean {
 	const record = schema as unknown as Record<string, unknown>;
 	const anyKeyword = (keywords: string[]) =>
 		keywords.some(
@@ -915,7 +922,15 @@ function appliesTo(schema: ParsedJSONSchemaObject, type: JSONValueType, dialect:
 
 	switch (type) {
 		case 'string':
-			return anyKeyword(['minLength', 'maxLength', 'pattern']);
+			// A format only constrains the string branch, so an untyped schema
+			// asserts it the same way a typed one does. In annotate mode it adds
+			// no check, so the branch stays plain `Schema.String`.
+			return (
+				anyKeyword(['minLength', 'maxLength', 'pattern']) ||
+				(assertFormats &&
+					typeof schema.format === 'string' &&
+					formatCheck(schema.format) !== undefined)
+			);
 		case 'number':
 			return anyKeyword([
 				'minimum',

@@ -395,6 +395,24 @@ describe('format parity in assert mode', () => {
 		},
 	];
 
+	test('untyped schema', async () => {
+		const schema: TestSchema = { format: 'email' };
+		const [zodRoot, effectRoot] = await Promise.all([
+			loadRoot(schema, 'zod', 'assert'),
+			loadRoot(schema, 'effect', 'assert'),
+		]);
+
+		for (const value of ['user@example.com', 42, null]) {
+			expect(zodValid(zodRoot, value), `zod should accept ${JSON.stringify(value)}`).toBe(true);
+			expect(Schema.is(effectRoot)(value), `effect should accept ${JSON.stringify(value)}`).toBe(
+				true
+			);
+		}
+
+		expect(zodValid(zodRoot, 'not-an-email')).toBe(false);
+		expect(Schema.is(effectRoot)('not-an-email')).toBe(false);
+	});
+
 	for (const { format, valid, invalid } of cases) {
 		test(format, async () => {
 			const schema: TestSchema = { type: 'string', format };

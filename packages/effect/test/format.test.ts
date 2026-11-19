@@ -85,6 +85,21 @@ describe('formatMode', () => {
 		expect(Schema.is(Root)(invalid), `${invalid} should be invalid`).toBe(false);
 	});
 
+	test('asserts a format on an untyped schema', async () => {
+		const Root = await compileToSchema({ format: 'email' }, { formatMode: 'assert' });
+
+		expect(Schema.is(Root)('user@example.com')).toBe(true);
+		expect(Schema.is(Root)('not-an-email')).toBe(false);
+		// `format` only constrains strings, so other JSON types still pass.
+		expect(Schema.is(Root)(42)).toBe(true);
+	});
+
+	test('keeps a format on an untyped schema as metadata by default', async () => {
+		const Root = await compileToSchema({ format: 'email' });
+
+		expect(Schema.is(Root)('not-an-email')).toBe(true);
+	});
+
 	test('treats inherited object keys as unknown formats', async () => {
 		for (const format of ['constructor', 'toString', 'hasOwnProperty', 'valueOf']) {
 			const code = await compile({ type: 'string', format }, { formatMode: 'assert' });
