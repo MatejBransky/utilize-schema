@@ -908,10 +908,10 @@ function generateIntersection(schemas: ParsedJSONSchema[], context: Context): st
 		return result.merged === false ? 'Schema.Never' : generateObject(result.merged, context);
 	}
 
-	const scalar = mergeScalarSchemas(members);
+	const typed = mergeTypedSchemas(members);
 
-	if (scalar !== undefined) {
-		return generateSchema(scalar, context);
+	if (typed !== undefined) {
+		return generateSchema(typed, context);
 	}
 
 	const conjunction = generateConjunction(members, context);
@@ -975,10 +975,11 @@ function generateConjunction(
 	);
 }
 
-/** Keywords a `number` or `string` subschema may use and still be merged. */
-const SCALAR_KEYWORDS: Record<'number' | 'string', ReadonlySet<string>> = {
+/** Keywords a typed subschema may use and still be merged. */
+const MERGEABLE_KEYWORDS: Record<'number' | 'string' | 'array', ReadonlySet<string>> = {
 	number: new Set(['minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf']),
 	string: new Set(['minLength', 'maxLength', 'pattern']),
+	array: new Set(['minItems', 'maxItems', 'uniqueItems']),
 };
 
 /** Expands nested `allOf`, splitting the keywords declared next to it. */
@@ -1018,35 +1019,33 @@ function isEmptySchema(schema: ParsedJSONSchemaObject): boolean {
 }
 
 /**
- * Merges subschemas that constrain one scalar type. Bounds are combined into
- * the strictest one; a keyword that cannot be combined (`pattern`, a different
- * `multipleOf`) keeps the intersection unsupported.
+ * Merges subschemas that constrain one JSON type. Bounds are combined into the
+ * strictest one; a keyword that cannot be combined (`pattern`, a different
+ * `multipleOf`, array items) keeps the intersection a filter.
  */
-function mergeScalarSchemas(members: ParsedJSONSchemaObject[]): ParsedJSONSchemaObject | undefined {
-	let type: 'number' | 'integer' | 'string' | undefined;
+function mergeTypedSchemas(members: ParsedJSONSchemaObject[]): ParsedJSONSchemaObject | undefined {
+	let type: 'number' | 'integer' | 'string' | 'array' | undefined;
 
 	for (const member of members) {
 		if (member.$ref !== undefined) {
 			return undefined;
 		}
 
-		const memberType = scalarType(member);
+		const memberType = mergeableType(member);
 
 		if (memberType === undefined) {
 			return undefined;
 		}
 
-		if (
-			type === undefined ||
-			type === memberType ||
-			(type === 'number' && memberType === 'integer')
-		) {
-			type = type === 'integer' || memberType === 'integer' ? 'integer' : memberType;
-		} else {
+		if (type === undefined) {
+			type = memberType;
+		} else if (type === 'number' && memberType === 'integer') {
+			type = 'integer';
+		} else if (type !== memberType && !(type === 'integer' && memberType === 'number')) {
 			return undefined;
 		}
 
-		const allowed = SCALAR_KEYWORDS[memberType === 'integer' ? 'number' : memberType];
+		const allowed = MERGEABLE_KEYWORDS[memberType === 'integer' ? 'number' : memberType];
 
 		for (const [keyword, value] of Object.entries(member)) {
 			if (value === undefined || ANNOTATION_KEYWORDS.has(keyword) || keyword === 'type') {
@@ -1072,6 +1071,9 @@ function mergeScalarSchemas(members: ParsedJSONSchemaObject[]): ParsedJSONSchema
 	let minLength: number | undefined;
 	let maxLength: number | undefined;
 	let pattern: string | undefined;
+	let minItems: number | undefined;
+	let maxItems: number | undefined;
+	let uniqueItems: boolean | undefined;
 
 	for (const member of members) {
 		if (typeof member.minimum === 'number') {
@@ -1130,6 +1132,18 @@ function mergeScalarSchemas(members: ParsedJSONSchemaObject[]): ParsedJSONSchema
 
 			pattern = member.pattern;
 		}
+
+		if (typeof member.minItems === 'number') {
+			minItems = minItems === undefined ? member.minItems : Math.max(minItems, member.minItems);
+		}
+
+		if (typeof member.maxItems === 'number') {
+			maxItems = maxItems === undefined ? member.maxItems : Math.min(maxItems, member.maxItems);
+		}
+
+		if (member.uniqueItems === true) {
+			uniqueItems = true;
+		}
 	}
 
 	for (const [keyword, value] of Object.entries({
@@ -1141,6 +1155,9 @@ function mergeScalarSchemas(members: ParsedJSONSchemaObject[]): ParsedJSONSchema
 		minLength,
 		maxLength,
 		pattern,
+		minItems,
+		maxItems,
+		uniqueItems,
 	})) {
 		if (value !== undefined) {
 			merged[keyword] = value;
@@ -1150,9 +1167,16 @@ function mergeScalarSchemas(members: ParsedJSONSchemaObject[]): ParsedJSONSchema
 	return merged as unknown as ParsedJSONSchemaObject;
 }
 
-/** The scalar type a subschema constrains, from `type` or its keyword family. */
-function scalarType(schema: ParsedJSONSchemaObject): 'number' | 'integer' | 'string' | undefined {
-	if (schema.type === 'number' || schema.type === 'integer' || schema.type === 'string') {
+/** The type a subschema constrains, from `type` or its keyword family. */
+function mergeableType(
+	schema: ParsedJSONSchemaObject
+): 'number' | 'integer' | 'string' | 'array' | undefined {
+	if (
+		schema.type === 'number' ||
+		schema.type === 'integer' ||
+		schema.type === 'string' ||
+		schema.type === 'array'
+	) {
 		return schema.type;
 	}
 
@@ -1160,23 +1184,23 @@ function scalarType(schema: ParsedJSONSchemaObject): 'number' | 'integer' | 'str
 		return undefined;
 	}
 
-	const hasNumberKeyword = [
-		'minimum',
-		'maximum',
-		'exclusiveMinimum',
-		'exclusiveMaximum',
-		'multipleOf',
-	].some((keyword) => (schema as unknown as Record<string, unknown>)[keyword] !== undefined);
+	const record = schema as unknown as Record<string, unknown>;
+	const has = (keywords: string[]) => keywords.some((keyword) => record[keyword] !== undefined);
+	const candidates: Array<'number' | 'string' | 'array'> = [];
 
-	if (hasNumberKeyword) {
-		return 'number';
+	if (has(['minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf'])) {
+		candidates.push('number');
 	}
 
-	const hasStringKeyword = ['minLength', 'maxLength', 'pattern'].some(
-		(keyword) => (schema as unknown as Record<string, unknown>)[keyword] !== undefined
-	);
+	if (has(['minLength', 'maxLength', 'pattern'])) {
+		candidates.push('string');
+	}
 
-	return hasStringKeyword ? 'string' : undefined;
+	if (has(['minItems', 'maxItems', 'uniqueItems'])) {
+		candidates.push('array');
+	}
+
+	return candidates.length === 1 ? candidates[0] : undefined;
 }
 
 function reference(schema: ParsedJSONSchemaObject, context: Context): string {

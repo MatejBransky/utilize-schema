@@ -79,11 +79,30 @@ describe('allOf', () => {
 		expect(decode(schema, 'text')).toBe('text');
 	});
 
-	test('intersects members that cannot be merged', async () => {
-		const schema = await compileToSchema({ allOf: [{ type: 'array' }, { minItems: 1 }] });
+	test('merges array item counts', async () => {
+		const members = { allOf: [{ type: 'array' as const }, { minItems: 1 }] };
+		const code = await compile(members);
+
+		await expect(code).toMatchCode(ts`
+			export const Root = Schema.Array(Schema.Json).check(Schema.isMinLength(1));
+
+			export type Root = typeof Root.Type;
+		`);
+
+		const schema = await compileToSchema(members);
+		expect(decode(schema, [1])).toEqual([1]);
+		expect(decode(schema, [])).toBeUndefined();
+		expect(decode(schema, 'text')).toBeUndefined();
+	});
+
+	test('filters array members that cannot be merged', async () => {
+		const schema = await compileToSchema({
+			allOf: [{ type: 'array', items: { type: 'number' } }, { minItems: 1 }],
+		});
 
 		expect(decode(schema, [1])).toEqual([1]);
 		expect(decode(schema, [])).toBeUndefined();
+		expect(decode(schema, ['text'])).toBeUndefined();
 		expect(decode(schema, 'text')).toBeUndefined();
 	});
 

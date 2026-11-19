@@ -178,8 +178,8 @@ Supported keywords:
   `uniqueItems`
 - `object`: `properties`, `patternProperties`, `required`,
   `additionalProperties`, `propertyNames`, `minProperties`, `maxProperties`
-- `allOf` between object subschemas, scalar bounds, applicators and any other
-  member, `anyOf`, `oneOf`
+- `allOf` between object subschemas, scalar and array bounds, applicators and
+  any other member, `anyOf`, `oneOf`
 - `not`, `if`/`then`/`else`, `contains`, `dependencies` (applied as filters)
 - `$ref`, `$defs`, `definitions`
 - `title`, `description`, `default`, `examples`, `$id`, `readOnly`,
