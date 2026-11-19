@@ -472,6 +472,38 @@ describe('code generation', () => {
 		`);
 	});
 
+	test('emits one json literal helper for structured const and enum', async () => {
+		await expect(await compile({ enum: [6, 'foo', [], true, { foo: 12 }] })).toMatchCode(ts`
+			const jsonLiteral = (expected: string) =>
+				Schema.Json.check(
+					Schema.makeFilter(
+						(value) =>
+							JSON.stringify(value, (_key, entry) =>
+								entry !== null && typeof entry === 'object' && !Array.isArray(entry)
+									? Object.fromEntries(
+											Object.entries(entry).sort(([left], [right]) =>
+												left.localeCompare(right)
+											)
+										)
+									: entry
+							) === expected
+					)
+				);
+
+			type RootValue = 6 | 'foo' | readonly [] | true | { foo: 12 };
+
+			export const Root: Schema.Codec<RootValue> = Schema.Union([
+				Schema.Literal(6),
+				Schema.Literal('foo'),
+				jsonLiteral('[]'),
+				Schema.Literal(true),
+				jsonLiteral('{"foo":12}'),
+			]);
+
+			export type Root = typeof Root.Type;
+		`);
+	});
+
 	test('adds the effect import when requested', async () => {
 		const result = await compile({ type: 'string' }, { importEffect: true });
 

@@ -77,6 +77,8 @@ type Context = {
 	 * Registered on first use, so one format yields one constant per file.
 	 */
 	formatOf(format: string): string;
+	/** Name of the module-level constant that builds a schema for a canonical JSON literal. */
+	jsonLiteralOf(expected: string): string;
 	customSchemaResolver?: CustomSchemaResolver;
 };
 
@@ -125,12 +127,14 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 	};
 
 	const formatNames = new Map<string, string>();
-	const usedNames = new Set(['Schema']);
+	const usedNames = new Set(RESERVED_NAMES);
 
 	for (const names of [...definitionNames.values(), rootNames]) {
 		usedNames.add(names.schema);
 		usedNames.add(names.type);
 	}
+
+	let jsonLiteralName: string | undefined;
 
 	const context: Context = {
 		formatOf(format) {
@@ -144,6 +148,11 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 
 			formatNames.set(format, name);
 			return name;
+		},
+		jsonLiteralOf(expected) {
+			jsonLiteralName ??= allocateName('jsonLiteral', usedNames);
+
+			return `${jsonLiteralName}(${JSON.stringify(expected)})`;
 		},
 		nameOf(schema, ref) {
 			const names = namesOf(schema);
@@ -180,6 +189,10 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 	// constants can be emitted once, before any schema that references them.
 	for (const [format, name] of formatNames) {
 		parts.push(`const ${name} = ${formatCheck(format)!};`);
+	}
+
+	if (jsonLiteralName !== undefined) {
+		parts.push(`const ${jsonLiteralName} = ${jsonLiteralHelper()};`);
 	}
 
 	parts.push(...declarations);
@@ -302,11 +315,11 @@ function generateExpression(schema: ParsedJSONSchemaObject, context: Context): s
 	const dialect = context.dialect;
 
 	if (Object.hasOwn(schema, 'const') && isKeywordApplicable(dialect, 'const')) {
-		return literal(schema.const);
+		return literal(schema.const, context);
 	}
 
 	if (Array.isArray(schema.enum)) {
-		return literals(schema.enum);
+		return literals(schema.enum, context);
 	}
 
 	if (Array.isArray(schema.allOf) && schema.allOf.length > 0) {
@@ -1379,7 +1392,7 @@ function reference(schema: ParsedJSONSchemaObject, context: Context): string {
 	return `Schema.suspend(() => ${context.nameOf(resolved, ref)})`;
 }
 
-function literal(value: unknown): string {
+function literal(value: unknown, context: Context): string {
 	if (value === null) {
 		return 'Schema.Null';
 	}
@@ -1387,22 +1400,22 @@ function literal(value: unknown): string {
 		return `Schema.Literal(${JSON.stringify(value)})`;
 	}
 
-	return structuredLiteral(value);
+	return structuredLiteral(value, context);
 }
 
-function literals(values: unknown[]): string {
+function literals(values: unknown[], context: Context): string {
 	if (values.length === 0) {
 		return 'Schema.Never';
 	}
 	if (values.length === 1) {
-		return literal(values[0]);
+		return literal(values[0], context);
 	}
 
 	if (values.every(isPrimitiveLiteral)) {
 		return `Schema.Literals([${values.map((value) => literalValue(value)).join(', ')}])`;
 	}
 
-	const members = [...new Set(values.map(literal))];
+	const members = [...new Set(values.map((value) => literal(value, context)))];
 
 	return members.length === 1 ? members[0]! : `Schema.Union([${members.join(', ')}])`;
 }
@@ -1422,10 +1435,13 @@ function literalValue(value: unknown): string {
 }
 
 /** JSON Schema compares `const`/`enum` values structurally, ignoring key order. */
-function structuredLiteral(value: unknown): string {
-	const expected = canonicalJson(value);
+function structuredLiteral(value: unknown, context: Context): string {
+	return context.jsonLiteralOf(canonicalJson(value));
+}
 
-	return `Schema.Json.check(Schema.makeFilter((value) => JSON.stringify(value, (_key, entry) => entry !== null && typeof entry === 'object' && !Array.isArray(entry) ? Object.fromEntries(Object.entries(entry).sort(([left], [right]) => left.localeCompare(right))) : entry) === ${JSON.stringify(expected)}))`;
+/** One helper per generated file keeps the canonical JSON comparison out of every literal. */
+function jsonLiteralHelper(): string {
+	return `(expected: string) => Schema.Json.check(Schema.makeFilter((value) => JSON.stringify(value, (_key, entry) => entry !== null && typeof entry === 'object' && !Array.isArray(entry) ? Object.fromEntries(Object.entries(entry).sort(([left], [right]) => left.localeCompare(right))) : entry) === expected))`;
 }
 
 function canonicalJson(value: unknown): string {
