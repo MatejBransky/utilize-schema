@@ -1,5 +1,8 @@
 # @utilize/json-schema
 
+[![npm version](https://img.shields.io/npm/v/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
+[![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
+
 Generator-agnostic JSON Schema parser and linker. Resolves local and external
 `$ref`s and prepares the schema graph for code generators by annotating each
 node with metadata.

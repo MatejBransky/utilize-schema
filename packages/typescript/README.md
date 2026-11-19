@@ -1,5 +1,8 @@
 # @utilize/typescript
 
+[![npm version](https://img.shields.io/npm/v/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)
+[![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)
+
 TypeScript type generator for JSON Schema. Converts a JSON Schema (with
 references, `$defs` and `definitions`) into interfaces and type aliases — no
 runtime dependency, no `any`, just the types.
