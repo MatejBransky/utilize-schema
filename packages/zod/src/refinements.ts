@@ -1,6 +1,7 @@
 import {
 	type Dialect,
 	dialectOf,
+	containsBounds,
 	isKeywordApplicable,
 	type ParsedJSONSchema,
 	type ParsedJSONSchemaObject,
@@ -107,30 +108,35 @@ export function applyRefinements(
 
 	if (schema.contains !== undefined && isKeywordApplicable(context.dialect, 'contains')) {
 		const contains = generate(schema.contains, context);
-		const min =
-			typeof schema.minContains === 'number' && isKeywordApplicable(context.dialect, 'minContains')
-				? schema.minContains
-				: 1;
-		const max =
-			typeof schema.maxContains === 'number' && isKeywordApplicable(context.dialect, 'maxContains')
-				? schema.maxContains
-				: undefined;
+		const bounds = containsBounds(schema, context.dialect);
 
-		if (min > 0 || max !== undefined) {
-			const bounds =
-				max === undefined ? `matches < ${min}` : `matches < ${min} || matches > ${max}`;
+		if (bounds?.counted === true) {
+			const outOfRange =
+				bounds.max === undefined
+					? `matches < ${bounds.min}`
+					: `matches < ${bounds.min} || matches > ${bounds.max}`;
 
 			checks.push(ts`{
       if (Array.isArray(value)) {
         const matches = value.filter((item) => ${contains}.safeParse(item).success).length;
 
-        if (${bounds}) {
+        if (${outOfRange}) {
           ctx.addIssue({
             code: 'custom',
             message: 'Array does not contain the required number of matching items.',
             path: [],
           });
         }
+      }
+    }`);
+		} else if (bounds !== undefined) {
+			checks.push(ts`{
+      if (Array.isArray(value) && !value.some((item) => ${contains}.safeParse(item).success)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Array must contain an item matching the "contains" schema.',
+          path: [],
+        });
       }
     }`);
 		}

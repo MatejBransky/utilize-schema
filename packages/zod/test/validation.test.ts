@@ -33,6 +33,16 @@ describe('validation keywords', () => {
 		expect(Root.safeParse(['a', 'b']).success).toBe(false);
 	});
 
+	test('keeps the single-match message for a plain contains', async () => {
+		const Root = await compileToZod({ type: 'array', contains: { const: 'x' } });
+		const result = Root.safeParse(['a']);
+
+		expect(result.success).toBe(false);
+		expect(result.error?.issues[0]?.message).toBe(
+			'Array must contain an item matching the "contains" schema.'
+		);
+	});
+
 	test('minContains and maxContains', async () => {
 		const Root = await compileToZod({
 			$schema: 'https://json-schema.org/draft/2020-12/schema',
