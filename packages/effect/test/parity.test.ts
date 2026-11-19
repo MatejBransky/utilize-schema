@@ -362,7 +362,7 @@ describe('format handling', () => {
  * behaviour against the Zod helper instead of a hand-written expectation.
  */
 describe('format parity in assert mode', () => {
-	const cases: Array<{ format: string; valid: string[]; invalid: string[] }> = [
+	const formatCases: Array<{ format: string; valid: string[]; invalid: string[] }> = [
 		{
 			format: 'time',
 			valid: ['12:00', '12:00:00', '23:59:59.5'],
@@ -413,7 +413,7 @@ describe('format parity in assert mode', () => {
 		expect(Schema.is(effectRoot)('not-an-email')).toBe(false);
 	});
 
-	for (const { format, valid, invalid } of cases) {
+	for (const { format, valid, invalid } of formatCases) {
 		test(format, async () => {
 			const schema: TestSchema = { type: 'string', format };
 			const [zodRoot, effectRoot] = await Promise.all([
