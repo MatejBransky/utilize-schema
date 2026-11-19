@@ -16,17 +16,9 @@ const parserId =
 const inference =
 	'object and array keywords give an untyped schema its inferred type, so valid instances of other JSON types are rejected';
 
-const remoteAnchor =
-	'a $ref to a plain-name anchor in a remote document is rejected by the $ref parser';
-
-const remoteRootRef =
-	'a root that is only a $ref into a remote document is typed as the referenced value instead of the document';
-
 export const knownGaps: Record<string, string> = {
 	// Shared parser: $id/$anchor and URN resolution.
 	'id-legacy.json :: URN ref with nested pointer ref': parserId,
-
-	// Shared parser: boolean schemas behind $ref.
 
 	// Untyped schemas: object and array keywords infer an object or an array.
 	'additionalProperties.json :: additionalProperties being false does not allow other properties':
@@ -40,13 +32,6 @@ export const knownGaps: Record<string, string> = {
 	'properties.json :: object properties validation': inference,
 	'properties.json :: properties whose names are Javascript object property names': inference,
 	'ref.json :: root pointer ref': inference,
-
-	// Remote documents.
-	'anchor-legacy.json :: anchor within remote ref': remoteAnchor,
-	'anchor-legacy.json :: Location-independent identifier in remote ref': remoteRootRef,
-	'anchor-legacy.json :: $ref to $ref finds detached $anchor': remoteRootRef,
-	'ref-legacy.json :: fragment within remote ref': remoteRootRef,
-	'ref-legacy.json :: ref within remote ref': remoteRootRef,
 	'required.json :: required validation': inference,
 	'required.json :: required properties whose names are Javascript object property names':
 		inference,

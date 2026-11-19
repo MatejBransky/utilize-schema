@@ -144,8 +144,8 @@ describe('composition', () => {
 	});
 
 	test('resolves $ref sibling keywords before generation', async () => {
-		// The parser merges a `$ref` with its siblings, so the generator sees a
-		// single object schema instead of a reference.
+		// A root `$ref` keeps its siblings, and the referenced type keeps its own
+		// required properties.
 		await expect(
 			compile({
 				$ref: '#/$defs/Base',
@@ -165,10 +165,7 @@ describe('composition', () => {
 				id: string;
 			}
 
-			export interface Root {
-				id?: string;
-				extra: boolean;
-			}
+			export type Root = Base & { extra: boolean; [key: string]: unknown };
 		`);
 	});
 
@@ -193,10 +190,7 @@ describe('composition', () => {
 			 *
 			 * @default null
 			 */
-			export interface Root {
-				id?: string;
-				[key: string]: unknown;
-			}
+			export type Root = Base;
 		`);
 	});
 

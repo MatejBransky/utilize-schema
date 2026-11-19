@@ -16,7 +16,7 @@ Every project here runs the official
 passes when every spec-valid instance is accepted and every spec-invalid one is
 rejected. Draft-07 baseline on suite commit `e2a68a1`:
 
-- 259 of 287 cases (1,370 of 1,638 assertions).
+- 264 of 287 cases (1,380 of 1,638 assertions).
 - Cases that need external schemas are served from memory through
   `externalSchemas`, and cases tagged `format-annotation` are skipped because
   this generator asserts known formats.
@@ -27,14 +27,14 @@ emitted as a typed constant and one `tsc --strict` pass decides acceptance. This
 is the closest comparison on this page, although the suite revisions differ.
 Draft-07 baseline on suite commit `e2a68a1`:
 
-- 186 of 304 cases have no valid instance rejected and no invalid instance
+- 191 of 304 cases have no valid instance rejected and no invalid instance
   accepted.
 - 100 cases differ only because an invalid instance is accepted by a keyword a
   type cannot express (`minimum`, `pattern`, `format`, `uniqueItems`, …).
-- 18 cases are listed in `test/suite/knownGaps.ts`: 1 shared URN resolution gap,
-  5 remote-document cases, and 12 inference gaps.
-- Across instances it accepts 808 of 838 spec-valid instances and rejects 234 of
-  813 spec-invalid ones.
+- 13 cases are listed in `test/suite/knownGaps.ts`: 1 shared URN resolution gap
+  and 12 inference gaps.
+- Across instances it accepts 813 of 839 spec-valid instances and rejects 235 of
+  814 spec-invalid ones.
 
 See
 [`packages/typescript/README.md`](../packages/typescript/README.md#conformance)

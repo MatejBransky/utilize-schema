@@ -18,9 +18,6 @@ export const knownFailureInstances: KnownFailureInstances = {
 	'anchor-legacy.json :: Location-independent identifier with base URI change in subschema':
 		'compile',
 	'anchor-legacy.json :: Reference an anchor with a non-relative URI': 'compile',
-	'anchor-legacy.json :: anchor within remote ref': 'compile',
-	'anchor-legacy.json :: Location-independent identifier in remote ref': 'compile',
-	'anchor-legacy.json :: $ref to $ref finds detached $anchor': 'compile',
 	'anyOf.json :: anyOf with base schema': ['mismatch base schema'],
 	'const.json :: const with object': 'compile',
 	'const.json :: const with array': 'compile',
@@ -91,8 +88,6 @@ export const knownFailureInstances: KnownFailureInstances = {
 	'ref-legacy.json :: relative pointer ref to array': ['match array'],
 	'ref-legacy.json :: naive replacement of $ref with its destination is not correct': 'compile',
 	'ref-legacy.json :: $ref to boolean schema true': 'compile',
-	'ref-legacy.json :: fragment within remote ref': 'compile',
-	'ref-legacy.json :: ref within remote ref': 'compile',
 	'ref-legacy.json :: remote ref with ref to definitions': 'compile',
 	'ref.json :: ref to if': 'compile',
 	'ref.json :: ref to then': 'compile',

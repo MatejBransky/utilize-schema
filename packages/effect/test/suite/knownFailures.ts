@@ -21,9 +21,6 @@ export const knownFailures: Record<string, string> = {
 	'anchor-legacy.json :: Location-independent identifier with base URI change in subschema':
 		'reference resolution gap',
 	'anchor-legacy.json :: Reference an anchor with a non-relative URI': 'reference resolution gap',
-	'anchor-legacy.json :: anchor within remote ref': 'reference resolution gap',
-	'anchor-legacy.json :: Location-independent identifier in remote ref': 'reference resolution gap',
-	'anchor-legacy.json :: $ref to $ref finds detached $anchor': 'reference resolution gap',
 	'anyOf.json :: anyOf with base schema':
 		'keyword is not covered by the Effect Schema generator yet',
 	'const.json :: const with object': 'keyword is not covered by the Effect Schema generator yet',
@@ -96,8 +93,6 @@ export const knownFailures: Record<string, string> = {
 	'ref-legacy.json :: naive replacement of $ref with its destination is not correct':
 		'reference resolution gap',
 	'ref-legacy.json :: $ref to boolean schema true': 'reference resolution gap',
-	'ref-legacy.json :: fragment within remote ref': 'reference resolution gap',
-	'ref-legacy.json :: ref within remote ref': 'reference resolution gap',
 	'ref-legacy.json :: remote ref with ref to definitions': 'reference resolution gap',
 	'ref.json :: ref to if': 'reference resolution gap',
 	'ref.json :: ref to then': 'reference resolution gap',

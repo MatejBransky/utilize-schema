@@ -16,7 +16,7 @@ Generate robust, type-safe Zod or Effect Schema codecs — or plain TypeScript t
   with a callback, e.g. to suffix schemas with `Schema`.
 - **TypeScript-first:** Generates runtime schemas and TypeScript types, including recursive ones. `@utilize/typescript` emits the types alone, with no runtime dependency.
 - **Draft support:** Draft-04/06/07, with normalization for 2019-09 and 2020-12.
-- **Conformance:** all generators are tested against the official [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite) for draft-07 — Zod passes 259 of 287 cases (1,370 of 1,638 assertions), Effect Schema 221 of 285 cases (833 of 972 assertions), and TypeScript 186 of 304 cases at the type level; remaining gaps are tracked per keyword.
+- **Conformance:** all generators are tested against the official [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite) for draft-07 — Zod passes 264 of 287 cases (1,380 of 1,638 assertions), Effect Schema 226 of 285 cases (843 of 972 assertions), and TypeScript 191 of 304 cases at the type level; remaining gaps are tracked per keyword.
 - **Dialect-aware:** `$schema` is resolved per schema resource — the document root and every subschema with its own `$id`/`$schema` — not once per file. Supported dialects are draft-04, draft-06, draft-07, 2019-09 and 2020-12; nodes carry their dialect in metadata, and keywords outside it are reported as warnings by default and not applied to generated code. See [docs/dialects.md](./docs/dialects.md).
 
 ---
@@ -127,10 +127,10 @@ against each other by a differential test suite
 CI. All three generators are also checked against the official JSON Schema Test
 Suite for draft-07:
 
-- **Zod:** 259 of 287 cases (1,370 of 1,638 assertions) pass.
-- **Effect Schema:** 221 of 285 cases (833 of 972 assertions) pass. Cases tagged
+- **Zod:** 264 of 287 cases (1,380 of 1,638 assertions) pass.
+- **Effect Schema:** 226 of 285 cases (843 of 972 assertions) pass. Cases tagged
   `format-assertion` are skipped because `format` is kept as an annotation.
-- **TypeScript:** 186 of 304 cases pass at the type level.
+- **TypeScript:** 191 of 304 cases pass at the type level.
 
 The remaining gaps are recorded in each package's `test/suite/` directory:
 `knownFailures.ts` for the runtime generators, `knownGaps.ts` for the type-level

@@ -164,16 +164,15 @@ pnpm test:suite # official JSON Schema Test Suite
 
 Current baseline on suite commit `e2a68a1`:
 
-- **186 of 304 cases** pass in both directions.
-- **808 of 838** spec-valid instances are accepted.
-- **234 of 813** spec-invalid instances are rejected.
+- **191 of 304 cases** pass in both directions.
+- **813 of 839** spec-valid instances are accepted.
+- **235 of 814** spec-invalid instances are rejected.
 - **100 cases** differ only because an invalid instance is accepted. TypeScript
   cannot express `minimum`, `pattern`, `format`, `uniqueItems`, `dependencies`,
   `if`/`then`/`else`, and similar value constraints, so these are inherent to
   the target.
-- **18 cases** are listed in `test/suite/knownGaps.ts`: 1 needs URN resolution
-  from the shared parser, 5 involve remote documents, and 12 are the inference
-  trade-off described below.
+- **13 cases** are listed in `test/suite/knownGaps.ts`: 1 needs URN resolution
+  from the shared parser and 12 are the inference trade-off described below.
 
 The numbers are recorded in `test/suite/baseline.ts` and the test fails when
 they change, so a regression cannot slip in and an improvement has to update the

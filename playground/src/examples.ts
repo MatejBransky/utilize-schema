@@ -213,6 +213,13 @@ export const examples: Example[] = [
 		type: 'string',
 		not: { enum: ['admin', 'api'] },
 	}),
+	single('root-ref', 'Root $ref', 'References', {
+		title: 'Alias',
+		definitions: {
+			name: { title: 'Name', type: 'string' },
+		},
+		$ref: '#/definitions/name',
+	}),
 	single('local-ref', 'Local $ref', 'References', {
 		title: 'Order',
 		type: 'object',
