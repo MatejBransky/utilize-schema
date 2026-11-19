@@ -482,7 +482,7 @@ describe('code generation', () => {
 								entry !== null && typeof entry === 'object' && !Array.isArray(entry)
 									? Object.fromEntries(
 											Object.entries(entry).sort(([left], [right]) =>
-												left.localeCompare(right)
+												left < right ? -1 : left > right ? 1 : 0
 											)
 										)
 									: entry
@@ -498,7 +498,7 @@ describe('code generation', () => {
 				jsonLiteral('[]'),
 				Schema.Literal(true),
 				jsonLiteral('{"foo":12}'),
-			]);
+			]) as Schema.Codec<RootValue>;
 
 			export type Root = typeof Root.Type;
 		`);

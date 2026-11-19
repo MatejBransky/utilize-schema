@@ -119,6 +119,16 @@ const booleanRefs = {
 	$defs: { allowed: true, denied: false },
 } as unknown as TestSchema;
 
+const structuredLiterals: TestSchema = {
+	enum: [6, 'foo', [], true, { foo: 12 }],
+} as TestSchema;
+
+const structuredConst: TestSchema = {
+	const: { foo: 'bar', baz: 'bax' },
+} as unknown as TestSchema;
+
+const structuredArrayConst: TestSchema = { const: [{ foo: 'bar' }] } as unknown as TestSchema;
+
 const nested: TestSchema = {
 	$schema: 'https://json-schema.org/draft/2020-12/schema',
 	type: 'object',
@@ -179,6 +189,9 @@ describe('generated schemas type-check', () => {
 				'AllOf.ts': allOf,
 				'Filters.ts': filters,
 				'Contains.ts': contains,
+				'StructuredLiterals.ts': structuredLiterals,
+				'StructuredConst.ts': structuredConst,
+				'StructuredArrayConst.ts': structuredArrayConst,
 				'Nested.ts': nested,
 				'BooleanRefs.ts': booleanRefs,
 				'Unevaluated.ts': unevaluated,

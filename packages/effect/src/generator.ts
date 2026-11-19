@@ -204,10 +204,18 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 			? valueTypeContext.aliasFor(schema as ParsedJSONSchemaObject)
 			: undefined;
 		const expression = generateSchema(schema, context);
+		// The literal helper returns `Codec<Json, Json>`, so the annotation needs a
+		// cast; the filter narrows the decoded value to the literal's value type.
+		const cast =
+			alias !== undefined &&
+			isPlainObject(schema) &&
+			hasStructuredLiteral(schema as ParsedJSONSchemaObject)
+				? ` as Schema.Codec<${alias}>`
+				: '';
 		const declaration =
 			alias === undefined
 				? `export const ${names.schema} = ${expression};`
-				: `export const ${names.schema}: Schema.Codec<${alias}> = ${expression};`;
+				: `export const ${names.schema}: Schema.Codec<${alias}> = ${expression}${cast};`;
 		const lines =
 			alias === undefined
 				? []
@@ -1441,22 +1449,26 @@ function structuredLiteral(value: unknown, context: Context): string {
 
 /** One helper per generated file keeps the canonical JSON comparison out of every literal. */
 function jsonLiteralHelper(): string {
-	return `(expected: string) => Schema.Json.check(Schema.makeFilter((value) => JSON.stringify(value, (_key, entry) => entry !== null && typeof entry === 'object' && !Array.isArray(entry) ? Object.fromEntries(Object.entries(entry).sort(([left], [right]) => left.localeCompare(right))) : entry) === expected))`;
+	return `(expected: string) => Schema.Json.check(Schema.makeFilter((value) => JSON.stringify(value, (_key, entry) => entry !== null && typeof entry === 'object' && !Array.isArray(entry) ? Object.fromEntries(Object.entries(entry).sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))) : entry) === expected))`;
 }
 
+/**
+ * The expected string has to come from the same call the generated helper runs,
+ * so that key order and integer-like keys are serialized identically. Keys sort
+ * by code point, not by the build machine's locale.
+ */
 function canonicalJson(value: unknown): string {
-	if (Array.isArray(value)) {
-		return `[${value.map(canonicalJson).join(',')}]`;
-	}
-	if (value !== null && typeof value === 'object') {
-		const entries = Object.entries(value as Record<string, unknown>).sort(([left], [right]) =>
-			left.localeCompare(right)
-		);
-
-		return `{${entries.map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`).join(',')}}`;
-	}
-
-	return JSON.stringify(value);
+	return (
+		JSON.stringify(value, (_key, entry) =>
+			entry !== null && typeof entry === 'object' && !Array.isArray(entry)
+				? Object.fromEntries(
+						Object.entries(entry).sort(([left], [right]) =>
+							left < right ? -1 : left > right ? 1 : 0
+						)
+					)
+				: entry
+		) ?? ''
+	);
 }
 
 function isPrimitiveLiteral(value: unknown): boolean {

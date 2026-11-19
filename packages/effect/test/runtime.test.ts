@@ -262,6 +262,22 @@ describe('composition', () => {
 		expect(decode(array, [2])).toBeUndefined();
 	});
 
+	test('matches structured const values with integer-like keys', async () => {
+		const Root = await compileToSchema({ const: { 2: 'a', 10: 'b', z: 'c' } });
+
+		expect(decode(Root, { 2: 'a', 10: 'b', z: 'c' })).toEqual({ 2: 'a', 10: 'b', z: 'c' });
+		expect(decode(Root, { 10: 'b', 2: 'a', z: 'c' })).toEqual({ 2: 'a', 10: 'b', z: 'c' });
+		expect(decode(Root, { 2: 'a', 10: 'c', z: 'c' })).toBeUndefined();
+	});
+
+	test('sorts structured const keys by code point, not by locale', async () => {
+		const Root = await compileToSchema({ const: { z: 1, ä: 2, A: 3 } });
+
+		expect(decode(Root, { z: 1, ä: 2, A: 3 })).toEqual({ z: 1, ä: 2, A: 3 });
+		expect(decode(Root, { A: 3, ä: 2, z: 1 })).toEqual({ A: 3, ä: 2, z: 1 });
+		expect(decode(Root, { A: 3, ä: 4, z: 1 })).toBeUndefined();
+	});
+
 	test('keeps JSON types distinct in const and enum', async () => {
 		const falseArray = await compileToSchema({ const: [false] });
 		const mixed = await compileToSchema({ enum: [6, 'foo', [], true, { foo: 12 }] });
