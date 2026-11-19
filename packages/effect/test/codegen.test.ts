@@ -474,31 +474,32 @@ describe('code generation', () => {
 
 	test('emits one json literal helper for structured const and enum', async () => {
 		await expect(await compile({ enum: [6, 'foo', [], true, { foo: 12 }] })).toMatchCode(ts`
-			const jsonLiteral = (expected: string) =>
+			const jsonLiteral = <T>(expected: string) =>
 				Schema.Json.check(
 					Schema.makeFilter(
 						(value) =>
-							JSON.stringify(value, (_key, entry) =>
-								entry !== null && typeof entry === 'object' && !Array.isArray(entry)
-									? Object.fromEntries(
-											Object.entries(entry).sort(([left], [right]) =>
-												left < right ? -1 : left > right ? 1 : 0
-											)
+							JSON.stringify(value, function canonicalReplacer(_key, entry) {
+								if (entry !== null && typeof entry === 'object' && !Array.isArray(entry)) {
+									return Object.fromEntries(
+										Object.entries(entry).sort(([left], [right]) =>
+											left < right ? -1 : left > right ? 1 : 0
 										)
-									: entry
-							) === expected
+									);
+								}
+								return entry;
+							}) === expected
 					)
-				);
+				) as unknown as Schema.Codec<T>;
 
 			type RootValue = 6 | 'foo' | readonly [] | true | { foo: 12 };
 
 			export const Root: Schema.Codec<RootValue> = Schema.Union([
 				Schema.Literal(6),
 				Schema.Literal('foo'),
-				jsonLiteral('[]'),
+				jsonLiteral<readonly []>('[]'),
 				Schema.Literal(true),
-				jsonLiteral('{"foo":12}'),
-			]) as Schema.Codec<RootValue>;
+				jsonLiteral<{ foo: 12 }>('{"foo":12}'),
+			]);
 
 			export type Root = typeof Root.Type;
 		`);

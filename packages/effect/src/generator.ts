@@ -25,7 +25,7 @@ import {
 	type DeclarationNames,
 	type NameMapper,
 } from './resolveName';
-import { renderValueTypeDeclaration, type ValueTypeContext } from './valueTypes';
+import { literalType, renderValueTypeDeclaration, type ValueTypeContext } from './valueTypes';
 
 export interface GenerateOptions {
 	/** Emit `import { Schema } from 'effect';` at the top of the generated code. */
@@ -77,8 +77,12 @@ type Context = {
 	 * Registered on first use, so one format yields one constant per file.
 	 */
 	formatOf(format: string): string;
-	/** Name of the module-level constant that builds a schema for a canonical JSON literal. */
-	jsonLiteralOf(expected: string): string;
+	/**
+	 * The call expression for a canonical JSON literal. The first call also
+	 * reserves the name of the module-level helper, which makes `generate` emit
+	 * it.
+	 */
+	jsonLiteralCall(value: unknown): string;
 	customSchemaResolver?: CustomSchemaResolver;
 };
 
@@ -149,10 +153,10 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 			formatNames.set(format, name);
 			return name;
 		},
-		jsonLiteralOf(expected) {
+		jsonLiteralCall(value) {
 			jsonLiteralName ??= allocateName('jsonLiteral', usedNames);
 
-			return `${jsonLiteralName}(${JSON.stringify(expected)})`;
+			return `${jsonLiteralName}<${literalType(value)}>(${JSON.stringify(canonicalJson(value))})`;
 		},
 		nameOf(schema, ref) {
 			const names = namesOf(schema);
@@ -204,18 +208,10 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 			? valueTypeContext.aliasFor(schema as ParsedJSONSchemaObject)
 			: undefined;
 		const expression = generateSchema(schema, context);
-		// The literal helper returns `Codec<Json, Json>`, so the annotation needs a
-		// cast; the filter narrows the decoded value to the literal's value type.
-		const cast =
-			alias !== undefined &&
-			isPlainObject(schema) &&
-			hasStructuredLiteral(schema as ParsedJSONSchemaObject)
-				? ` as Schema.Codec<${alias}>`
-				: '';
 		const declaration =
 			alias === undefined
 				? `export const ${names.schema} = ${expression};`
-				: `export const ${names.schema}: Schema.Codec<${alias}> = ${expression}${cast};`;
+				: `export const ${names.schema}: Schema.Codec<${alias}> = ${expression};`;
 		const lines =
 			alias === undefined
 				? []
@@ -1444,31 +1440,37 @@ function literalValue(value: unknown): string {
 
 /** JSON Schema compares `const`/`enum` values structurally, ignoring key order. */
 function structuredLiteral(value: unknown, context: Context): string {
-	return context.jsonLiteralOf(canonicalJson(value));
-}
-
-/** One helper per generated file keeps the canonical JSON comparison out of every literal. */
-function jsonLiteralHelper(): string {
-	return `(expected: string) => Schema.Json.check(Schema.makeFilter((value) => JSON.stringify(value, (_key, entry) => entry !== null && typeof entry === 'object' && !Array.isArray(entry) ? Object.fromEntries(Object.entries(entry).sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))) : entry) === expected))`;
+	return context.jsonLiteralCall(value);
 }
 
 /**
- * The expected string has to come from the same call the generated helper runs,
- * so that key order and integer-like keys are serialized identically. Keys sort
- * by code point, not by the build machine's locale.
+ * One helper per generated file keeps the canonical JSON comparison out of every
+ * literal. The helper takes the literal's value type as a parameter, so the
+ * annotation of a declaration and every call site agree. The replacer it runs is
+ * the one `canonicalJson` uses, so the expected string cannot drift from it.
  */
+function jsonLiteralHelper(): string {
+	return `<T>(expected: string) => Schema.Json.check(Schema.makeFilter((value) => JSON.stringify(value, ${canonicalReplacer.toString()}) === expected)) as unknown as Schema.Codec<T>`;
+}
+
+/**
+ * Sorts the keys of every object by code point, not by the build machine's
+ * locale, so `canonicalJson` and the emitted helper serialize the same value the
+ * same way. Integer-like keys keep their JSON.stringify order, which both sides
+ * share.
+ */
+function canonicalReplacer(_key: string, entry: unknown): unknown {
+	if (entry !== null && typeof entry === 'object' && !Array.isArray(entry)) {
+		return Object.fromEntries(
+			Object.entries(entry).sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+		);
+	}
+
+	return entry;
+}
+
 function canonicalJson(value: unknown): string {
-	return (
-		JSON.stringify(value, (_key, entry) =>
-			entry !== null && typeof entry === 'object' && !Array.isArray(entry)
-				? Object.fromEntries(
-						Object.entries(entry).sort(([left], [right]) =>
-							left < right ? -1 : left > right ? 1 : 0
-						)
-					)
-				: entry
-		) ?? ''
-	);
+	return JSON.stringify(value, canonicalReplacer) ?? '';
 }
 
 function isPrimitiveLiteral(value: unknown): boolean {

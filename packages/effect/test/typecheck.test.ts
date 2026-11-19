@@ -129,6 +129,16 @@ const structuredConst: TestSchema = {
 
 const structuredArrayConst: TestSchema = { const: [{ foo: 'bar' }] } as unknown as TestSchema;
 
+const recursiveStructuredLiteral: TestSchema = {
+	title: 'Node',
+	type: 'object',
+	properties: {
+		tag: { const: { k: 1 } },
+		children: { type: 'array', items: { $ref: '#' } },
+	},
+	required: ['tag'],
+} as unknown as TestSchema;
+
 const nested: TestSchema = {
 	$schema: 'https://json-schema.org/draft/2020-12/schema',
 	type: 'object',
@@ -192,6 +202,7 @@ describe('generated schemas type-check', () => {
 				'StructuredLiterals.ts': structuredLiterals,
 				'StructuredConst.ts': structuredConst,
 				'StructuredArrayConst.ts': structuredArrayConst,
+				'RecursiveStructuredLiteral.ts': recursiveStructuredLiteral,
 				'Nested.ts': nested,
 				'BooleanRefs.ts': booleanRefs,
 				'Unevaluated.ts': unevaluated,

@@ -347,7 +347,7 @@ function schemaWithType(
 	return { ...schema, type };
 }
 
-function literalType(value: unknown): string {
+export function literalType(value: unknown): string {
 	if (value === null) {
 		return 'null';
 	}
