@@ -46,10 +46,14 @@ pnpm add zod
   standalone schema.
 - `readOnlyKeyword` — map `readOnly: true` to `.readonly()`. Off by default,
   because it freezes values and changes the inferred type.
-- `formatMap` — map `format` names to your own Zod string expressions. Each
-  entry overrides the built-in mapping for that format (known formats too);
-  formats you do not list keep the built-in mapping. `minLength`, `maxLength`
-  and `pattern` are still appended:
+- `formatMode` — what `format` becomes in the generated code. `'assert'`
+  (default) turns known formats into validation (`.email()`, `.uuid()`,
+  `.iso.datetime()`, …); `'annotate'` keeps `format` as `.meta({ format })`.
+  Unknown formats stay annotations in both modes.
+- `formatMap` — map `format` names to your own Zod string expressions. An entry
+  applies in both modes, so it can validate a format that `formatMode` would
+  leave as an annotation. Formats you do not list follow `formatMode`.
+  `minLength`, `maxLength` and `pattern` are still appended:
 
   ```ts
   await compile({

@@ -57,7 +57,7 @@ afterAll(() => {
 			`${stats.run - stats.knownGaps}/${stats.run} cases, ${
 				stats.assertions - stats.failedAssertions
 			}/${stats.assertions} assertions`,
-			`${stats.skippedFormatAnnotation} skipped (format assertion)`,
+			`${stats.skippedFormatAnnotation} skipped (format annotation)`,
 			`${stats.skippedDialect} filtered out (other dialects)`,
 		].join(' · ')
 	);

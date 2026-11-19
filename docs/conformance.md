@@ -27,14 +27,14 @@ emitted as a typed constant and one `tsc --strict` pass decides acceptance. This
 is the closest comparison on this page, although the suite revisions differ.
 Draft-07 baseline on suite commit `e2a68a1`:
 
-- 191 of 304 cases have no valid instance rejected and no invalid instance
+- 191 of 285 cases have no valid instance rejected and no invalid instance
   accepted.
-- 100 cases differ only because an invalid instance is accepted by a keyword a
+- 81 cases differ only because an invalid instance is accepted by a keyword a
   type cannot express (`minimum`, `pattern`, `format`, `uniqueItems`, …).
 - 13 cases are listed in `test/suite/knownGaps.ts`: 1 shared URN resolution gap
   and 12 inference gaps.
-- Across instances it accepts 813 of 839 spec-valid instances and rejects 235 of
-  814 spec-invalid ones.
+- Across instances it accepts 558 of 584 spec-valid instances and rejects 235 of
+  386 spec-invalid ones.
 
 See
 [`packages/typescript/README.md`](../packages/typescript/README.md#conformance)
@@ -65,7 +65,7 @@ commit `3c25e5f`):
    what master does".
 2. **Different suite revisions.** The numbers come from different pinned
    revisions with different group counts (257 draft-07 groups there, 287
-   runnable cases for Zod and 304 for TypeScript here).
+   runnable cases for Zod and 285 for TypeScript here).
 3. **Different case selection.** This project skips `format-annotation` cases
    and serves `externalSchemas` from memory; json-schema-to-typescript runs every
    draft-07 group and serves remote references from the suite's `remotes/`
