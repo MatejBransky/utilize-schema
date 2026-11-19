@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { compile, compileModule, ts } from './test-utils';
+import { compile, compileModule, ts, type TestSchema } from './test-utils';
 
 describe('code generation', () => {
 	test('exports a const and a type for the root schema', async () => {
@@ -212,6 +212,16 @@ describe('code generation', () => {
 
 		await expect(await compile({ oneOf: [{ type: 'string' }, { type: 'number' }] })).toMatchCode(ts`
 			export const Root = Schema.Union([Schema.String, Schema.Finite], { mode: 'oneOf' });
+
+			export type Root = typeof Root.Type;
+		`);
+	});
+
+	test('skips the base filter when only unknown keywords sit next to anyOf', async () => {
+		const schema = { 'x-foo': 1, anyOf: [{ type: 'string' }, { type: 'number' }] } as TestSchema;
+
+		await expect(await compile(schema)).toMatchCode(ts`
+			export const Root = Schema.Union([Schema.String, Schema.Finite]);
 
 			export type Root = typeof Root.Type;
 		`);

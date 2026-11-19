@@ -108,6 +108,15 @@ describe('objects', () => {
 		expect(decode(Root, {})).toEqual({});
 		expect(decode(Root, { a: 1 })).toBeUndefined();
 	});
+
+	test('applies dependencies to a schema without a type', async () => {
+		const Root = await compileToSchema({ dependencies: { bar: ['foo'] } });
+
+		expect(decode(Root, { foo: 1 })).toEqual({ foo: 1 });
+		expect(decode(Root, { bar: 2 })).toBeUndefined();
+		// `dependencies` only constrains objects.
+		expect(decode(Root, ['bar'])).toEqual(['bar']);
+	});
 });
 
 describe('arrays', () => {
@@ -270,15 +279,6 @@ describe('composition', () => {
 		expect(decode(Root, null)).toBeNull();
 	});
 
-	test('applies dependencies to a schema without a type', async () => {
-		const Root = await compileToSchema({ dependencies: { bar: ['foo'] } });
-
-		expect(decode(Root, { foo: 1 })).toEqual({ foo: 1 });
-		expect(decode(Root, { bar: 2 })).toBeUndefined();
-		// `dependencies` only constrains objects.
-		expect(decode(Root, ['bar'])).toEqual(['bar']);
-	});
-
 	test('applies the keywords next to anyOf', async () => {
 		const Root = await compileToSchema({
 			type: 'string',
@@ -288,6 +288,28 @@ describe('composition', () => {
 		expect(decode(Root, 'foobar')).toBe('foobar');
 		expect(decode(Root, 'foo')).toBeUndefined();
 		expect(decode(Root, 3)).toBeUndefined();
+	});
+
+	test('applies format next to anyOf', async () => {
+		const Root = await compileToSchema({
+			type: 'string',
+			format: 'email',
+			anyOf: [{ maxLength: 100 }, { minLength: 200 }],
+		});
+
+		expect(decode(Root, 'a@b.co')).toBe('a@b.co');
+		expect(decode(Root, 'not-an-email')).toBeUndefined();
+	});
+
+	test('applies oneOf next to anyOf', async () => {
+		const Root = await compileToSchema({
+			anyOf: [{ type: 'number' }],
+			oneOf: [{ minimum: 5 }, { maximum: 3 }],
+		});
+
+		expect(decode(Root, 2)).toBe(2);
+		expect(decode(Root, 6)).toBe(6);
+		expect(decode(Root, 4)).toBeUndefined();
 	});
 
 	test('counts identical oneOf branches separately', async () => {

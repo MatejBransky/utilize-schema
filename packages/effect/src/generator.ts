@@ -9,6 +9,7 @@ import {
 } from '@utilize/json-schema';
 
 import { collectStandaloneSchemas, type SchemaEdge } from './collectStandaloneSchemas';
+import { constraintKeywords } from './constraints';
 import { UnresolvedReferenceError, UnsupportedEffectSchemaFeatureError } from './errors';
 import { findCyclicSchemas } from './findCyclicSchemas';
 import { formatCheck } from './formats';
@@ -318,45 +319,51 @@ function generateExpression(schema: ParsedJSONSchemaObject, context: Context): s
 			: undefined;
 
 	if (alternatives) {
-		const union = generateUnion(alternatives, schema.oneOf !== undefined, context);
-		const base = alternativesBase(schema);
+		// When both are present, each is applied on its own: `anyOf` becomes the
+		// union and `oneOf` stays in the base, which counts its own matches.
+		const keyword = Array.isArray(schema.anyOf) ? 'anyOf' : 'oneOf';
+		const union = generateUnion(alternatives, keyword === 'oneOf', context);
+		const base = alternativesBase(schema, keyword);
 
 		if (base === undefined) {
 			return union;
 		}
 
-		return applyChecks(union, [
-			`Schema.makeFilter((value) => Schema.is(${generateSchema(base, context)})(value) ? undefined : 'Value does not match the keywords next to "${schema.oneOf === undefined ? 'anyOf' : 'oneOf'}"')`,
-		]);
+		const constraints = generateSchema(base, context);
+
+		// Unknown keywords (`x-*`) generate `Schema.Json`, so a filter over them
+		// would accept everything and only make the output noisier.
+		if (constraints === 'Schema.Json') {
+			return union;
+		}
+
+		return applyChecks(union, [siblingKeywordsCheck(constraints, keyword)]);
 	}
 
 	return generateType(schema, context);
 }
 
 /**
- * The keywords declared next to `anyOf`/`oneOf`. They constrain the value on
- * their own, so the union alone would ignore them. Annotations, refinements and
- * the combinator stay out: `generateSchema` and `filterChecks` handle those.
+ * A filter that requires the value to match the keywords declared next to
+ * `keyword` (`$ref`, `anyOf` or `oneOf`).
  */
-function alternativesBase(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject | undefined {
-	const base: Record<string, unknown> = { ...schema };
+function siblingKeywordsCheck(constraints: string, keyword: string): string {
+	return `Schema.makeFilter((value) => Schema.is(${constraints})(value) ? undefined : 'Value does not match the keywords next to "${keyword}"')`;
+}
 
-	delete base.anyOf;
-	delete base.oneOf;
-	delete base.not;
-	delete base.if;
-	delete base.then;
-	delete base.else;
+/**
+ * The keywords declared next to `anyOf`/`oneOf`. They constrain the value on
+ * their own, so the union alone would ignore them. The combinator that became
+ * the union stays out, along with the annotations and the filter keywords,
+ * which `generateSchema` handles on the whole node.
+ */
+function alternativesBase(
+	schema: ParsedJSONSchemaObject,
+	applied: 'anyOf' | 'oneOf'
+): ParsedJSONSchemaObject | undefined {
+	const base = constraintKeywords(schema, new Set([applied]));
 
-	for (const keyword of ANNOTATION_KEYWORDS) {
-		delete base[keyword];
-	}
-
-	delete base.format;
-
-	return Object.values(base).some((value) => value !== undefined)
-		? (base as unknown as ParsedJSONSchemaObject)
-		: undefined;
+	return Object.keys(base).length > 0 ? base : undefined;
 }
 
 /**
@@ -383,10 +390,7 @@ function generateReference(
 
 			return checkedReference(
 				schema,
-				[
-					`Schema.makeFilter((value) => Schema.is(${constraints})(value) ? undefined : 'Value does not match the keywords next to "$ref"')`,
-					...filters,
-				],
+				[siblingKeywordsCheck(constraints, '$ref'), ...filters],
 				context
 			);
 		}
