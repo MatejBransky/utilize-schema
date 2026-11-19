@@ -44,11 +44,18 @@ Options:
   schema node, or `undefined` to let the generator handle it. It is called for
   every object node (including `$ref` nodes and the per-type copies of a `type`
   list, never boolean schemas) before the built-in generator, so it can also
-  replace a node the generator rejects, such as `minContains`. Keywords the parser rejects never reach it. The returned
+  replace a node the generator rejects, such as an `allOf` of non-object
+  schemas. Keywords the parser rejects never reach it. The returned
   expression replaces the whole node, including its `.annotate({ … })`, while
   `Schema.optionalKey` for a non-required property is still added. Inside a
   recursive schema the value type types the node as `unknown`, because the
   generator cannot know your expression's type.
+- `formatMode` — what `format` becomes in the generated code. `'assert'`
+  (default) adds a check for the formats the generator knows (email, uuid, url,
+  ipv4/ipv6, date, date-time, duration, …); `'annotate'` keeps `format` as
+  `.annotate({ format })`. Unknown formats stay annotations in both modes. Each
+  format becomes one module-level constant (`const formatEmail = …`) reused by
+  every property that uses it.
 - `format(code)` — optional synchronous or asynchronous formatter (for example
   Prettier) applied to the generated code before the banner is prepended.
 - `importEffect` — emit `import { Schema } from 'effect';`; on by default.
@@ -151,9 +158,10 @@ pnpm test:suite    # official JSON Schema Test Suite (draft-07)
 
 The generator is checked against the official
 [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
-Today it passes **251 of 285 draft-07 cases (894 of 972 assertions)**. Cases
-tagged `format-assertion` are skipped because `format` is kept as an annotation;
-cases that need external schemas are served from `externalSchemas`.
+Today it passes **229 of 304 draft-07 cases (1,274 of 1,655 assertions)**. Format
+cases run in the mode they are tagged for, so both the annotation and the
+assertion cases are measured; cases that need external schemas are served from
+`externalSchemas`.
 
 Known gaps live in `test/suite/knownFailures.ts` and
 `test/suite/knownFailureInstances.ts`. Refresh the baseline after a fix or a
@@ -171,15 +179,14 @@ The script reads the built `dist/`, so build the package first.
 Supported keywords:
 
 - `type` (including unions of types), `const`, `enum` (primitives only for `const`/`enum`)
-- `string`: `minLength`, `maxLength`, `pattern`, `format` (annotation)
+- `string`: `minLength`, `maxLength`, `pattern`, `format` (checked by default, annotation with `formatMode: 'annotate'`)
 - `number`/`integer`: `minimum`, `maximum`, `exclusiveMinimum`,
   `exclusiveMaximum`, `multipleOf`
 - `array`: `items`, `prefixItems`, `additionalItems`, `minItems`, `maxItems`,
   `uniqueItems`
 - `object`: `properties`, `patternProperties`, `required`,
   `additionalProperties`, `propertyNames`, `minProperties`, `maxProperties`
-- `allOf` between object subschemas, scalar and array bounds, applicators and
-  any other member, `anyOf`, `oneOf`
+- `allOf` between disjoint object subschemas, `anyOf`, `oneOf`
 - `not`, `if`/`then`/`else`, `contains`, `dependencies` (applied as filters)
 - `$ref`, `$defs`, `definitions`
 - `title`, `description`, `default`, `examples`, `$id`, `readOnly`,
@@ -203,9 +210,8 @@ newer merge disjoint object siblings into one struct. Other siblings (a
 non-object or recursive target, `not`, `if`, ...) are checked with a filter on
 the reference, which keeps the reference's type.
 
-Effect has no generic intersection, so `allOf` first merges disjoint object
-subschemas and scalar bounds. Anything left (applicators, patterns, mixed
-members) is checked with `Schema.makeFilter` over each member.
+Effect has no generic intersection, so `allOf` is limited to merging object
+subschemas that do not declare the same property.
 
 ## Notes
 

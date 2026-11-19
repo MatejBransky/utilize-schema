@@ -231,6 +231,13 @@ export const examples: Example[] = [
 		type: 'string',
 		not: { enum: ['admin', 'api'] },
 	}),
+	single('root-ref', 'Root $ref', 'References', {
+		title: 'Alias',
+		definitions: {
+			name: { title: 'Name', type: 'string' },
+		},
+		$ref: '#/definitions/name',
+	}),
 	single('local-ref', 'Local $ref', 'References', {
 		title: 'Order',
 		type: 'object',
@@ -338,6 +345,17 @@ export const examples: Example[] = [
 		},
 		additionalProperties: false,
 		required: ['name'],
+	}),
+	single('format-modes', 'Format modes', 'Advanced', {
+		title: 'Contact',
+		type: 'object',
+		properties: {
+			email: { type: 'string', format: 'email' },
+			website: { type: 'string', format: 'uri' },
+			id: { type: 'string', format: 'uuid' },
+			createdAt: { type: 'string', format: 'date-time' },
+		},
+		required: ['email'],
 	}),
 	single('format-map', 'Custom format map', 'Advanced', {
 		title: 'Phone',

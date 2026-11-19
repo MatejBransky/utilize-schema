@@ -19,7 +19,13 @@ const { parse, Meta } = await import(
 );
 const { generate } = await import(pathToFileURL(join(root, 'dist/index.mjs')).href);
 
-async function compileToSchema(schema, externalSchemas) {
+function formatModeFor(testCase) {
+	if (testCase.tags?.includes('format-assertion')) return 'assert';
+	if (testCase.tags?.includes('format-annotation')) return 'annotate';
+	return undefined;
+}
+
+async function compileToSchema(schema, externalSchemas, formatMode) {
 	const { root: parsedRoot } = await parse(schema, {
 		cwd: `${join(root, 'test/suite')}/`,
 		fileName: 'Root.json',
@@ -27,6 +33,7 @@ async function compileToSchema(schema, externalSchemas) {
 	});
 	const code = generate(parsedRoot, {
 		importEffect: false,
+		formatMode,
 		customNameResolver: (candidate) =>
 			candidate[Meta]?.parent === null && candidate[Meta]?.fileName === 'Root.json'
 				? 'Root'
@@ -52,7 +59,7 @@ function isCompatible(compatibility, version = VERSION) {
 		return true;
 	}
 
-	let isValid = true;
+	let compatible = true;
 
 	for (const constraint of compatibility.split(',')) {
 		const match = /^(<=|=)?(\d+)$/.exec(constraint.trim());
@@ -65,11 +72,11 @@ function isCompatible(compatibility, version = VERSION) {
 		const dialect = Number(digits);
 
 		if (operator === '') {
-			isValid = version >= dialect;
+			compatible = version >= dialect;
 		} else if (operator === '<=') {
-			isValid = version <= dialect;
+			compatible = version <= dialect;
 		} else {
-			isValid = version === dialect;
+			compatible = version === dialect;
 		}
 
 		if (version <= dialect) {
@@ -77,7 +84,7 @@ function isCompatible(compatibility, version = VERSION) {
 		}
 	}
 
-	return isValid;
+	return compatible;
 }
 
 function reasonFor(file) {
@@ -85,7 +92,7 @@ function reasonFor(file) {
 		return 'patternProperties is not generated';
 	}
 	if (file.startsWith('format-')) {
-		return 'format is kept as an annotation';
+		return 'format validation disagrees with the Zod helpers';
 	}
 	if (/^(ref|anchor|id|recursive|dynamic|vocabulary)/.test(file)) {
 		return 'reference resolution gap';
@@ -114,7 +121,7 @@ function isValid(schema, value) {
 
 const files = readdirSync(suiteRoot)
 	.filter((file) => file.endsWith('.json'))
-	.sort();
+	.toSorted();
 
 const reasons = {};
 const instances = {};
@@ -127,7 +134,6 @@ for (const file of files) {
 
 	for (const testCase of json.tests) {
 		if (!isCompatible(testCase.compatibility)) continue;
-		if (testCase.tags?.includes('format-assertion')) continue;
 
 		cases++;
 		assertions += testCase.tests.length;
@@ -136,7 +142,11 @@ for (const file of files) {
 		let schema;
 
 		try {
-			schema = await compileToSchema(testCase.schema, testCase.externalSchemas);
+			schema = await compileToSchema(
+				testCase.schema,
+				testCase.externalSchemas,
+				formatModeFor(testCase)
+			);
 		} catch {
 			reasons[key] = reasonFor(file);
 			instances[key] = 'compile';

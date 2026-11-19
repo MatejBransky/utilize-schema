@@ -11,6 +11,7 @@ import {
 import { collectStandaloneSchemas, type SchemaEdge } from './collectStandaloneSchemas';
 import { UnresolvedReferenceError, UnsupportedEffectSchemaFeatureError } from './errors';
 import { findCyclicSchemas } from './findCyclicSchemas';
+import { formatCheck } from './formats';
 import { ANNOTATION_KEYWORDS } from './keywords';
 import { mergeObjectSchemas } from './mergeObjects';
 import { planReferenceSiblings } from './refSiblings';
@@ -33,9 +34,20 @@ export interface GenerateOptions {
 	schemaName?: NameMapper;
 	/** Rewrites the type exported for each generated schema. Receives the resolved name. */
 	typeName?: NameMapper;
+	/**
+	 * What `format` becomes in the generated code: `assert` (default) validates
+	 * known formats, `annotate` keeps `format` as `.annotate({ format })`.
+	 */
+	formatMode?: FormatMode;
 	/** Emits a caller-provided Effect Schema expression for a matching schema node. */
 	customSchemaResolver?: CustomSchemaResolver;
 }
+
+/**
+ * What `format` becomes in the generated code. `assert` validates known
+ * formats; `annotate` keeps `format` as an annotation.
+ */
+export type FormatMode = 'annotate' | 'assert';
 
 /**
  * Returns an Effect Schema expression for a schema node, or `undefined` to use
@@ -56,6 +68,13 @@ type Context = {
 	 * without `Meta` read it from here instead of resolving it again.
 	 */
 	dialect: Dialect;
+	/** Whether `format` becomes a validation or only an annotation. */
+	formatMode?: FormatMode;
+	/**
+	 * Name of the module-level constant that holds the check for a format.
+	 * Registered on first use, so one format yields one constant per file.
+	 */
+	formatOf(format: string): string;
 	customSchemaResolver?: CustomSchemaResolver;
 };
 
@@ -103,7 +122,27 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		},
 	};
 
+	const formatNames = new Map<string, string>();
+	const usedNames = new Set(['Schema']);
+
+	for (const names of [...definitionNames.values(), rootNames]) {
+		usedNames.add(names.schema);
+		usedNames.add(names.type);
+	}
+
 	const context: Context = {
+		formatOf(format) {
+			const existing = formatNames.get(format);
+
+			if (existing !== undefined) {
+				return existing;
+			}
+
+			const name = allocateName(formatConstantBase(format), usedNames);
+
+			formatNames.set(format, name);
+			return name;
+		},
 		nameOf(schema, ref) {
 			const names = namesOf(schema);
 
@@ -117,8 +156,17 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 			return cyclic.has(schema);
 		},
 		dialect: dialectOf(root),
+		formatMode: options.formatMode,
 		customSchemaResolver: options.customSchemaResolver,
 	};
+
+	const declarations: string[] = [];
+
+	for (const schema of standalone) {
+		declarations.push(renderDeclaration(definitionNames.get(schema)!, schema));
+	}
+
+	declarations.push(renderDeclaration(rootNames, root));
 
 	const parts: string[] = [];
 
@@ -126,11 +174,13 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		parts.push("import { Schema } from 'effect';");
 	}
 
-	for (const schema of standalone) {
-		parts.push(renderDeclaration(definitionNames.get(schema)!, schema));
+	// Declarations rendered above registered the formats they use, so the
+	// constants can be emitted once, before any schema that references them.
+	for (const [format, name] of formatNames) {
+		parts.push(`const ${name} = ${formatCheck(format)!};`);
 	}
 
-	parts.push(renderDeclaration(rootNames, root));
+	parts.push(...declarations);
 
 	return `${parts.join('\n\n')}\n`;
 
@@ -364,7 +414,7 @@ function generateType(schema: ParsedJSONSchemaObject, context: Context): string 
 
 	switch (schema.type) {
 		case 'string':
-			return generateString(schema);
+			return generateString(schema, context);
 		case 'number':
 			return generateNumber(schema, false);
 		case 'integer':
@@ -413,7 +463,7 @@ function schemaWithType(
 	};
 }
 
-function generateString(schema: ParsedJSONSchemaObject): string {
+function generateString(schema: ParsedJSONSchemaObject, context: Context): string {
 	const checks: string[] = [];
 
 	if (typeof schema.minLength === 'number') {
@@ -426,7 +476,27 @@ function generateString(schema: ParsedJSONSchemaObject): string {
 		checks.push(`Schema.isPattern(${patternExpression(schema.pattern)})`);
 	}
 
+	const format =
+		(context.formatMode ?? 'assert') === 'assert' &&
+		typeof schema.format === 'string' &&
+		formatCheck(schema.format) !== undefined
+			? context.formatOf(schema.format)
+			: undefined;
+
+	if (format !== undefined) {
+		checks.push(format);
+	}
+
 	return checks.length > 0 ? `Schema.String.check(${checks.join(', ')})` : 'Schema.String';
+}
+
+/** `date-time` becomes `formatDateTime`, so one constant covers a format. */
+function formatConstantBase(format: string) {
+	const pascal = format.replace(/[^a-zA-Z0-9]+(.)?/g, (_, next: string | undefined) =>
+		next === undefined ? '' : next.toUpperCase()
+	);
+
+	return `format${pascal.charAt(0).toUpperCase()}${pascal.slice(1)}`;
 }
 
 function patternExpression(pattern: string): string {
@@ -819,7 +889,9 @@ function parsed(schema: unknown): ParsedJSONSchema {
  */
 function generateUntyped(schema: ParsedJSONSchemaObject, context: Context): string {
 	const dialect = context.dialect;
-	const constrained = JSON_VALUE_TYPES.filter((type) => appliesTo(schema, type, dialect));
+	const constrained = JSON_VALUE_TYPES.filter((type) =>
+		appliesTo(schema, type, dialect, (context.formatMode ?? 'assert') === 'assert')
+	);
 
 	if (constrained.length === 0) {
 		return 'Schema.Json';
@@ -828,7 +900,7 @@ function generateUntyped(schema: ParsedJSONSchemaObject, context: Context): stri
 	const members = [
 		'Schema.Null',
 		'Schema.Boolean',
-		constrained.includes('string') ? generateString(schema) : 'Schema.String',
+		constrained.includes('string') ? generateString(schema, context) : 'Schema.String',
 		constrained.includes('number') ? generateNumber(schema, false) : 'Schema.Finite',
 		constrained.includes('object') ? generateObject(schema, context) : 'Schema.JsonObject',
 		constrained.includes('array') ? generateArray(schema, context) : 'Schema.Array(Schema.Json)',
@@ -837,7 +909,12 @@ function generateUntyped(schema: ParsedJSONSchemaObject, context: Context): stri
 	return `Schema.Union([${[...new Set(members)].join(', ')}])`;
 }
 
-function appliesTo(schema: ParsedJSONSchemaObject, type: JSONValueType, dialect: Dialect): boolean {
+function appliesTo(
+	schema: ParsedJSONSchemaObject,
+	type: JSONValueType,
+	dialect: Dialect,
+	assertFormats: boolean
+): boolean {
 	const record = schema as unknown as Record<string, unknown>;
 	const anyKeyword = (keywords: string[]) =>
 		keywords.some(
@@ -846,7 +923,15 @@ function appliesTo(schema: ParsedJSONSchemaObject, type: JSONValueType, dialect:
 
 	switch (type) {
 		case 'string':
-			return anyKeyword(['minLength', 'maxLength', 'pattern']);
+			// A format only constrains the string branch, so an untyped schema
+			// asserts it the same way a typed one does. In annotate mode it adds
+			// no check, so the branch stays plain `Schema.String`.
+			return (
+				anyKeyword(['minLength', 'maxLength', 'pattern']) ||
+				(assertFormats &&
+					typeof schema.format === 'string' &&
+					formatCheck(schema.format) !== undefined)
+			);
 		case 'number':
 			return anyKeyword([
 				'minimum',

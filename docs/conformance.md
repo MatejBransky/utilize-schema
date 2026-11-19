@@ -16,10 +16,11 @@ Every project here runs the official
 passes when every spec-valid instance is accepted and every spec-invalid one is
 rejected. Draft-07 baseline on suite commit `e2a68a1`:
 
-- 259 of 287 cases (1,370 of 1,638 assertions).
+- 281 of 304 cases (1,397 of 1,655 assertions).
 - Cases that need external schemas are served from memory through
-  `externalSchemas`, and cases tagged `format-annotation` are skipped because
-  this generator asserts known formats.
+  `externalSchemas`. Format cases run in the mode they are tagged for:
+  `format-annotation` with `formatMode: 'annotate'`, `format-assertion` with
+  `formatMode: 'assert'`.
 
 **Utilize Schema (`@utilize/typescript`)** generates TypeScript types and uses
 the same type-level method as json-schema-to-typescript: every suite instance is
@@ -27,14 +28,14 @@ emitted as a typed constant and one `tsc --strict` pass decides acceptance. This
 is the closest comparison on this page, although the suite revisions differ.
 Draft-07 baseline on suite commit `e2a68a1`:
 
-- 186 of 304 cases have no valid instance rejected and no invalid instance
+- 191 of 285 cases have no valid instance rejected and no invalid instance
   accepted.
-- 100 cases differ only because an invalid instance is accepted by a keyword a
+- 81 cases differ only because an invalid instance is accepted by a keyword a
   type cannot express (`minimum`, `pattern`, `format`, `uniqueItems`, …).
-- 18 cases are listed in `test/suite/knownGaps.ts`: 1 shared URN resolution gap,
-  5 remote-document cases, and 12 inference gaps.
-- Across instances it accepts 808 of 838 spec-valid instances and rejects 234 of
-  813 spec-invalid ones.
+- 13 cases are listed in `test/suite/knownGaps.ts`: 1 shared URN resolution gap
+  and 12 inference gaps.
+- Across instances it accepts 558 of 584 spec-valid instances and rejects 235 of
+  386 spec-invalid ones.
 
 See
 [`packages/typescript/README.md`](../packages/typescript/README.md#conformance)
@@ -64,12 +65,12 @@ commit `3c25e5f`):
    the baseline is "not a claim that the numbers are right; it is a record of
    what master does".
 2. **Different suite revisions.** The numbers come from different pinned
-   revisions with different group counts (257 draft-07 groups there, 287
-   runnable cases for Zod and 304 for TypeScript here).
-3. **Different case selection.** This project skips `format-annotation` cases
-   and serves `externalSchemas` from memory; json-schema-to-typescript runs every
-   draft-07 group and serves remote references from the suite's `remotes/`
-   directory.
+   revisions with different group counts (257 draft-07 groups there, 304
+   runnable cases for Zod and 285 for TypeScript here).
+3. **Different case selection.** The type-level runner skips the 19
+   `format-assertion` cases and serves `externalSchemas` from memory;
+   json-schema-to-typescript runs every draft-07 group and serves remote
+   references from the suite's `remotes/` directory.
 
 ## What a fair comparison would need
 

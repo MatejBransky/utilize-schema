@@ -322,22 +322,127 @@ describe('parity with @utilize/zod', () => {
 });
 
 /**
- * JSON Schema defines `format` as an annotation, so Effect keeps it as
- * metadata while the Zod generator validates known formats. That is a design
- * difference, not a gap, so it is pinned here instead of in the parity table.
+ * `format` is switchable in both generators: the default asserts it, and
+ * `formatMode: 'annotate'` keeps it as metadata in both.
  */
-describe('design differences', () => {
-	test('format is validated by Zod and only annotated by Effect', async () => {
+describe('format handling', () => {
+	test('asserts formats by default in both targets', async () => {
 		const schema: TestSchema = { type: 'string', format: 'email' };
 		const [zodRoot, effectRoot] = await Promise.all([
 			loadRoot(schema, 'zod'),
 			loadRoot(schema, 'effect'),
 		]);
 
-		expect(Schema.is(effectRoot)('not-an-email')).toBe(true);
-		expect(zodValid(zodRoot, 'not-an-email')).toBe(false);
+		for (const value of ['not-an-email', '']) {
+			expect(zodValid(zodRoot, value), `zod should reject ${JSON.stringify(value)}`).toBe(false);
+			expect(Schema.is(effectRoot)(value), `effect should reject ${JSON.stringify(value)}`).toBe(
+				false
+			);
+		}
+
+		expect(zodValid(zodRoot, 'user@example.com')).toBe(true);
+		expect(Schema.is(effectRoot)('user@example.com')).toBe(true);
 	});
 
+	test('annotates formats in both targets in annotate mode', async () => {
+		const schema: TestSchema = { type: 'string', format: 'email' };
+		const [zodRoot, effectRoot] = await Promise.all([
+			loadRoot(schema, 'zod', 'annotate'),
+			loadRoot(schema, 'effect', 'annotate'),
+		]);
+
+		for (const value of ['not-an-email', '', 'user@example.com']) {
+			expect(zodValid(zodRoot, value), `zod should accept ${JSON.stringify(value)}`).toBe(true);
+			expect(Schema.is(effectRoot)(value), `effect should accept ${JSON.stringify(value)}`).toBe(
+				true
+			);
+		}
+	});
+});
+
+/**
+ * The two targets must accept and reject the same values for a format, so a
+ * schema can switch targets without changing validation. Each case pins the
+ * behaviour against the Zod helper instead of a hand-written expectation.
+ */
+describe('format parity in assert mode', () => {
+	const formatCases: Array<{ format: string; valid: string[]; invalid: string[] }> = [
+		{
+			format: 'time',
+			valid: ['12:00', '12:00:00', '23:59:59.5'],
+			invalid: ['12:00:00Z', '24:00', '99:99:99'],
+		},
+		{
+			format: 'date-time',
+			valid: ['2024-02-29T12:00:00Z', '2024-02-29T12:00:00.5Z'],
+			invalid: ['2024-02-29T12:00:00+01:00', '2023-02-29T12:00:00Z', '2024-02-29T99:99:99Z'],
+		},
+		{
+			format: 'date',
+			valid: ['0000-02-29', '0001-01-01', '2024-02-29'],
+			invalid: ['0001-02-29', '2023-02-29', '2024-13-01'],
+		},
+		{
+			format: 'emoji',
+			valid: ['😀', '🇨🇿', '1️⃣', '👨‍👩‍👧'],
+			invalid: ['\u200d', 'abc'],
+		},
+		{
+			format: 'base64url',
+			valid: ['', 'ab', 'abc', 'abcd', 'aGVsbG8'],
+			invalid: ['A', 'abcde'],
+		},
+		{
+			format: 'ipv6',
+			valid: ['::1', '2001:db8::1'],
+			invalid: ['::1]/x', '::1]#frag', 'not-ip'],
+		},
+	];
+
+	test('untyped schema', async () => {
+		const schema: TestSchema = { format: 'email' };
+		const [zodRoot, effectRoot] = await Promise.all([
+			loadRoot(schema, 'zod', 'assert'),
+			loadRoot(schema, 'effect', 'assert'),
+		]);
+
+		for (const value of ['user@example.com', 42, null]) {
+			expect(zodValid(zodRoot, value), `zod should accept ${JSON.stringify(value)}`).toBe(true);
+			expect(Schema.is(effectRoot)(value), `effect should accept ${JSON.stringify(value)}`).toBe(
+				true
+			);
+		}
+
+		expect(zodValid(zodRoot, 'not-an-email')).toBe(false);
+		expect(Schema.is(effectRoot)('not-an-email')).toBe(false);
+	});
+
+	for (const { format, valid, invalid } of formatCases) {
+		test(format, async () => {
+			const schema: TestSchema = { type: 'string', format };
+			const [zodRoot, effectRoot] = await Promise.all([
+				loadRoot(schema, 'zod', 'assert'),
+				loadRoot(schema, 'effect', 'assert'),
+			]);
+
+			for (const value of valid) {
+				expect(zodValid(zodRoot, value), `zod should accept ${JSON.stringify(value)}`).toBe(true);
+				expect(Schema.is(effectRoot)(value), `effect should accept ${JSON.stringify(value)}`).toBe(
+					true
+				);
+			}
+
+			for (const value of invalid) {
+				expect(zodValid(zodRoot, value), `zod should reject ${JSON.stringify(value)}`).toBe(false);
+				expect(Schema.is(effectRoot)(value), `effect should reject ${JSON.stringify(value)}`).toBe(
+					false
+				);
+			}
+		});
+	}
+});
+
+describe('design differences', () => {
 	test('an empty allOf is vacuous for Effect and never for Zod', async () => {
 		const schema: TestSchema = { allOf: [] };
 		const [zodRoot, effectRoot] = await Promise.all([
@@ -350,7 +455,11 @@ describe('design differences', () => {
 	});
 });
 
-async function loadRoot(schema: TestSchema, target: 'zod' | 'effect') {
+async function loadRoot(
+	schema: TestSchema,
+	target: 'zod' | 'effect',
+	formatMode?: 'annotate' | 'assert'
+) {
 	const directory = await mkdtemp(join(__dirname, '__generated__-'));
 	const file = join(directory, `${target}.ts`);
 
@@ -361,8 +470,8 @@ async function loadRoot(schema: TestSchema, target: 'zod' | 'effect') {
 		});
 		const code =
 			target === 'zod'
-				? generateZod(root, { importZod: true })
-				: generate(root, { importEffect: true });
+				? generateZod(root, { importZod: true, formatMode })
+				: generate(root, { importEffect: true, formatMode });
 
 		await writeFile(file, code);
 

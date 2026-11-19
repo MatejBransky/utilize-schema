@@ -15,8 +15,9 @@ Generate robust, type-safe Zod or Effect Schema codecs — or plain TypeScript t
 - **Configurable names:** rewrite generated Zod and Effect schema variables and types
   with a callback, e.g. to suffix schemas with `Schema`.
 - **TypeScript-first:** Generates runtime schemas and TypeScript types, including recursive ones. `@utilize/typescript` emits the types alone, with no runtime dependency.
+- **Format is a choice:** both runtime generators validate known formats by default and keep `format` as metadata with `formatMode: 'annotate'`. `formatMap` overrides individual formats.
 - **Draft support:** Draft-04/06/07, with normalization for 2019-09 and 2020-12.
-- **Conformance:** all generators are tested against the official [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite) for draft-07 — Zod passes 259 of 287 cases (1,370 of 1,638 assertions), Effect Schema 251 of 285 cases (894 of 972 assertions), and TypeScript 186 of 304 cases at the type level; remaining gaps are tracked per keyword.
+- **Conformance:** all generators are tested against the official [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite) for draft-07 — Zod passes 281 of 304 cases (1,397 of 1,655 assertions), Effect Schema 229 of 304 cases (1,274 of 1,655 assertions), and TypeScript 191 of 285 cases at the type level; remaining gaps are tracked per keyword.
 - **Dialect-aware:** `$schema` is resolved per schema resource — the document root and every subschema with its own `$id`/`$schema` — not once per file. Supported dialects are draft-04, draft-06, draft-07, 2019-09 and 2020-12; nodes carry their dialect in metadata, and keywords outside it are reported as warnings by default and not applied to generated code. See [docs/dialects.md](./docs/dialects.md).
 
 ---
@@ -127,10 +128,16 @@ against each other by a differential test suite
 CI. All three generators are also checked against the official JSON Schema Test
 Suite for draft-07:
 
-- **Zod:** 259 of 287 cases (1,370 of 1,638 assertions) pass.
-- **Effect Schema:** 251 of 285 cases (894 of 972 assertions) pass. Cases tagged
-  `format-assertion` are skipped because `format` is kept as an annotation.
-- **TypeScript:** 186 of 304 cases pass at the type level.
+- **Zod:** 281 of 304 cases (1,397 of 1,655 assertions) pass.
+- **Effect Schema:** 229 of 304 cases (1,274 of 1,655 assertions) pass.
+- **TypeScript:** 191 of 285 cases pass at the type level.
+
+The runtime generators measure both format groups: `format-annotation` cases
+compile with `formatMode: 'annotate'` and `format-assertion` cases with
+`formatMode: 'assert'`, so all 304 draft-07 cases run. A type cannot check a
+format either way, so the TypeScript generator skips the 19 `format-assertion`
+cases instead. Cases that need external schemas are served from
+`externalSchemas`.
 
 The remaining gaps are recorded in each package's `test/suite/` directory:
 `knownFailures.ts` for the runtime generators, `knownGaps.ts` for the type-level
@@ -145,45 +152,45 @@ gaps. See
 [`packages/typescript/README.md`](./packages/typescript/README.md#conformance)
 for the full numbers and methodology.
 
-| JSON Schema Keyword                          | Zod | Effect Schema | Notes                                                                                 |
-| -------------------------------------------- | --- | ------------- | ------------------------------------------------------------------------------------- |
-| `type`                                       | ✅  | ✅            | Full support, including unions of types                                               |
-| `enum`                                       | ✅  | ✅            | Zod deep-equals composites; Effect supports primitives only                           |
-| `const`                                      | ✅  | ✅            | Zod deep-equals composites; Effect supports primitives only                           |
-| `default`                                    | ✅  | ✅            | Zod decodes with `.default()`; Effect stores it as an annotation                      |
-| `description` / `title` / `deprecated`       | ✅  | ✅            | Zod `.meta({})`, Effect `.annotate({})`                                               |
-| `readOnly`                                   | ✅  | —             | Zod `.readonly()` with `readOnlyKeyword`; Effect keeps it as an annotation            |
-| `minimum` / `maximum`                        | ✅  | ✅            | Supported                                                                             |
-| `exclusiveMinimum` / `exclusiveMaximum`      | ✅  | ✅            | Supported (boolean draft-04 form included)                                            |
-| `multipleOf`                                 | ✅  | ✅            | Supported                                                                             |
-| `minLength` / `maxLength`                    | ✅  | ✅            | Effect counts code points, like JSON Schema                                           |
-| `pattern`                                    | ✅  | ✅            | Zod `.regex()`, Effect `Schema.isPattern`                                             |
-| `format`                                     | ✅  | —             | Zod validates known formats; Effect keeps it as an annotation                         |
-| `properties`                                 | ✅  | ✅            | Supported                                                                             |
-| `required`                                   | ✅  | ✅            | Supported                                                                             |
-| `additionalProperties`                       | ✅  | ✅            | Zod `z.strictObject`/`.catchall`, Effect keeps excess keys and filters them           |
-| `minProperties` / `maxProperties`            | ✅  | ✅            | Counted on the input, so undeclared keys count too                                    |
-| `patternProperties`                          | ✅  | ✅            | Every matching pattern is validated, then `additionalProperties` applies              |
-| `propertyNames`                              | ✅  | ✅            | Supported                                                                             |
-| `items`                                      | ✅  | ✅            | Supported                                                                             |
-| `prefixItems`                                | ✅  | ✅            | 2020-12 syntax, also via the tuple form of `items`                                    |
-| `additionalItems`                            | ✅  | ✅            | Supported                                                                             |
-| `uniqueItems`                                | ✅  | ✅            | Key-order-insensitive comparison                                                      |
-| `contains`                                   | ✅  | ✅            | Supported                                                                             |
-| `minContains` / `maxContains`                | ❌  | ❌            | Rejected instead of silently dropped                                                  |
-| `dependencies`                               | ✅  | ✅            | Also covers `dependentRequired` and `dependentSchemas`                                |
-| `allOf`                                      | ✅  | ✅            | Zod intersects any schemas; Effect merges object/scalar/array parts, filters the rest |
-| `anyOf`                                      | ✅  | ✅            | Supported                                                                             |
-| `oneOf`                                      | ✅  | ✅            | Zod requires exactly one match; Effect uses the exclusive union mode                  |
-| `not`                                        | ✅  | ✅            | Supported                                                                             |
-| `if` / `then` / `else`                       | ✅  | ✅            | Supported                                                                             |
-| `discriminator`                              | ✅  | —             | Zod emits a discriminated union; Effect ignores the annotation                        |
-| `$ref`                                       | ✅  | ✅            | Local, external, cyclic and `$id`/`$anchor` based; boolean targets supported          |
-| `$defs` / `definitions`                      | ✅  | ✅            | Supported                                                                             |
-| `$id` / `$anchor`                            | ✅  | ✅            | Establishes the base URI and resolves fragment identifiers                            |
-| `examples`                                   | ✅  | ✅            | Kept as metadata                                                                      |
-| `$schema`                                    | ✅  | ✅            | Detects draft-04/06/07/2019-09/2020-12 and normalizes newer keywords                  |
-| `unevaluatedProperties` / `unevaluatedItems` | ✅  | ✅            | Mapped to `additionalProperties` / the items rest (best effort)                       |
+| JSON Schema Keyword                          | Zod | Effect Schema | Notes                                                                        |
+| -------------------------------------------- | --- | ------------- | ---------------------------------------------------------------------------- |
+| `type`                                       | ✅  | ✅            | Full support, including unions of types                                      |
+| `enum`                                       | ✅  | ✅            | Zod deep-equals composites; Effect supports primitives only                  |
+| `const`                                      | ✅  | ✅            | Zod deep-equals composites; Effect supports primitives only                  |
+| `default`                                    | ✅  | ✅            | Zod decodes with `.default()`; Effect stores it as an annotation             |
+| `description` / `title` / `deprecated`       | ✅  | ✅            | Zod `.meta({})`, Effect `.annotate({})`                                      |
+| `readOnly`                                   | ✅  | —             | Zod `.readonly()` with `readOnlyKeyword`; Effect keeps it as an annotation   |
+| `minimum` / `maximum`                        | ✅  | ✅            | Supported                                                                    |
+| `exclusiveMinimum` / `exclusiveMaximum`      | ✅  | ✅            | Supported (boolean draft-04 form included)                                   |
+| `multipleOf`                                 | ✅  | ✅            | Supported                                                                    |
+| `minLength` / `maxLength`                    | ✅  | ✅            | Effect counts code points, like JSON Schema                                  |
+| `pattern`                                    | ✅  | ✅            | Zod `.regex()`, Effect `Schema.isPattern`                                    |
+| `format`                                     | ✅  | ✅            | Asserted by default; `formatMode: 'annotate'` keeps it as metadata           |
+| `properties`                                 | ✅  | ✅            | Supported                                                                    |
+| `required`                                   | ✅  | ✅            | Supported                                                                    |
+| `additionalProperties`                       | ✅  | ✅            | Zod `z.strictObject`/`.catchall`, Effect keeps excess keys and filters them  |
+| `minProperties` / `maxProperties`            | ✅  | ✅            | Counted on the input, so undeclared keys count too                           |
+| `patternProperties`                          | ✅  | ✅            | Every matching pattern is validated, then `additionalProperties` applies     |
+| `propertyNames`                              | ✅  | ✅            | Supported                                                                    |
+| `items`                                      | ✅  | ✅            | Supported                                                                    |
+| `prefixItems`                                | ✅  | ✅            | 2020-12 syntax, also via the tuple form of `items`                           |
+| `additionalItems`                            | ✅  | ✅            | Supported                                                                    |
+| `uniqueItems`                                | ✅  | ✅            | Key-order-insensitive comparison                                             |
+| `contains`                                   | ✅  | ✅            | Supported                                                                    |
+| `minContains` / `maxContains`                | ❌  | ❌            | Rejected instead of silently dropped                                         |
+| `dependencies`                               | ✅  | ✅            | Also covers `dependentRequired` and `dependentSchemas`                       |
+| `allOf`                                      | ✅  | ✅            | Zod intersects any schemas; Effect merges disjoint object subschemas         |
+| `anyOf`                                      | ✅  | ✅            | Supported                                                                    |
+| `oneOf`                                      | ✅  | ✅            | Zod requires exactly one match; Effect uses the exclusive union mode         |
+| `not`                                        | ✅  | ✅            | Supported                                                                    |
+| `if` / `then` / `else`                       | ✅  | ✅            | Supported                                                                    |
+| `discriminator`                              | ✅  | —             | Zod emits a discriminated union; Effect ignores the annotation               |
+| `$ref`                                       | ✅  | ✅            | Local, external, cyclic and `$id`/`$anchor` based; boolean targets supported |
+| `$defs` / `definitions`                      | ✅  | ✅            | Supported                                                                    |
+| `$id` / `$anchor`                            | ✅  | ✅            | Establishes the base URI and resolves fragment identifiers                   |
+| `examples`                                   | ✅  | ✅            | Kept as metadata                                                             |
+| `$schema`                                    | ✅  | ✅            | Detects draft-04/06/07/2019-09/2020-12 and normalizes newer keywords         |
+| `unevaluatedProperties` / `unevaluatedItems` | ✅  | ✅            | Mapped to `additionalProperties` / the items rest (best effort)              |
 
 `✅` supported, `❌` rejected with a clear error, `—` accepted but only kept as
 an annotation.
