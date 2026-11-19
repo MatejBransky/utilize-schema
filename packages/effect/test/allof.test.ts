@@ -7,10 +7,17 @@ describe('allOf', () => {
 		const code = await compile({ allOf: [{ maximum: 30 }, { minimum: 20 }] });
 
 		await expect(code).toMatchCode(ts`
-			export const Root = Schema.Finite.check(
-				Schema.isGreaterThanOrEqualTo(20),
-				Schema.isLessThanOrEqualTo(30)
-			);
+			export const Root = Schema.Union([
+				Schema.Null,
+				Schema.Boolean,
+				Schema.String,
+				Schema.Finite.check(
+					Schema.isGreaterThanOrEqualTo(20),
+					Schema.isLessThanOrEqualTo(30)
+				),
+				Schema.JsonObject,
+				Schema.Array(Schema.Json),
+			]);
 
 			export type Root = typeof Root.Type;
 		`);
@@ -22,6 +29,9 @@ describe('allOf', () => {
 		expect(decode(schema, 25)).toBe(25);
 		expect(decode(schema, 15)).toBeUndefined();
 		expect(decode(schema, 35)).toBeUndefined();
+		// The keywords only constrain numbers, like JSON Schema.
+		expect(decode(schema, 'text')).toBe('text');
+		expect(decode(schema, null)).toBe(null);
 	});
 
 	test('ignores empty and true members', async () => {
@@ -64,6 +74,15 @@ describe('allOf', () => {
 		expect(decode(schema, 'abcde')).toBeUndefined();
 	});
 
+	test('keeps inferred string bounds open to other JSON types', async () => {
+		const schema = await compileToSchema({ allOf: [{ minLength: 2 }, { maxLength: 4 }] });
+
+		expect(decode(schema, 'abc')).toBe('abc');
+		expect(decode(schema, 'a')).toBeUndefined();
+		// Only strings are constrained, so other values pass.
+		expect(decode(schema, 5)).toBe(5);
+	});
+
 	test('combines allOf with anyOf and oneOf constraints', async () => {
 		const schema = await compileToSchema({
 			allOf: [{ multipleOf: 2 }],
@@ -93,6 +112,16 @@ describe('allOf', () => {
 		expect(decode(schema, [1])).toEqual([1]);
 		expect(decode(schema, [])).toBeUndefined();
 		expect(decode(schema, 'text')).toBeUndefined();
+	});
+
+	test('keeps an inferred array type open to other JSON types', async () => {
+		const schema = await compileToSchema({ allOf: [{ minItems: 1 }, { maxItems: 2 }] });
+
+		expect(decode(schema, [1])).toEqual([1]);
+		expect(decode(schema, [])).toBeUndefined();
+		expect(decode(schema, [1, 2, 3])).toBeUndefined();
+		// Only arrays are constrained, so other values pass.
+		expect(decode(schema, 'text')).toBe('text');
 	});
 
 	test('filters array members that cannot be merged', async () => {

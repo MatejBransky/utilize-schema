@@ -1025,6 +1025,7 @@ function isEmptySchema(schema: ParsedJSONSchemaObject): boolean {
  */
 function mergeTypedSchemas(members: ParsedJSONSchemaObject[]): ParsedJSONSchemaObject | undefined {
 	let type: 'number' | 'integer' | 'string' | 'array' | undefined;
+	let declaredType = false;
 
 	for (const member of members) {
 		if (member.$ref !== undefined) {
@@ -1035,6 +1036,15 @@ function mergeTypedSchemas(members: ParsedJSONSchemaObject[]): ParsedJSONSchemaO
 
 		if (memberType === undefined) {
 			return undefined;
+		}
+
+		if (
+			member.type === 'number' ||
+			member.type === 'integer' ||
+			member.type === 'string' ||
+			member.type === 'array'
+		) {
+			declaredType = true;
 		}
 
 		if (type === undefined) {
@@ -1062,7 +1072,9 @@ function mergeTypedSchemas(members: ParsedJSONSchemaObject[]): ParsedJSONSchemaO
 		return undefined;
 	}
 
-	const merged: Record<string, unknown> = { type };
+	// Keywords like `minimum` or `minItems` only constrain their own JSON type, so
+	// the type stays inferred unless a member declared it.
+	const merged: Record<string, unknown> = declaredType ? { type } : {};
 	let minimum: number | undefined;
 	let maximum: number | undefined;
 	let exclusiveMinimum: number | undefined;
