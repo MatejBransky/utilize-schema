@@ -65,6 +65,36 @@ export const knownFailures: Record<string, string> = {
 		'keyword is not covered by the Effect Schema generator yet',
 	'enum.json :: enum with [1] does not match [true]':
 		'keyword is not covered by the Effect Schema generator yet',
+	'format-date-time.json :: validation of date-time strings':
+		'format validation disagrees with the Zod helpers',
+	'format-email.json :: validation of e-mail addresses':
+		'format validation disagrees with the Zod helpers',
+	'format-hostname.json :: validation of host names':
+		'format validation disagrees with the Zod helpers',
+	'format-hostname.json :: validation of A-label (punycode) host names':
+		'format validation disagrees with the Zod helpers',
+	'format-idn-email.json :: validation of an internationalized e-mail addresses':
+		'format validation disagrees with the Zod helpers',
+	'format-idn-hostname.json :: validation of internationalized host names':
+		'format validation disagrees with the Zod helpers',
+	'format-idn-hostname.json :: validation of separators in internationalized host names':
+		'format validation disagrees with the Zod helpers',
+	'format-iri-reference.json :: validation of IRI References':
+		'format validation disagrees with the Zod helpers',
+	'format-iri.json :: validation of IRIs': 'format validation disagrees with the Zod helpers',
+	'format-json-pointer.json :: validation of JSON-pointers (JSON String Representation)':
+		'format validation disagrees with the Zod helpers',
+	'format-regex.json :: validation of regular expressions':
+		'format validation disagrees with the Zod helpers',
+	'format-relative-json-pointer.json :: validation of Relative JSON Pointers (RJP)':
+		'format validation disagrees with the Zod helpers',
+	'format-time.json :: validation of time strings':
+		'format validation disagrees with the Zod helpers',
+	'format-uri-reference.json :: validation of URI References':
+		'format validation disagrees with the Zod helpers',
+	'format-uri-template.json :: validation of URI-Templates':
+		'format validation disagrees with the Zod helpers',
+	'format-uri.json :: validation of URIs': 'format validation disagrees with the Zod helpers',
 	'id-legacy.json :: $ref prevents a sibling $id from changing the base uri':
 		'reference resolution gap',
 	'id-legacy.json :: refs with relative uris and defs': 'reference resolution gap',

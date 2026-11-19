@@ -40,8 +40,8 @@ Options:
   -i, --input <path>    schema file, directory or glob
   -o, --output <path>   output file or directory
   --cwd <path>          directory used to resolve paths
-  --format-mode <mode>  annotate (default) keeps format as metadata,
-                        assert validates known formats
+  --format-mode <mode>  assert (default) validates known formats,
+                        annotate keeps format as metadata
   --no-banner           omit the generated-file banner
 ${dialectCliHelp}
   -h, --help            show this help
@@ -61,7 +61,7 @@ export async function run(
 				input: { type: 'string', short: 'i' },
 				output: { type: 'string', short: 'o' },
 				cwd: { type: 'string' },
-				'format-mode': { type: 'string', default: 'annotate' },
+				'format-mode': { type: 'string', default: 'assert' },
 				'no-banner': { type: 'boolean', default: false },
 				...dialectCliOptions,
 				help: { type: 'boolean', short: 'h', default: false },

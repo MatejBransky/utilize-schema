@@ -50,7 +50,7 @@ function resolveFormat(
 		return mapped;
 	}
 
-	return (formatMode ?? 'annotate') === 'assert' ? formatExpression(format) : undefined;
+	return (formatMode ?? 'assert') === 'assert' ? formatExpression(format) : undefined;
 }
 
 function formatExpression(format: string) {

@@ -15,9 +15,10 @@ Schema or TypeScript code next to the schemas.
 - Live code generation for every available generator (Zod, Effect Schema and
   TypeScript), selectable from the header and kept in the URL
   (`?generator=effect`)
-- A `Format` switch for the runtime generators: `annotate` keeps `format` as
-  metadata, `assert` turns it into validation (`?format-mode=assert`). It is
-  disabled for the TypeScript target, which cannot check a format.
+- A `Format` switch for the runtime generators: `assert` (the default) turns
+  `format` into validation, `annotate` keeps it as metadata
+  (`?format-mode=annotate`). It is disabled for the TypeScript target, which
+  cannot check a format.
 - Generated code is formatted with Prettier at 80 columns, and the Effect target
   adds the real `effect` type declarations to the editor's TypeScript worker
 - Live JSON and JSON Schema validation with AJV (draft-07, 2019-09 and

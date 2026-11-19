@@ -16,8 +16,8 @@ Generate robust, type-safe Zod or Effect Schema codecs — or plain TypeScript t
   with a callback, e.g. to suffix schemas with `Schema`.
 - **TypeScript-first:** Generates runtime schemas and TypeScript types, including recursive ones. `@utilize/typescript` emits the types alone, with no runtime dependency.
 - **Draft support:** Draft-04/06/07, with normalization for 2019-09 and 2020-12.
-- **Conformance:** all generators are tested against the official [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite) for draft-07 — Zod passes 262 of 269 cases (925 of 939 assertions), Effect Schema 214 of 269 cases (818 of 939 assertions), and TypeScript 175 of 269 cases at the type level; remaining gaps are tracked per keyword.
-- **Format is a choice:** both runtime generators keep `format` as metadata by default and validate known formats with `formatMode: 'assert'`. `formatMap` overrides individual formats.
+- **Conformance:** all generators are tested against the official [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite) for draft-07 — Zod passes 248 of 271 cases (1,347 of 1,605 assertions), Effect Schema 200 of 271 cases (1,232 of 1,605 assertions), and TypeScript 175 of 269 cases at the type level; remaining gaps are tracked per keyword.
+- **Format is a choice:** both runtime generators validate known formats by default and keep `format` as metadata with `formatMode: 'annotate'`. `formatMap` overrides individual formats.
 - **Dialect-aware:** `$schema` is resolved per schema resource — the document root and every subschema with its own `$id`/`$schema` — not once per file. Supported dialects are draft-04, draft-06, draft-07, 2019-09 and 2020-12; nodes carry their dialect in metadata, and keywords outside it are reported as warnings by default and not applied to generated code. See [docs/dialects.md](./docs/dialects.md).
 
 ---
@@ -128,15 +128,15 @@ against each other by a differential test suite
 CI. All three generators are also checked against the official JSON Schema Test
 Suite for draft-07:
 
-- **Zod:** 262 of 269 cases (925 of 939 assertions) pass.
-- **Effect Schema:** 214 of 269 cases (818 of 939 assertions) pass.
+- **Zod:** 248 of 271 cases (1,347 of 1,605 assertions) pass.
+- **Effect Schema:** 200 of 271 cases (1,232 of 1,605 assertions) pass.
 - **TypeScript:** 175 of 269 cases pass at the type level.
 
-All three run the same 269 draft-07 cases. The 16 cases that need external
-schemas and the 19 tagged `format-assertion` are skipped: every generator keeps
-`format` as an annotation by default, and a type cannot check a format either
-way. `formatMode: 'assert'` turns format validation on in both runtime
-generators.
+All three skip the 16 cases that need external schemas. The runtime generators
+assert known formats by default, so they skip the 17 cases tagged
+`format-annotation`, which expect `format` to be ignored; `formatMode:
+'annotate'` turns that back off. A type cannot check a format either way, so the
+TypeScript generator skips the 19 `format-assertion` cases instead.
 
 The remaining gaps are recorded in each package's `test/suite/` directory:
 `knownFailures.ts` for the runtime generators, `knownGaps.ts` for the type-level
@@ -164,7 +164,7 @@ for the full numbers and methodology.
 | `multipleOf`                                 | ✅  | ✅            | Supported                                                                    |
 | `minLength` / `maxLength`                    | ✅  | ✅            | Effect counts code points, like JSON Schema                                  |
 | `pattern`                                    | ✅  | ✅            | Zod `.regex()`, Effect `Schema.isPattern`                                    |
-| `format`                                     | ✅  | ✅            | Annotation by default; `formatMode: 'assert'` validates known formats        |
+| `format`                                     | ✅  | ✅            | Asserted by default; `formatMode: 'annotate'` keeps it as metadata           |
 | `properties`                                 | ✅  | ✅            | Supported                                                                    |
 | `required`                                   | ✅  | ✅            | Supported                                                                    |
 | `additionalProperties`                       | ✅  | ✅            | Zod `z.strictObject`/`.catchall`, Effect keeps excess keys and filters them  |

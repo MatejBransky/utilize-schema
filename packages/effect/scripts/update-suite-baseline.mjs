@@ -81,7 +81,7 @@ function reasonFor(file) {
 		return 'patternProperties is not generated';
 	}
 	if (file.startsWith('format-')) {
-		return 'format is kept as an annotation';
+		return 'format validation disagrees with the Zod helpers';
 	}
 	if (/^(ref|anchor|id|recursive|dynamic|vocabulary)/.test(file)) {
 		return 'reference resolution gap';
@@ -124,7 +124,7 @@ for (const file of files) {
 	for (const testCase of json.tests) {
 		if (!isCompatible(testCase.compatibility)) continue;
 		if (testCase.externalSchemas) continue;
-		if (testCase.tags?.includes('format-assertion')) continue;
+		if (testCase.tags?.includes('format-annotation')) continue;
 
 		cases++;
 		assertions += testCase.tests.length;

@@ -92,9 +92,10 @@ function filter(body: string) {
 
 /**
  * The URL parser stops at `]`, so `::1]/x` would be accepted as a bracketed
- * host. Reject the characters that can close the brackets early.
+ * host, and it tolerates whitespace, so `::1\n` would be accepted too. Reject
+ * both before handing the value to it.
  */
-const ipv6Body = `if (/[\\]\\/?#]/.test(value)) {
+const ipv6Body = `if (/[\\]\\/?#\\s]/.test(value)) {
 			return 'Invalid IPv6 address';
 		}
 		try {
@@ -108,7 +109,7 @@ const cidrv6Body = `const [address, prefix] = value.split('/');
 		if (prefix === undefined || !/^\\d{1,3}$/.test(prefix) || Number(prefix) > 128) {
 			return 'Invalid IPv6 CIDR';
 		}
-		if (/[\\]\\/?#]/.test(address)) {
+		if (/[\\]\\/?#\\s]/.test(address)) {
 			return 'Invalid IPv6 CIDR';
 		}
 		try {

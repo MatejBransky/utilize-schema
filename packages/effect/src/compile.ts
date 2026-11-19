@@ -28,8 +28,8 @@ export interface CompileOptions
 	/** Emit `import { Schema } from 'effect';` at the top of the generated code. */
 	importEffect?: boolean;
 	/**
-	 * What `format` becomes in the generated code: `annotate` (default) keeps it
-	 * as `.annotate({ format })`, `assert` validates known formats.
+	 * What `format` becomes in the generated code: `assert` (default) validates
+	 * known formats, `annotate` keeps `format` as `.annotate({ format })`.
 	 */
 	formatMode?: FormatMode;
 	/** Runs a formatter (for example Prettier) over the generated code. */

@@ -3,14 +3,14 @@
 '@utilize/zod': minor
 ---
 
-`format` is now an annotation by default in both runtime generators, which
-matches JSON Schema and makes `@utilize/zod` agree with `@utilize/effect`.
+`format` is now switchable in both runtime generators and asserted by default,
+so `@utilize/zod` and `@utilize/effect` agree on what a known format does.
 
-The Zod generator used to turn known formats into validation
-(`format: "email"` became `z.email()`). It now emits `z.string().meta({ format:
-"email" })` unless you pass `formatMode: 'assert'`. The option exists on both
-generators and on both CLIs (`--format-mode assert`); the Effect generator adds
-checks for known formats in assert mode instead of only annotating them.
+Both generators turn known formats into validation (`format: "email"` becomes
+`z.email()` or a `Schema.String.check(formatEmail)`), and keep unknown formats
+as annotations. Pass `formatMode: 'annotate'` to keep `format` as metadata
+(`.meta({ format })` / `.annotate({ format })`); both CLIs take
+`--format-mode annotate|assert`. `formatMap` entries apply in both modes.
 
-Set `formatMode: 'assert'` to keep the previous Zod output. `formatMap` entries
-still apply in both modes, so an explicit expression per format keeps working.
+The Effect generator gains the format checks in this release, so schemas with a
+known `format` now reject invalid values by default.

@@ -5,7 +5,7 @@ export const formatModes: Array<{ value: FormatMode; label: string; hint: string
 	{ value: 'assert', label: 'Assert', hint: 'Validate known formats' },
 ];
 
-export const defaultFormatMode: FormatMode = 'annotate';
+export const defaultFormatMode: FormatMode = 'assert';
 
 export function isFormatMode(value: unknown): value is FormatMode {
 	return value === 'annotate' || value === 'assert';

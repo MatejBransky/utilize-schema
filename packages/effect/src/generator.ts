@@ -34,8 +34,8 @@ export interface GenerateOptions {
 	/** Rewrites the type exported for each generated schema. Receives the resolved name. */
 	typeName?: NameMapper;
 	/**
-	 * What `format` becomes in the generated code: `annotate` (default) keeps it
-	 * as `.annotate({ format })`, `assert` validates known formats.
+	 * What `format` becomes in the generated code: `assert` (default) validates
+	 * known formats, `annotate` keeps `format` as `.annotate({ format })`.
 	 */
 	formatMode?: FormatMode;
 	/** Emits a caller-provided Effect Schema expression for a matching schema node. */
@@ -43,8 +43,8 @@ export interface GenerateOptions {
 }
 
 /**
- * What `format` becomes in the generated code. `annotate` keeps it as an
- * annotation, which is the JSON Schema default and the default here.
+ * What `format` becomes in the generated code. `assert` validates known
+ * formats; `annotate` keeps `format` as an annotation.
  */
 export type FormatMode = 'annotate' | 'assert';
 
@@ -476,7 +476,7 @@ function generateString(schema: ParsedJSONSchemaObject, context: Context): strin
 	}
 
 	const format =
-		(context.formatMode ?? 'annotate') === 'assert' &&
+		(context.formatMode ?? 'assert') === 'assert' &&
 		typeof schema.format === 'string' &&
 		formatCheck(schema.format) !== undefined
 			? context.formatOf(schema.format)
@@ -889,7 +889,7 @@ function parsed(schema: unknown): ParsedJSONSchema {
 function generateUntyped(schema: ParsedJSONSchemaObject, context: Context): string {
 	const dialect = context.dialect;
 	const constrained = JSON_VALUE_TYPES.filter((type) =>
-		appliesTo(schema, type, dialect, (context.formatMode ?? 'annotate') === 'assert')
+		appliesTo(schema, type, dialect, (context.formatMode ?? 'assert') === 'assert')
 	);
 
 	if (constrained.length === 0) {

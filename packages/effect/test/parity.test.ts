@@ -322,26 +322,15 @@ describe('parity with @utilize/zod', () => {
 });
 
 /**
- * `format` is switchable in both generators: the default annotates it, and
- * `formatMode: 'assert'` validates the same set of known formats.
+ * `format` is switchable in both generators: the default asserts it, and
+ * `formatMode: 'annotate'` keeps it as metadata in both.
  */
 describe('format handling', () => {
-	test('annotates formats by default in both targets', async () => {
+	test('asserts formats by default in both targets', async () => {
 		const schema: TestSchema = { type: 'string', format: 'email' };
 		const [zodRoot, effectRoot] = await Promise.all([
 			loadRoot(schema, 'zod'),
 			loadRoot(schema, 'effect'),
-		]);
-
-		expect(zodValid(zodRoot, 'not-an-email')).toBe(true);
-		expect(Schema.is(effectRoot)('not-an-email')).toBe(true);
-	});
-
-	test('asserts formats in both targets', async () => {
-		const schema: TestSchema = { type: 'string', format: 'email' };
-		const [zodRoot, effectRoot] = await Promise.all([
-			loadRoot(schema, 'zod', 'assert'),
-			loadRoot(schema, 'effect', 'assert'),
 		]);
 
 		for (const value of ['not-an-email', '']) {
@@ -353,6 +342,21 @@ describe('format handling', () => {
 
 		expect(zodValid(zodRoot, 'user@example.com')).toBe(true);
 		expect(Schema.is(effectRoot)('user@example.com')).toBe(true);
+	});
+
+	test('annotates formats in both targets in annotate mode', async () => {
+		const schema: TestSchema = { type: 'string', format: 'email' };
+		const [zodRoot, effectRoot] = await Promise.all([
+			loadRoot(schema, 'zod', 'annotate'),
+			loadRoot(schema, 'effect', 'annotate'),
+		]);
+
+		for (const value of ['not-an-email', '', 'user@example.com']) {
+			expect(zodValid(zodRoot, value), `zod should accept ${JSON.stringify(value)}`).toBe(true);
+			expect(Schema.is(effectRoot)(value), `effect should accept ${JSON.stringify(value)}`).toBe(
+				true
+			);
+		}
 	});
 });
 

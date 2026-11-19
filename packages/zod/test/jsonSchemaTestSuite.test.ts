@@ -13,8 +13,8 @@ import { loadSuiteFiles, type SuiteCase, suiteCaseKey } from './suite/loadSuite'
  * dialects in one file and marks each case with `compatibility`, so cases for
  * older and newer releases are filtered out here.
  *
- * Cases tagged `format-assertion` are not run: the default `formatMode` keeps
- * `format` as an annotation, while those cases expect it to reject values.
+ * Cases tagged `format-annotation` are not run: the default `formatMode`
+ * asserts known formats, while those cases expect `format` to be ignored.
  * Cases that need `externalSchemas` are skipped until the parser can be given
  * schemas by URI.
  *
@@ -49,10 +49,10 @@ function skipReason(testCase: SuiteCase): { kind: SkipKind; reason: string } | u
 		};
 	}
 
-	if (testCase.tags?.includes('format-assertion')) {
+	if (testCase.tags?.includes('format-annotation')) {
 		return {
 			kind: 'format',
-			reason: 'the default formatMode annotates formats, so assertion cases do not apply',
+			reason: 'the default formatMode asserts formats, so annotation cases do not apply',
 		};
 	}
 

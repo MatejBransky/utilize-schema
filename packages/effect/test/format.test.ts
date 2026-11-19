@@ -4,8 +4,15 @@ import { describe, expect, test } from 'vitest';
 import { compile, compileToSchema } from './test-utils';
 
 describe('formatMode', () => {
-	test('annotates a known format by default', async () => {
+	test('asserts a known format by default', async () => {
 		const code = await compile({ type: 'string', format: 'email' });
+
+		expect(code).toContain('const formatEmail = Schema.isPattern(');
+		expect(code).toContain("Schema.String.check(formatEmail).annotate({ format: 'email' })");
+	});
+
+	test('keeps a known format as metadata in annotate mode', async () => {
+		const code = await compile({ type: 'string', format: 'email' }, { formatMode: 'annotate' });
 
 		expect(code).toContain("Schema.String.annotate({ format: 'email' })");
 		expect(code).not.toContain('Schema.isPattern');
@@ -85,8 +92,8 @@ describe('formatMode', () => {
 		expect(Schema.is(Root)(invalid), `${invalid} should be invalid`).toBe(false);
 	});
 
-	test('asserts a format on an untyped schema', async () => {
-		const Root = await compileToSchema({ format: 'email' }, { formatMode: 'assert' });
+	test('asserts a format on an untyped schema by default', async () => {
+		const Root = await compileToSchema({ format: 'email' });
 
 		expect(Schema.is(Root)('user@example.com')).toBe(true);
 		expect(Schema.is(Root)('not-an-email')).toBe(false);
@@ -94,8 +101,8 @@ describe('formatMode', () => {
 		expect(Schema.is(Root)(42)).toBe(true);
 	});
 
-	test('keeps a format on an untyped schema as metadata by default', async () => {
-		const Root = await compileToSchema({ format: 'email' });
+	test('keeps a format on an untyped schema as metadata in annotate mode', async () => {
+		const Root = await compileToSchema({ format: 'email' }, { formatMode: 'annotate' });
 
 		expect(Schema.is(Root)('not-an-email')).toBe(true);
 	});
@@ -153,7 +160,7 @@ describe('formatMode', () => {
 			{ formatMode: 'assert' }
 		);
 
-		for (const value of ['::1]/x', '::1]#frag', '::1]/@evil.com', '::1/64']) {
+		for (const value of ['::1]/x', '::1]#frag', '::1]/@evil.com', '::1/64', '::1\n']) {
 			expect(Schema.is(Root)(value), `${value} should be invalid`).toBe(false);
 		}
 	});

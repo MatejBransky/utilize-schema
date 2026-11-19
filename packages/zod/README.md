@@ -46,14 +46,14 @@ pnpm add zod
   standalone schema.
 - `readOnlyKeyword` — map `readOnly: true` to `.readonly()`. Off by default,
   because it freezes values and changes the inferred type.
-- `formatMode` — what `format` becomes in the generated code. `'annotate'`
-  (default) keeps it as `.meta({ format })`, which is what JSON Schema asks for.
-  `'assert'` turns known formats into validation (`.email()`, `.uuid()`,
-  `.iso.datetime()`, …); unknown formats stay annotations in both modes.
+- `formatMode` — what `format` becomes in the generated code. `'assert'`
+  (default) turns known formats into validation (`.email()`, `.uuid()`,
+  `.iso.datetime()`, …); `'annotate'` keeps `format` as `.meta({ format })`.
+  Unknown formats stay annotations in both modes.
 - `formatMap` — map `format` names to your own Zod string expressions. An entry
-  applies in both modes, so it is also a way to validate one format while
-  leaving the others as annotations. Formats you do not list follow
-  `formatMode`. `minLength`, `maxLength` and `pattern` are still appended:
+  applies in both modes, so it can validate a format that `formatMode` would
+  leave as an annotation. Formats you do not list follow `formatMode`.
+  `minLength`, `maxLength` and `pattern` are still appended:
 
   ```ts
   await compile({
@@ -214,9 +214,9 @@ The suite is pinned to a commit and installed as a dev dependency. Each test
 case is compiled to a Zod schema in memory and every instance from the suite is
 run through `safeParse`.
 
-Today it passes **262 of 269 draft-07 cases (925 of 939 assertions)**.
-The 16 cases that need external schemas and the 19 tagged `format-assertion` are
-not run: the default `formatMode` keeps `format` as an annotation.
+Today it passes **248 of 271 draft-07 cases (1,347 of 1,605 assertions)**.
+The 16 cases that need external schemas and the 17 tagged `format-annotation` are
+not run: the default `formatMode` asserts known formats.
 
 Cases the generator does not handle yet are listed in
 `test/suite/knownFailures.ts`, together with the exact instances that fail in

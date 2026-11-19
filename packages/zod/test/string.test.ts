@@ -73,17 +73,23 @@ describe('string constraints', () => {
 			});
 		});
 
-		test('keeps a known format as metadata by default', async () => {
+		test('validates a known format by default', async () => {
 			await expect(compile({ type: 'string', format: 'email' })).toMatchCode(ts`
+        export const Root = z.email().meta({ format: 'email' });
+        export type Root = z.infer<typeof Root>;
+      `);
+		});
+
+		test('keeps a known format as metadata in annotate mode', async () => {
+			await expect(compile({ type: 'string', format: 'email' }, { formatMode: 'annotate' }))
+				.toMatchCode(ts`
         export const Root = z.string().meta({ format: 'email' });
         export type Root = z.infer<typeof Root>;
       `);
 		});
 
-		test('validates a known format in assert mode', async () => {
-			await expect(
-				compile({ type: 'string', format: 'email', minLength: 5 }, { formatMode: 'assert' })
-			).toMatchCode(ts`
+		test('keeps string constraints next to an asserted format', async () => {
+			await expect(compile({ type: 'string', format: 'email', minLength: 5 })).toMatchCode(ts`
         export const Root = z.email().min(5).meta({ format: 'email' });
         export type Root = z.infer<typeof Root>;
       `);

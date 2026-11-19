@@ -46,8 +46,9 @@ export interface GenerateOptions {
 	/** Maps a `format` to a Zod expression; it applies in both modes, other formats follow `formatMode`. */
 	formatMap?: FormatMap;
 	/**
-	 * What `format` becomes in the generated code: `annotate` (default) keeps it
-	 * as `.meta({ format })`, `assert` validates known formats (`.email()`, …).
+	 * What `format` becomes in the generated code: `assert` (default) validates
+	 * known formats (`.email()`, …), `annotate` keeps `format` as
+	 * `.meta({ format })`.
 	 */
 	formatMode?: FormatMode;
 	/** Emits a caller-provided Zod expression for a matching schema node. */

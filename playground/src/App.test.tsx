@@ -299,18 +299,18 @@ test('the format select switches between annotation and assertion', async () => 
 	const screen = await render(<App />);
 
 	await vi.waitFor(() =>
-		expect(new URL(location.href).searchParams.get('format-mode')).toBe('annotate')
+		expect(new URL(location.href).searchParams.get('format-mode')).toBe('assert')
 	);
 
 	await screen.getByRole('combobox', { name: 'Format' }).click();
-	await screen.getByRole('option', { name: /Assert/ }).click();
+	await screen.getByRole('option', { name: /Annotate/ }).click();
 
 	await vi.waitFor(() =>
-		expect(new URL(location.href).searchParams.get('format-mode')).toBe('assert')
+		expect(new URL(location.href).searchParams.get('format-mode')).toBe('annotate')
 	);
 	await expect
 		.element(screen.getByRole('combobox', { name: 'Format' }))
-		.toHaveTextContent('Assert');
+		.toHaveTextContent('Annotate');
 });
 
 test('the format select is disabled for the type generator', async () => {

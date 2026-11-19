@@ -41,8 +41,9 @@ Options:
   -o, --output <path>   output file or directory
   --cwd <path>          directory used to resolve paths
   --readonly            map readOnly: true to .readonly()
-  --format-mode <mode>  annotate (default) keeps format as metadata,
-                        assert validates known formats (.email(), .uuid(), ...)
+  --format-mode <mode>  assert (default) validates known formats
+                        (.email(), .uuid(), ...), annotate keeps format
+                        as metadata
   --runtime-import <module>
                         import the oneOf helper from this module
                         (e.g. @utilize/zod/runtime) instead of declaring it
@@ -66,7 +67,7 @@ export async function run(
 				output: { type: 'string', short: 'o' },
 				cwd: { type: 'string' },
 				readonly: { type: 'boolean', default: false },
-				'format-mode': { type: 'string', default: 'annotate' },
+				'format-mode': { type: 'string', default: 'assert' },
 				'runtime-import': { type: 'string' },
 				'no-banner': { type: 'boolean', default: false },
 				...dialectCliOptions,

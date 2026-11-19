@@ -16,11 +16,11 @@ Every project here runs the official
 passes when every spec-valid instance is accepted and every spec-invalid one is
 rejected. Draft-07 baseline on suite commit `e2a68a1`:
 
-- 262 of 269 cases (925 of 939 assertions).
+- 248 of 271 cases (1,347 of 1,605 assertions).
 - Cases that need external schemas are not wired up yet, and cases tagged
-  `format-assertion` are skipped because the default `formatMode` annotates
-  formats. `formatMode: 'assert'` turns validation on, but the suite measures the
-  default.
+  `format-annotation` are skipped because the default `formatMode` asserts known
+  formats. `formatMode: 'annotate'` turns validation off, but the suite measures
+  the default.
 
 **Utilize Schema (`@utilize/typescript`)** generates TypeScript types and uses
 the same type-level method as json-schema-to-typescript: every suite instance is
