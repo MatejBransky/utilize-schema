@@ -1,5 +1,6 @@
 import {
 	type DialectOptions,
+	type ExternalSchemas,
 	type JSONSchema,
 	parse,
 	pickDialectOptions,
@@ -30,6 +31,8 @@ export interface CompileOptions
 	format?: CodeFormatter | false;
 	/** Header prepended to the generated file. Pass `false` to omit it. */
 	bannerComment?: string | false;
+	/** Documents served for absolute `$ref` URIs, keyed by retrieval URI. */
+	externalSchemas?: ExternalSchemas;
 }
 
 export interface CompileSchemaOptions
@@ -42,6 +45,8 @@ export interface CompileSchemaOptions
 	formatMap?: FormatMap;
 	customSchemaResolver?: CustomSchemaResolver;
 	format?: CodeFormatter | false;
+	/** Documents served for absolute `$ref` URIs, keyed by retrieval URI. */
+	externalSchemas?: ExternalSchemas;
 }
 
 /** A synchronous or asynchronous formatter applied to generated code. */
@@ -71,6 +76,7 @@ export async function compile(userOptions: CompileOptions) {
 		customSchemaResolver: userOptions.customSchemaResolver,
 		runtimeImport: userOptions.runtimeImport,
 		format: userOptions.format,
+		externalSchemas: userOptions.externalSchemas,
 		...pickDialectOptions(userOptions),
 	});
 
@@ -91,6 +97,7 @@ export async function compileSchema(schema: JSONSchema, options: CompileSchemaOp
 	const { root } = await parse(schema, {
 		cwd: options.cwd,
 		fileName: options.fileName,
+		externalSchemas: options.externalSchemas,
 		...pickDialectOptions(options),
 		// Programmatic builds still see warnings unless they handle them.
 		onDialectIssue: options.onDialectIssue ?? warnDialectIssue,

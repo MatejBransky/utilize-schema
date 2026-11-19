@@ -15,8 +15,7 @@ import { loadSuiteFiles, type SuiteCase, suiteCaseKey } from './suite/loadSuite'
  * older and newer releases are filtered out here.
  *
  * Cases tagged `format-assertion` are not run: the Effect generator keeps
- * `format` as an annotation, while those cases expect it to reject values. Cases that need
- * `externalSchemas` are skipped until the parser can be given schemas by URI.
+ * `format` as an annotation, while those cases expect it to reject values.
  *
  * Known gaps live in `suite/knownFailures.ts` and run as expected failures, so
  * CI stays green until the gap is fixed.
@@ -31,22 +30,14 @@ const stats = {
 	assertions: 0,
 	failedAssertions: 0,
 	skippedDialect: 0,
-	skippedExternalSchemas: 0,
 	skippedFormatAnnotation: 0,
 };
 
-type SkipKind = 'dialect' | 'external' | 'format';
+type SkipKind = 'dialect' | 'format';
 
 function skipReason(testCase: SuiteCase): { kind: SkipKind; reason: string } | undefined {
 	if (!isCompatible(testCase.compatibility, DRAFT_7)) {
 		return { kind: 'dialect', reason: 'not part of draft-07' };
-	}
-
-	if (testCase.externalSchemas) {
-		return {
-			kind: 'external',
-			reason: 'external schemas are not wired into the parser yet',
-		};
 	}
 
 	if (testCase.tags?.includes('format-assertion')) {
@@ -66,7 +57,6 @@ afterAll(() => {
 			`${stats.run - stats.knownGaps}/${stats.run} cases, ${
 				stats.assertions - stats.failedAssertions
 			}/${stats.assertions} assertions`,
-			`${stats.skippedExternalSchemas} skipped (external schemas)`,
 			`${stats.skippedFormatAnnotation} skipped (format assertion)`,
 			`${stats.skippedDialect} filtered out (other dialects)`,
 		].join(' · ')
@@ -97,11 +87,7 @@ for (const file of files) {
 	describe(file.name, () => {
 		for (const { testCase, skip } of runnable) {
 			if (skip) {
-				if (skip.kind === 'external') {
-					stats.skippedExternalSchemas++;
-				} else {
-					stats.skippedFormatAnnotation++;
-				}
+				stats.skippedFormatAnnotation++;
 
 				test.skip(`${testCase.description} — skipped: ${skip.reason}`, () => {});
 				continue;
@@ -120,7 +106,9 @@ for (const file of files) {
 				test(`${testCase.description} — known gap: ${gap}`, async () => {
 					if (expected === 'compile') {
 						stats.failedAssertions += testCase.tests.length;
-						await expect(compileToSchema(testCase.schema)).rejects.toThrow();
+						await expect(
+							compileToSchema(testCase.schema, testCase.externalSchemas)
+						).rejects.toThrow();
 						return;
 					}
 
@@ -133,7 +121,7 @@ for (const file of files) {
 						`"${key}" no longer fails; remove the entry`
 					).toBeGreaterThan(0);
 
-					const schema = await compileToSchema(testCase.schema);
+					const schema = await compileToSchema(testCase.schema, testCase.externalSchemas);
 					const failures = testCase.tests
 						.filter(
 							(suiteTest) => (decode(schema, suiteTest.data) !== undefined) !== suiteTest.valid
@@ -151,7 +139,7 @@ for (const file of files) {
 				let failures: string[];
 
 				try {
-					const schema = await compileToSchema(testCase.schema);
+					const schema = await compileToSchema(testCase.schema, testCase.externalSchemas);
 
 					failures = testCase.tests
 						.filter(

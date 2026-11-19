@@ -11,6 +11,8 @@ node with metadata.
 
 - Resolves local, external, `$id` and `$anchor` based `$ref` references, including
   `$ref` to boolean schemas
+- Serves external documents from memory by retrieval URI (`externalSchemas`)
+  instead of reading them from disk or the network
 - Links recursive graphs without expanding them infinitely
 - Annotates every schema node with metadata for downstream generators
 - No code generation – just robust schema preparation
@@ -66,6 +68,32 @@ const { root } = await parse(schema, {
 });
 console.log(root[Meta]);
 ```
+
+## External schemas by URI
+
+External documents are normally read from disk or fetched over HTTP. Pass
+`externalSchemas` to serve them from memory instead, keyed by retrieval URI:
+
+```ts
+import { parse } from '@utilize/json-schema';
+
+const { root } = await parse(schema, {
+	cwd: process.cwd(),
+	fileName: 'schema.json',
+	externalSchemas: {
+		'https://example.com/address.json': {
+			type: 'object',
+			properties: { city: { type: 'string' } },
+			required: ['city'],
+		},
+	},
+});
+```
+
+A URI in the map is never read from disk or the network. Identifiers declared
+inside a provided document (`$id`, or the draft-04 `id`) are served too, so a
+`$ref` can point at a nested identifier before the containing document is
+loaded.
 
 ## Dialects
 

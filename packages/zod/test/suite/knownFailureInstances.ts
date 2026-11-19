@@ -289,4 +289,9 @@ export const knownFailureInstances: KnownFailureInstances = {
 		'all present',
 	],
 	'ref.json :: root pointer ref': 'compile',
+	'anchor-legacy.json :: anchor within remote ref': 'compile',
+	'anchor-legacy.json :: Location-independent identifier in remote ref': 'compile',
+	'anchor-legacy.json :: $ref to $ref finds detached $anchor': 'compile',
+	'ref-legacy.json :: fragment within remote ref': 'compile',
+	'ref-legacy.json :: ref within remote ref': 'compile',
 };

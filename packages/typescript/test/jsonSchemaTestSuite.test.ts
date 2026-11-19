@@ -48,7 +48,6 @@ const stats = {
 	validPassed: 0,
 	invalidAssertions: 0,
 	invalidPassed: 0,
-	skippedExternal: 0,
 	skippedDialect: 0,
 };
 
@@ -78,11 +77,6 @@ describe('JSON Schema Test Suite (draft-07, type level)', () => {
 
 				if (!isCompatible(testCase.compatibility, DRAFT_7)) {
 					stats.skippedDialect++;
-					continue;
-				}
-
-				if (testCase.externalSchemas) {
-					stats.skippedExternal++;
 					continue;
 				}
 
@@ -165,7 +159,6 @@ describe('JSON Schema Test Suite (draft-07, type level)', () => {
 				`${stats.invalidPassed}/${stats.invalidAssertions} invalid rejected`,
 				`${stats.typeGaps} type gaps`,
 				`${stats.known} known gaps`,
-				`${stats.skippedExternal} skipped (external schemas)`,
 				`${stats.skippedDialect} filtered out (other dialects)`,
 			].join(' · '),
 		];
