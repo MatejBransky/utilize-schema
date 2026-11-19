@@ -19,7 +19,13 @@ const { parse, Meta } = await import(
 );
 const { generate } = await import(pathToFileURL(join(root, 'dist/index.mjs')).href);
 
-async function compileToSchema(schema, externalSchemas) {
+function formatModeFor(testCase) {
+	if (testCase.tags?.includes('format-assertion')) return 'assert';
+	if (testCase.tags?.includes('format-annotation')) return 'annotate';
+	return undefined;
+}
+
+async function compileToSchema(schema, externalSchemas, formatMode) {
 	const { root: parsedRoot } = await parse(schema, {
 		cwd: `${join(root, 'test/suite')}/`,
 		fileName: 'Root.json',
@@ -27,6 +33,7 @@ async function compileToSchema(schema, externalSchemas) {
 	});
 	const code = generate(parsedRoot, {
 		importEffect: false,
+		formatMode,
 		customNameResolver: (candidate) =>
 			candidate[Meta]?.parent === null && candidate[Meta]?.fileName === 'Root.json'
 				? 'Root'
@@ -127,7 +134,6 @@ for (const file of files) {
 
 	for (const testCase of json.tests) {
 		if (!isCompatible(testCase.compatibility)) continue;
-		if (testCase.tags?.includes('format-annotation')) continue;
 
 		cases++;
 		assertions += testCase.tests.length;
@@ -136,7 +142,11 @@ for (const file of files) {
 		let schema;
 
 		try {
-			schema = await compileToSchema(testCase.schema, testCase.externalSchemas);
+			schema = await compileToSchema(
+				testCase.schema,
+				testCase.externalSchemas,
+				formatModeFor(testCase)
+			);
 		} catch {
 			reasons[key] = reasonFor(file);
 			instances[key] = 'compile';

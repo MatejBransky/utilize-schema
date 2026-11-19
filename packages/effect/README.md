@@ -158,9 +158,10 @@ pnpm test:suite    # official JSON Schema Test Suite (draft-07)
 
 The generator is checked against the official
 [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
-Today it passes **212 of 287 draft-07 cases (1,257 of 1,638 assertions)**. The
-suite runs the default `formatMode`, so the 17 cases tagged `format-annotation`
-are skipped; cases that need external schemas are served from `externalSchemas`.
+Today it passes **229 of 304 draft-07 cases (1,274 of 1,655 assertions)**. Format
+cases run in the mode they are tagged for, so both the annotation and the
+assertion cases are measured; cases that need external schemas are served from
+`externalSchemas`.
 
 Known gaps live in `test/suite/knownFailures.ts` and
 `test/suite/knownFailureInstances.ts`. Refresh the baseline after a fix or a

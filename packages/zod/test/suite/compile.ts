@@ -4,7 +4,7 @@ import { stripTypeScriptTypes } from 'node:module';
 
 import { z } from 'zod';
 
-import { generate } from '../../src/generator';
+import { type FormatMode, generate } from '../../src/generator';
 
 /**
  * Compiles a schema to a Zod schema in memory. Generated code is stripped of
@@ -16,7 +16,8 @@ import { generate } from '../../src/generator';
  */
 export async function compileToZodSchema(
 	schema: JSONSchema | boolean,
-	externalSchemas?: ExternalSchemas
+	externalSchemas?: ExternalSchemas,
+	formatMode?: FormatMode
 ): Promise<z.ZodType> {
 	const { root } = await parse(schema as JSONSchema, {
 		cwd: __dirname + '/',
@@ -26,6 +27,7 @@ export async function compileToZodSchema(
 
 	const code = generate(root, {
 		importZod: false,
+		formatMode,
 		// The suite has schemas with `$id` or `title`, so pin the root name and
 		// keep the lookup in `evaluate` stable.
 		customNameResolver: (parsedSchema) =>
