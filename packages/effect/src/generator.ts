@@ -11,6 +11,7 @@ import {
 import { collectStandaloneSchemas, type SchemaEdge } from './collectStandaloneSchemas';
 import { UnresolvedReferenceError, UnsupportedEffectSchemaFeatureError } from './errors';
 import { findCyclicSchemas } from './findCyclicSchemas';
+import { formatCheck } from './formats';
 import { mergeObjectSchemas } from './mergeObjects';
 import { planReferenceSiblings } from './refSiblings';
 import {
@@ -32,9 +33,20 @@ export interface GenerateOptions {
 	schemaName?: NameMapper;
 	/** Rewrites the type exported for each generated schema. Receives the resolved name. */
 	typeName?: NameMapper;
+	/**
+	 * What `format` becomes in the generated code: `annotate` (default) keeps it
+	 * as `.annotate({ format })`, `assert` validates known formats.
+	 */
+	formatMode?: FormatMode;
 	/** Emits a caller-provided Effect Schema expression for a matching schema node. */
 	customSchemaResolver?: CustomSchemaResolver;
 }
+
+/**
+ * What `format` becomes in the generated code. `annotate` keeps it as an
+ * annotation, which is the JSON Schema default and the default here.
+ */
+export type FormatMode = 'annotate' | 'assert';
 
 /**
  * Returns an Effect Schema expression for a schema node, or `undefined` to use
@@ -55,6 +67,8 @@ type Context = {
 	 * without `Meta` read it from here instead of resolving it again.
 	 */
 	dialect: Dialect;
+	/** Whether `format` becomes a validation or only an annotation. */
+	formatMode?: FormatMode;
 	customSchemaResolver?: CustomSchemaResolver;
 };
 
@@ -116,6 +130,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 			return cyclic.has(schema);
 		},
 		dialect: dialectOf(root),
+		formatMode: options.formatMode,
 		customSchemaResolver: options.customSchemaResolver,
 	};
 
@@ -363,7 +378,7 @@ function generateType(schema: ParsedJSONSchemaObject, context: Context): string 
 
 	switch (schema.type) {
 		case 'string':
-			return generateString(schema);
+			return generateString(schema, context);
 		case 'number':
 			return generateNumber(schema, false);
 		case 'integer':
@@ -412,7 +427,7 @@ function schemaWithType(
 	};
 }
 
-function generateString(schema: ParsedJSONSchemaObject): string {
+function generateString(schema: ParsedJSONSchemaObject, context: Context): string {
 	const checks: string[] = [];
 
 	if (typeof schema.minLength === 'number') {
@@ -423,6 +438,15 @@ function generateString(schema: ParsedJSONSchemaObject): string {
 	}
 	if (typeof schema.pattern === 'string') {
 		checks.push(`Schema.isPattern(${patternExpression(schema.pattern)})`);
+	}
+
+	const format =
+		(context.formatMode ?? 'annotate') === 'assert' && typeof schema.format === 'string'
+			? formatCheck(schema.format)
+			: undefined;
+
+	if (format !== undefined) {
+		checks.push(format);
 	}
 
 	return checks.length > 0 ? `Schema.String.check(${checks.join(', ')})` : 'Schema.String';
@@ -827,7 +851,7 @@ function generateUntyped(schema: ParsedJSONSchemaObject, context: Context): stri
 	const members = [
 		'Schema.Null',
 		'Schema.Boolean',
-		constrained.includes('string') ? generateString(schema) : 'Schema.String',
+		constrained.includes('string') ? generateString(schema, context) : 'Schema.String',
 		constrained.includes('number') ? generateNumber(schema, false) : 'Schema.Finite',
 		constrained.includes('object') ? generateObject(schema, context) : 'Schema.JsonObject',
 		constrained.includes('array') ? generateArray(schema, context) : 'Schema.Array(Schema.Json)',

@@ -47,6 +47,11 @@ Options:
   `Schema.optionalKey` for a non-required property is still added. Inside a
   recursive schema the value type types the node as `unknown`, because the
   generator cannot know your expression's type.
+- `formatMode` — what `format` becomes in the generated code. `'annotate'`
+  (default) keeps it as `.annotate({ format })`, which is what JSON Schema asks
+  for. `'assert'` adds a check for the formats the generator knows (email,
+  uuid, url, ipv4/ipv6, date, date-time, duration, …); unknown formats stay
+  annotations in both modes.
 - `format(code)` — optional synchronous or asynchronous formatter (for example
   Prettier) applied to the generated code before the banner is prepended.
 - `importEffect` — emit `import { Schema } from 'effect';`; on by default.
@@ -61,7 +66,8 @@ cat schema.yaml | utilize-effect > schema.generated.ts
 
 Input can be a file, a directory or a glob; JSON and YAML are supported. Output
 defaults to stdout. Every generated file starts with a "do not edit" banner
-(`--no-banner` omits it).
+(`--no-banner` omits it). Pass `--format-mode assert` to validate known formats
+instead of annotating them.
 
 ## Output
 
@@ -149,9 +155,9 @@ pnpm test:suite    # official JSON Schema Test Suite (draft-07)
 
 The generator is checked against the official
 [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
-Today it passes **214 of 269 draft-07 cases (818 of 939 assertions)**. Cases
-tagged `format-assertion` are skipped because `format` is kept as an annotation;
-cases that need external schemas are not wired up yet.
+Today it passes **214 of 269 draft-07 cases (818 of 939 assertions)**. The
+suite runs the default `formatMode`, so the 19 cases tagged `format-assertion`
+are skipped; cases that need external schemas are not wired up yet.
 
 Known gaps live in `test/suite/knownFailures.ts` and
 `test/suite/knownFailureInstances.ts`. Refresh the baseline after a fix or a
@@ -169,7 +175,7 @@ The script reads the built `dist/`, so build the package first.
 Supported keywords:
 
 - `type` (including unions of types), `const`, `enum` (primitives only for `const`/`enum`)
-- `string`: `minLength`, `maxLength`, `pattern`, `format` (annotation)
+- `string`: `minLength`, `maxLength`, `pattern`, `format` (annotation by default, checked with `formatMode: 'assert'`)
 - `number`/`integer`: `minimum`, `maximum`, `exclusiveMinimum`,
   `exclusiveMaximum`, `multipleOf`
 - `array`: `items`, `prefixItems`, `additionalItems`, `minItems`, `maxItems`,
