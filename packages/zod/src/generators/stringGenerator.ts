@@ -1,4 +1,5 @@
 import { createGenerator } from './createGenerator';
+import type { FormatMap, FormatMode } from './types';
 
 import { ts } from '../utils';
 
@@ -19,9 +20,7 @@ export const generator = createGenerator(
 		return false;
 	},
 	(schema, context) => {
-		const format =
-			schema.format &&
-			(ownValue(context.formatMap, schema.format) ?? formatExpression(schema.format));
+		const format = schema.format ? resolveFormat(schema.format, context) : undefined;
 		let expression: string;
 
 		if (format) {
@@ -35,6 +34,24 @@ export const generator = createGenerator(
 		return expression;
 	}
 );
+
+/**
+ * Picks the expression for a format. An explicit `formatMap` entry always wins;
+ * otherwise `assert` uses the built-in mapping and `annotate` leaves the
+ * expression as `z.string()` so `format` stays metadata.
+ */
+function resolveFormat(
+	format: string,
+	{ formatMap, formatMode }: { formatMap?: FormatMap; formatMode?: FormatMode }
+) {
+	const mapped = ownValue(formatMap, format);
+
+	if (mapped) {
+		return mapped;
+	}
+
+	return (formatMode ?? 'annotate') === 'assert' ? formatExpression(format) : undefined;
+}
 
 function formatExpression(format: string) {
 	const method = ownValue(formatToZodMethod, format);

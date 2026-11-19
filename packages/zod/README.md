@@ -46,6 +46,10 @@ pnpm add zod
   standalone schema.
 - `readOnlyKeyword` — map `readOnly: true` to `.readonly()`. Off by default,
   because it freezes values and changes the inferred type.
+- `formatMode` — what `format` becomes in the generated code. `'annotate'`
+  (default) keeps it as `.meta({ format })`, which is what JSON Schema asks for.
+  `'assert'` turns known formats into validation (`.email()`, `.uuid()`,
+  `.iso.datetime()`, …); unknown formats stay annotations in both modes.
 - `formatMap` — map `format` names to your own Zod string expressions. Each
   entry overrides the built-in mapping for that format (known formats too);
   formats you do not list keep the built-in mapping. `minLength`, `maxLength`
@@ -193,8 +197,9 @@ cat schema.yaml | utilize-zod > schema.generated.ts
 Input can be a file, a directory or a glob; JSON and YAML are supported. Output
 defaults to stdout. Every generated file starts with a "do not edit" banner
 (`--no-banner` omits it). Pass `--readonly` to map `readOnly: true` to
-`.readonly()`, and `--runtime-import @utilize/zod/runtime` to import the
-`oneOf` helper instead of declaring it in every file.
+`.readonly()`, `--format-mode assert` to validate known formats, and
+`--runtime-import @utilize/zod/runtime` to import the `oneOf` helper instead of
+declaring it in every file.
 
 ## Testing
 
@@ -209,7 +214,9 @@ The suite is pinned to a commit and installed as a dev dependency. Each test
 case is compiled to a Zod schema in memory and every instance from the suite is
 run through `safeParse`.
 
-Today it passes **248 of 271 draft-07 cases (1,347 of 1,605 assertions)**.
+Today it passes **262 of 269 draft-07 cases (925 of 939 assertions)**.
+The 16 cases that need external schemas and the 19 tagged `format-assertion` are
+not run: the default `formatMode` keeps `format` as an annotation.
 
 Cases the generator does not handle yet are listed in
 `test/suite/knownFailures.ts`, together with the exact instances that fail in

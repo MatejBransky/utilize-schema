@@ -9,6 +9,13 @@ import type { Dialect, ParsedJSONSchemaObject } from '@utilize/json-schema';
 export type FormatMap = Record<string, string>;
 
 /**
+ * What `format` becomes in the generated code. `annotate` keeps it as
+ * `.meta({ format })`, which is the JSON Schema default and the default here.
+ * `assert` turns known formats into validation (`.email()`, `.uuid()`, …).
+ */
+export type FormatMode = 'annotate' | 'assert';
+
+/**
  * Returns a Zod expression for a schema node, or `undefined` to use the
  * generator. Called for every object node, `$ref` nodes and generated copies
  * included, before `formatMap`. The expression replaces the whole node, so no
@@ -35,6 +42,8 @@ export type GeneratorContext = {
 	dialect: Dialect;
 	/** Overrides the built-in `format` to Zod mapping per format; unlisted formats keep it. */
 	formatMap?: FormatMap;
+	/** Whether `format` becomes a validation or only metadata. Defaults to `annotate`. */
+	formatMode?: FormatMode;
 	/** Emits a caller-provided expression before the built-in generator runs. */
 	customSchemaResolver?: CustomSchemaResolver;
 };

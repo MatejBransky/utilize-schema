@@ -12,9 +12,14 @@ import { unsupportedUnionCycleError } from './errors';
 import { findCyclicSchemas } from './findCyclicSchemas';
 import { findInlineCopies } from './inlineCopies';
 import { generateSchema } from './generators/generateSchema';
-import type { CustomSchemaResolver, FormatMap, GeneratorContext } from './generators/types';
+import type {
+	CustomSchemaResolver,
+	FormatMap,
+	FormatMode,
+	GeneratorContext,
+} from './generators/types';
 
-export type { CustomSchemaResolver, FormatMap } from './generators/types';
+export type { CustomSchemaResolver, FormatMap, FormatMode } from './generators/types';
 import {
 	allocateName,
 	mapDeclarationNames,
@@ -40,6 +45,11 @@ export interface GenerateOptions {
 	readOnlyKeyword?: boolean;
 	/** Overrides the built-in `format` to Zod mapping per format; unlisted formats keep it. */
 	formatMap?: FormatMap;
+	/**
+	 * What `format` becomes in the generated code: `annotate` (default) keeps it
+	 * as `.meta({ format })`, `assert` validates known formats (`.email()`, …).
+	 */
+	formatMode?: FormatMode;
 	/** Emits a caller-provided Zod expression for a matching schema node. */
 	customSchemaResolver?: CustomSchemaResolver;
 	/**
@@ -58,6 +68,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 			lazyRefs: new Set(),
 			readOnlyKeyword: options.readOnlyKeyword,
 			formatMap: options.formatMap,
+			formatMode: options.formatMode,
 			nameOf: () => {
 				throw new Error('A primitive schema cannot reference another schema.');
 			},
@@ -106,6 +117,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		lazyRefs: broken.lazyRefs,
 		readOnlyKeyword: options.readOnlyKeyword,
 		formatMap: options.formatMap,
+		formatMode: options.formatMode,
 		nameOf: (schema) => namesOf(schema).schema,
 		declarationOf: (schema) => copies.get(schema),
 		dialect: dialectOf(root),

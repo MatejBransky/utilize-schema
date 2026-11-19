@@ -41,6 +41,8 @@ Options:
   -o, --output <path>   output file or directory
   --cwd <path>          directory used to resolve paths
   --readonly            map readOnly: true to .readonly()
+  --format-mode <mode>  annotate (default) keeps format as metadata,
+                        assert validates known formats (.email(), .uuid(), ...)
   --runtime-import <module>
                         import the oneOf helper from this module
                         (e.g. @utilize/zod/runtime) instead of declaring it
@@ -64,6 +66,7 @@ export async function run(
 				output: { type: 'string', short: 'o' },
 				cwd: { type: 'string' },
 				readonly: { type: 'boolean', default: false },
+				'format-mode': { type: 'string', default: 'annotate' },
 				'runtime-import': { type: 'string' },
 				'no-banner': { type: 'boolean', default: false },
 				...dialectCliOptions,
@@ -88,10 +91,16 @@ export async function run(
 	const banner = values['no-banner'] ? false : undefined;
 	const readOnlyKeyword = values.readonly;
 	const runtimeImport = values['runtime-import'];
+	const formatMode = values['format-mode'];
 	const dialectCli = readDialectCliOptions(values);
 
 	if (!dialectCli.ok) {
 		io.stderr.write(`${dialectCli.error}\n`);
+		return 1;
+	}
+
+	if (formatMode !== 'annotate' && formatMode !== 'assert') {
+		io.stderr.write(`Unknown format mode "${formatMode}"; expected "annotate" or "assert".\n`);
 		return 1;
 	}
 
@@ -107,6 +116,7 @@ export async function run(
 				cwd,
 				fileName: 'Root.json',
 				readOnlyKeyword,
+				formatMode,
 				runtimeImport,
 				...dialectOptions,
 			});
@@ -154,6 +164,7 @@ export async function run(
 		for (const [index, file] of files.entries()) {
 			const code = await compileFile(file.path, {
 				readOnlyKeyword,
+				formatMode,
 				runtimeImport,
 				...dialectOptions,
 			});
