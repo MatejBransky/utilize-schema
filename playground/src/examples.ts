@@ -33,6 +33,10 @@ export const examples: Example[] = [
 		title: 'Answer',
 		const: 42,
 	}),
+	single('const-object', 'Const object', 'Basics', {
+		title: 'Point',
+		const: { x: 1, y: 2 },
+	}),
 	single('object', 'Object', 'Basics', {
 		title: 'Person',
 		type: 'object',

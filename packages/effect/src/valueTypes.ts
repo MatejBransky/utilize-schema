@@ -354,6 +354,16 @@ function literalType(value: unknown): string {
 	if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
 		return JSON.stringify(value);
 	}
+	if (Array.isArray(value)) {
+		return `readonly [${value.map((entry) => parenthesize(literalType(entry))).join(', ')}]`;
+	}
+	if (typeof value === 'object') {
+		const members = Object.entries(value as Record<string, unknown>).map(
+			([key, entry]) => `${propertyKey(key)}: ${literalType(entry)}`
+		);
+
+		return `{ ${members.join('; ')} }`;
+	}
 
 	return 'never';
 }

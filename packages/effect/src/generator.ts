@@ -117,7 +117,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		dialect: dialectOf(root),
 		customSchemaResolver: options.customSchemaResolver,
 		aliasFor(schema) {
-			return cyclic.has(schema) ? aliasOf(schema) : undefined;
+			return cyclic.has(schema) || hasStructuredLiteral(schema) ? aliasOf(schema) : undefined;
 		},
 		typeNameFor(schema) {
 			return namesOf(schema)!.type;
@@ -1387,10 +1387,7 @@ function literal(value: unknown): string {
 		return `Schema.Literal(${JSON.stringify(value)})`;
 	}
 
-	throw new UnsupportedEffectSchemaFeatureError(
-		'const',
-		'only primitive values are supported in const and enum'
-	);
+	return structuredLiteral(value);
 }
 
 function literals(values: unknown[]): string {
@@ -1401,7 +1398,13 @@ function literals(values: unknown[]): string {
 		return literal(values[0]);
 	}
 
-	return `Schema.Literals([${values.map((value) => literalValue(value)).join(', ')}])`;
+	if (values.every(isPrimitiveLiteral)) {
+		return `Schema.Literals([${values.map((value) => literalValue(value)).join(', ')}])`;
+	}
+
+	const members = [...new Set(values.map(literal))];
+
+	return members.length === 1 ? members[0]! : `Schema.Union([${members.join(', ')}])`;
 }
 
 function literalValue(value: unknown): string {
@@ -1416,6 +1419,41 @@ function literalValue(value: unknown): string {
 		'enum',
 		'only primitive values are supported in const and enum'
 	);
+}
+
+/** JSON Schema compares `const`/`enum` values structurally, ignoring key order. */
+function structuredLiteral(value: unknown): string {
+	const expected = canonicalJson(value);
+
+	return `Schema.Json.check(Schema.makeFilter((value) => JSON.stringify(value, (_key, entry) => entry !== null && typeof entry === 'object' && !Array.isArray(entry) ? Object.fromEntries(Object.entries(entry).sort(([left], [right]) => left.localeCompare(right))) : entry) === ${JSON.stringify(expected)}))`;
+}
+
+function canonicalJson(value: unknown): string {
+	if (Array.isArray(value)) {
+		return `[${value.map(canonicalJson).join(',')}]`;
+	}
+	if (value !== null && typeof value === 'object') {
+		const entries = Object.entries(value as Record<string, unknown>).sort(([left], [right]) =>
+			left.localeCompare(right)
+		);
+
+		return `{${entries.map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`).join(',')}}`;
+	}
+
+	return JSON.stringify(value);
+}
+
+function isPrimitiveLiteral(value: unknown): boolean {
+	return value === null || typeof value !== 'object';
+}
+
+/** A `const` or `enum` value that needs a value type, because Effect has no literal form for it. */
+function hasStructuredLiteral(schema: ParsedJSONSchemaObject): boolean {
+	if (Object.hasOwn(schema, 'const')) {
+		return !isPrimitiveLiteral(schema.const);
+	}
+
+	return Array.isArray(schema.enum) && schema.enum.some((value) => !isPrimitiveLiteral(value));
 }
 
 function assertSupportedKeywords(schema: ParsedJSONSchemaObject, dialect: Dialect): void {

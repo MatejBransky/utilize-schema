@@ -252,6 +252,28 @@ describe('composition', () => {
 		expect(decode(module.Enum!, 'b')).toBeUndefined();
 	});
 
+	test('compares structured const values deeply', async () => {
+		const object = await compileToSchema({ const: { foo: 'bar', baz: 'bax' } });
+		const array = await compileToSchema({ const: [{ foo: 'bar' }] });
+
+		expect(decode(object, { baz: 'bax', foo: 'bar' })).toEqual({ foo: 'bar', baz: 'bax' });
+		expect(decode(object, { foo: 'bar' })).toBeUndefined();
+		expect(decode(array, [{ foo: 'bar' }])).toEqual([{ foo: 'bar' }]);
+		expect(decode(array, [2])).toBeUndefined();
+	});
+
+	test('keeps JSON types distinct in const and enum', async () => {
+		const falseArray = await compileToSchema({ const: [false] });
+		const mixed = await compileToSchema({ enum: [6, 'foo', [], true, { foo: 12 }] });
+
+		expect(decode(falseArray, [false])).toEqual([false]);
+		expect(decode(falseArray, [0])).toBeUndefined();
+		expect(decode(mixed, { foo: 12 })).toEqual({ foo: 12 });
+		expect(decode(mixed, { foo: false })).toBeUndefined();
+		expect(decode(mixed, [])).toEqual([]);
+		expect(decode(mixed, null)).toBeUndefined();
+	});
+
 	test('merges disjoint object subschemas from allOf', async () => {
 		const Root = await compileToSchema({
 			allOf: [
