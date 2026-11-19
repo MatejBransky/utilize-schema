@@ -50,6 +50,12 @@ Options:
   `Schema.optionalKey` for a non-required property is still added. Inside a
   recursive schema the value type types the node as `unknown`, because the
   generator cannot know your expression's type.
+- `formatMode` — what `format` becomes in the generated code. `'assert'`
+  (default) adds a check for the formats the generator knows (email, uuid, url,
+  ipv4/ipv6, date, date-time, duration, …); `'annotate'` keeps `format` as
+  `.annotate({ format })`. Unknown formats stay annotations in both modes. Each
+  format becomes one module-level constant (`const formatEmail = …`) reused by
+  every property that uses it.
 - `format(code)` — optional synchronous or asynchronous formatter (for example
   Prettier) applied to the generated code before the banner is prepended.
 - `importEffect` — emit `import { Schema } from 'effect';`; on by default.
@@ -152,9 +158,10 @@ pnpm test:suite    # official JSON Schema Test Suite (draft-07)
 
 The generator is checked against the official
 [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
-Today it passes **226 of 285 draft-07 cases (843 of 972 assertions)**. Cases
-tagged `format-assertion` are skipped because `format` is kept as an annotation;
-cases that need external schemas are served from `externalSchemas`.
+Today it passes **229 of 304 draft-07 cases (1,274 of 1,655 assertions)**. Format
+cases run in the mode they are tagged for, so both the annotation and the
+assertion cases are measured; cases that need external schemas are served from
+`externalSchemas`.
 
 Known gaps live in `test/suite/knownFailures.ts` and
 `test/suite/knownFailureInstances.ts`. Refresh the baseline after a fix or a
@@ -172,7 +179,7 @@ The script reads the built `dist/`, so build the package first.
 Supported keywords:
 
 - `type` (including unions of types), `const`, `enum` (primitives only for `const`/`enum`)
-- `string`: `minLength`, `maxLength`, `pattern`, `format` (annotation)
+- `string`: `minLength`, `maxLength`, `pattern`, `format` (checked by default, annotation with `formatMode: 'annotate'`)
 - `number`/`integer`: `minimum`, `maximum`, `exclusiveMinimum`,
   `exclusiveMaximum`, `multipleOf`
 - `array`: `items`, `prefixItems`, `additionalItems`, `minItems`, `maxItems`,

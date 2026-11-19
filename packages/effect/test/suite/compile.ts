@@ -3,7 +3,7 @@ import { Schema } from 'effect';
 
 import { stripTypeScriptTypes } from 'node:module';
 
-import { generate } from '../../src/generator';
+import { type FormatMode, generate } from '../../src/generator';
 
 type GeneratedSchema = Parameters<typeof Schema.decodeUnknownSync>[0];
 
@@ -14,7 +14,8 @@ type GeneratedSchema = Parameters<typeof Schema.decodeUnknownSync>[0];
  */
 export async function compileToSchema(
 	schema: JSONSchema | boolean,
-	externalSchemas?: ExternalSchemas
+	externalSchemas?: ExternalSchemas,
+	formatMode?: FormatMode
 ): Promise<GeneratedSchema> {
 	const { root } = await parse(schema as JSONSchema, {
 		cwd: `${import.meta.dirname}/`,
@@ -24,6 +25,7 @@ export async function compileToSchema(
 
 	const code = generate(root, {
 		importEffect: false,
+		formatMode,
 		// The suite has schemas with `$id` or `title`, so pin the root name.
 		customNameResolver: (parsedSchema) =>
 			parsedSchema[Meta]?.parent === null && parsedSchema[Meta]?.fileName === 'Root.json'

@@ -11,7 +11,7 @@ import {
 } from '@utilize/json-schema';
 import { load as loadYaml } from 'js-yaml';
 
-import { generate, type GenerateOptions } from './generator';
+import { type FormatMode, generate, type GenerateOptions } from './generator';
 
 export interface CompileOptions
 	extends
@@ -28,6 +28,11 @@ export interface CompileOptions
 	cwd?: string;
 	/** Emit `import { Schema } from 'effect';` at the top of the generated code. */
 	importEffect?: boolean;
+	/**
+	 * What `format` becomes in the generated code: `assert` (default) validates
+	 * known formats, `annotate` keeps `format` as `.annotate({ format })`.
+	 */
+	formatMode?: FormatMode;
 	/** Runs a formatter (for example Prettier) over the generated code. */
 	format?: CodeFormatter | false;
 	/** Header prepended to the generated file. Pass `false` to omit it. */
@@ -46,6 +51,7 @@ export interface CompileSchemaOptions
 	cwd: string;
 	fileName: string;
 	importEffect?: boolean;
+	formatMode?: FormatMode;
 	format?: CodeFormatter | false;
 	/** Documents served for absolute `$ref` URIs, keyed by retrieval URI. */
 	externalSchemas?: ExternalSchemas;
@@ -76,6 +82,7 @@ export async function compile(options: CompileOptions): Promise<void> {
 		customNameResolver: options.customNameResolver,
 		schemaName: options.schemaName,
 		typeName: options.typeName,
+		formatMode: options.formatMode,
 		customSchemaResolver: options.customSchemaResolver,
 		format: options.format,
 		externalSchemas: options.externalSchemas,
@@ -110,6 +117,7 @@ export async function compileSchema(schema: JSONSchema, options: CompileSchemaOp
 		customNameResolver: options.customNameResolver,
 		schemaName: options.schemaName,
 		typeName: options.typeName,
+		formatMode: options.formatMode,
 		customSchemaResolver: options.customSchemaResolver,
 	});
 

@@ -12,7 +12,7 @@ import { load as loadYaml } from 'js-yaml';
 import path from 'path';
 
 import { generate, type GenerateOptions } from './generator';
-import type { CustomSchemaResolver, FormatMap } from './generators/types';
+import type { CustomSchemaResolver, FormatMap, FormatMode } from './generators/types';
 
 export interface CompileOptions
 	extends
@@ -23,8 +23,14 @@ export interface CompileOptions
 	cwd?: string;
 	/** Map `readOnly: true` to `.readonly()`; off by default because it changes the value type. */
 	readOnlyKeyword?: boolean;
-	/** Overrides the built-in `format` to Zod mapping per format; unlisted formats keep it. */
+	/** Maps a `format` to a Zod expression; it applies in both modes, other formats follow `formatMode`. */
 	formatMap?: FormatMap;
+	/**
+	 * What `format` becomes in the generated code: `assert` (default) validates
+	 * known formats (`.email()`, …), `annotate` keeps `format` as
+	 * `.meta({ format })`.
+	 */
+	formatMode?: FormatMode;
 	/** Emits a caller-provided Zod expression for a matching schema node. */
 	customSchemaResolver?: CustomSchemaResolver;
 	/** Runs a formatter (for example Prettier) over the generated code. */
@@ -43,6 +49,7 @@ export interface CompileSchemaOptions
 	fileName: string;
 	readOnlyKeyword?: boolean;
 	formatMap?: FormatMap;
+	formatMode?: FormatMode;
 	customSchemaResolver?: CustomSchemaResolver;
 	format?: CodeFormatter | false;
 	/** Documents served for absolute `$ref` URIs, keyed by retrieval URI. */
@@ -73,6 +80,7 @@ export async function compile(userOptions: CompileOptions) {
 		typeName: userOptions.typeName,
 		readOnlyKeyword: userOptions.readOnlyKeyword,
 		formatMap: userOptions.formatMap,
+		formatMode: userOptions.formatMode,
 		customSchemaResolver: userOptions.customSchemaResolver,
 		runtimeImport: userOptions.runtimeImport,
 		format: userOptions.format,
@@ -109,6 +117,7 @@ export async function compileSchema(schema: JSONSchema, options: CompileSchemaOp
 		typeName: options.typeName,
 		readOnlyKeyword: options.readOnlyKeyword,
 		formatMap: options.formatMap,
+		formatMode: options.formatMode,
 		customSchemaResolver: options.customSchemaResolver,
 		runtimeImport: options.runtimeImport,
 	});

@@ -12,7 +12,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { generate, type GenerateOptions } from '../src/generator';
-import type { CustomSchemaResolver, FormatMap } from '../src/generators/types';
+import type { CustomSchemaResolver, FormatMap, FormatMode } from '../src/generators/types';
 
 /** Generator options a test can override; the rest keep their test defaults. */
 type TestGenerateOptions = Pick<GenerateOptions, 'schemaName' | 'typeName' | 'runtimeImport'>;
@@ -59,6 +59,7 @@ export interface CompileOptions extends TestGenerateOptions {
 	fileName?: string;
 	readOnlyKeyword?: boolean;
 	formatMap?: FormatMap;
+	formatMode?: FormatMode;
 	customSchemaResolver?: CustomSchemaResolver;
 }
 
@@ -78,6 +79,7 @@ export async function compile(schema: JSONSchema, options?: CompileOptions & Dia
 		schemaName: options?.schemaName,
 		typeName: options?.typeName,
 		formatMap: options?.formatMap,
+		formatMode: options?.formatMode,
 		customSchemaResolver: options?.customSchemaResolver,
 		runtimeImport: options?.runtimeImport,
 	});

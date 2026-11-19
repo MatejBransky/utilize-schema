@@ -164,10 +164,10 @@ pnpm test:suite # official JSON Schema Test Suite
 
 Current baseline on suite commit `e2a68a1`:
 
-- **191 of 304 cases** pass in both directions.
-- **813 of 839** spec-valid instances are accepted.
-- **235 of 814** spec-invalid instances are rejected.
-- **100 cases** differ only because an invalid instance is accepted. TypeScript
+- **191 of 285 cases** pass in both directions.
+- **558 of 584** spec-valid instances are accepted.
+- **235 of 386** spec-invalid instances are rejected.
+- **81 cases** differ only because an invalid instance is accepted. TypeScript
   cannot express `minimum`, `pattern`, `format`, `uniqueItems`, `dependencies`,
   `if`/`then`/`else`, and similar value constraints, so these are inherent to
   the target.
@@ -201,13 +201,13 @@ At its own pinned revision (`5caacfc`, suite `3c25e5f`) json-schema-to-typescrip
 records 141 of 257 draft-07 groups with no valid instance rejected and no invalid
 one accepted, 24 crashes and 2 invalid TypeScript files. Its instance totals are
 490 of 516 valid accepted and 198 of 342 invalid rejected. The suite revisions
-and case selections differ (257 groups there, 304 runnable cases here; this
+and case selections differ (257 groups there, 285 runnable cases here; this
 runner serves `externalSchemas` from memory), so the numbers describe two
 different records rather than a score. On the same group metric the TypeScript
-generator is ahead (61.2% vs 54.9%), accepts more valid instances (96.4% vs
+generator is ahead (67.0% vs 54.9%), accepts more valid instances (95.5% vs
 95.0%), emits no invalid TypeScript and crashes on 2 cases the shared parser or
 `$ref` resolver cannot resolve (24 there). Instance-level invalid rejection is
-not comparable across the two revisions: this runner rejects 28.8% of 813
+not comparable across the two revisions: this runner rejects 60.9% of 386
 invalid instances, json-schema-to-typescript 57.9% of its 342, largely because
 the newer suite revision adds many more `format` cases that a type cannot
 reject.
