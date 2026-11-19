@@ -208,6 +208,20 @@ export const examples: Example[] = [
 		additionalProperties: { type: 'string' },
 		propertyNames: { pattern: '^[a-z]+$' },
 	}),
+	single('min-contains', 'minContains and maxContains', 'Advanced', {
+		$schema: 'https://json-schema.org/draft/2020-12/schema',
+		title: 'Tags',
+		type: 'array',
+		items: { type: 'string' },
+		contains: { const: 'featured' },
+		minContains: 2,
+		maxContains: 3,
+	}),
+	single('unicode-pattern', 'Unicode pattern', 'Advanced', {
+		title: 'Word',
+		type: 'string',
+		pattern: '^\\p{Letter}+$',
+	}),
 	single('not', 'Not', 'Advanced', {
 		title: 'Slug',
 		type: 'string',

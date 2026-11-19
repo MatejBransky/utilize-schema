@@ -141,7 +141,7 @@ function patternRefinement(
 	const checks = patterns
 		.map(
 			([pattern, subschema]) => ts`{
-          if (${new RegExp(pattern)}.test(key)) {
+          if (${new RegExp(pattern, 'u')}.test(key)) {
             matched = true;
             const result = ${generateSchema(subschema, context)}.safeParse(entry);
 

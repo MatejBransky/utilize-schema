@@ -25,17 +25,6 @@ export const knownFailureInstances: KnownFailureInstances = {
 	'const.json :: const with [true] does not match [1]': 'compile',
 	'const.json :: const with {"a": false} does not match {"a": 0}': 'compile',
 	'const.json :: const with {"a": true} does not match {"a": 1}': 'compile',
-	'contains.json :: contains keyword validation': [
-		'array without items matching schema is invalid',
-		'empty array is invalid',
-	],
-	'contains.json :: contains keyword with const keyword': ['array without item 5 is invalid'],
-	'contains.json :: contains keyword with boolean schema true': ['empty array is invalid'],
-	'contains.json :: contains keyword with boolean schema false': [
-		'any non-empty array is invalid',
-		'empty array is invalid',
-	],
-	'contains.json :: contains with false if subschema': ['empty array is invalid'],
 	'dependentRequired.json :: single dependency (dependencies)': ['missing dependency'],
 	'dependentRequired.json :: multiple dependents required (dependencies)': [
 		'missing dependency',

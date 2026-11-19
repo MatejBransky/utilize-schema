@@ -286,7 +286,7 @@ function normalizeNode(
 	// These keywords are valid in the dialect, but no generator supports them
 	// yet. `keywordPolicy` only covers keywords from other dialects, so this
 	// always fails instead of producing code that is looser than the schema.
-	for (const keyword of ['$recursiveRef', '$dynamicRef', 'minContains', 'maxContains']) {
+	for (const keyword of ['$recursiveRef', '$dynamicRef']) {
 		if (node[keyword] !== undefined) {
 			throw new UnsupportedSchemaFeatureError(keyword);
 		}

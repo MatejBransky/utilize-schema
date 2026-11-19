@@ -58,9 +58,6 @@ type Context = {
 	customSchemaResolver?: CustomSchemaResolver;
 };
 
-/** Keywords that have no Effect Schema equivalent and are rejected instead of ignored. */
-const UNSUPPORTED_KEYWORDS = ['minContains', 'maxContains'] as const;
-
 /** Names the generated code uses besides the declarations. */
 const RESERVED_NAMES = ['Schema'];
 
@@ -233,8 +230,6 @@ function generateSchema(schema: ParsedJSONSchema, context: Context): string {
 
 	const dialect = dialectOf(schema, context.dialect);
 	const nodeContext = dialect === context.dialect ? context : { ...context, dialect };
-
-	assertSupportedKeywords(schema, dialect);
 
 	const filters = filterChecks(schema, nodeContext);
 	const expression =
@@ -553,10 +548,23 @@ function arrayChecks(schema: ParsedJSONSchemaObject, context: Context): string[]
 	}
 	if (schema.contains !== undefined) {
 		const contains = generateSchema(schema.contains, context);
+		const min =
+			typeof schema.minContains === 'number' && isKeywordApplicable(dialect, 'minContains')
+				? schema.minContains
+				: 1;
+		const max =
+			typeof schema.maxContains === 'number' && isKeywordApplicable(dialect, 'maxContains')
+				? schema.maxContains
+				: undefined;
 
-		checks.push(
-			`Schema.makeFilter((value) => value.some((item) => Schema.is(${contains})(item)) ? undefined : 'Array does not contain a matching item')`
-		);
+		if (min > 0 || max !== undefined) {
+			const bounds =
+				max === undefined ? `matches < ${min}` : `matches < ${min} || matches > ${max}`;
+
+			checks.push(
+				`Schema.makeFilter((value) => { const matches = value.filter((item) => Schema.is(${contains})(item)).length; return ${bounds} ? 'Array does not contain the required number of matching items' : undefined; })`
+			);
+		}
 	}
 
 	return checks;
@@ -872,6 +880,7 @@ function appliesTo(schema: ParsedJSONSchemaObject, type: JSONValueType, dialect:
 				'minItems',
 				'maxItems',
 				'uniqueItems',
+				'contains',
 			]);
 	}
 }
@@ -943,16 +952,6 @@ function literalValue(value: unknown): string {
 		'enum',
 		'only primitive values are supported in const and enum'
 	);
-}
-
-function assertSupportedKeywords(schema: ParsedJSONSchemaObject, dialect: Dialect): void {
-	const record = schema as unknown as Record<string, unknown>;
-
-	for (const keyword of UNSUPPORTED_KEYWORDS) {
-		if (record[keyword] !== undefined && isKeywordApplicable(dialect, keyword)) {
-			throw new UnsupportedEffectSchemaFeatureError(keyword);
-		}
-	}
 }
 
 function applyChecks(expression: string, checks: string[]): string {

@@ -149,7 +149,7 @@ pnpm test:suite    # official JSON Schema Test Suite (draft-07)
 
 The generator is checked against the official
 [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
-Today it passes **214 of 269 draft-07 cases (818 of 939 assertions)**. Cases
+Today it passes **219 of 269 draft-07 cases (825 of 939 assertions)**. Cases
 tagged `format-assertion` are skipped because `format` is kept as an annotation;
 cases that need external schemas are not wired up yet.
 
@@ -188,12 +188,12 @@ Effect has no schema constructor for negation, conditionals or "contains", so
 `dependentRequired` and `dependentSchemas` are normalized to `dependencies`
 before generation.
 
+`minContains` and `maxContains` extend the `contains` filter with the number of
+matching items.
+
 `unevaluatedProperties` and `unevaluatedItems` are normalized to
 `additionalProperties` and the items rest before generation, as a best effort
 for schemas that do not rely on properties evaluated by applicators.
-
-Unsupported keywords throw `UnsupportedEffectSchemaFeatureError`:
-`minContains`, `maxContains`.
 
 `$ref` siblings follow the dialect: draft-07 and older ignore them, 2019-09 and
 newer merge disjoint object siblings into one struct. Other siblings (a

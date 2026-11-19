@@ -16,7 +16,7 @@ Generate robust, type-safe Zod or Effect Schema codecs — or plain TypeScript t
   with a callback, e.g. to suffix schemas with `Schema`.
 - **TypeScript-first:** Generates runtime schemas and TypeScript types, including recursive ones. `@utilize/typescript` emits the types alone, with no runtime dependency.
 - **Draft support:** Draft-04/06/07, with normalization for 2019-09 and 2020-12.
-- **Conformance:** all generators are tested against the official [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite) for draft-07 — Zod passes 248 of 271 cases (1,347 of 1,605 assertions), Effect Schema 214 of 269 cases (818 of 939 assertions), and TypeScript 175 of 288 cases at the type level; remaining gaps are tracked per keyword.
+- **Conformance:** all generators are tested against the official [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite) for draft-07 — Zod passes 248 of 271 cases (1,347 of 1,605 assertions), Effect Schema 219 of 269 cases (825 of 939 assertions), and TypeScript 175 of 288 cases at the type level; remaining gaps are tracked per keyword.
 - **Dialect-aware:** `$schema` is resolved per schema resource — the document root and every subschema with its own `$id`/`$schema` — not once per file. Supported dialects are draft-04, draft-06, draft-07, 2019-09 and 2020-12; nodes carry their dialect in metadata, and keywords outside it are reported as warnings by default and not applied to generated code. See [docs/dialects.md](./docs/dialects.md).
 
 ---
@@ -128,7 +128,7 @@ CI. All three generators are also checked against the official JSON Schema Test
 Suite for draft-07:
 
 - **Zod:** 248 of 271 cases (1,347 of 1,605 assertions) pass.
-- **Effect Schema:** 214 of 269 cases (818 of 939 assertions) pass. Cases tagged
+- **Effect Schema:** 219 of 269 cases (825 of 939 assertions) pass. Cases tagged
   `format-assertion` are skipped because `format` is kept as an annotation.
 - **TypeScript:** 175 of 288 cases pass at the type level.
 
@@ -170,7 +170,7 @@ for the full numbers and methodology.
 | `additionalItems`                            | ✅  | ✅            | Supported                                                                    |
 | `uniqueItems`                                | ✅  | ✅            | Key-order-insensitive comparison                                             |
 | `contains`                                   | ✅  | ✅            | Supported                                                                    |
-| `minContains` / `maxContains`                | ❌  | ❌            | Rejected instead of silently dropped                                         |
+| `minContains` / `maxContains`                | ✅  | ✅            | Counted with `contains` in 2019-09 and newer                                 |
 | `dependencies`                               | ✅  | ✅            | Also covers `dependentRequired` and `dependentSchemas`                       |
 | `allOf`                                      | ✅  | ✅            | Zod intersects any schemas; Effect merges disjoint object subschemas         |
 | `anyOf`                                      | ✅  | ✅            | Supported                                                                    |
@@ -200,8 +200,8 @@ are not silently dropped.
 and `unevaluatedItems` map to `additionalProperties` / the items rest when those
 are not set, which covers schemas that do not rely on properties evaluated by
 applicators. Unknown `$schema` values fall back to draft-07. 2019-09/2020-12
-keywords without a generator (`$recursiveRef`, `$dynamicRef`, `minContains`,
-`maxContains`) fail with `UnsupportedSchemaFeatureError`.
+keywords without a generator (`$recursiveRef`, `$dynamicRef`) fail with
+`UnsupportedSchemaFeatureError`.
 
 ---
 

@@ -33,16 +33,6 @@ export const knownFailures: Record<string, string> = {
 		'keyword is not covered by the Effect Schema generator yet',
 	'const.json :: const with {"a": true} does not match {"a": 1}':
 		'keyword is not covered by the Effect Schema generator yet',
-	'contains.json :: contains keyword validation':
-		'keyword is not covered by the Effect Schema generator yet',
-	'contains.json :: contains keyword with const keyword':
-		'keyword is not covered by the Effect Schema generator yet',
-	'contains.json :: contains keyword with boolean schema true':
-		'keyword is not covered by the Effect Schema generator yet',
-	'contains.json :: contains keyword with boolean schema false':
-		'keyword is not covered by the Effect Schema generator yet',
-	'contains.json :: contains with false if subschema':
-		'keyword is not covered by the Effect Schema generator yet',
 	'dependentRequired.json :: single dependency (dependencies)':
 		'keyword is not covered by the Effect Schema generator yet',
 	'dependentRequired.json :: multiple dependents required (dependencies)':

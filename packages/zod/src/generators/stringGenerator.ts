@@ -69,7 +69,7 @@ function applyStringConstraints({ expression, schema }: StringConstraints) {
 	}
 
 	if (schema.pattern) {
-		expression += `.regex(${new RegExp(schema.pattern)})`;
+		expression += `.regex(${new RegExp(schema.pattern, 'u')})`;
 	}
 
 	return expression;
