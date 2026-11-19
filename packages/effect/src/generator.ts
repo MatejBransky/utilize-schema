@@ -268,10 +268,45 @@ function generateExpression(schema: ParsedJSONSchemaObject, context: Context): s
 			: undefined;
 
 	if (alternatives) {
-		return generateUnion(alternatives, schema.oneOf !== undefined, context);
+		const union = generateUnion(alternatives, schema.oneOf !== undefined, context);
+		const base = alternativesBase(schema);
+
+		if (base === undefined) {
+			return union;
+		}
+
+		return applyChecks(union, [
+			`Schema.makeFilter((value) => Schema.is(${generateSchema(base, context)})(value) ? undefined : 'Value does not match the keywords next to "${schema.oneOf === undefined ? 'anyOf' : 'oneOf'}"')`,
+		]);
 	}
 
 	return generateType(schema, context);
+}
+
+/**
+ * The keywords declared next to `anyOf`/`oneOf`. They constrain the value on
+ * their own, so the union alone would ignore them. Annotations, refinements and
+ * the combinator stay out: `generateSchema` and `filterChecks` handle those.
+ */
+function alternativesBase(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject | undefined {
+	const base: Record<string, unknown> = { ...schema };
+
+	delete base.anyOf;
+	delete base.oneOf;
+	delete base.not;
+	delete base.if;
+	delete base.then;
+	delete base.else;
+
+	for (const keyword of ANNOTATION_KEYWORDS) {
+		delete base[keyword];
+	}
+
+	delete base.format;
+
+	return Object.values(base).some((value) => value !== undefined)
+		? (base as unknown as ParsedJSONSchemaObject)
+		: undefined;
 }
 
 /**
@@ -328,7 +363,9 @@ function generateUnion(
 	exclusive: boolean,
 	context: Context
 ): string {
-	const members = [...new Set(alternatives.map((member) => generateSchema(member, context)))];
+	const generated = alternatives.map((member) => generateSchema(member, context));
+	// `oneOf` counts how many branches match, so identical branches must stay.
+	const members = exclusive ? generated : [...new Set(generated)];
 
 	if (members.length === 0) {
 		return 'Schema.Never';
@@ -605,7 +642,11 @@ function generateObject(schema: ParsedJSONSchemaObject, context: Context): strin
 						? generateSchema(additional, context)
 						: 'Schema.Json';
 
-		return `${JSON.stringify(key)}: ${
+		// A computed key keeps `__proto__` from changing the prototype of the
+		// object literal passed to `Schema.Struct`.
+		const keyExpression = key === '__proto__' ? `[${JSON.stringify(key)}]` : JSON.stringify(key);
+
+		return `${keyExpression}: ${
 			required.has(key) ? expression : `Schema.optionalKey(${expression})`
 		}`;
 	});
@@ -864,6 +905,7 @@ function appliesTo(schema: ParsedJSONSchemaObject, type: JSONValueType, dialect:
 				'minProperties',
 				'maxProperties',
 				'propertyNames',
+				'dependencies',
 			]);
 		case 'array':
 			return anyKeyword([
@@ -873,6 +915,7 @@ function appliesTo(schema: ParsedJSONSchemaObject, type: JSONValueType, dialect:
 				'minItems',
 				'maxItems',
 				'uniqueItems',
+				'contains',
 			]);
 	}
 }

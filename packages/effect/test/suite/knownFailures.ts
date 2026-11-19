@@ -15,28 +15,6 @@ export const knownFailures: Record<string, string> = {
 		'keyword is not covered by the Effect Schema generator yet',
 	'const.json :: const with {"a": true} does not match {"a": 1}':
 		'keyword is not covered by the Effect Schema generator yet',
-	'contains.json :: contains keyword validation':
-		'keyword is not covered by the Effect Schema generator yet',
-	'contains.json :: contains keyword with const keyword':
-		'keyword is not covered by the Effect Schema generator yet',
-	'contains.json :: contains keyword with boolean schema true':
-		'keyword is not covered by the Effect Schema generator yet',
-	'contains.json :: contains keyword with boolean schema false':
-		'keyword is not covered by the Effect Schema generator yet',
-	'contains.json :: contains with false if subschema':
-		'keyword is not covered by the Effect Schema generator yet',
-	'dependentRequired.json :: single dependency (dependencies)':
-		'keyword is not covered by the Effect Schema generator yet',
-	'dependentRequired.json :: multiple dependents required (dependencies)':
-		'keyword is not covered by the Effect Schema generator yet',
-	'dependentRequired.json :: dependencies with escaped characters (dependencies)':
-		'keyword is not covered by the Effect Schema generator yet',
-	'dependentSchemas.json :: single dependency (dependencies)':
-		'keyword is not covered by the Effect Schema generator yet',
-	'dependentSchemas.json :: boolean subschemas (dependencies)':
-		'keyword is not covered by the Effect Schema generator yet',
-	'dependentSchemas.json :: dependents with escaped characters (dependencies)':
-		'keyword is not covered by the Effect Schema generator yet',
 	'enum.json :: heterogeneous enum validation':
 		'keyword is not covered by the Effect Schema generator yet',
 	'enum.json :: enum with [false] does not match [0]':
@@ -48,12 +26,6 @@ export const knownFailures: Record<string, string> = {
 	'enum.json :: enum with [1] does not match [true]':
 		'keyword is not covered by the Effect Schema generator yet',
 	'id-legacy.json :: URN ref with nested pointer ref': 'reference resolution gap',
-	'oneOf.json :: oneOf with boolean schemas, all true':
-		'oneOf semantics differ from the Zod generator',
-	'oneOf.json :: oneOf with boolean schemas, more than one true':
-		'oneOf semantics differ from the Zod generator',
-	'properties.json :: properties whose names are Javascript object property names':
-		'keyword is not covered by the Effect Schema generator yet',
 	'ref-legacy.json :: relative pointer ref to array': 'reference resolution gap',
 	'ref-legacy.json :: naive replacement of $ref with its destination is not correct':
 		'reference resolution gap',

@@ -1,3 +1,5 @@
+import type { JSONSchema } from '@utilize/json-schema';
+
 import { describe, expect, test } from 'vitest';
 
 import { compileModule, compileToSchema, decode } from './test-utils';
@@ -36,6 +38,21 @@ describe('objects', () => {
 
 		expect(decode(Root, { a: 'x', b: 1, c: 2 })).toEqual({ a: 'x', b: 1, c: 2 });
 		expect(decode(Root, { a: 'x', b: 1.5 })).toBeUndefined();
+	});
+
+	test('validates properties whose names exist on Object.prototype', async () => {
+		const Root = await compileToSchema({
+			properties: {
+				['__proto__']: { type: 'number' },
+				toString: { properties: { length: { type: 'string' } } },
+				constructor: { type: 'number' },
+			},
+		} as JSONSchema);
+
+		expect(decode(Root, {})).toEqual({});
+		expect(decode(Root, { ['__proto__']: 12 })).toEqual({ ['__proto__']: 12 });
+		expect(decode(Root, { ['__proto__']: 'text' })).toBeUndefined();
+		expect(decode(Root, { toString: { length: 37 } })).toBeUndefined();
 	});
 
 	test('validates patternProperties and lets unmatched keys use additionalProperties', async () => {
@@ -134,6 +151,17 @@ describe('arrays', () => {
 		expect(decode(Root, [1])).toBeUndefined();
 		expect(decode(Root, [1, 1])).toBeUndefined();
 		expect(decode(Root, [1, 2, 3, 4])).toBeUndefined();
+	});
+
+	test('applies contains to a schema without a type', async () => {
+		const Root = await compileToSchema({ contains: { const: 5 } });
+
+		expect(decode(Root, [1, 5])).toEqual([1, 5]);
+		expect(decode(Root, [1, 2])).toBeUndefined();
+		expect(decode(Root, [])).toBeUndefined();
+		// `contains` only constrains arrays.
+		expect(decode(Root, {})).toEqual({});
+		expect(decode(Root, 5)).toBe(5);
 	});
 });
 
@@ -240,6 +268,34 @@ describe('composition', () => {
 		expect(decode(Root, 'a')).toBeUndefined();
 		expect(decode(Root, 1)).toBe(1);
 		expect(decode(Root, null)).toBeNull();
+	});
+
+	test('applies dependencies to a schema without a type', async () => {
+		const Root = await compileToSchema({ dependencies: { bar: ['foo'] } });
+
+		expect(decode(Root, { foo: 1 })).toEqual({ foo: 1 });
+		expect(decode(Root, { bar: 2 })).toBeUndefined();
+		// `dependencies` only constrains objects.
+		expect(decode(Root, ['bar'])).toEqual(['bar']);
+	});
+
+	test('applies the keywords next to anyOf', async () => {
+		const Root = await compileToSchema({
+			type: 'string',
+			anyOf: [{ maxLength: 2 }, { minLength: 4 }],
+		});
+
+		expect(decode(Root, 'foobar')).toBe('foobar');
+		expect(decode(Root, 'foo')).toBeUndefined();
+		expect(decode(Root, 3)).toBeUndefined();
+	});
+
+	test('counts identical oneOf branches separately', async () => {
+		const duplicate = await compileToSchema({ oneOf: [true, true, false] });
+		const single = await compileToSchema({ oneOf: [true, false] });
+
+		expect(decode(duplicate, 'value')).toBeUndefined();
+		expect(decode(single, 'value')).toBe('value');
 	});
 });
 
