@@ -1,6 +1,7 @@
 import { createGenerator } from './createGenerator';
 import type { FormatMap, FormatMode } from './types';
 
+import { unicodePattern } from '../regex';
 import { ts } from '../utils';
 
 export const generator = createGenerator(
@@ -86,7 +87,7 @@ function applyStringConstraints({ expression, schema }: StringConstraints) {
 	}
 
 	if (schema.pattern) {
-		expression += `.regex(${new RegExp(schema.pattern)})`;
+		expression += `.regex(${unicodePattern(schema.pattern, 'pattern')})`;
 	}
 
 	return expression;

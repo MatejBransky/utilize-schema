@@ -33,6 +33,51 @@ describe('validation keywords', () => {
 		expect(Root.safeParse(['a', 'b']).success).toBe(false);
 	});
 
+	test('keeps the single-match message for a plain contains', async () => {
+		const Root = await compileToZod({ type: 'array', contains: { const: 'x' } });
+		const result = Root.safeParse(['a']);
+
+		expect(result.success).toBe(false);
+		expect(result.error?.issues[0]?.message).toBe(
+			'Array must contain an item matching the "contains" schema.'
+		);
+	});
+
+	test('minContains and maxContains', async () => {
+		const Root = await compileToZod({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'array',
+			items: { type: 'string' },
+			contains: { const: 'x' },
+			minContains: 2,
+			maxContains: 3,
+		});
+
+		expect(Root.safeParse(['x', 'x']).success).toBe(true);
+		expect(Root.safeParse(['a', 'x', 'x']).success).toBe(true);
+		expect(Root.safeParse(['x']).success).toBe(false);
+		expect(Root.safeParse(['x', 'x', 'x', 'x']).success).toBe(false);
+	});
+
+	test('minContains 0 allows no match', async () => {
+		const Root = await compileToZod({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'array',
+			contains: { const: 'x' },
+			minContains: 0,
+		});
+
+		expect(Root.safeParse([]).success).toBe(true);
+		expect(Root.safeParse(['a']).success).toBe(true);
+	});
+
+	test('pattern uses unicode mode', async () => {
+		const Root = await compileToZod({ type: 'string', pattern: '^\\p{Letter}+$' });
+
+		expect(Root.safeParse('π').success).toBe(true);
+		expect(Root.safeParse('123').success).toBe(false);
+	});
+
 	test('propertyNames', async () => {
 		const Root = await compileToZod(propertyNamesSchema);
 

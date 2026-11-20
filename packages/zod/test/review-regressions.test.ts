@@ -72,17 +72,6 @@ describe('review regressions', () => {
 		await expect(compile(schema)).resolves.toContain('export const Root');
 	});
 
-	test('rejects minContains and maxContains instead of ignoring them', async () => {
-		const schema = {
-			$schema: 'https://json-schema.org/draft/2020-12/schema',
-			type: 'array',
-			contains: { type: 'number' },
-			minContains: 2,
-		} as unknown as JSONSchema;
-
-		await expect(compile(schema)).rejects.toThrow(/"minContains" is not supported/);
-	});
-
 	test('combines dependentRequired and dependentSchemas for the same key', async () => {
 		const Root = await compileToZod({
 			$schema: 'https://json-schema.org/draft/2020-12/schema',

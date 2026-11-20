@@ -445,6 +445,34 @@ describe('filters without a schema constructor', () => {
 		expect(decode(Root, [])).toBeUndefined();
 	});
 
+	test('applies minContains and maxContains', async () => {
+		const Root = await compileToSchema({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'array',
+			items: { type: 'string' },
+			contains: { const: 'x' },
+			minContains: 2,
+			maxContains: 3,
+		});
+
+		expect(decode(Root, ['x', 'x'])).toEqual(['x', 'x']);
+		expect(decode(Root, ['a', 'x', 'x'])).toEqual(['a', 'x', 'x']);
+		expect(decode(Root, ['x'])).toBeUndefined();
+		expect(decode(Root, ['x', 'x', 'x', 'x'])).toBeUndefined();
+	});
+
+	test('treats minContains 0 as allowing no match', async () => {
+		const Root = await compileToSchema({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'array',
+			contains: { const: 'x' },
+			minContains: 0,
+		});
+
+		expect(decode(Root, [])).toEqual([]);
+		expect(decode(Root, ['a'])).toEqual(['a']);
+	});
+
 	test('applies array and schema dependencies', async () => {
 		const Root = await compileToSchema({
 			type: 'object',

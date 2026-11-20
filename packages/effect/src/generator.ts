@@ -1,6 +1,7 @@
 import {
 	type Dialect,
 	dialectOf,
+	containsBounds,
 	isKeywordApplicable,
 	isPlainObject,
 	Meta,
@@ -86,9 +87,6 @@ type Context = {
 	jsonLiteralCall(value: unknown): string;
 	customSchemaResolver?: CustomSchemaResolver;
 };
-
-/** Keywords that have no Effect Schema equivalent and are rejected instead of ignored. */
-const UNSUPPORTED_KEYWORDS = ['minContains', 'maxContains'] as const;
 
 /** Names the generated code uses besides the declarations. */
 const RESERVED_NAMES = ['Schema'];
@@ -304,8 +302,6 @@ function generateSchema(schema: ParsedJSONSchema, context: Context): string {
 
 	const dialect = dialectOf(schema, context.dialect);
 	const nodeContext = dialect === context.dialect ? context : { ...context, dialect };
-
-	assertSupportedKeywords(schema, dialect);
 
 	const filters = filterChecks(schema, nodeContext);
 	const expression =
@@ -687,12 +683,24 @@ function arrayChecks(schema: ParsedJSONSchemaObject, context: Context): string[]
 	if (schema.uniqueItems === true) {
 		checks.push('Schema.isUnique()');
 	}
-	if (schema.contains !== undefined) {
+	if (schema.contains !== undefined && isKeywordApplicable(dialect, 'contains')) {
 		const contains = generateSchema(schema.contains, context);
+		const bounds = containsBounds(schema, dialect);
 
-		checks.push(
-			`Schema.makeFilter((value) => value.some((item) => Schema.is(${contains})(item)) ? undefined : 'Array does not contain a matching item')`
-		);
+		if (bounds?.counted === true) {
+			const outOfRange =
+				bounds.max === undefined
+					? `matches < ${bounds.min}`
+					: `matches < ${bounds.min} || matches > ${bounds.max}`;
+
+			checks.push(
+				`Schema.makeFilter((value) => { const matches = value.filter((item) => Schema.is(${contains})(item)).length; return ${outOfRange} ? 'Array does not contain the required number of matching items' : undefined; })`
+			);
+		} else if (bounds !== undefined) {
+			checks.push(
+				`Schema.makeFilter((value) => value.some((item) => Schema.is(${contains})(item)) ? undefined : 'Array does not contain a matching item')`
+			);
+		}
 	}
 
 	return checks;
@@ -1510,16 +1518,6 @@ function hasStructuredLiteral(schema: ParsedJSONSchemaObject): boolean {
 	}
 
 	return Array.isArray(schema.enum) && schema.enum.some((value) => !isPrimitiveLiteral(value));
-}
-
-function assertSupportedKeywords(schema: ParsedJSONSchemaObject, dialect: Dialect): void {
-	const record = schema as unknown as Record<string, unknown>;
-
-	for (const keyword of UNSUPPORTED_KEYWORDS) {
-		if (record[keyword] !== undefined && isKeywordApplicable(dialect, keyword)) {
-			throw new UnsupportedEffectSchemaFeatureError(keyword);
-		}
-	}
 }
 
 function applyChecks(expression: string, checks: string[]): string {

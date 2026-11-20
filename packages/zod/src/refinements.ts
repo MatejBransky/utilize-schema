@@ -1,4 +1,5 @@
 import {
+	containsBounds,
 	isKeywordApplicable,
 	narrowUntypedSchema,
 	type ParsedJSONSchema,
@@ -121,8 +122,29 @@ export function applyRefinements(
 
 	if (schema.contains !== undefined && isKeywordApplicable(context.dialect, 'contains')) {
 		const contains = generate(schema.contains, context);
+		const bounds = containsBounds(schema, context.dialect);
 
-		checks.push(ts`{
+		if (bounds?.counted === true) {
+			const outOfRange =
+				bounds.max === undefined
+					? `matches < ${bounds.min}`
+					: `matches < ${bounds.min} || matches > ${bounds.max}`;
+
+			checks.push(ts`{
+      if (Array.isArray(value)) {
+        const matches = value.filter((item) => ${contains}.safeParse(item).success).length;
+
+        if (${outOfRange}) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Array does not contain the required number of matching items.',
+            path: [],
+          });
+        }
+      }
+    }`);
+		} else if (bounds !== undefined) {
+			checks.push(ts`{
       if (Array.isArray(value) && !value.some((item) => ${contains}.safeParse(item).success)) {
         ctx.addIssue({
           code: 'custom',
@@ -131,6 +153,7 @@ export function applyRefinements(
         });
       }
     }`);
+		}
 	}
 
 	if (schema.uniqueItems === true) {

@@ -22,9 +22,25 @@ describe('string constraints', () => {
 
 	test('pattern', async () => {
 		await expect(compile({ type: 'string', pattern: String.raw`^\d+$` })).toMatchCode(ts`
-      export const Root = z.string().regex(/^\d+$/)
+      export const Root = z.string().regex(/^\d+$/u)
       export type Root = z.infer<typeof Root>;
     `);
+	});
+
+	test('names the keyword when unicode mode rejects a pattern', async () => {
+		const pattern = String.raw`^\-?\d+$`;
+
+		await expect(compile({ type: 'string', pattern })).rejects.toThrow(
+			`"pattern" is not a valid ECMAScript regular expression in unicode mode: ${JSON.stringify(pattern)}.`
+		);
+	});
+
+	test('names patternProperties when unicode mode rejects a pattern', async () => {
+		await expect(
+			compile({ type: 'object', patternProperties: { 'a{': { type: 'string' } } })
+		).rejects.toThrow(
+			'"patternProperties" is not a valid ECMAScript regular expression in unicode mode: "a{".'
+		);
 	});
 
 	const formats = [

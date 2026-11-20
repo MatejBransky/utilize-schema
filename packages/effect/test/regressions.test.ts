@@ -57,27 +57,6 @@ describe('regressions', () => {
 		`);
 	});
 
-	test('rejects minContains and maxContains instead of ignoring them', async () => {
-		await expect(
-			compile({
-				$schema: 'https://json-schema.org/draft/2020-12/schema',
-				type: 'array',
-				items: { type: 'string' },
-				contains: { const: 'x' },
-				minContains: 1,
-			})
-		).rejects.toThrow(/minContains/);
-		await expect(
-			compile({
-				$schema: 'https://json-schema.org/draft/2020-12/schema',
-				type: 'array',
-				items: { type: 'string' },
-				contains: { const: 'x' },
-				maxContains: 2,
-			})
-		).rejects.toThrow(/maxContains/);
-	});
-
 	test('combines dependentRequired and dependentSchemas for the same key', async () => {
 		const Root = await compileToSchema({
 			$schema: 'https://json-schema.org/draft/2020-12/schema',

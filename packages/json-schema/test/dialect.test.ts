@@ -321,10 +321,10 @@ describe('prepareSchema', () => {
 	test('still rejects unsupported keywords of the dialect with keywordPolicy ignore', () => {
 		expect(() =>
 			prepareSchema(
-				{ $schema: twentyTwentyTwelve, type: 'array', contains: {}, minContains: 2 },
+				{ $schema: twentyTwentyTwelve, $dynamicRef: '#node' },
 				{ keywordPolicy: 'ignore' }
 			)
-		).toThrow(/"minContains" is not supported/);
+		).toThrow(/"\$dynamicRef" is not supported/);
 	});
 
 	test('warns about $ref siblings that draft-07 ignores', () => {

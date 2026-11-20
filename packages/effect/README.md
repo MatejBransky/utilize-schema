@@ -158,7 +158,7 @@ pnpm test:suite    # official JSON Schema Test Suite (draft-07)
 
 The generator is checked against the official
 [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
-Today it passes **274 of 304 draft-07 cases (1,361 of 1,655 assertions)**. Format
+Today it passes **286 of 304 draft-07 cases (1,400 of 1,655 assertions)**. Format
 cases run in the mode they are tagged for, so both the annotation and the
 assertion cases are measured; cases that need external schemas are served from
 `externalSchemas`.
@@ -187,7 +187,7 @@ Supported keywords:
 - `object`: `properties`, `patternProperties`, `required`,
   `additionalProperties`, `propertyNames`, `minProperties`, `maxProperties`
 - `allOf` between disjoint object subschemas, `anyOf`, `oneOf`
-- `not`, `if`/`then`/`else`, `contains`, `dependencies` (applied as filters)
+- `not`, `if`/`then`/`else`, `contains` with `minContains`/`maxContains`, `dependencies` (applied as filters)
 - `$ref`, `$defs`, `definitions`
 - `title`, `description`, `default`, `examples`, `$id`, `readOnly`,
   `writeOnly`, `deprecated` as annotations
@@ -202,8 +202,9 @@ before generation.
 `additionalProperties` and the items rest before generation, as a best effort
 for schemas that do not rely on properties evaluated by applicators.
 
-Unsupported keywords throw `UnsupportedEffectSchemaFeatureError`:
-`minContains`, `maxContains`.
+The generator throws `UnsupportedEffectSchemaFeatureError` only for a schema it
+cannot express: a `pattern` that is not valid in Unicode mode, and an `allOf`
+whose members can be neither merged nor checked as filters.
 
 `$ref` siblings follow the dialect: draft-07 and older ignore them, 2019-09 and
 newer merge disjoint object siblings into one struct. Other siblings (a

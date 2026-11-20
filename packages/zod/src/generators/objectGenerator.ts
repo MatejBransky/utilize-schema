@@ -4,6 +4,7 @@ import { createGenerator } from './createGenerator';
 import { generateSchema } from './generateSchema';
 import type { GeneratorContext } from './types';
 
+import { unicodePattern } from '../regex';
 import { isSchemaObject, NEWLINE, ts } from '../utils';
 
 export const generator = createGenerator(
@@ -141,7 +142,7 @@ function patternRefinement(
 	const checks = patterns
 		.map(
 			([pattern, subschema]) => ts`{
-          if (${new RegExp(pattern)}.test(key)) {
+          if (${unicodePattern(pattern, 'patternProperties')}.test(key)) {
             matched = true;
             const result = ${generateSchema(subschema, context)}.safeParse(entry);
 
