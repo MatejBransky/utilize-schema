@@ -178,7 +178,7 @@ The script reads the built `dist/`, so build the package first.
 
 Supported keywords:
 
-- `type` (including unions of types), `const`, `enum` (primitives only for `const`/`enum`)
+- `type` (including unions of types), `const`, `enum` (object and array values are compared as canonical JSON, ignoring key order)
 - `string`: `minLength`, `maxLength`, `pattern`, `format` (checked by default, annotation with `formatMode: 'annotate'`)
 - `number`/`integer`: `minimum`, `maximum`, `exclusiveMinimum`,
   `exclusiveMaximum`, `multipleOf`
