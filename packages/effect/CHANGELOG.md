@@ -1,5 +1,61 @@
 # @utilize/effect
 
+## 0.5.0
+
+### Minor Changes
+
+- 00cd219: Support `minContains` and `maxContains` in the runtime generators. The parser no longer rejects them, and both generators count the items matching `contains`, applying the bounds only in 2019-09 and newer. `minContains: 0` allows an array without a match, and both keywords are ignored without `contains`. A plain `contains` keeps its single-match check and its message.
+
+  Zod also compiles `pattern` and `patternProperties` regular expressions in Unicode mode, so property escapes such as `\p{Letter}` match as the specification expects. A pattern that is not valid in Unicode mode (`\-`, `a{`, ...) now fails at generation time with an error that names the keyword and the pattern, instead of crashing while emitting code.
+
+  Effect now skips `contains` in dialects that do not have it (draft-04), as Zod does, so a schema whose ignored `contains` subschema Effect cannot express no longer fails to generate.
+
+- 91281a2: Merge `allOf` subschemas that constrain one JSON type, and handle boolean, empty and nested members. Bounds (`minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`, `minLength`, `maxLength`, `minItems`, `maxItems`, `uniqueItems`) combine into the strictest one, `true` and empty members are ignored, `false` rejects everything, and nested `allOf` is flattened. Applicators (`anyOf`, `oneOf`) and any other member that cannot be merged are applied as `Schema.makeFilter` checks over each member, so every combination the generator can express is supported. `additionalProperties` declared by one member is not merged with properties declared by another, and a checked reference next to `allOf` is wrapped in a union because Effect cannot add checks to `Schema.suspend`. This fixes 26 draft-07 suite cases.
+- 98ddaf9: Compare `const` and `enum` values structurally instead of rejecting objects and
+  arrays. Effect has no literal form for them, so a structured value is emitted as
+  a `Schema.Json` filter that compares canonical JSON. The helper takes the
+  literal's type as a parameter, so a nested literal in a recursive schema still
+  matches the annotation of the declaration. Comparison ignores key order and
+  keeps JSON types distinct (`[false]` does not match `[0]`). This fixes 12
+  draft-07 suite cases.
+- ee7cbae: Apply `contains` and `dependencies` to schemas without a `type`, keep the keywords declared next to `anyOf`/`oneOf` (a `type` there is also given to the untyped members, so the decoded type is narrowed to it), count identical `oneOf` branches separately, and emit `__proto__` as a computed key so it does not change the prototype of the generated `Schema.Struct`, also when it comes from merged object subschemas. This fixes 15 draft-07 suite cases.
+- 19536a4: Add `externalSchemas` so absolute `$ref` URIs can be served from memory instead of disk or the network. The parser indexes identifiers declared inside a provided document (`$id`, or the draft-04 `id`), and the three `compile()` and `compileSchema()` APIs pass the option through.
+- d99505f: Keep the document root when the root is a `$ref`. `parse()` resolved the root pointer with `$refs.get('#')`, so `root` was the referenced value and `root[Meta]` described that value instead of the document. Generated code now emits the root as an alias to the referenced declaration instead of inlining or merging the target, and `referencedSchemas` no longer includes the root document.
+- 9f90e21: `format` is now switchable in both runtime generators and asserted by default,
+  so `@utilize/zod` and `@utilize/effect` agree on what a known format does.
+
+  Both generators turn known formats into validation (`format: "email"` becomes
+  `z.email()` or a `Schema.String.check(formatEmail)`), and keep unknown formats
+  as annotations. Pass `formatMode: 'annotate'` to keep `format` as metadata
+  (`.meta({ format })` / `.annotate({ format })`); both CLIs take
+  `--format-mode annotate|assert`. `formatMap` entries apply in both modes.
+
+  The Effect generator gains the format checks in this release, so schemas with a
+  known `format` now reject invalid values by default.
+
+### Patch Changes
+
+- 83be704: Schema dependencies now compile to their object branch instead of a union over
+  every JSON value. A `dependencies` subschema without a `type` accepts every
+  value, but it is evaluated against an object, so the alternatives for other
+  types could never match.
+
+  Both runtime generators now narrow through the same `narrowUntypedSchema`
+  helper, so the exclusion list cannot drift between them. As in Zod, a
+  dependency narrows only when it declares a type-specific keyword; one that only
+  carries annotations stays untyped, which validates the same values.
+
+  Because the subschema is generated as an object, a dependency that only declares
+  another dependency, such as `{ "dependencies": { "b": ["c"] } }`, is now checked
+  instead of being reduced to `Schema.Json` and ignored, and a dependency that
+  only constrains another type no longer emits the union.
+
+- Updated dependencies [00cd219]
+- Updated dependencies [19536a4]
+- Updated dependencies [d99505f]
+- Updated dependencies [83be704]
+  - @utilize/json-schema@0.6.0
+
 ## 0.4.1
 
 ### Patch Changes
