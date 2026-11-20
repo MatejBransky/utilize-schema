@@ -1,0 +1,19 @@
+{
+	"compilerOptions": {
+		"strict": true,
+		"noEmit": true,
+		"target": "ES2022",
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"skipLibCheck": true,
+		"types": ["node"]
+	},
+	"contentMappers": [
+		{
+			"package": "@utilize/content-mapper",
+			"extensions": [".jsonschema"],
+			"options": { "target": "zod" }
+		}
+	],
+	"include": ["src"]
+}
