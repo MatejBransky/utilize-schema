@@ -190,6 +190,56 @@ const cases: ParityCase[] = [
 		invalid: [null, {}],
 	},
 	{
+		name: 'anyOf with a type next to it',
+		schema: { type: 'string', anyOf: [{ maxLength: 2 }, { minLength: 4 }] },
+		valid: ['', 'ab', 'abcd'],
+		invalid: ['abc', 3, null],
+	},
+	{
+		name: 'anyOf with constraints next to it',
+		schema: { type: 'string', maxLength: 5, anyOf: [{ pattern: '^a' }, { pattern: 'z$' }] },
+		valid: ['ab', 'xz'],
+		invalid: ['b', 'abcdefz', 1],
+	},
+	{
+		name: 'oneOf with identical branches',
+		schema: { oneOf: [true, true, false] },
+		valid: [],
+		invalid: ['value', 1, null, {}],
+	},
+	{
+		name: 'oneOf with identical typed branches',
+		schema: { oneOf: [{ type: 'string' }, { type: 'string' }, { type: 'number' }] },
+		valid: [1],
+		invalid: ['a', null],
+	},
+	{
+		name: 'contains without a type',
+		schema: { contains: { const: 5 } },
+		valid: [[5], [1, 5], {}, 5, 'x'],
+		invalid: [[], [1]],
+	},
+	{
+		name: 'dependencies without a type',
+		schema: { dependencies: { bar: ['foo'] } },
+		valid: [{ foo: 1 }, { foo: 1, bar: 2 }, ['bar'], 1],
+		invalid: [{ bar: 2 }],
+	},
+	{
+		name: '__proto__ property merged from allOf',
+		schema: {
+			type: 'object',
+			allOf: [
+				{ type: 'object', properties: { ['__proto__']: { type: 'number' } } },
+				{ type: 'object', properties: { b: { type: 'string' } } },
+			],
+		} as TestSchema,
+		// The Zod output does not check the type of `__proto__` itself, so that
+		// value is only covered by the Effect runtime tests.
+		valid: [{ b: 'x' }, { ['__proto__']: 12 }],
+		invalid: [{ b: 1 }],
+	},
+	{
 		name: 'allOf objects',
 		schema: {
 			allOf: [
