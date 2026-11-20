@@ -24,8 +24,8 @@ codecs and TypeScript types.
 import { compile } from '@utilize/effect';
 
 await compile({
-	input: './schema.json',
-	output: './schema.generated.ts',
+  input: './schema.json',
+  output: './schema.generated.ts',
 });
 ```
 
@@ -88,11 +88,11 @@ inferred `typeof X.Type` would reference itself and collapse to `any`:
 type TreeValue = { name: string; children?: ReadonlyArray<TreeValue> };
 
 export const Tree: Schema.Codec<TreeValue> = Schema.StructWithRest(
-	Schema.Struct({
-		name: Schema.String,
-		children: Schema.optionalKey(Schema.Array(Schema.suspend(() => Tree))),
-	}),
-	[Schema.Record(Schema.String, Schema.Json)]
+  Schema.Struct({
+    name: Schema.String,
+    children: Schema.optionalKey(Schema.Array(Schema.suspend(() => Tree))),
+  }),
+  [Schema.Record(Schema.String, Schema.Json)]
 );
 
 export type Tree = typeof Tree.Type;
@@ -104,11 +104,11 @@ schema emits `Schema.Json` or `Schema.Never` directly.
 
 ```ts
 export const Tree = Schema.StructWithRest(
-	Schema.Struct({
-		name: Schema.String,
-		children: Schema.optionalKey(Schema.Array(Schema.suspend(() => Tree))),
-	}),
-	[Schema.Record(Schema.String, Schema.Json)]
+  Schema.Struct({
+    name: Schema.String,
+    children: Schema.optionalKey(Schema.Array(Schema.suspend(() => Tree))),
+  }),
+  [Schema.Record(Schema.String, Schema.Json)]
 );
 
 export type Tree = typeof Tree.Type;
@@ -121,10 +121,10 @@ a suffix only has to describe the difference:
 
 ```ts
 await compile({
-	input: './schema.json',
-	output: './schema.generated.ts',
-	schemaName: (name) => `${name}Schema`,
-	typeName: (name) => `${name}Schema`,
+  input: './schema.json',
+  output: './schema.generated.ts',
+  schemaName: (name) => `${name}Schema`,
+  typeName: (name) => `${name}Schema`,
 });
 ```
 

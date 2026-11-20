@@ -27,8 +27,8 @@ TypeScript types.
 import { compile } from '@utilize/zod';
 
 await compile({
-	input: './schema.json',
-	output: './schema.generated.ts',
+  input: './schema.json',
+  output: './schema.generated.ts',
 });
 ```
 
@@ -115,9 +115,9 @@ Recursive schemas are annotated so TypeScript can infer them:
 ```ts
 type TreeValue = { children?: TreeValue[] };
 export const Tree: z.ZodType<TreeValue> = z.object({
-	get children() {
-		return z.array(Tree).optional();
-	},
+  get children() {
+    return z.array(Tree).optional();
+  },
 });
 export type Tree = z.infer<typeof Tree>;
 ```
@@ -151,10 +151,10 @@ a suffix only has to describe the difference:
 
 ```ts
 await compile({
-	input: './schema.json',
-	output: './schema.generated.ts',
-	schemaName: (name) => `${name}Schema`,
-	typeName: (name) => `${name}Schema`,
+  input: './schema.json',
+  output: './schema.generated.ts',
+  schemaName: (name) => `${name}Schema`,
+  typeName: (name) => `${name}Schema`,
 });
 ```
 
