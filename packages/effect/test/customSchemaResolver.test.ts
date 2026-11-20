@@ -80,12 +80,12 @@ describe('customSchemaResolver', () => {
 	});
 
 	test('replaces a node the generator rejects', async () => {
-		const schema: TestSchema = { const: { a: 1 } };
+		const schema: TestSchema = { type: 'string', pattern: '[' };
 
-		await expect(compile(schema)).rejects.toThrow(/primitive/);
+		await expect(compile(schema)).rejects.toThrow(/pattern/);
 		await expect(
 			compile(schema, {
-				customSchemaResolver: (node) => (node.const === undefined ? undefined : 'Schema.Json'),
+				customSchemaResolver: (node) => (node.pattern === undefined ? undefined : 'Schema.Json'),
 			})
 		).toMatchCode(ts`
       export const Root = Schema.Json;

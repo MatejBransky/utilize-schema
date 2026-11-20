@@ -155,8 +155,8 @@ for the full numbers and methodology.
 | JSON Schema Keyword                          | Zod | Effect Schema | Notes                                                                                 |
 | -------------------------------------------- | --- | ------------- | ------------------------------------------------------------------------------------- |
 | `type`                                       | ✅  | ✅            | Full support, including unions of types                                               |
-| `enum`                                       | ✅  | ✅            | Zod deep-equals composites; Effect supports primitives only                           |
-| `const`                                      | ✅  | ✅            | Zod deep-equals composites; Effect supports primitives only                           |
+| `enum`                                       | ✅  | ✅            | Zod deep-equals composites; Effect compares composites as canonical JSON              |
+| `const`                                      | ✅  | ✅            | Zod deep-equals composites; Effect compares composites as canonical JSON              |
 | `default`                                    | ✅  | ✅            | Zod decodes with `.default()`; Effect stores it as an annotation                      |
 | `description` / `title` / `deprecated`       | ✅  | ✅            | Zod `.meta({})`, Effect `.annotate({})`                                               |
 | `readOnly`                                   | ✅  | —             | Zod `.readonly()` with `readOnlyKeyword`; Effect keeps it as an annotation            |

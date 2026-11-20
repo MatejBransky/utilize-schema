@@ -2,17 +2,6 @@
 export type KnownFailureInstances = Record<string, string[] | 'compile'>;
 
 export const knownFailureInstances: KnownFailureInstances = {
-	'const.json :: const with object': 'compile',
-	'const.json :: const with array': 'compile',
-	'const.json :: const with [false] does not match [0]': 'compile',
-	'const.json :: const with [true] does not match [1]': 'compile',
-	'const.json :: const with {"a": false} does not match {"a": 0}': 'compile',
-	'const.json :: const with {"a": true} does not match {"a": 1}': 'compile',
-	'enum.json :: heterogeneous enum validation': 'compile',
-	'enum.json :: enum with [false] does not match [0]': 'compile',
-	'enum.json :: enum with [true] does not match [1]': 'compile',
-	'enum.json :: enum with [0] does not match [false]': 'compile',
-	'enum.json :: enum with [1] does not match [true]': 'compile',
 	'format-date-time.json :: validation of date-time strings': [
 		'a valid date-time string with plus offset',
 		'a valid date-time string with minus offset',
@@ -299,5 +288,4 @@ export const knownFailureInstances: KnownFailureInstances = {
 	],
 	'id-legacy.json :: URN ref with nested pointer ref': 'compile',
 	'ref-legacy.json :: relative pointer ref to array': ['match array'],
-	'ref-legacy.json :: naive replacement of $ref with its destination is not correct': 'compile',
 };
