@@ -178,6 +178,59 @@ const cases: ParityCase[] = [
 		invalid: [['a'], [], ['x', 1]],
 	},
 	{
+		name: 'minContains and maxContains',
+		schema: {
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'array',
+			contains: { const: 'x' },
+			minContains: 2,
+			maxContains: 3,
+		},
+		valid: [
+			['x', 'x'],
+			['a', 'x', 'x', 'x'],
+		],
+		invalid: [[], ['x'], ['a', 'x'], ['x', 'x', 'x', 'x']],
+	},
+	{
+		name: 'minContains 0 with maxContains',
+		schema: {
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'array',
+			contains: { const: 'x' },
+			minContains: 0,
+			maxContains: 1,
+		},
+		valid: [[], ['a'], ['a', 'x']],
+		invalid: [['x', 'x']],
+	},
+	{
+		name: 'contains without bounds in 2020-12',
+		schema: {
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'array',
+			contains: { const: 'x' },
+		},
+		valid: [['x'], ['a', 'x', 'x']],
+		invalid: [[], ['a']],
+	},
+	{
+		name: 'contains outside the dialect',
+		schema: {
+			$schema: 'http://json-schema.org/draft-04/schema#',
+			type: 'array',
+			contains: { const: 'x' },
+		},
+		valid: [[], ['a']],
+		invalid: ['x'],
+	},
+	{
+		name: 'unicode property escape in pattern',
+		schema: { type: 'string', pattern: '^\\p{Letter}+$' },
+		valid: ['abc', 'ěšč'],
+		invalid: ['123', 'a1', ''],
+	},
+	{
 		name: 'anyOf',
 		schema: { anyOf: [{ type: 'string' }, { type: 'number' }] },
 		valid: ['a', 1],
