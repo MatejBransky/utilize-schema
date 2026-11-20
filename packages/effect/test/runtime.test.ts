@@ -55,6 +55,21 @@ describe('objects', () => {
 		expect(decode(Root, { toString: { length: 37 } })).toBeUndefined();
 	});
 
+	test('keeps a __proto__ property when merging allOf subschemas', async () => {
+		const Root = await compileToSchema({
+			type: 'object',
+			allOf: [
+				{ type: 'object', properties: { ['__proto__']: { type: 'number' } } },
+				{ type: 'object', properties: { b: { type: 'string' } } },
+			],
+		} as JSONSchema);
+
+		expect(decode(Root, { b: 'x' })).toEqual({ b: 'x' });
+		expect(decode(Root, { b: 1 })).toBeUndefined();
+		expect(decode(Root, { ['__proto__']: 12 })).toEqual({ ['__proto__']: 12 });
+		expect(decode(Root, { ['__proto__']: 'text' })).toBeUndefined();
+	});
+
 	test('validates patternProperties and lets unmatched keys use additionalProperties', async () => {
 		const Root = await compileToSchema({
 			type: 'object',
