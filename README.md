@@ -40,23 +40,23 @@ Input (`user.json`):
 
 ```json
 {
-	"$schema": "https://json-schema.org/draft/2020-12/schema",
-	"type": "object",
-	"properties": {
-		"email": { "type": "string", "format": "email" },
-		"role": { "enum": ["admin", "member"], "default": "member" },
-		"age": { "type": "integer", "minimum": 18 },
-		"address": { "$ref": "#/$defs/address" }
-	},
-	"required": ["email", "role"],
-	"additionalProperties": false,
-	"$defs": {
-		"address": {
-			"type": "object",
-			"properties": { "city": { "type": "string" } },
-			"required": ["city"]
-		}
-	}
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "email": { "type": "string", "format": "email" },
+    "role": { "enum": ["admin", "member"], "default": "member" },
+    "age": { "type": "integer", "minimum": 18 },
+    "address": { "$ref": "#/$defs/address" }
+  },
+  "required": ["email", "role"],
+  "additionalProperties": false,
+  "$defs": {
+    "address": {
+      "type": "object",
+      "properties": { "city": { "type": "string" } },
+      "required": ["city"]
+    }
+  }
 }
 ```
 
@@ -66,15 +66,15 @@ Output (`user.zod.ts`, banner omitted):
 import { z } from 'zod';
 
 export const Address = z.object({
-	city: z.string(),
+  city: z.string(),
 });
 export type Address = z.infer<typeof Address>;
 
 export const User = z.strictObject({
-	email: z.email().meta({ format: 'email' }),
-	role: z.enum(['admin', 'member']).default('member'),
-	age: z.int().min(18).optional(),
-	address: Address.optional(),
+  email: z.email().meta({ format: 'email' }),
+  role: z.enum(['admin', 'member']).default('member'),
+  age: z.int().min(18).optional(),
+  address: Address.optional(),
 });
 export type User = z.infer<typeof User>;
 ```
@@ -97,25 +97,25 @@ import { Schema } from 'effect';
 const formatEmail = Schema.isPattern(new RegExp('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$', 'u'));
 
 export const Address = Schema.StructWithRest(Schema.Struct({ city: Schema.String }), [
-	Schema.Record(Schema.String, Schema.Json),
+  Schema.Record(Schema.String, Schema.Json),
 ]);
 
 export type Address = typeof Address.Type;
 
 export const User = Schema.StructWithRest(
-	Schema.Struct({
-		email: Schema.String.check(formatEmail).annotate({ format: 'email' }),
-		role: Schema.Literals(['admin', 'member']).annotate({ default: 'member' }),
-		age: Schema.optionalKey(Schema.Int.check(Schema.isGreaterThanOrEqualTo(18))),
-		address: Schema.optionalKey(Schema.suspend(() => Address)),
-	}),
-	[Schema.Record(Schema.String, Schema.Json)]
+  Schema.Struct({
+    email: Schema.String.check(formatEmail).annotate({ format: 'email' }),
+    role: Schema.Literals(['admin', 'member']).annotate({ default: 'member' }),
+    age: Schema.optionalKey(Schema.Int.check(Schema.isGreaterThanOrEqualTo(18))),
+    address: Schema.optionalKey(Schema.suspend(() => Address)),
+  }),
+  [Schema.Record(Schema.String, Schema.Json)]
 ).check(
-	Schema.makeFilter((value) =>
-		Object.keys(value).every((key) => ['email', 'role', 'age', 'address'].includes(key))
-			? undefined
-			: 'Unexpected property'
-	)
+  Schema.makeFilter((value) =>
+    Object.keys(value).every((key) => ['email', 'role', 'age', 'address'].includes(key))
+      ? undefined
+      : 'Unexpected property'
+  )
 );
 
 export type User = typeof User.Type;
@@ -125,21 +125,21 @@ export type User = typeof User.Type;
 
 ```ts
 export interface Address {
-	city: string;
-	[key: string]: unknown;
+  city: string;
+  [key: string]: unknown;
 }
 
 export interface User {
-	/**
-	 * @format email
-	 */
-	email: string;
-	/**
-	 * @default "member"
-	 */
-	role: 'admin' | 'member';
-	age?: number;
-	address?: Address;
+  /**
+   * @format email
+   */
+  email: string;
+  /**
+   * @default "member"
+   */
+  role: 'admin' | 'member';
+  age?: number;
+  address?: Address;
 }
 ```
 
@@ -213,18 +213,18 @@ import { compile as compileEffect } from '@utilize/effect';
 import { compile as compileTypescript } from '@utilize/typescript';
 
 await compileZod({
-	input: './schema.json',
-	output: './schema.zod.generated.ts',
+  input: './schema.json',
+  output: './schema.zod.generated.ts',
 });
 
 await compileEffect({
-	input: './schema.json',
-	output: './schema.effect.generated.ts',
+  input: './schema.json',
+  output: './schema.effect.generated.ts',
 });
 
 await compileTypescript({
-	input: './schema.json',
-	output: './schema.generated.ts',
+  input: './schema.json',
+  output: './schema.generated.ts',
 });
 ```
 
@@ -232,16 +232,16 @@ await compileTypescript({
 
 ```ts
 await compileZod({
-	input: './schema.json',
-	output: './schema.zod.generated.ts',
-	formatMode: 'annotate',
-	externalSchemas: {
-		'https://example.com/address.json': {
-			type: 'object',
-			properties: { city: { type: 'string' } },
-			required: ['city'],
-		},
-	},
+  input: './schema.json',
+  output: './schema.zod.generated.ts',
+  formatMode: 'annotate',
+  externalSchemas: {
+    'https://example.com/address.json': {
+      type: 'object',
+      properties: { city: { type: 'string' } },
+      required: ['city'],
+    },
+  },
 });
 ```
 
@@ -295,11 +295,11 @@ the generated code and validation update live.
 
 ```mermaid
 flowchart LR
-	schema["JSON Schema files"] --> resolver["$ref resolver"]
-	resolver --> linker["Linker<br/>metadata per node"]
-	linker --> zod["@utilize/zod"]
-	linker --> effect["@utilize/effect"]
-	linker --> types["@utilize/typescript"]
+  schema["JSON Schema files"] --> resolver["$ref resolver"]
+  resolver --> linker["Linker<br/>metadata per node"]
+  linker --> zod["@utilize/zod"]
+  linker --> effect["@utilize/effect"]
+  linker --> types["@utilize/typescript"]
 ```
 
 1. **$ref resolver** resolves every reference: local, external, cyclic.
@@ -464,10 +464,10 @@ they express the recursion differently.
 ```ts
 type TreeValue = { name: string; children?: TreeValue[] };
 export const Tree: z.ZodType<TreeValue> = z.object({
-	name: z.string(),
-	get children() {
-		return z.array(Tree).optional();
-	},
+  name: z.string(),
+  get children() {
+    return z.array(Tree).optional();
+  },
 });
 export type Tree = z.infer<typeof Tree>;
 ```
@@ -488,11 +488,11 @@ and collapse to `any`:
 type TreeValue = { name: string; children?: ReadonlyArray<TreeValue> };
 
 export const Tree: Schema.Codec<TreeValue> = Schema.StructWithRest(
-	Schema.Struct({
-		name: Schema.String,
-		children: Schema.optionalKey(Schema.Array(Schema.suspend(() => Tree))),
-	}),
-	[Schema.Record(Schema.String, Schema.Json)]
+  Schema.Struct({
+    name: Schema.String,
+    children: Schema.optionalKey(Schema.Array(Schema.suspend(() => Tree))),
+  }),
+  [Schema.Record(Schema.String, Schema.Json)]
 );
 
 export type Tree = typeof Tree.Type;
@@ -503,9 +503,9 @@ deferred aliases can refer to themselves:
 
 ```ts
 export interface Tree {
-	name: string;
-	children?: Array<Tree>;
-	[key: string]: unknown;
+  name: string;
+  children?: Array<Tree>;
+  [key: string]: unknown;
 }
 ```
 
