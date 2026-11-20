@@ -8,6 +8,7 @@ import {
 	type ParsedJSONSchemaObject,
 } from '@utilize/json-schema';
 
+import { typedAlternatives } from './alternatives';
 import type { CustomSchemaResolver } from './generator';
 import { planReferenceSiblings } from './refSiblings';
 
@@ -181,7 +182,9 @@ export function renderValueType(
 			: undefined;
 
 	if (alternatives) {
-		return union(alternatives.map((subschema) => renderValueType(subschema, context)));
+		const { members } = typedAlternatives(schema, alternatives);
+
+		return union(members.map((subschema) => renderValueType(subschema, context)));
 	}
 
 	if (Array.isArray(schema.type)) {

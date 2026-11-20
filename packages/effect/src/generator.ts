@@ -8,6 +8,7 @@ import {
 	type ParsedJSONSchemaObject,
 } from '@utilize/json-schema';
 
+import { typedAlternatives } from './alternatives';
 import { collectStandaloneSchemas, type SchemaEdge } from './collectStandaloneSchemas';
 import { constraintKeywords } from './constraints';
 import { UnresolvedReferenceError, UnsupportedEffectSchemaFeatureError } from './errors';
@@ -322,8 +323,9 @@ function generateExpression(schema: ParsedJSONSchemaObject, context: Context): s
 		// When both are present, each is applied on its own: `anyOf` becomes the
 		// union and `oneOf` stays in the base, which counts its own matches.
 		const keyword = Array.isArray(schema.anyOf) ? 'anyOf' : 'oneOf';
-		const union = generateUnion(alternatives, keyword === 'oneOf', context);
-		const base = alternativesBase(schema, keyword);
+		const { members, allTyped } = typedAlternatives(schema, alternatives);
+		const union = generateUnion(members, keyword === 'oneOf', context);
+		const base = alternativesBase(schema, keyword, allTyped);
 
 		if (base === undefined) {
 			return union;
@@ -355,15 +357,19 @@ function siblingKeywordsCheck(constraints: string, keyword: string): string {
  * The keywords declared next to `anyOf`/`oneOf`. They constrain the value on
  * their own, so the union alone would ignore them. The combinator that became
  * the union stays out, along with the annotations and the filter keywords,
- * which `generateSchema` handles on the whole node.
+ * which `generateSchema` handles on the whole node. A base with only `type`
+ * adds nothing once every member took that type (see `typedAlternatives`).
  */
 function alternativesBase(
 	schema: ParsedJSONSchemaObject,
-	applied: 'anyOf' | 'oneOf'
+	applied: 'anyOf' | 'oneOf',
+	allTyped: boolean
 ): ParsedJSONSchemaObject | undefined {
 	const base = constraintKeywords(schema, new Set([applied]));
+	const keywords = Object.keys(base);
+	const onlyAppliedType = allTyped && keywords.length === 1 && keywords[0] === 'type';
 
-	return Object.keys(base).length > 0 ? base : undefined;
+	return keywords.length > 0 && !onlyAppliedType ? base : undefined;
 }
 
 /**

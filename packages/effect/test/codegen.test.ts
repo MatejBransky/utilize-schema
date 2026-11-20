@@ -227,6 +227,56 @@ describe('code generation', () => {
 		`);
 	});
 
+	test('gives the type next to anyOf to its untyped members', async () => {
+		const result = await compile({ type: 'string', anyOf: [{ maxLength: 2 }, { minLength: 4 }] });
+
+		await expect(result).toMatchCode(ts`
+			export const Root = Schema.Union([
+				Schema.String.check(Schema.isMaxCodePoints(2)),
+				Schema.String.check(Schema.isMinCodePoints(4)),
+			]);
+
+			export type Root = typeof Root.Type;
+		`);
+	});
+
+	test('gives the type next to anyOf to the value type of a recursive schema', async () => {
+		const result = await compile({
+			type: 'array',
+			anyOf: [{ items: { $ref: '#' } }, { maxItems: 0 }],
+		});
+
+		await expect(result).toMatchCode(ts`
+			type RootValue = ReadonlyArray<RootValue> | ReadonlyArray<Schema.Json>;
+
+			export const Root: Schema.Codec<RootValue> = Schema.Union([
+				Schema.Array(Schema.suspend(() => Root)),
+				Schema.Array(Schema.Json).check(Schema.isMaxLength(0)),
+			]);
+
+			export type Root = typeof Root.Type;
+		`);
+	});
+
+	test('keeps the type in the base filter when a member cannot take it', async () => {
+		const result = await compile({ type: 'string', anyOf: [{ maxLength: 2 }, { const: 'abc' }] });
+
+		await expect(result).toMatchCode(ts`
+			export const Root = Schema.Union([
+				Schema.String.check(Schema.isMaxCodePoints(2)),
+				Schema.Literal('abc'),
+			]).check(
+				Schema.makeFilter((value) =>
+					Schema.is(Schema.String)(value)
+						? undefined
+						: 'Value does not match the keywords next to "anyOf"'
+				)
+			);
+
+			export type Root = typeof Root.Type;
+		`);
+	});
+
 	test('merges disjoint object subschemas from allOf', async () => {
 		const result = await compile({
 			allOf: [
