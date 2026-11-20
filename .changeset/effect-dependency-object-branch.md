@@ -16,6 +16,3 @@ Because the subschema is generated as an object, a dependency that only declares
 another dependency, such as `{ "dependencies": { "b": ["c"] } }`, is now checked
 instead of being reduced to `Schema.Json` and ignored, and a dependency that
 only constrains another type no longer emits the union.
-
-A dependency on a single key is emitted as `Object.hasOwn(value, 'key')`
-instead of an `every()` over a one-element array.
