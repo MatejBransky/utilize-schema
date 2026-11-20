@@ -6,8 +6,10 @@ import {
 	withSourceMeta,
 } from '@utilize/json-schema';
 
-import { ANNOTATION_KEYWORDS, FILTER_KEYWORDS } from './keywords';
+import { constraintKeywords } from './constraints';
 import { mergeObjectSchemas } from './mergeObjects';
+
+const REFERENCE_KEYWORDS: ReadonlySet<string> = new Set(['$ref']);
 
 /**
  * How the keywords next to a `$ref` are generated:
@@ -71,18 +73,5 @@ export function planReferenceSiblings(
  * applies to the whole node.
  */
 function referenceConstraints(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject {
-	const rest: Record<string, unknown> = {};
-
-	for (const [key, value] of Object.entries(schema)) {
-		if (
-			value !== undefined &&
-			key !== '$ref' &&
-			!ANNOTATION_KEYWORDS.has(key) &&
-			!FILTER_KEYWORDS.has(key)
-		) {
-			rest[key] = value;
-		}
-	}
-
-	return withSourceMeta(schema, rest) as ParsedJSONSchemaObject;
+	return constraintKeywords(schema, REFERENCE_KEYWORDS);
 }

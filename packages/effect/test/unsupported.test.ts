@@ -41,10 +41,4 @@ describe('unsupported keywords', () => {
 
 		await expect(result).toContain('a: Schema.Json');
 	});
-
-	test('rejects non-primitive const values', async () => {
-		await expect(compile({ const: { a: 1 } })).rejects.toThrow(
-			/only primitive values are supported/
-		);
-	});
 });

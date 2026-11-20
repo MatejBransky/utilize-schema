@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { compile, compileModule, ts } from './test-utils';
+import { compile, compileModule, ts, type TestSchema } from './test-utils';
 
 describe('code generation', () => {
 	test('exports a const and a type for the root schema', async () => {
@@ -225,6 +225,22 @@ describe('code generation', () => {
 		`);
 	});
 
+	test('emits __proto__ as a computed key', async () => {
+		const schema = {
+			type: 'object',
+			properties: { ['__proto__']: { type: 'number' } },
+		} as TestSchema;
+
+		await expect(await compile(schema)).toMatchCode(ts`
+			export const Root = Schema.StructWithRest(
+				Schema.Struct({ ['__proto__']: Schema.optionalKey(Schema.Finite) }),
+				[Schema.Record(Schema.String, Schema.Json)]
+			);
+
+			export type Root = typeof Root.Type;
+		`);
+	});
+
 	test('builds closed tuples', async () => {
 		const result = await compile({
 			$schema: 'https://json-schema.org/draft/2020-12/schema',
@@ -343,6 +359,97 @@ describe('code generation', () => {
 		`);
 	});
 
+	test('skips the base filter when only unknown keywords sit next to anyOf', async () => {
+		const schema = { 'x-foo': 1, anyOf: [{ type: 'string' }, { type: 'number' }] } as TestSchema;
+
+		await expect(await compile(schema)).toMatchCode(ts`
+			export const Root = Schema.Union([Schema.String, Schema.Finite]);
+
+			export type Root = typeof Root.Type;
+		`);
+	});
+
+	test('checks the keywords next to anyOf with a filter on the union', async () => {
+		const result = await compile({
+			type: 'string',
+			maxLength: 10,
+			anyOf: [{ pattern: '^a' }, { pattern: 'z$' }],
+		});
+
+		await expect(result).toMatchCode(ts`
+			export const Root = Schema.Union([
+				Schema.String.check(Schema.isPattern(new RegExp('^a', 'u'))),
+				Schema.String.check(Schema.isPattern(new RegExp('z$', 'u'))),
+			]).check(
+				Schema.makeFilter((value) =>
+					Schema.is(Schema.String.check(Schema.isMaxCodePoints(10)))(value)
+						? undefined
+						: 'Value does not match the keywords next to "anyOf"'
+				)
+			);
+
+			export type Root = typeof Root.Type;
+		`);
+	});
+
+	test('keeps identical oneOf branches', async () => {
+		await expect(await compile({ oneOf: [{ type: 'string' }, { type: 'string' }] })).toMatchCode(ts`
+			export const Root = Schema.Union([Schema.String, Schema.String], { mode: 'oneOf' });
+
+			export type Root = typeof Root.Type;
+		`);
+	});
+
+	test('gives the type next to anyOf to its untyped members', async () => {
+		const result = await compile({ type: 'string', anyOf: [{ maxLength: 2 }, { minLength: 4 }] });
+
+		await expect(result).toMatchCode(ts`
+			export const Root = Schema.Union([
+				Schema.String.check(Schema.isMaxCodePoints(2)),
+				Schema.String.check(Schema.isMinCodePoints(4)),
+			]);
+
+			export type Root = typeof Root.Type;
+		`);
+	});
+
+	test('gives the type next to anyOf to the value type of a recursive schema', async () => {
+		const result = await compile({
+			type: 'array',
+			anyOf: [{ items: { $ref: '#' } }, { maxItems: 0 }],
+		});
+
+		await expect(result).toMatchCode(ts`
+			type RootValue = ReadonlyArray<RootValue> | ReadonlyArray<Schema.Json>;
+
+			export const Root: Schema.Codec<RootValue> = Schema.Union([
+				Schema.Array(Schema.suspend(() => Root)),
+				Schema.Array(Schema.Json).check(Schema.isMaxLength(0)),
+			]);
+
+			export type Root = typeof Root.Type;
+		`);
+	});
+
+	test('keeps the type in the base filter when a member cannot take it', async () => {
+		const result = await compile({ type: 'string', anyOf: [{ maxLength: 2 }, { const: 'abc' }] });
+
+		await expect(result).toMatchCode(ts`
+			export const Root = Schema.Union([
+				Schema.String.check(Schema.isMaxCodePoints(2)),
+				Schema.Literal('abc'),
+			]).check(
+				Schema.makeFilter((value) =>
+					Schema.is(Schema.String)(value)
+						? undefined
+						: 'Value does not match the keywords next to "anyOf"'
+				)
+			);
+
+			export type Root = typeof Root.Type;
+		`);
+	});
+
 	test('merges disjoint object subschemas from allOf', async () => {
 		const result = await compile({
 			allOf: [
@@ -435,6 +542,48 @@ describe('code generation', () => {
 		`);
 	});
 
+	test('applies contains only to the array member of an untyped schema', async () => {
+		await expect(await compile({ contains: { const: 5 } })).toMatchCode(ts`
+			export const Root = Schema.Union([
+				Schema.Null,
+				Schema.Boolean,
+				Schema.String,
+				Schema.Finite,
+				Schema.JsonObject,
+				Schema.Array(Schema.Json).check(
+					Schema.makeFilter((value) =>
+						value.some((item) => Schema.is(Schema.Literal(5))(item))
+							? undefined
+							: 'Array does not contain a matching item'
+					)
+				),
+			]);
+
+			export type Root = typeof Root.Type;
+		`);
+	});
+
+	test('applies dependencies only to the object member of an untyped schema', async () => {
+		await expect(await compile({ dependencies: { bar: ['foo'] } })).toMatchCode(ts`
+			export const Root = Schema.Union([
+				Schema.Null,
+				Schema.Boolean,
+				Schema.String,
+				Schema.Finite,
+				Schema.Record(Schema.String, Schema.Json).check(
+					Schema.makeFilter((value) =>
+						!Object.hasOwn(value, 'bar') || Object.hasOwn(value, 'foo')
+							? undefined
+							: 'Object does not satisfy its dependencies'
+					)
+				),
+				Schema.Array(Schema.Json),
+			]);
+
+			export type Root = typeof Root.Type;
+		`);
+	});
+
 	test('emits literals for const and enum', async () => {
 		await expect(await compile({ const: 'fixed' })).toMatchCode(ts`
 			export const Root = Schema.Literal('fixed');
@@ -444,6 +593,39 @@ describe('code generation', () => {
 
 		await expect(await compile({ enum: ['a', 'b'] })).toMatchCode(ts`
 			export const Root = Schema.Literals(['a', 'b']);
+
+			export type Root = typeof Root.Type;
+		`);
+	});
+
+	test('emits one json literal helper for structured const and enum', async () => {
+		await expect(await compile({ enum: [6, 'foo', [], true, { foo: 12 }] })).toMatchCode(ts`
+			const jsonLiteral = <T>(expected: string) =>
+				Schema.Json.check(
+					Schema.makeFilter(
+						(value) =>
+							JSON.stringify(value, function canonicalReplacer(_key, entry) {
+								if (entry !== null && typeof entry === 'object' && !Array.isArray(entry)) {
+									return Object.fromEntries(
+										Object.entries(entry).sort(([left], [right]) =>
+											left < right ? -1 : left > right ? 1 : 0
+										)
+									);
+								}
+								return entry;
+							}) === expected
+					)
+				) as unknown as Schema.Codec<T>;
+
+			type RootValue = 6 | 'foo' | readonly [] | true | { foo: 12 };
+
+			export const Root: Schema.Codec<RootValue> = Schema.Union([
+				Schema.Literal(6),
+				Schema.Literal('foo'),
+				jsonLiteral<readonly []>('[]'),
+				Schema.Literal(true),
+				jsonLiteral<{ foo: 12 }>('{"foo":12}'),
+			]);
 
 			export type Root = typeof Root.Type;
 		`);

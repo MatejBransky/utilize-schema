@@ -70,6 +70,11 @@ const recursiveUnion: TestSchema = {
 	},
 };
 
+const recursiveTypedUnion: TestSchema = {
+	type: 'object',
+	anyOf: [{ properties: { next: { $ref: '#' } } }, { required: ['id'] }],
+};
+
 const allOf: TestSchema = {
 	allOf: [
 		{ type: 'object', properties: { a: { type: 'string' } }, required: ['a'] },
@@ -112,6 +117,26 @@ const booleanRefs = {
 		denied: { $ref: '#/$defs/denied' },
 	},
 	$defs: { allowed: true, denied: false },
+} as unknown as TestSchema;
+
+const structuredLiterals: TestSchema = {
+	enum: [6, 'foo', [], true, { foo: 12 }],
+} as TestSchema;
+
+const structuredConst: TestSchema = {
+	const: { foo: 'bar', baz: 'bax' },
+} as unknown as TestSchema;
+
+const structuredArrayConst: TestSchema = { const: [{ foo: 'bar' }] } as unknown as TestSchema;
+
+const recursiveStructuredLiteral: TestSchema = {
+	title: 'Node',
+	type: 'object',
+	properties: {
+		tag: { const: { k: 1 } },
+		children: { type: 'array', items: { $ref: '#' } },
+	},
+	required: ['tag'],
 } as unknown as TestSchema;
 
 const nested: TestSchema = {
@@ -170,9 +195,14 @@ describe('generated schemas type-check', () => {
 				'RecursiveAdditionalProperties.ts': recursiveAdditionalProperties,
 				'ClosedRecursiveObject.ts': closedRecursiveObject,
 				'RecursiveUnion.ts': recursiveUnion,
+				'RecursiveTypedUnion.ts': recursiveTypedUnion,
 				'AllOf.ts': allOf,
 				'Filters.ts': filters,
 				'Contains.ts': contains,
+				'StructuredLiterals.ts': structuredLiterals,
+				'StructuredConst.ts': structuredConst,
+				'StructuredArrayConst.ts': structuredArrayConst,
+				'RecursiveStructuredLiteral.ts': recursiveStructuredLiteral,
 				'Nested.ts': nested,
 				'BooleanRefs.ts': booleanRefs,
 				'Unevaluated.ts': unevaluated,
