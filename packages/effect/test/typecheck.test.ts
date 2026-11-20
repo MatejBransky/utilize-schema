@@ -70,6 +70,11 @@ const recursiveUnion: TestSchema = {
 	},
 };
 
+const recursiveTypedUnion: TestSchema = {
+	type: 'object',
+	anyOf: [{ properties: { next: { $ref: '#' } } }, { required: ['id'] }],
+};
+
 const allOf: TestSchema = {
 	allOf: [
 		{ type: 'object', properties: { a: { type: 'string' } }, required: ['a'] },
@@ -170,6 +175,7 @@ describe('generated schemas type-check', () => {
 				'RecursiveAdditionalProperties.ts': recursiveAdditionalProperties,
 				'ClosedRecursiveObject.ts': closedRecursiveObject,
 				'RecursiveUnion.ts': recursiveUnion,
+				'RecursiveTypedUnion.ts': recursiveTypedUnion,
 				'AllOf.ts': allOf,
 				'Filters.ts': filters,
 				'Contains.ts': contains,

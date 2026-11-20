@@ -8,7 +8,9 @@ import {
 	type ParsedJSONSchemaObject,
 } from '@utilize/json-schema';
 
+import { typedAlternatives } from './alternatives';
 import { collectStandaloneSchemas, type SchemaEdge } from './collectStandaloneSchemas';
+import { constraintKeywords } from './constraints';
 import { UnresolvedReferenceError, UnsupportedEffectSchemaFeatureError } from './errors';
 import { findCyclicSchemas } from './findCyclicSchemas';
 import { formatCheck } from './formats';
@@ -318,10 +320,56 @@ function generateExpression(schema: ParsedJSONSchemaObject, context: Context): s
 			: undefined;
 
 	if (alternatives) {
-		return generateUnion(alternatives, schema.oneOf !== undefined, context);
+		// When both are present, each is applied on its own: `anyOf` becomes the
+		// union and `oneOf` stays in the base, which counts its own matches.
+		const keyword = Array.isArray(schema.anyOf) ? 'anyOf' : 'oneOf';
+		const { members, allTyped } = typedAlternatives(schema, alternatives);
+		const union = generateUnion(members, keyword === 'oneOf', context);
+		const base = alternativesBase(schema, keyword, allTyped);
+
+		if (base === undefined) {
+			return union;
+		}
+
+		const constraints = generateSchema(base, context);
+
+		// Unknown keywords (`x-*`) generate `Schema.Json`, so a filter over them
+		// would accept everything and only make the output noisier.
+		if (constraints === 'Schema.Json') {
+			return union;
+		}
+
+		return applyChecks(union, [siblingKeywordsCheck(constraints, keyword)]);
 	}
 
 	return generateType(schema, context);
+}
+
+/**
+ * A filter that requires the value to match the keywords declared next to
+ * `keyword` (`$ref`, `anyOf` or `oneOf`).
+ */
+function siblingKeywordsCheck(constraints: string, keyword: string): string {
+	return `Schema.makeFilter((value) => Schema.is(${constraints})(value) ? undefined : 'Value does not match the keywords next to "${keyword}"')`;
+}
+
+/**
+ * The keywords declared next to `anyOf`/`oneOf`. They constrain the value on
+ * their own, so the union alone would ignore them. The combinator that became
+ * the union stays out, along with the annotations and the filter keywords,
+ * which `generateSchema` handles on the whole node. A base with only `type`
+ * adds nothing once every member took that type (see `typedAlternatives`).
+ */
+function alternativesBase(
+	schema: ParsedJSONSchemaObject,
+	applied: 'anyOf' | 'oneOf',
+	allTyped: boolean
+): ParsedJSONSchemaObject | undefined {
+	const base = constraintKeywords(schema, new Set([applied]));
+	const keywords = Object.keys(base);
+	const onlyAppliedType = allTyped && keywords.length === 1 && keywords[0] === 'type';
+
+	return keywords.length > 0 && !onlyAppliedType ? base : undefined;
 }
 
 /**
@@ -348,10 +396,7 @@ function generateReference(
 
 			return checkedReference(
 				schema,
-				[
-					`Schema.makeFilter((value) => Schema.is(${constraints})(value) ? undefined : 'Value does not match the keywords next to "$ref"')`,
-					...filters,
-				],
+				[siblingKeywordsCheck(constraints, '$ref'), ...filters],
 				context
 			);
 		}
@@ -378,7 +423,9 @@ function generateUnion(
 	exclusive: boolean,
 	context: Context
 ): string {
-	const members = [...new Set(alternatives.map((member) => generateSchema(member, context)))];
+	const generated = alternatives.map((member) => generateSchema(member, context));
+	// `oneOf` counts how many branches match, so identical branches must stay.
+	const members = exclusive ? generated : [...new Set(generated)];
 
 	if (members.length === 0) {
 		return 'Schema.Never';
@@ -675,7 +722,11 @@ function generateObject(schema: ParsedJSONSchemaObject, context: Context): strin
 						? generateSchema(additional, context)
 						: 'Schema.Json';
 
-		return `${JSON.stringify(key)}: ${
+		// A computed key keeps `__proto__` from changing the prototype of the
+		// object literal passed to `Schema.Struct`.
+		const keyExpression = key === '__proto__' ? `[${JSON.stringify(key)}]` : JSON.stringify(key);
+
+		return `${keyExpression}: ${
 			required.has(key) ? expression : `Schema.optionalKey(${expression})`
 		}`;
 	});
@@ -949,6 +1000,7 @@ function appliesTo(
 				'minProperties',
 				'maxProperties',
 				'propertyNames',
+				'dependencies',
 			]);
 		case 'array':
 			return anyKeyword([
@@ -958,6 +1010,7 @@ function appliesTo(
 				'minItems',
 				'maxItems',
 				'uniqueItems',
+				'contains',
 			]);
 	}
 }

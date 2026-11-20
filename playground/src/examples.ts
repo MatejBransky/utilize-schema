@@ -115,6 +115,15 @@ export const examples: Example[] = [
 		allOf: [{ properties: { label: {} } }],
 		additionalProperties: { type: 'boolean' },
 	}),
+	single('any-of-base', 'anyOf with base schema', 'Advanced', {
+		title: 'Code',
+		type: 'string',
+		anyOf: [{ maxLength: 2 }, { minLength: 4 }],
+	}),
+	single('untyped-contains', 'Contains without a type', 'Advanced', {
+		title: 'Tags',
+		contains: { const: 'featured' },
+	}),
 	single('all-of', 'All of', 'Common', {
 		title: 'Employee',
 		allOf: [
