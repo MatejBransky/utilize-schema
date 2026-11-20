@@ -131,10 +131,27 @@ describe('cyclic references', () => {
         [key: string]: string | RootValue | undefined;
       }
       export const Root: z.ZodType<RootValue> = z
-        .object({
-          name: z.string().optional(),
+        .any()
+        .superRefine((value, ctx) => {
+          if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+            const descriptor = Object.getOwnPropertyDescriptor(value, '__proto__');
+
+            if (descriptor !== undefined) {
+              const result = z.lazy(() => Root).safeParse(descriptor.value);
+
+              if (!result.success) {
+                for (const issue of result.error.issues) {
+                  ctx.addIssue({
+                    code: 'custom',
+                    message: issue.message,
+                    path: ['__proto__', ...issue.path],
+                  });
+                }
+              }
+            }
+          }
         })
-        .catchall(z.lazy(() => Root));
+        .pipe(z.object({ name: z.string().optional() }).catchall(z.lazy(() => Root)));
       export type Root = z.infer<typeof Root>;
     `);
 	});
@@ -149,10 +166,33 @@ describe('cyclic references', () => {
       interface RootValue {
         [key: string]: RootValue;
       }
-      export const Root: z.ZodType<RootValue> = z.record(
-        z.string(),
-        z.lazy(() => Root),
-      );
+      export const Root: z.ZodType<RootValue> = z
+        .any()
+        .superRefine((value, ctx) => {
+          if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+            const descriptor = Object.getOwnPropertyDescriptor(value, '__proto__');
+
+            if (descriptor !== undefined) {
+              const result = z.lazy(() => Root).safeParse(descriptor.value);
+
+              if (!result.success) {
+                for (const issue of result.error.issues) {
+                  ctx.addIssue({
+                    code: 'custom',
+                    message: issue.message,
+                    path: ['__proto__', ...issue.path],
+                  });
+                }
+              }
+            }
+          }
+        })
+        .pipe(
+          z.record(
+            z.string(),
+            z.lazy(() => Root)
+          )
+        );
       export type Root = z.infer<typeof Root>;
     `);
 	});

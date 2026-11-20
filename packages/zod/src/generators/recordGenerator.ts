@@ -2,6 +2,7 @@ import { isPlainObject, type ParsedJSONSchemaObject } from '@utilize/json-schema
 
 import { createGenerator } from './createGenerator';
 import { generateSchema } from './generateSchema';
+import { protoInputCheck } from './protoProperty';
 
 import { ts } from '../utils';
 
@@ -24,6 +25,14 @@ export const generator = createGenerator<{
 
 		const additionalProperties = generateSchema(schema.additionalProperties, context);
 
-		return ts`z.record(z.string(), ${additionalProperties})`;
+		// `z.record` skips an own `__proto__` key, so validate it on the raw
+		// input. A value schema that accepts everything has nothing to check.
+		if (additionalProperties === 'z.unknown()' || additionalProperties === 'z.any()') {
+			return ts`z.record(z.string(), ${additionalProperties})`;
+		}
+
+		return ts`z.any().superRefine((value, ctx) => {
+        ${protoInputCheck({ required: false, valueExpressions: [additionalProperties] })}
+      }).pipe(z.record(z.string(), ${additionalProperties}))`;
 	}
 );

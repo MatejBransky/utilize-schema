@@ -2,4 +2,4 @@
 '@utilize/zod': patch
 ---
 
-Emit a `__proto__` property as a computed key and validate declared and required `__proto__` values against the raw input, because Zod's object parser skips that key. A declared `__proto__` no longer sets the prototype of the generated shape, and its type and `required` are now enforced.
+Validate `__proto__` and other `Object.prototype` property names instead of letting Zod read the prototype chain. A `__proto__` property is emitted as a computed key and checked on the raw input (including `required`, `patternProperties`, `additionalProperties` and records, since Zod's object and record parsers skip it). Object schemas that declare or require `toString`, `constructor` and similar names get a null-prototype clone of the input, so an absent key is no longer validated against the inherited value and is reported as missing when required. This fixes the two draft-07 prototype-name suite cases.

@@ -435,7 +435,7 @@ describe('an inline subschema repeated without a named schema', () => {
 
 		expect(code).toContain('export const TagsItem = z.object({ x: z.number(), y: z.number() });');
 		expect(code).toContain('tags: z.array(TagsItem).optional()');
-		expect(code).toContain('byName: z.record(z.string(), TagsItem).optional()');
+		expect(code).toContain('z.record(z.string(), TagsItem)');
 	});
 
 	test('takes a free name next to a named schema', async () => {
