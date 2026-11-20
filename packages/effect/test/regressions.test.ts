@@ -121,6 +121,42 @@ describe('regressions', () => {
 		expect(decode(Root, { a: 'x' })).toBeUndefined();
 	});
 
+	test('a typed schema dependency rejects an object value', async () => {
+		const Root = await compileToSchema({
+			type: 'object',
+			properties: { a: { type: 'string' } },
+			dependencies: { a: { type: 'string' } },
+		});
+
+		expect(decode(Root, {})).toEqual({});
+		expect(decode(Root, { a: 'x' })).toBeUndefined();
+	});
+
+	test('an untyped schema dependency keeps undeclared keys and ignores non-object keywords', async () => {
+		const Root = await compileToSchema({
+			type: 'object',
+			properties: { card: { type: 'string' } },
+			dependencies: {
+				card: { properties: { card: { minLength: 2 } }, required: ['card'], minItems: 3 },
+			},
+		});
+
+		expect(decode(Root, { card: 'ok', extra: 1 })).toEqual({ card: 'ok', extra: 1 });
+		expect(decode(Root, { card: 'a' })).toBeUndefined();
+	});
+
+	test('a schema dependency that only declares another dependency is enforced', async () => {
+		const Root = await compileToSchema({
+			type: 'object',
+			properties: { a: { type: 'string' }, b: { type: 'string' }, c: { type: 'string' } },
+			dependencies: { a: { dependencies: { b: ['c'] } } },
+		});
+
+		expect(decode(Root, { a: 'x', b: 'y' })).toBeUndefined();
+		expect(decode(Root, { a: 'x', b: 'y', c: 'z' })).toEqual({ a: 'x', b: 'y', c: 'z' });
+		expect(decode(Root, { b: 'y' })).toEqual({ b: 'y' });
+	});
+
 	test('keeps a recursive $ref inside an anyOf', async () => {
 		const module = await compileModule({
 			type: 'object',

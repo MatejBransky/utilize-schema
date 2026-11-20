@@ -80,18 +80,40 @@ describe('customSchemaResolver', () => {
 	});
 
 	test('replaces a node the generator rejects', async () => {
-		const schema: TestSchema = { const: { a: 1 } };
+		const schema: TestSchema = { type: 'string', pattern: '[' };
 
-		await expect(compile(schema)).rejects.toThrow(/primitive/);
+		await expect(compile(schema)).rejects.toThrow(/pattern/);
 		await expect(
 			compile(schema, {
-				customSchemaResolver: (node) => (node.const === undefined ? undefined : 'Schema.Json'),
+				customSchemaResolver: (node) => (node.pattern === undefined ? undefined : 'Schema.Json'),
 			})
 		).toMatchCode(ts`
       export const Root = Schema.Json;
 
       export type Root = typeof Root.Type;
     `);
+	});
+
+	test('asks a schema resolver once per dependency', async () => {
+		const seen: string[] = [];
+
+		await compile(
+			{
+				type: 'object',
+				properties: { a: { type: 'string' } },
+				dependencies: { a: { required: ['b'] } },
+			},
+			{
+				customSchemaResolver: (schema) => {
+					seen.push(JSON.stringify(schema));
+					return undefined;
+				},
+			}
+		);
+
+		// The narrowed copy reaches the resolver through `generateSchema`, but the
+		// original node must not be resolved twice before it is narrowed.
+		expect(seen.filter((node) => node === '{"required":["b"]}')).toHaveLength(1);
 	});
 
 	test('leaves unmatched nodes to the generator', async () => {

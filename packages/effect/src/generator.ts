@@ -5,11 +5,14 @@ import {
 	isKeywordApplicable,
 	isPlainObject,
 	Meta,
+	narrowUntypedSchema,
 	type ParsedJSONSchema,
 	type ParsedJSONSchemaObject,
 } from '@utilize/json-schema';
 
+import { typedAlternatives } from './alternatives';
 import { collectStandaloneSchemas, type SchemaEdge } from './collectStandaloneSchemas';
+import { constraintKeywords } from './constraints';
 import { UnresolvedReferenceError, UnsupportedEffectSchemaFeatureError } from './errors';
 import { findCyclicSchemas } from './findCyclicSchemas';
 import { formatCheck } from './formats';
@@ -24,7 +27,7 @@ import {
 	type DeclarationNames,
 	type NameMapper,
 } from './resolveName';
-import { renderValueTypeDeclaration, type ValueTypeContext } from './valueTypes';
+import { literalType, renderValueTypeDeclaration, type ValueTypeContext } from './valueTypes';
 
 export interface GenerateOptions {
 	/** Emit `import { Schema } from 'effect';` at the top of the generated code. */
@@ -76,6 +79,12 @@ type Context = {
 	 * Registered on first use, so one format yields one constant per file.
 	 */
 	formatOf(format: string): string;
+	/**
+	 * The call expression for a canonical JSON literal. The first call also
+	 * reserves the name of the module-level helper, which makes `generate` emit
+	 * it.
+	 */
+	jsonLiteralCall(value: unknown): string;
 	customSchemaResolver?: CustomSchemaResolver;
 };
 
@@ -113,7 +122,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		dialect: dialectOf(root),
 		customSchemaResolver: options.customSchemaResolver,
 		aliasFor(schema) {
-			return cyclic.has(schema) ? aliasOf(schema) : undefined;
+			return cyclic.has(schema) || hasStructuredLiteral(schema) ? aliasOf(schema) : undefined;
 		},
 		typeNameFor(schema) {
 			return namesOf(schema)!.type;
@@ -121,12 +130,14 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 	};
 
 	const formatNames = new Map<string, string>();
-	const usedNames = new Set(['Schema']);
+	const usedNames = new Set(RESERVED_NAMES);
 
 	for (const names of [...definitionNames.values(), rootNames]) {
 		usedNames.add(names.schema);
 		usedNames.add(names.type);
 	}
+
+	let jsonLiteralName: string | undefined;
 
 	const context: Context = {
 		formatOf(format) {
@@ -140,6 +151,11 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 
 			formatNames.set(format, name);
 			return name;
+		},
+		jsonLiteralCall(value) {
+			jsonLiteralName ??= allocateName('jsonLiteral', usedNames);
+
+			return `${jsonLiteralName}<${literalType(value)}>(${JSON.stringify(canonicalJson(value))})`;
 		},
 		nameOf(schema, ref) {
 			const names = namesOf(schema);
@@ -176,6 +192,10 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 	// constants can be emitted once, before any schema that references them.
 	for (const [format, name] of formatNames) {
 		parts.push(`const ${name} = ${formatCheck(format)!};`);
+	}
+
+	if (jsonLiteralName !== undefined) {
+		parts.push(`const ${jsonLiteralName} = ${jsonLiteralHelper()};`);
 	}
 
 	parts.push(...declarations);
@@ -296,11 +316,11 @@ function generateExpression(schema: ParsedJSONSchemaObject, context: Context): s
 	const dialect = context.dialect;
 
 	if (Object.hasOwn(schema, 'const') && isKeywordApplicable(dialect, 'const')) {
-		return literal(schema.const);
+		return literal(schema.const, context);
 	}
 
 	if (Array.isArray(schema.enum)) {
-		return literals(schema.enum);
+		return literals(schema.enum, context);
 	}
 
 	if (Array.isArray(schema.allOf) && schema.allOf.length > 0) {
@@ -314,10 +334,56 @@ function generateExpression(schema: ParsedJSONSchemaObject, context: Context): s
 			: undefined;
 
 	if (alternatives) {
-		return generateUnion(alternatives, schema.oneOf !== undefined, context);
+		// When both are present, each is applied on its own: `anyOf` becomes the
+		// union and `oneOf` stays in the base, which counts its own matches.
+		const keyword = Array.isArray(schema.anyOf) ? 'anyOf' : 'oneOf';
+		const { members, allTyped } = typedAlternatives(schema, alternatives);
+		const union = generateUnion(members, keyword === 'oneOf', context);
+		const base = alternativesBase(schema, keyword, allTyped);
+
+		if (base === undefined) {
+			return union;
+		}
+
+		const constraints = generateSchema(base, context);
+
+		// Unknown keywords (`x-*`) generate `Schema.Json`, so a filter over them
+		// would accept everything and only make the output noisier.
+		if (constraints === 'Schema.Json') {
+			return union;
+		}
+
+		return applyChecks(union, [siblingKeywordsCheck(constraints, keyword)]);
 	}
 
 	return generateType(schema, context);
+}
+
+/**
+ * A filter that requires the value to match the keywords declared next to
+ * `keyword` (`$ref`, `anyOf` or `oneOf`).
+ */
+function siblingKeywordsCheck(constraints: string, keyword: string): string {
+	return `Schema.makeFilter((value) => Schema.is(${constraints})(value) ? undefined : 'Value does not match the keywords next to "${keyword}"')`;
+}
+
+/**
+ * The keywords declared next to `anyOf`/`oneOf`. They constrain the value on
+ * their own, so the union alone would ignore them. The combinator that became
+ * the union stays out, along with the annotations and the filter keywords,
+ * which `generateSchema` handles on the whole node. A base with only `type`
+ * adds nothing once every member took that type (see `typedAlternatives`).
+ */
+function alternativesBase(
+	schema: ParsedJSONSchemaObject,
+	applied: 'anyOf' | 'oneOf',
+	allTyped: boolean
+): ParsedJSONSchemaObject | undefined {
+	const base = constraintKeywords(schema, new Set([applied]));
+	const keywords = Object.keys(base);
+	const onlyAppliedType = allTyped && keywords.length === 1 && keywords[0] === 'type';
+
+	return keywords.length > 0 && !onlyAppliedType ? base : undefined;
 }
 
 /**
@@ -344,10 +410,7 @@ function generateReference(
 
 			return checkedReference(
 				schema,
-				[
-					`Schema.makeFilter((value) => Schema.is(${constraints})(value) ? undefined : 'Value does not match the keywords next to "$ref"')`,
-					...filters,
-				],
+				[siblingKeywordsCheck(constraints, '$ref'), ...filters],
 				context
 			);
 		}
@@ -374,7 +437,9 @@ function generateUnion(
 	exclusive: boolean,
 	context: Context
 ): string {
-	const members = [...new Set(alternatives.map((member) => generateSchema(member, context)))];
+	const generated = alternatives.map((member) => generateSchema(member, context));
+	// `oneOf` counts how many branches match, so identical branches must stay.
+	const members = exclusive ? generated : [...new Set(generated)];
 
 	if (members.length === 0) {
 		return 'Schema.Never';
@@ -683,7 +748,11 @@ function generateObject(schema: ParsedJSONSchemaObject, context: Context): strin
 						? generateSchema(additional, context)
 						: 'Schema.Json';
 
-		return `${JSON.stringify(key)}: ${
+		// A computed key keeps `__proto__` from changing the prototype of the
+		// object literal passed to `Schema.Struct`.
+		const keyExpression = key === '__proto__' ? `[${JSON.stringify(key)}]` : JSON.stringify(key);
+
+		return `${keyExpression}: ${
 			required.has(key) ? expression : `Schema.optionalKey(${expression})`
 		}`;
 	});
@@ -828,13 +897,17 @@ function dependencyChecks(schema: ParsedJSONSchemaObject, context: Context): str
 		if (Array.isArray(dependency)) {
 			const required = dependency.filter((item): item is string => typeof item === 'string');
 
-			if (required.length > 0) {
+			if (required.length === 1) {
+				conditions.push(`(!${present} || Object.hasOwn(value, ${JSON.stringify(required[0]!)}))`);
+			} else if (required.length > 1) {
 				conditions.push(
 					`(!${present} || ${JSON.stringify(required)}.every((key) => Object.hasOwn(value, key)))`
 				);
 			}
 		} else if (dependency !== undefined && dependency !== null) {
-			conditions.push(`(!${present} || Schema.is(${generateSchema(dependency, context)})(value))`);
+			conditions.push(
+				`(!${present} || Schema.is(${generateDependencySchema(dependency, context)})(value))`
+			);
 		}
 	}
 
@@ -843,6 +916,27 @@ function dependencyChecks(schema: ParsedJSONSchemaObject, context: Context): str
 	}
 
 	return `Schema.makeFilter((value) => ${conditions.join(' && ')} ? undefined : 'Object does not satisfy its dependencies')`;
+}
+
+/**
+ * A schema dependency is evaluated against the object under validation, so an
+ * untyped subschema only needs its object branch: type-specific keywords
+ * constrain their own type, and no other type can match here. The Zod
+ * generator narrows the same way, through `narrowUntypedSchema`.
+ */
+function generateDependencySchema(dependency: ParsedJSONSchema, context: Context): string {
+	if (!isPlainObject(dependency)) {
+		return generateSchema(dependency, context);
+	}
+
+	// A resolver that keys on the node itself has already had its chance on the
+	// original node; asking it again about the narrowed copy would run user code
+	// twice for every dependency.
+	const custom = context.customSchemaResolver?.(dependency as ParsedJSONSchemaObject);
+
+	return (
+		custom ?? generateSchema(narrowUntypedSchema(dependency, 'object', context.dialect), context)
+	);
 }
 
 /**
@@ -957,6 +1051,7 @@ function appliesTo(
 				'minProperties',
 				'maxProperties',
 				'propertyNames',
+				'dependencies',
 			]);
 		case 'array':
 			return anyKeyword([
@@ -1335,7 +1430,7 @@ function reference(schema: ParsedJSONSchemaObject, context: Context): string {
 	return `Schema.suspend(() => ${context.nameOf(resolved, ref)})`;
 }
 
-function literal(value: unknown): string {
+function literal(value: unknown, context: Context): string {
 	if (value === null) {
 		return 'Schema.Null';
 	}
@@ -1343,21 +1438,24 @@ function literal(value: unknown): string {
 		return `Schema.Literal(${JSON.stringify(value)})`;
 	}
 
-	throw new UnsupportedEffectSchemaFeatureError(
-		'const',
-		'only primitive values are supported in const and enum'
-	);
+	return structuredLiteral(value, context);
 }
 
-function literals(values: unknown[]): string {
+function literals(values: unknown[], context: Context): string {
 	if (values.length === 0) {
 		return 'Schema.Never';
 	}
 	if (values.length === 1) {
-		return literal(values[0]);
+		return literal(values[0], context);
 	}
 
-	return `Schema.Literals([${values.map((value) => literalValue(value)).join(', ')}])`;
+	if (values.every(isPrimitiveLiteral)) {
+		return `Schema.Literals([${values.map((value) => literalValue(value)).join(', ')}])`;
+	}
+
+	const members = [...new Set(values.map((value) => literal(value, context)))];
+
+	return members.length === 1 ? members[0]! : `Schema.Union([${members.join(', ')}])`;
 }
 
 function literalValue(value: unknown): string {
@@ -1372,6 +1470,54 @@ function literalValue(value: unknown): string {
 		'enum',
 		'only primitive values are supported in const and enum'
 	);
+}
+
+/** JSON Schema compares `const`/`enum` values structurally, ignoring key order. */
+function structuredLiteral(value: unknown, context: Context): string {
+	return context.jsonLiteralCall(value);
+}
+
+/**
+ * One helper per generated file keeps the canonical JSON comparison out of every
+ * literal. The helper takes the literal's value type as a parameter, so the
+ * annotation of a declaration and every call site agree. The replacer it runs is
+ * the one `canonicalJson` uses, so the expected string cannot drift from it.
+ */
+function jsonLiteralHelper(): string {
+	return `<T>(expected: string) => Schema.Json.check(Schema.makeFilter((value) => JSON.stringify(value, ${canonicalReplacer.toString()}) === expected)) as unknown as Schema.Codec<T>`;
+}
+
+/**
+ * Sorts the keys of every object by code point, not by the build machine's
+ * locale, so `canonicalJson` and the emitted helper serialize the same value the
+ * same way. Integer-like keys keep their JSON.stringify order, which both sides
+ * share.
+ */
+function canonicalReplacer(_key: string, entry: unknown): unknown {
+	if (entry !== null && typeof entry === 'object' && !Array.isArray(entry)) {
+		return Object.fromEntries(
+			Object.entries(entry).sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+		);
+	}
+
+	return entry;
+}
+
+function canonicalJson(value: unknown): string {
+	return JSON.stringify(value, canonicalReplacer) ?? '';
+}
+
+function isPrimitiveLiteral(value: unknown): boolean {
+	return value === null || typeof value !== 'object';
+}
+
+/** A `const` or `enum` value that needs a value type, because Effect has no literal form for it. */
+function hasStructuredLiteral(schema: ParsedJSONSchemaObject): boolean {
+	if (Object.hasOwn(schema, 'const')) {
+		return !isPrimitiveLiteral(schema.const);
+	}
+
+	return Array.isArray(schema.enum) && schema.enum.some((value) => !isPrimitiveLiteral(value));
 }
 
 function applyChecks(expression: string, checks: string[]): string {

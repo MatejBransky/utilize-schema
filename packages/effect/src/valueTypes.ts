@@ -8,6 +8,7 @@ import {
 	type ParsedJSONSchemaObject,
 } from '@utilize/json-schema';
 
+import { typedAlternatives } from './alternatives';
 import type { CustomSchemaResolver } from './generator';
 import { planReferenceSiblings } from './refSiblings';
 
@@ -181,7 +182,9 @@ export function renderValueType(
 			: undefined;
 
 	if (alternatives) {
-		return union(alternatives.map((subschema) => renderValueType(subschema, context)));
+		const { members } = typedAlternatives(schema, alternatives);
+
+		return union(members.map((subschema) => renderValueType(subschema, context)));
 	}
 
 	if (Array.isArray(schema.type)) {
@@ -344,12 +347,22 @@ function schemaWithType(
 	return { ...schema, type };
 }
 
-function literalType(value: unknown): string {
+export function literalType(value: unknown): string {
 	if (value === null) {
 		return 'null';
 	}
 	if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
 		return JSON.stringify(value);
+	}
+	if (Array.isArray(value)) {
+		return `readonly [${value.map((entry) => parenthesize(literalType(entry))).join(', ')}]`;
+	}
+	if (typeof value === 'object') {
+		const members = Object.entries(value as Record<string, unknown>).map(
+			([key, entry]) => `${propertyKey(key)}: ${literalType(entry)}`
+		);
+
+		return `{ ${members.join('; ')} }`;
 	}
 
 	return 'never';

@@ -1,8 +1,7 @@
 import {
-	type Dialect,
-	dialectOf,
 	containsBounds,
 	isKeywordApplicable,
+	narrowUntypedSchema,
 	type ParsedJSONSchema,
 	type ParsedJSONSchemaObject,
 	withSourceMeta,
@@ -77,7 +76,7 @@ export function applyRefinements(
 	}
 
 	if (schema.not !== undefined) {
-		const not = generate(withContextType(schema.not, contextType, context.dialect), context);
+		const not = generate(narrowUntypedSchema(schema.not, contextType, context.dialect), context);
 
 		checks.push(ts`{
       const notResult = ${not}.safeParse(value);
@@ -94,18 +93,22 @@ export function applyRefinements(
 
 	if (schema.if !== undefined && isKeywordApplicable(context.dialect, 'if')) {
 		const condition = generate(
-			withContextType(schema.if as unknown as ParsedJSONSchema, contextType, context.dialect),
+			narrowUntypedSchema(schema.if as unknown as ParsedJSONSchema, contextType, context.dialect),
 			context
 		);
 		const thenSchema = schema.then as unknown as ParsedJSONSchema | undefined;
 		const elseSchema = schema.else as unknown as ParsedJSONSchema | undefined;
 		const thenBlock =
 			thenSchema !== undefined
-				? checkBlock(generate(withContextType(thenSchema, contextType, context.dialect), context))
+				? checkBlock(
+						generate(narrowUntypedSchema(thenSchema, contextType, context.dialect), context)
+					)
 				: '';
 		const elseBlock =
 			elseSchema !== undefined
-				? checkBlock(generate(withContextType(elseSchema, contextType, context.dialect), context))
+				? checkBlock(
+						generate(narrowUntypedSchema(elseSchema, contextType, context.dialect), context)
+					)
 				: '';
 
 		checks.push(ts`{
@@ -215,7 +218,7 @@ export function applyRefinements(
 
 	if (schema.propertyNames !== undefined && isKeywordApplicable(context.dialect, 'propertyNames')) {
 		const propertyNames = generate(
-			withContextType(schema.propertyNames, 'string', context.dialect),
+			narrowUntypedSchema(schema.propertyNames, 'string', context.dialect),
 			context
 		);
 
@@ -255,7 +258,7 @@ export function applyRefinements(
 			}
 
 			const dependencySchema = generate(
-				withContextType(dependency as ParsedJSONSchema, 'object', context.dialect),
+				narrowUntypedSchema(dependency as ParsedJSONSchema, 'object', context.dialect),
 				context
 			);
 
@@ -302,74 +305,4 @@ function issueBlock(resultName: string, pathPrefix?: string): string {
         path: ${path},
       });
     }`;
-}
-
-/**
- * JSON Schema keywords apply only to instances of the matching type, so a
- * subschema without `type` is permissive. Refinements know the type of the
- * value they run on, so they can safely narrow a keyword-only subschema to that
- * type (`propertyNames` always validates strings, a schema dependency always
- * validates objects, and `not`/`if`/`then`/`else` inherit the parent type).
- */
-function withContextType(
-	schema: ParsedJSONSchema,
-	type: string | undefined,
-	fallback: Dialect
-): ParsedJSONSchema {
-	if (type === undefined || typeof schema !== 'object' || schema === null) {
-		return schema;
-	}
-
-	if (
-		schema.type !== undefined ||
-		'$ref' in schema ||
-		schema.anyOf ||
-		schema.oneOf ||
-		schema.allOf ||
-		schema.const !== undefined ||
-		schema.enum
-	) {
-		return schema;
-	}
-
-	const dialect = dialectOf(schema, fallback);
-
-	if (!hasTypeSpecificKeywords(schema, dialect)) {
-		return schema;
-	}
-
-	return withSourceMeta(schema, { ...schema, type }) as ParsedJSONSchema;
-}
-
-const typeSpecificKeywords = [
-	'properties',
-	'required',
-	'additionalProperties',
-	'patternProperties',
-	'propertyNames',
-	'dependencies',
-	'items',
-	'prefixItems',
-	'additionalItems',
-	'contains',
-	'minItems',
-	'maxItems',
-	'uniqueItems',
-	'minLength',
-	'maxLength',
-	'pattern',
-	'format',
-	'minimum',
-	'maximum',
-	'exclusiveMinimum',
-	'exclusiveMaximum',
-	'multipleOf',
-] as const;
-
-function hasTypeSpecificKeywords(schema: ParsedJSONSchemaObject, dialect: Dialect): boolean {
-	const record = schema as unknown as Record<string, unknown>;
-
-	return typeSpecificKeywords.some(
-		(keyword) => record[keyword] !== undefined && isKeywordApplicable(dialect, keyword)
-	);
 }

@@ -25,7 +25,9 @@ export type MergeResult =
  * can choose between failing and another representation.
  */
 export function mergeObjectSchemas(schemas: ParsedJSONSchema[]): MergeResult {
-	const properties: Record<string, ParsedJSONSchema> = {};
+	// Without a prototype, `properties.__proto__ = ...` adds a property instead
+	// of replacing the prototype.
+	const properties: Record<string, ParsedJSONSchema> = Object.create(null);
 	const propertyOwners = new Map<string, number>();
 	const required = new Set<string>();
 	let additionalProperties: ParsedJSONSchemaObject['additionalProperties'];
