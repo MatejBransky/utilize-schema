@@ -286,7 +286,7 @@ export const knownFailureInstances: KnownFailureInstances = {
 		'none of the properties mentioned',
 	],
 	'required.json :: required properties whose names are Javascript object property names': [
-		'all present',
+		'__proto__ present',
 	],
 	'ref.json :: root pointer ref': 'compile',
 };

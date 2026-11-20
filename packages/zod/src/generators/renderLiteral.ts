@@ -1,6 +1,6 @@
 import { isPlainObject } from '@utilize/json-schema';
 
-import { ts } from '../utils';
+import { shapeKey, ts } from '../utils';
 
 /**
  * Renders a JSON value as a Zod schema that matches it by deep equality.
@@ -29,14 +29,9 @@ export function renderLiteral(value: unknown): string {
 		}
 
 		return ts`z.strictObject({
-  ${entries.map(([key, entry]) => `${propertyKey(key)}: ${renderLiteral(entry)}`).join(`,\n  `)}
+  ${entries.map(([key, entry]) => `${shapeKey(key)}: ${renderLiteral(entry)}`).join(`,\n  `)}
 })`;
 	}
 
 	return ts`z.literal(${JSON.stringify(value)})`;
-}
-
-function propertyKey(key: string) {
-	// A computed key is the only way to create an own `__proto__` property.
-	return key === '__proto__' ? `[${JSON.stringify(key)}]` : JSON.stringify(key);
 }

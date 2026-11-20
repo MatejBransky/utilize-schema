@@ -232,3 +232,50 @@ describe('sibling constraints on literals', () => {
 		expect(Root.safeParse({ a: 'x', b: 1 }).success).toBe(false);
 	});
 });
+
+describe('a __proto__ property', () => {
+	test('is validated and required', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: { ['__proto__']: { type: 'number' } },
+			required: ['__proto__'],
+		});
+
+		expect(Root.safeParse(JSON.parse('{ "__proto__": 12 }')).success).toBe(true);
+		expect(Root.safeParse(JSON.parse('{ "__proto__": "text" }')).success).toBe(false);
+		expect(Root.safeParse({}).success).toBe(false);
+	});
+
+	test('is validated but may be omitted when optional', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: { ['__proto__']: { type: 'number' } },
+		});
+
+		expect(Root.safeParse({}).success).toBe(true);
+		expect(Root.safeParse(JSON.parse('{ "__proto__": 12 }')).success).toBe(true);
+		expect(Root.safeParse(JSON.parse('{ "__proto__": "text" }')).success).toBe(false);
+	});
+
+	test('is required when it has no properties entry', async () => {
+		const Root = await compileToZod({ type: 'object', required: ['__proto__'] });
+
+		expect(Root.safeParse(JSON.parse('{ "__proto__": 12 }')).success).toBe(true);
+		expect(Root.safeParse({}).success).toBe(false);
+	});
+
+	test('is validated when it comes from allOf', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			allOf: [
+				{ type: 'object', properties: { ['__proto__']: { type: 'number' } } },
+				{ type: 'object', properties: { b: { type: 'string' } } },
+			],
+		});
+
+		expect(Root.safeParse(JSON.parse('{ "__proto__": 12 }')).success).toBe(true);
+		expect(Root.safeParse({ b: 'x' }).success).toBe(true);
+		expect(Root.safeParse(JSON.parse('{ "__proto__": "text" }')).success).toBe(false);
+		expect(Root.safeParse({ b: 1 }).success).toBe(false);
+	});
+});

@@ -287,10 +287,8 @@ const cases: ParityCase[] = [
 				{ type: 'object', properties: { b: { type: 'string' } } },
 			],
 		} as TestSchema,
-		// The Zod output does not check the type of `__proto__` itself, so that
-		// value is only covered by the Effect runtime tests.
 		valid: [{ b: 'x' }, { ['__proto__']: 12 }],
-		invalid: [{ b: 1 }],
+		invalid: [{ b: 1 }, { ['__proto__']: 'text' }],
 	},
 	{
 		name: 'allOf objects',

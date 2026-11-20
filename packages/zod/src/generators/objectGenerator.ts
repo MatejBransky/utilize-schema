@@ -5,13 +5,16 @@ import { generateSchema } from './generateSchema';
 import type { GeneratorContext } from './types';
 
 import { unicodePattern } from '../regex';
-import { isSchemaObject, NEWLINE, ts } from '../utils';
+import { isSchemaObject, NEWLINE, shapeKey, ts } from '../utils';
+
+const PROTO = '__proto__';
 
 export const generator = createGenerator(
 	(schema) => schema.type === 'object',
 	(schema, context) => {
-		const properties = Object.entries(schema.properties ?? {}).map(([key, value]) => {
-			const keyLiteral = JSON.stringify(key);
+		const declaredProperties = schema.properties ?? {};
+		const properties = Object.entries(declaredProperties).map(([key, value]) => {
+			const keyExpression = shapeKey(key);
 			let optionalPart = '.optional()';
 
 			if (
@@ -28,16 +31,18 @@ export const generator = createGenerator(
 			}
 
 			if (containsCircularRef(value, context)) {
-				return ts`get ${keyLiteral}() {
+				return ts`get ${keyExpression}() {
             return ${generateSchema(value, context)}${optionalPart};
           }`;
 			}
 
-			return `${keyLiteral}: ${generateSchema(value, context)}${optionalPart}`;
+			return `${keyExpression}: ${generateSchema(value, context)}${optionalPart}`;
 		});
 		const propertiesPart = properties.join(`,${NEWLINE}`);
+		// `__proto__` is validated against the raw input below, because Zod's
+		// object parser skips that key in both the shape and the output.
 		const requiredWithoutProperties = (schema.required ?? []).filter(
-			(key) => !Object.hasOwn(schema.properties ?? {}, key)
+			(key) => key !== PROTO && !Object.hasOwn(declaredProperties, key)
 		);
 		const additionalProperties = schema.additionalProperties;
 		const patterns = Object.entries(schema.patternProperties ?? {});
@@ -54,7 +59,7 @@ export const generator = createGenerator(
 						? generateSchema(additionalProperties, context)
 						: ts`z.unknown()`;
 		const requiredPart = requiredWithoutProperties
-			.map((key) => `${JSON.stringify(key)}: ${requiredValue}`)
+			.map((key) => `${shapeKey(key)}: ${requiredValue}`)
 			.join(`,${NEWLINE}`);
 		const allProperties = [propertiesPart, requiredPart].filter(Boolean).join(`,${NEWLINE}`);
 		const requiredCheck =
@@ -71,11 +76,18 @@ export const generator = createGenerator(
         }
       })`
 				: '';
+		const protoCheck = protoPropertyCheck(schema, requiredValue, context);
+		const withProtoCheck = (expression: string) =>
+			protoCheck === ''
+				? expression
+				: ts`z.any().superRefine((value, ctx) => {
+        ${protoCheck}
+      }).pipe(${expression})`;
 
 		if (patterns.length > 0) {
-			return ts`z.looseObject({
+			return withProtoCheck(ts`z.looseObject({
         ${allProperties}
-      })${patternRefinement(schema, patterns, context)}${requiredCheck}`;
+      })${patternRefinement(schema, patterns, context)}${requiredCheck}`);
 		}
 
 		const catchAllPart = isSchemaObject<ParsedJSONSchemaObject>(additionalProperties)
@@ -83,22 +95,73 @@ export const generator = createGenerator(
 			: '';
 
 		if (additionalProperties === false) {
-			return ts`z.strictObject({
+			return withProtoCheck(ts`z.strictObject({
         ${allProperties}
-      })${requiredCheck}`;
+      })${requiredCheck}`);
 		}
 
 		if (additionalProperties === true) {
-			return ts`z.looseObject({
+			return withProtoCheck(ts`z.looseObject({
         ${allProperties}
-      })${requiredCheck}`;
+      })${requiredCheck}`);
 		}
 
-		return ts`z.object({
+		return withProtoCheck(ts`z.object({
       ${allProperties}
-    })${catchAllPart}${requiredCheck}`;
+    })${catchAllPart}${requiredCheck}`);
 	}
 );
+
+/**
+ * Zod's object parser skips an own `__proto__` key: the shape never validates
+ * it, a `required` one is never enforced, and the parsed output drops it. This
+ * returns a check for the raw input, which still has the property when the
+ * value comes from JSON, or an empty string when the schema does not use it.
+ */
+function protoPropertyCheck(
+	schema: ParsedJSONSchemaObject,
+	requiredValue: string,
+	context: GeneratorContext
+): string {
+	const properties = schema.properties ?? {};
+	const declared = Object.hasOwn(properties, PROTO);
+	const required = schema.required?.includes(PROTO) ?? false;
+
+	if (!declared && !required) {
+		return '';
+	}
+
+	// A required key without a `properties` entry is constrained by a pattern,
+	// `additionalProperties` or nothing, exactly like its placeholder.
+	const valueSchema = declared ? generateSchema(properties[PROTO], context) : requiredValue;
+	const missingCheck = required
+		? ts`ctx.addIssue({
+          code: 'custom',
+          message: 'Required property is missing.',
+          path: ['__proto__'],
+        });`
+		: '';
+
+	return ts`if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, '__proto__');
+
+      if (descriptor === undefined) {
+        ${missingCheck}
+      } else {
+        const result = ${valueSchema}.safeParse(descriptor.value);
+
+        if (!result.success) {
+          for (const issue of result.error.issues) {
+            ctx.addIssue({
+              code: 'custom',
+              message: issue.message,
+              path: ['__proto__', ...issue.path],
+            });
+          }
+        }
+      }
+    }`;
+}
 
 /**
  * `patternProperties` can apply several schemas to the same key and only
