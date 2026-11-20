@@ -278,4 +278,16 @@ describe('a __proto__ property', () => {
 		expect(Root.safeParse(JSON.parse('{ "__proto__": "text" }')).success).toBe(false);
 		expect(Root.safeParse({ b: 1 }).success).toBe(false);
 	});
+
+	test('is validated through the getter of a circular schema', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: { ['__proto__']: { $ref: '#' } },
+		});
+
+		expect(Root.safeParse({}).success).toBe(true);
+		expect(Root.safeParse(JSON.parse('{ "__proto__": {} }')).success).toBe(true);
+		expect(Root.safeParse(JSON.parse('{ "__proto__": { "__proto__": {} } }')).success).toBe(true);
+		expect(Root.safeParse(JSON.parse('{ "__proto__": 12 }')).success).toBe(false);
+	});
 });
