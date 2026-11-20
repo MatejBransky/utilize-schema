@@ -618,7 +618,7 @@ function arrayChecks(schema: ParsedJSONSchemaObject, context: Context): string[]
 	if (schema.uniqueItems === true) {
 		checks.push('Schema.isUnique()');
 	}
-	if (schema.contains !== undefined) {
+	if (schema.contains !== undefined && isKeywordApplicable(dialect, 'contains')) {
 		const contains = generateSchema(schema.contains, context);
 		const bounds = containsBounds(schema, dialect);
 
