@@ -3,14 +3,13 @@ export type TargetId = 'zod' | 'effect' | 'typescript';
 export interface Target {
 	value: TargetId;
 	label: string;
-	hint: string;
 	disabled?: boolean;
 }
 
 export const targets: Target[] = [
-	{ value: 'zod', label: 'Zod', hint: 'Available' },
-	{ value: 'effect', label: 'Effect Schema', hint: 'Available' },
-	{ value: 'typescript', label: 'TypeScript', hint: 'Types only' },
+	{ value: 'zod', label: 'Zod' },
+	{ value: 'effect', label: 'Effect Schema' },
+	{ value: 'typescript', label: 'TypeScript' },
 ];
 
 export const defaultTarget: TargetId = 'zod';

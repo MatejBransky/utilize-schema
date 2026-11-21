@@ -26,7 +26,7 @@
 
 .content {
 	width: var(--anchor-width);
-	min-width: min(16rem, 90vw);
+	min-width: min(9rem, 90vw);
 	max-height: var(--available-height);
 }
 
@@ -50,12 +50,4 @@
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	font-weight: 500;
-}
-
-.hint {
-	flex: none;
-	width: 5.5rem;
-	text-align: right;
-	font-size: 0.75rem;
-	color: var(--ui-muted-foreground);
 }
