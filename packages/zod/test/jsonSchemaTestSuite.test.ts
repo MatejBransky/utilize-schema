@@ -1,10 +1,10 @@
 import { afterAll, describe, expect, test } from 'vitest';
 
-import { DRAFT_7, isCompatible } from './suite/compatibility';
+import { DRAFT_7, isCompatible } from '@utilize/test-utils/suite/compatibility';
 import { compileToZodSchema } from './suite/compile';
 import { knownFailureInstances } from './suite/knownFailureInstances';
 import { knownFailures } from './suite/knownFailures';
-import { loadSuiteFiles, type SuiteCase, suiteCaseKey } from './suite/loadSuite';
+import { loadSuiteFiles, type SuiteCase, suiteCaseKey } from '@utilize/test-utils/suite/loadSuite';
 
 /**
  * Runs the official JSON Schema Test Suite against the generated Zod schemas.
