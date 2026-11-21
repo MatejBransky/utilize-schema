@@ -32,7 +32,7 @@ await compile({
 });
 ```
 
-`@utilize/zod` requires `zod` 4 as a peer dependency:
+`@utilize/zod` requires `zod` 4.5 or newer as a peer dependency:
 
 ```sh
 pnpm add zod
@@ -137,6 +137,15 @@ standalone schema is declared once and referenced wherever it appears. An
 value, such as `anyOf: [X, {}]`, is left out: it never rejects a value, so
 `.parse()` returns what the rest of the schema keeps.
 
+### `__proto__` properties
+
+A `__proto__` property in your schema is validated as an own property of the
+input: `required` and its value schema are enforced, also for `const` and `enum`
+values and for `additionalProperties`. The parsed output does not contain it,
+because Zod drops `__proto__` from parsed objects and records on purpose. Do
+not read a `__proto__` value from the result of `.parse()`; read it from the
+input you passed in.
+
 ## Naming
 
 Each standalone schema gets the name resolved from `$id`, `title`, the `$defs`
@@ -217,7 +226,7 @@ The suite is pinned to a commit and installed as a dev dependency. Each test
 case is compiled to a Zod schema in memory and every instance from the suite is
 run through `safeParse`.
 
-Today it passes **281 of 304 draft-07 cases (1,397 of 1,655 assertions)**. Format
+Today it passes **283 of 304 draft-07 cases (1,399 of 1,655 assertions)**. Format
 cases run in the mode they are tagged for, so both the annotation and the
 assertion cases are measured.
 

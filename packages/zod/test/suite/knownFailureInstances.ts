@@ -282,11 +282,5 @@ export const knownFailureInstances: KnownFailureInstances = {
 	'id.json :: simple URN base URI with $ref via the URN': 'compile',
 	'id.json :: simple base URI using an arbitrary URI scheme with $ref to that URI': 'compile',
 	'id.json :: simple tag URI base URI with $ref via the tag URI': 'compile',
-	'properties.json :: properties whose names are Javascript object property names': [
-		'none of the properties mentioned',
-	],
-	'required.json :: required properties whose names are Javascript object property names': [
-		'all present',
-	],
 	'ref.json :: root pointer ref': 'compile',
 };

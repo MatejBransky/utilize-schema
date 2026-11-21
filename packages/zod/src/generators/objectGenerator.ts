@@ -2,16 +2,20 @@ import { Meta, type ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
 import { generateSchema } from './generateSchema';
+import { protoInputCheck } from './protoProperty';
 import type { GeneratorContext } from './types';
 
 import { unicodePattern } from '../regex';
-import { isSchemaObject, NEWLINE, ts } from '../utils';
+import { isSchemaObject, NEWLINE, shapeKey, ts } from '../utils';
+
+const PROTO = '__proto__';
 
 export const generator = createGenerator(
 	(schema) => schema.type === 'object',
 	(schema, context) => {
-		const properties = Object.entries(schema.properties ?? {}).map(([key, value]) => {
-			const keyLiteral = JSON.stringify(key);
+		const declaredProperties = schema.properties ?? {};
+		const properties = Object.entries(declaredProperties).map(([key, value]) => {
+			const keyExpression = shapeKey(key);
 			let optionalPart = '.optional()';
 
 			if (
@@ -28,16 +32,18 @@ export const generator = createGenerator(
 			}
 
 			if (containsCircularRef(value, context)) {
-				return ts`get ${keyLiteral}() {
+				return ts`get ${keyExpression}() {
             return ${generateSchema(value, context)}${optionalPart};
           }`;
 			}
 
-			return `${keyLiteral}: ${generateSchema(value, context)}${optionalPart}`;
+			return `${keyExpression}: ${generateSchema(value, context)}${optionalPart}`;
 		});
 		const propertiesPart = properties.join(`,${NEWLINE}`);
+		// `__proto__` is validated against the raw input below, because Zod's
+		// object parser skips that key in both the shape and the output.
 		const requiredWithoutProperties = (schema.required ?? []).filter(
-			(key) => !Object.hasOwn(schema.properties ?? {}, key)
+			(key) => key !== PROTO && !Object.hasOwn(declaredProperties, key)
 		);
 		const additionalProperties = schema.additionalProperties;
 		const patterns = Object.entries(schema.patternProperties ?? {});
@@ -54,7 +60,7 @@ export const generator = createGenerator(
 						? generateSchema(additionalProperties, context)
 						: ts`z.unknown()`;
 		const requiredPart = requiredWithoutProperties
-			.map((key) => `${JSON.stringify(key)}: ${requiredValue}`)
+			.map((key) => `${shapeKey(key)}: ${requiredValue}`)
 			.join(`,${NEWLINE}`);
 		const allProperties = [propertiesPart, requiredPart].filter(Boolean).join(`,${NEWLINE}`);
 		const requiredCheck =
@@ -71,11 +77,33 @@ export const generator = createGenerator(
         }
       })`
 				: '';
+		const protoCheck = protoPropertyCheck(schema, context);
+		const withProtoCheck = (expression: string) => {
+			const checked =
+				protoCheck === ''
+					? expression
+					: ts`z.any().superRefine((value, ctx) => {
+        ${protoCheck}
+      }).pipe(${expression})`;
+
+			// Zod finds a declared key with `key in input` and reads `input[key]`,
+			// so a name that exists on `Object.prototype` is validated against the
+			// inherited value when the input does not own it. A null-prototype
+			// clone hides the inherited names.
+			return needsPrototypeNamesClone(schema)
+				? ts`z.preprocess((value) =>
+        typeof value === 'object' && value !== null && !Array.isArray(value)
+          ? Object.assign(Object.create(null), value)
+          : value,
+        ${checked}
+      )`
+				: checked;
+		};
 
 		if (patterns.length > 0) {
-			return ts`z.looseObject({
+			return withProtoCheck(ts`z.looseObject({
         ${allProperties}
-      })${patternRefinement(schema, patterns, context)}${requiredCheck}`;
+      })${patternRefinement(schema, patterns, context)}${requiredCheck}`);
 		}
 
 		const catchAllPart = isSchemaObject<ParsedJSONSchemaObject>(additionalProperties)
@@ -83,22 +111,84 @@ export const generator = createGenerator(
 			: '';
 
 		if (additionalProperties === false) {
-			return ts`z.strictObject({
+			return withProtoCheck(ts`z.strictObject({
         ${allProperties}
-      })${requiredCheck}`;
+      })${requiredCheck}`);
 		}
 
 		if (additionalProperties === true) {
-			return ts`z.looseObject({
+			return withProtoCheck(ts`z.looseObject({
         ${allProperties}
-      })${requiredCheck}`;
+      })${requiredCheck}`);
 		}
 
-		return ts`z.object({
+		return withProtoCheck(ts`z.object({
       ${allProperties}
-    })${catchAllPart}${requiredCheck}`;
+    })${catchAllPart}${requiredCheck}`);
 	}
 );
+
+/**
+ * Zod's object parser skips an own `__proto__` key: the shape never validates
+ * it, a `required` one is never enforced, and the parsed output drops it. This
+ * returns a check for the raw input, which still has the property when the
+ * value comes from JSON, or an empty string when the schema does not use it.
+ *
+ * `patternProperties` and `additionalProperties` apply to `__proto__` like to
+ * any other key, but Zod's catchall skips it as well, so they are checked here
+ * too. The key is constant, so a pattern that matches it is known at
+ * generation time.
+ */
+function protoPropertyCheck(schema: ParsedJSONSchemaObject, context: GeneratorContext): string {
+	const properties = schema.properties ?? {};
+	const declared = Object.hasOwn(properties, PROTO);
+	const required = schema.required?.includes(PROTO) ?? false;
+	const patterns = Object.entries(schema.patternProperties ?? {});
+	const matchingPatterns = patterns.filter(([pattern]) =>
+		unicodePattern(pattern, 'patternProperties').test(PROTO)
+	);
+	const additionalProperties = schema.additionalProperties;
+	// A matching pattern covers the key, so `additionalProperties` does not.
+	const additionalSchema =
+		!declared &&
+		matchingPatterns.length === 0 &&
+		isSchemaObject<ParsedJSONSchemaObject>(additionalProperties)
+			? generateSchema(additionalProperties, context)
+			: '';
+	// Without patterns, `z.strictObject` reports the key itself.
+	const additionalRejection =
+		!declared &&
+		matchingPatterns.length === 0 &&
+		patterns.length > 0 &&
+		additionalProperties === false;
+
+	if (
+		!declared &&
+		!required &&
+		matchingPatterns.length === 0 &&
+		additionalSchema === '' &&
+		!additionalRejection
+	) {
+		return '';
+	}
+
+	return protoInputCheck({
+		required,
+		rejectAsAdditional: additionalRejection,
+		valueExpressions: [
+			declared ? generateSchema(properties[PROTO], context) : '',
+			...matchingPatterns.map(([, subschema]) => generateSchema(subschema, context)),
+			additionalSchema,
+		].filter(Boolean),
+	});
+}
+
+/** True when Zod could find a declared key on `Object.prototype`. */
+function needsPrototypeNamesClone(schema: ParsedJSONSchemaObject): boolean {
+	return [...Object.keys(schema.properties ?? {}), ...(schema.required ?? [])].some(
+		(key) => key !== PROTO && Object.hasOwn(Object.prototype, key)
+	);
+}
 
 /**
  * `patternProperties` can apply several schemas to the same key and only

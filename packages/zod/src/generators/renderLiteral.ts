@@ -1,6 +1,8 @@
 import { isPlainObject } from '@utilize/json-schema';
 
-import { ts } from '../utils';
+import { protoInputCheck } from './protoProperty';
+
+import { shapeKey, ts } from '../utils';
 
 /**
  * Renders a JSON value as a Zod schema that matches it by deep equality.
@@ -23,20 +25,26 @@ export function renderLiteral(value: unknown): string {
 
 	if (isPlainObject(value)) {
 		const entries = Object.entries(value);
+		const shape =
+			entries.length === 0
+				? ts`z.strictObject({})`
+				: ts`z.strictObject({
+  ${entries.map(([key, entry]) => `${shapeKey(key)}: ${renderLiteral(entry)}`).join(`,\n  `)}
+})`;
 
-		if (entries.length === 0) {
-			return ts`z.strictObject({})`;
+		// Zod's object parser skips an own `__proto__`, so the shape alone would
+		// accept any value for it. Validate it on the raw input instead.
+		if (!Object.hasOwn(value, '__proto__')) {
+			return shape;
 		}
 
-		return ts`z.strictObject({
-  ${entries.map(([key, entry]) => `${propertyKey(key)}: ${renderLiteral(entry)}`).join(`,\n  `)}
-})`;
+		return ts`z.any().superRefine((value, ctx) => {
+  ${protoInputCheck({
+		required: true,
+		valueExpressions: [renderLiteral(value['__proto__'])],
+	})}
+}).pipe(${shape})`;
 	}
 
 	return ts`z.literal(${JSON.stringify(value)})`;
-}
-
-function propertyKey(key: string) {
-	// A computed key is the only way to create an own `__proto__` property.
-	return key === '__proto__' ? `[${JSON.stringify(key)}]` : JSON.stringify(key);
 }
