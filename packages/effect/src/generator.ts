@@ -1,5 +1,6 @@
 // oxlint-disable unicorn/no-array-sort -- the emitted helper sorts keys by code point; the source function is stringified into generated code
 import {
+	collectStandaloneSchemas,
 	type Dialect,
 	dialectOf,
 	containsBounds,
@@ -9,10 +10,10 @@ import {
 	narrowUntypedSchema,
 	type ParsedJSONSchema,
 	type ParsedJSONSchemaObject,
+	type SchemaEdge,
 } from '@utilize/json-schema';
 
 import { typedAlternatives } from './alternatives';
-import { collectStandaloneSchemas, type SchemaEdge } from './collectStandaloneSchemas';
 import { constraintKeywords } from './constraints';
 import { UnresolvedReferenceError, UnsupportedEffectSchemaFeatureError } from './errors';
 import { findCyclicSchemas } from './findCyclicSchemas';
