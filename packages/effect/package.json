@@ -51,10 +51,9 @@
 	"devDependencies": {
 		"@total-typescript/tsconfig": "catalog:",
 		"@types/node": "catalog:",
+		"@utilize/test-utils": "workspace:*",
 		"@utilize/zod": "workspace:*",
 		"effect": "catalog:",
-		"json-schema-test-suite": "github:json-schema-org/JSON-Schema-Test-Suite#e2a68a15cd490750fd6b95e604e4054d7d978d1f",
-		"oxfmt": "catalog:",
 		"tsdown": "catalog:",
 		"typescript": "catalog:",
 		"vitest": "catalog:",
