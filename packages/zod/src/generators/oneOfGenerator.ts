@@ -2,8 +2,9 @@ import { dialectOf, type ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
 import { areMutuallyExclusive } from './exclusiveBranches';
-import { composedSchemaParts, generateSchema } from './generateSchema';
+import { generateSchema } from './generateSchema';
 import { generator as objectGenerator } from './objectGenerator';
+import { composedSchemaParts } from './schemaParts';
 import { selectGenerator } from './selectGenerator';
 
 import { isResolvedByCaller, ts } from '../utils';

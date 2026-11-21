@@ -7,7 +7,6 @@ import { generator as arrayGenerator } from './arrayGenerator';
 import { generator as booleanGenerator } from './booleanGenerator';
 import type { ExpressionGenerator } from './createGenerator';
 import { generator as enumGenerator } from './enumGenerator';
-import { isTypedLiteral } from './generateSchema';
 import { generator as literalGenerator } from './literalGenerator';
 import { generator as multipleTypeGenerator } from './multipleTypeGenerator';
 import { generator as nullGenerator } from './nullGenerator';
@@ -16,6 +15,7 @@ import { generator as objectGenerator } from './objectGenerator';
 import { generator as oneOfGenerator } from './oneOfGenerator';
 import { generator as recordGenerator } from './recordGenerator';
 import { generator as refGenerator } from './refGenerator';
+import { isTypedLiteral } from './schemaParts';
 import { generator as stringGenerator } from './stringGenerator';
 import { generator as tupleGenerator } from './tupleGenerator';
 

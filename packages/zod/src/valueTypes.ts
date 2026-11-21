@@ -20,7 +20,7 @@ import { generator as numberGenerator } from './generators/numberGenerator';
 import { generator as objectGenerator } from './generators/objectGenerator';
 import { generator as oneOfGenerator } from './generators/oneOfGenerator';
 import { generator as recordGenerator } from './generators/recordGenerator';
-import { composedSchemaParts, refSiblingConstraints } from './generators/generateSchema';
+import { composedSchemaParts, refSiblingConstraints } from './generators/schemaParts';
 import { selectGenerator } from './generators/selectGenerator';
 import type { CustomSchemaResolver } from './generators/types';
 import { generator as stringGenerator } from './generators/stringGenerator';
