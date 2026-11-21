@@ -391,6 +391,25 @@ test('an agent can switch the generator', async () => {
 	);
 });
 
+test('the validation panel can be collapsed', async () => {
+	const screen = await render(<App />);
+	const toggle = screen.getByRole('button', { name: /Validation/ });
+	const body = document.querySelector('#validation-problems');
+
+	expect(toggle.element().getAttribute('aria-expanded')).toBe('true');
+	expect(body?.hasAttribute('hidden')).toBe(false);
+
+	await toggle.click();
+
+	await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('false'));
+	expect(body?.hasAttribute('hidden')).toBe(true);
+
+	await toggle.click();
+
+	await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('true'));
+	expect(body?.hasAttribute('hidden')).toBe(false);
+});
+
 test('the keyword policy shows foreign keywords as errors or warnings', async () => {
 	localStorage.setItem(
 		'utilize-schema-playground',
