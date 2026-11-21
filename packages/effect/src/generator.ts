@@ -27,6 +27,7 @@ import { formatCheck } from './formats';
 import { ANNOTATION_KEYWORDS } from './keywords';
 import { mergeObjectSchemas } from './mergeObjects';
 import { planReferenceSiblings } from './refSiblings';
+import { arrayRest, objectKeys, parentSchema, prefixItemsOf } from './schemaParts';
 import { literalType, renderValueTypeDeclaration, type ValueTypeContext } from './valueTypes';
 
 export interface GenerateOptions {
@@ -493,21 +494,6 @@ function generateType(schema: ParsedJSONSchemaObject, context: Context): string 
 	}
 }
 
-/**
- * The declaring schema without the `allOf` that is being merged and without the
- * filter keywords, which are applied on top of the merged object.
- */
-function parentSchema(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject {
-	return {
-		...schema,
-		allOf: undefined,
-		not: undefined,
-		if: undefined,
-		then: undefined,
-		else: undefined,
-	};
-}
-
 /** Drops metadata so that only the keyword applicability of each union member remains. */
 function schemaWithType(
 	schema: ParsedJSONSchemaObject,
@@ -600,13 +586,7 @@ function generateNumber(schema: ParsedJSONSchemaObject, integer: boolean): strin
 function generateArray(schema: ParsedJSONSchemaObject, context: Context): string {
 	const dialect = context.dialect;
 	const items = schema.items as unknown as ParsedJSONSchema | ParsedJSONSchema[] | undefined;
-	const tupleItems = Array.isArray(items) ? items : undefined;
-	const prefixItems =
-		dialect.tuple === 'prefixItems'
-			? Array.isArray(schema.prefixItems)
-				? (schema.prefixItems as ParsedJSONSchema[])
-				: undefined
-			: tupleItems;
+	const prefixItems = prefixItemsOf(schema, dialect);
 	const checks = arrayChecks(schema, context);
 	const singleItem = Array.isArray(items) ? undefined : items;
 
@@ -641,37 +621,10 @@ function generateArray(schema: ParsedJSONSchemaObject, context: Context): string
 	);
 }
 
-function arrayRest(
-	schema: ParsedJSONSchemaObject,
-	items: ParsedJSONSchema | ParsedJSONSchema[] | undefined,
-	dialect: Dialect
-): ParsedJSONSchema | false {
-	if (dialect.tuple === 'prefixItems') {
-		if (items === false) {
-			return false;
-		}
-
-		return Array.isArray(items) ? true : (items ?? true);
-	}
-
-	if (schema.additionalItems === false) {
-		return false;
-	}
-
-	return (schema.additionalItems as unknown as ParsedJSONSchema | undefined) ?? true;
-}
-
 function arrayChecks(schema: ParsedJSONSchemaObject, context: Context): string[] {
 	const checks: string[] = [];
 	const dialect = context.dialect;
-	const prefixLength =
-		dialect.tuple === 'prefixItems'
-			? Array.isArray(schema.prefixItems)
-				? schema.prefixItems.length
-				: 0
-			: Array.isArray(schema.items)
-				? schema.items.length
-				: 0;
+	const prefixLength = prefixItemsOf(schema, dialect)?.length ?? 0;
 	const minItems = typeof schema.minItems === 'number' ? schema.minItems : 0;
 
 	if (minItems > prefixLength) {
@@ -707,13 +660,7 @@ function arrayChecks(schema: ParsedJSONSchemaObject, context: Context): string[]
 }
 
 function generateObject(schema: ParsedJSONSchemaObject, context: Context): string {
-	const properties = isPlainObject(schema.properties) ? schema.properties : {};
-	const required = new Set(
-		Array.isArray(schema.required)
-			? schema.required.filter((key): key is string => typeof key === 'string')
-			: []
-	);
-	const keys = [...new Set([...Object.keys(properties), ...required])];
+	const { properties, required, keys } = objectKeys(schema);
 	const additional = schema.additionalProperties;
 	const patterns = patternEntries(schema, context);
 	const checks = objectChecks(schema, context);
