@@ -98,6 +98,22 @@ To set this up on a fork or a new repository:
   pnpm --filter @utilize/typescript test:suite
   ```
 
+## Coverage badge
+
+Each package README shows a badge with the unit test line coverage of that
+package's `src` folder, rounded down to a whole percent. The number includes
+the JSON Schema Test Suite run and the thin `cli.ts` entry points. The badges
+are SVG files in `.github/badges/`, committed to the repository.
+
+CI runs `pnpm check:coverage-badge` and fails when a committed badge no longer
+matches the measured value. To fix it, build the packages, regenerate the
+badges and commit the result:
+
+```sh
+pnpm build:dev
+pnpm badge:coverage
+```
+
 ## Dependency Versions
 
 Shared dependencies are pinned once in the `catalog` section of `pnpm-workspace.yaml`.
