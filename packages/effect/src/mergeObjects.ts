@@ -128,7 +128,7 @@ function unmergeableReason(schema: ParsedJSONSchemaObject): string | undefined {
 }
 
 /** The target of a `$ref` node, or the node itself when it is not a reference. */
-export function dereference(schema: ParsedJSONSchema): ParsedJSONSchema {
+function dereference(schema: ParsedJSONSchema): ParsedJSONSchema {
 	if (!isPlainObject(schema) || typeof schema.$ref !== 'string') {
 		return schema;
 	}
