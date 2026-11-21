@@ -640,6 +640,18 @@
 	background: rgb(0 0 0 / 0.72);
 }
 
+.dataDropOverlay {
+	position: absolute;
+	inset: 0;
+	z-index: 10;
+	display: flex;
+	background: rgb(0 0 0 / 0.72);
+}
+
+.dataDropOverlay .dropTarget {
+	flex: 1;
+}
+
 .dropTarget {
 	display: flex;
 	flex-direction: column;

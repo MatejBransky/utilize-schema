@@ -19,6 +19,7 @@ import {
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@ui-sdk/react/tabs';
 import {
 	type CSSProperties,
+	type DragEvent as ReactDragEvent,
 	type KeyboardEvent as ReactKeyboardEvent,
 	type PointerEvent as ReactPointerEvent,
 	useEffect,
@@ -35,7 +36,7 @@ import {
 	type Problem,
 	type SchemaFile,
 } from './bundle';
-import { collectDroppedFiles, readDroppedSchemas, type DropMode } from './drop';
+import { collectDroppedFiles, hasFileDrag, readDroppedSchemas, type DropMode } from './drop';
 import { exampleGeneratorOptions } from './exampleOptions';
 import {
 	defaultExampleId,
@@ -114,6 +115,7 @@ export default function App() {
 	const [resizing, setResizing] = useState(false);
 	const [problemsCollapsed, setProblemsCollapsed] = useState(false);
 	const [dataCollapsed, setDataCollapsed] = useState(false);
+	const [dataDragging, setDataDragging] = useState(false);
 	const workspaceRef = useRef<HTMLElement>(null);
 	const schemaEditorRef = useRef<MonacoEditorHandle>(null);
 	const dataEditorRef = useRef<MonacoEditorHandle>(null);
@@ -415,6 +417,44 @@ export default function App() {
 
 		setFiles([root, ...added.filter((file) => file.id !== root.id)]);
 		setActiveId(root.id);
+	}
+
+	function allowDataDrop(event: ReactDragEvent<HTMLElement>) {
+		if (!hasFileDrag(event.dataTransfer)) {
+			return;
+		}
+
+		event.preventDefault();
+		event.dataTransfer.dropEffect = 'copy';
+		setDataDragging(true);
+	}
+
+	function leaveDataDrop(event: ReactDragEvent<HTMLElement>) {
+		const next = event.relatedTarget;
+
+		if (next instanceof Node && event.currentTarget.contains(next)) {
+			return;
+		}
+
+		setDataDragging(false);
+	}
+
+	async function dropData(event: ReactDragEvent<HTMLElement>) {
+		if (!hasFileDrag(event.dataTransfer)) {
+			return;
+		}
+
+		event.preventDefault();
+		setDataDragging(false);
+
+		const documents = await readDroppedSchemas(await collectDroppedFiles(event.dataTransfer)).catch(
+			() => null
+		);
+		const document = documents?.[0];
+
+		if (document) {
+			setData(document.content);
+		}
 	}
 
 	function closeFile(id: string) {
@@ -852,7 +892,7 @@ export default function App() {
 							</span>
 						</div>
 					</Tabs>
-					{dragging ? (
+					{dragging && !dataDragging ? (
 						<div
 							className={styles.dropOverlay}
 							role="group"
@@ -977,6 +1017,10 @@ export default function App() {
 				<section
 					className={`${styles.pane} ${styles.dataPane}`}
 					data-collapsed={dataCollapsed ? 'true' : undefined}
+					onDragEnter={allowDataDrop}
+					onDragOver={allowDataDrop}
+					onDragLeave={leaveDataDrop}
+					onDrop={dropData}
 				>
 					<div className={`${styles.outputHeader} ${styles.sectionHeader}`}>
 						<button
@@ -1025,6 +1069,15 @@ export default function App() {
 							onChange={setData}
 						/>
 					</div>
+					{dataDragging && !dataCollapsed ? (
+						<div className={styles.dataDropOverlay} role="group" aria-label="Drop JSON test data">
+							<div className={styles.dropTarget} data-active="true">
+								<span className={styles.dropKicker}>Test data</span>
+								<h2 className={styles.dropTitle}>Drop a JSON document</h2>
+								<p className={styles.dropText}>Its content replaces the current test data.</p>
+							</div>
+						</div>
+					) : null}
 				</section>
 
 				<section className={`${styles.pane} ${styles.resultPane}`}>

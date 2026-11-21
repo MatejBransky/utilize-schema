@@ -16,7 +16,7 @@ vi.mock('./monaco/MonacoEditor', async () => {
 	const { forwardRef, useImperativeHandle } = await import('react');
 
 	const MonacoEditor = forwardRef(function MonacoEditorMock(
-		{ testId }: { testId?: string },
+		{ testId, value }: { testId?: string; value?: string },
 		ref: import('react').Ref<unknown>
 	) {
 		useImperativeHandle(ref, () => ({
@@ -24,10 +24,10 @@ vi.mock('./monaco/MonacoEditor', async () => {
 			autoFormat: async () => {},
 			focus() {},
 			focusAt() {},
-			getValue: () => '',
+			getValue: () => value ?? '',
 		}));
 
-		return <div data-testid={testId} />;
+		return <div data-testid={testId} data-value={value} />;
 	});
 
 	return { MonacoEditor };
@@ -161,6 +161,23 @@ test('dropping files on the add target keeps the open files', async () => {
 	await vi.waitFor(() => expect(tabNames()).toHaveLength(before + 1));
 	expect(tabNames().some((name) => name.includes('person.json'))).toBe(true);
 	expect(tabNames().at(-1)).toContain('extra.json');
+});
+
+test('dropping a JSON file on the test data editor replaces the test data', async () => {
+	const screen = await render(<App />);
+	const editor = document.querySelector('[data-testid="data-editor"]')!;
+	const pane = editor.closest('section')!;
+	const content = JSON.stringify({ dropped: true }, null, 2);
+	const dropped = [{ name: 'payload.json', content }];
+
+	pane.dispatchEvent(fileDrag('dragenter', dropped));
+
+	await expect.element(screen.getByText('Drop a JSON document')).toBeVisible();
+
+	pane.dispatchEvent(fileDrag('drop', dropped));
+
+	await vi.waitFor(() => expect(editor.getAttribute('data-value')).toBe(content));
+	await expect.element(screen.getByText('Drop a JSON document')).not.toBeInTheDocument();
 });
 
 test('the copy button resets when the schema changes', async () => {
