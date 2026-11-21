@@ -130,7 +130,6 @@ export default function App() {
 			targets.map((option) => ({
 				value: option.value,
 				label: option.label,
-				hint: option.hint,
 				keywords: [option.disabled ? 'coming soon' : 'available'],
 				disabled: option.disabled,
 			})),
@@ -142,7 +141,6 @@ export default function App() {
 			examples.map((example) => ({
 				value: example.id,
 				label: example.name,
-				hint: example.group,
 				keywords: [example.group],
 			})),
 		[]
@@ -558,7 +556,7 @@ export default function App() {
 						onChange={applyExample}
 					/>
 				</div>
-				<div className={styles.policyPicker}>
+				<div className={`${styles.policyPicker} ${styles.keywordPolicyPicker}`}>
 					<Select
 						items={keywordPolicyOptions.map(({ value, label }) => ({ value, label }))}
 						value={keywordPolicy}
@@ -581,7 +579,7 @@ export default function App() {
 						</SelectContent>
 					</Select>
 				</div>
-				<div className={styles.policyPicker}>
+				<div className={`${styles.policyPicker} ${styles.formatPicker}`}>
 					<Select
 						items={formatModes.map(({ value, label }) => ({ value, label }))}
 						value={formatMode}
