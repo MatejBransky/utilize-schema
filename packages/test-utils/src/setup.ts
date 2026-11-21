@@ -1,6 +1,17 @@
+/**
+ * Registers the `toMatchCode` matcher. A package's Vitest setup file imports
+ * this module, which also brings the matcher's type into its tests.
+ */
 import { expect } from 'vitest';
 
-import { normalizeCode } from './test-utils';
+import { normalizeCode } from './code';
+
+declare module 'vitest' {
+	// Same type parameters as Vitest's own declaration, which this merges into.
+	interface Matchers<R extends void | Promise<void> = void | Promise<void>, T = unknown> {
+		toMatchCode: (expectedCode: Promise<string>) => R;
+	}
+}
 
 expect.extend({
 	async toMatchCode(actual: Promise<string>, expected: Promise<string>) {
@@ -14,7 +25,7 @@ expect.extend({
 				? () => `Expected code to match`
 				: () => `${this.testPath}
 Test: ${this.currentTestName}
-Received: 
+Received:
 ${this.utils.printReceived(actualCode)}
 
 Diff:

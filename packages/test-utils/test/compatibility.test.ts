@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { DRAFT_7, isCompatible } from './compatibility';
+import { DRAFT_7, isCompatible } from '../src/suite/compatibility';
 
 describe('isCompatible', () => {
 	test('a missing constraint applies to every dialect', () => {

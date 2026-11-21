@@ -30,7 +30,8 @@ export interface SuiteFile {
 
 const require = createRequire(import.meta.url);
 
-const suiteDirectory = join(
+/** The `validation/tests` directory of the installed JSON Schema Test Suite. */
+export const suiteDirectory = join(
 	dirname(require.resolve('json-schema-test-suite/package.json')),
 	'validation',
 	'tests'
