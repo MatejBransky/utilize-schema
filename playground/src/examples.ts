@@ -410,10 +410,7 @@ export const examples: Example[] = [
 			minContains: 2,
 			maxContains: 3,
 		},
-		[
-			valid(['featured', 'featured', 'json']),
-			invalid(['featured', 'json']),
-		]
+		[valid(['featured', 'featured', 'json']), invalid(['featured', 'json'])]
 	),
 	single(
 		'unicode-pattern',
