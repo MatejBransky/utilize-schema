@@ -441,7 +441,8 @@
 	justify-content: space-between;
 	gap: calc(var(--ui-spacing) * 2);
 	width: 100%;
-	padding: calc(var(--ui-spacing) * 2) calc(var(--ui-spacing) * 3);
+	min-height: calc(var(--ui-spacing) * 7 - 1px);
+	padding: calc(var(--ui-spacing) * 0.5) calc(var(--ui-spacing) * 3);
 	border: 0;
 	border-bottom: 1px solid var(--ui-border);
 	background: transparent;
