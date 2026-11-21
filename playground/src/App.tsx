@@ -17,7 +17,15 @@ import {
 	SelectValue,
 } from '@ui-sdk/react/select';
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@ui-sdk/react/tabs';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+	type CSSProperties,
+	type KeyboardEvent as ReactKeyboardEvent,
+	type PointerEvent as ReactPointerEvent,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from 'react';
 
 import {
 	buildBundle,
@@ -58,6 +66,12 @@ const GENERATOR_PARAM = 'generator';
 const KEYWORD_POLICY_PARAM = 'keyword-policy';
 const FORMAT_MODE_PARAM = 'format-mode';
 
+const DEFAULT_SPLIT = 0.6;
+const MIN_SPLIT = 0.2;
+const MAX_SPLIT = 0.8;
+const SPLIT_STEP = 0.02;
+const LARGE_SPLIT_STEP = 0.1;
+
 interface AppState {
 	files: SchemaFile[];
 	target: TargetId;
@@ -96,6 +110,9 @@ export default function App() {
 	);
 	const [copied, setCopied] = useState(false);
 	const [shared, setShared] = useState(false);
+	const [split, setSplit] = useState(DEFAULT_SPLIT);
+	const [resizing, setResizing] = useState(false);
+	const workspaceRef = useRef<HTMLElement>(null);
 	const schemaEditorRef = useRef<MonacoEditorHandle>(null);
 	const dataEditorRef = useRef<MonacoEditorHandle>(null);
 	const codeEditorRef = useRef<MonacoEditorHandle>(null);
@@ -550,6 +567,68 @@ export default function App() {
 		});
 	}
 
+	function resizeWorkspace(clientY: number) {
+		const rect = workspaceRef.current?.getBoundingClientRect();
+
+		if (!rect || rect.height === 0) {
+			return;
+		}
+
+		setSplit(clampSplit((clientY - rect.top) / rect.height));
+	}
+
+	function startResizing(event: ReactPointerEvent<HTMLDivElement>) {
+		if (event.button !== 0) {
+			return;
+		}
+
+		event.preventDefault();
+		event.currentTarget.setPointerCapture(event.pointerId);
+		setResizing(true);
+	}
+
+	function moveSplitter(event: ReactPointerEvent<HTMLDivElement>) {
+		if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+			resizeWorkspace(event.clientY);
+		}
+	}
+
+	function stopResizing(event: ReactPointerEvent<HTMLDivElement>) {
+		if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+			event.currentTarget.releasePointerCapture(event.pointerId);
+		}
+
+		setResizing(false);
+	}
+
+	function resizeWithKeyboard(event: ReactKeyboardEvent<HTMLDivElement>) {
+		const step = event.shiftKey ? LARGE_SPLIT_STEP : SPLIT_STEP;
+
+		switch (event.key) {
+			case 'ArrowUp':
+				setSplit((value) => clampSplit(value - step));
+				break;
+			case 'ArrowDown':
+				setSplit((value) => clampSplit(value + step));
+				break;
+			case 'Home':
+				setSplit(MIN_SPLIT);
+				break;
+			case 'End':
+				setSplit(MAX_SPLIT);
+				break;
+			default:
+				return;
+		}
+
+		event.preventDefault();
+	}
+
+	const splitStyle = {
+		'--workspace-top': `${split * 100}%`,
+		'--workspace-bottom': `${(1 - split) * 100}%`,
+	} as CSSProperties;
+
 	if (!active) {
 		return <main className={styles.empty}>Add a JSON Schema file to start.</main>;
 	}
@@ -632,7 +711,12 @@ export default function App() {
 				</div>
 			</Header>
 
-			<main className={styles.workspace}>
+			<main
+				ref={workspaceRef}
+				className={styles.workspace}
+				style={splitStyle}
+				data-resizing={resizing ? 'true' : undefined}
+			>
 				<section className={`${styles.pane} ${styles.schemaPane}`}>
 					<Tabs
 						className={styles.tabs}
@@ -871,7 +955,7 @@ export default function App() {
 				</section>
 
 				<section className={`${styles.pane} ${styles.dataPane}`}>
-					<div className={styles.outputHeader}>
+					<div className={`${styles.outputHeader} ${styles.sectionHeader}`}>
 						<h2 className={styles.heading}>Test data</h2>
 						<div className={styles.outputActions}>
 							{activeExample ? (
@@ -912,7 +996,7 @@ export default function App() {
 				</section>
 
 				<section className={`${styles.pane} ${styles.resultPane}`}>
-					<div className={styles.outputHeader}>
+					<div className={`${styles.outputHeader} ${styles.sectionHeader}`}>
 						<h2 className={styles.heading}>Generated validator results</h2>
 						<span className={styles.muted}>
 							{activeCase ? `Expected: ${activeCase.expect}` : 'Custom test data'}
@@ -920,6 +1004,23 @@ export default function App() {
 					</div>
 					<ValidatorResults target={target} state={validation} />
 				</section>
+
+				<div
+					className={styles.splitter}
+					role="separator"
+					aria-label="Resize schema and test data sections"
+					aria-orientation="horizontal"
+					aria-valuemin={MIN_SPLIT * 100}
+					aria-valuemax={MAX_SPLIT * 100}
+					aria-valuenow={Math.round(split * 100)}
+					tabIndex={0}
+					onPointerDown={startResizing}
+					onPointerMove={moveSplitter}
+					onPointerUp={stopResizing}
+					onPointerCancel={stopResizing}
+					onLostPointerCapture={() => setResizing(false)}
+					onKeyDown={resizeWithKeyboard}
+				/>
 			</main>
 		</div>
 	);
@@ -1132,4 +1233,8 @@ function uniqueName(base: string, files: SchemaFile[]): string {
 	}
 
 	return `${stem}-${counter}${extension}`;
+}
+
+function clampSplit(value: number): number {
+	return Math.min(MAX_SPLIT, Math.max(MIN_SPLIT, value));
 }

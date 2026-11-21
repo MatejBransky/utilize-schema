@@ -1,4 +1,5 @@
 import { createAgent } from '@ui-sdk/react/agent';
+import { page } from 'vitest/browser';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 
@@ -278,6 +279,27 @@ test('the header pickers are selects rather than text inputs', async () => {
 	await expect.element(screen.getByRole('combobox', { name: 'Example' })).toBeVisible();
 	await expect.element(screen.getByRole('combobox', { name: 'Keyword policy' })).toBeVisible();
 	await expect.element(screen.getByRole('combobox', { name: 'Format' })).toBeVisible();
+});
+
+test('the schema and test data sections can be resized', async () => {
+	await page.viewport(1200, 800);
+
+	try {
+		const screen = await render(<App />);
+		const separator = screen
+			.getByRole('separator', { name: 'Resize schema and test data sections' })
+			.element();
+
+		expect(separator.getAttribute('aria-valuenow')).toBe('60');
+
+		separator.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('58'));
+
+		separator.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('80'));
+	} finally {
+		await page.viewport(414, 896);
+	}
 });
 
 test('the generator select offers only implemented generators', async () => {
