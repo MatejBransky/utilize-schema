@@ -51,7 +51,7 @@ import { MonacoEditor, type MonacoEditorHandle } from './monaco/MonacoEditor';
 import { defaultTarget, isTargetId, targets, type TargetId } from './targets';
 import { loadColorMode, THEME_STORAGE_KEY, type ColorMode } from './theme';
 import { Header } from './ui/Header';
-import { CheckIcon, CloseIcon, PencilIcon, PlusIcon } from './ui/icons';
+import { CheckIcon, ChevronDownIcon, CloseIcon, PencilIcon, PlusIcon } from './ui/icons';
 import { SelectPicker } from './ui/SelectPicker';
 import { ValidatorResults } from './ui/ValidatorResults';
 import { useFileDrop } from './useFileDrop';
@@ -112,6 +112,7 @@ export default function App() {
 	const [shared, setShared] = useState(false);
 	const [split, setSplit] = useState(DEFAULT_SPLIT);
 	const [resizing, setResizing] = useState(false);
+	const [problemsCollapsed, setProblemsCollapsed] = useState(false);
 	const workspaceRef = useRef<HTMLElement>(null);
 	const schemaEditorRef = useRef<MonacoEditorHandle>(null);
 	const dataEditorRef = useRef<MonacoEditorHandle>(null);
@@ -911,46 +912,65 @@ export default function App() {
 						readOnly
 					/>
 
-					<div className={styles.problems} data-testid="problems">
-						<div className={styles.problemsHeader}>
-							<h2 className={styles.heading}>Validation</h2>
-							<span className={styles.counts} data-severity={errorCount > 0 ? 'error' : 'ok'}>
-								{errorCount} errors, {warningCount} warnings
+					<div
+						className={styles.problems}
+						data-testid="problems"
+						data-collapsed={problemsCollapsed ? 'true' : undefined}
+					>
+						<button
+							type="button"
+							className={styles.problemsHeader}
+							aria-expanded={!problemsCollapsed}
+							aria-controls="validation-problems"
+							onClick={() => setProblemsCollapsed((collapsed) => !collapsed)}
+						>
+							<span className={styles.heading}>Validation</span>
+							<span className={styles.problemsSummary}>
+								<span className={styles.counts} data-severity={errorCount > 0 ? 'error' : 'ok'}>
+									{errorCount} errors, {warningCount} warnings
+								</span>
+								<ChevronDownIcon />
 							</span>
+						</button>
+						<div
+							id="validation-problems"
+							className={styles.problemsBody}
+							hidden={problemsCollapsed}
+						>
+							{problems.length === 0 ? (
+								<p className={styles.ok}>No problems found.</p>
+							) : (
+								<ScrollArea className={styles.problemScroll} type="auto">
+									<ScrollAreaViewport className={styles.problemViewport}>
+										<ScrollAreaContent>
+											{problems.map((problem) => (
+												<Button
+													key={`${problem.fileId ?? ''}|${problem.severity}|${problem.line ?? ''}|${problem.column ?? ''}|${problem.message}`}
+													className={styles.problem}
+													onClick={() => selectProblem(problem)}
+												>
+													<span className={styles.severity}>
+														{problem.severity === 'error' ? 'Error' : 'Warning'}
+													</span>
+													<span className={styles.problemFile}>
+														{files.find((file) => file.id === problem.fileId)?.name ?? 'project'}
+													</span>
+													<span className={styles.problemMessage}>
+														{problem.message}
+														{problem.line
+															? ` (line ${problem.line}${problem.column ? `, col ${problem.column}` : ''})`
+															: ''}
+													</span>
+												</Button>
+											))}
+										</ScrollAreaContent>
+									</ScrollAreaViewport>
+									<ScrollAreaScrollbar orientation="vertical">
+										<ScrollAreaThumb />
+									</ScrollAreaScrollbar>
+								</ScrollArea>
+							)}
 						</div>
-						{problems.length === 0 ? (
-							<p className={styles.ok}>No problems found.</p>
-						) : (
-							<ScrollArea className={styles.problemScroll} type="auto">
-								<ScrollAreaViewport className={styles.problemViewport}>
-									<ScrollAreaContent>
-										{problems.map((problem) => (
-											<Button
-												key={`${problem.fileId ?? ''}|${problem.severity}|${problem.line ?? ''}|${problem.column ?? ''}|${problem.message}`}
-												className={styles.problem}
-												onClick={() => selectProblem(problem)}
-											>
-												<span className={styles.severity}>
-													{problem.severity === 'error' ? 'Error' : 'Warning'}
-												</span>
-												<span className={styles.problemFile}>
-													{files.find((file) => file.id === problem.fileId)?.name ?? 'project'}
-												</span>
-												<span className={styles.problemMessage}>
-													{problem.message}
-													{problem.line
-														? ` (line ${problem.line}${problem.column ? `, col ${problem.column}` : ''})`
-														: ''}
-												</span>
-											</Button>
-										))}
-									</ScrollAreaContent>
-								</ScrollAreaViewport>
-								<ScrollAreaScrollbar orientation="vertical">
-									<ScrollAreaThumb />
-								</ScrollAreaScrollbar>
-							</ScrollArea>
-						)}
 					</div>
 				</section>
 

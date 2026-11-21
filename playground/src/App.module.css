@@ -440,8 +440,58 @@
 	align-items: center;
 	justify-content: space-between;
 	gap: calc(var(--ui-spacing) * 2);
+	width: 100%;
 	padding: calc(var(--ui-spacing) * 2) calc(var(--ui-spacing) * 3);
+	border: 0;
 	border-bottom: 1px solid var(--ui-border);
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.problemsHeader:hover {
+	background: var(--ui-muted);
+}
+
+.problemsHeader:focus-visible {
+	outline: 2px solid var(--ui-foreground);
+	outline-offset: -2px;
+}
+
+.problemsSummary {
+	display: inline-flex;
+	align-items: center;
+	gap: calc(var(--ui-spacing) * 2);
+}
+
+.problemsSummary svg {
+	flex: none;
+	width: 0.875rem;
+	height: 0.875rem;
+	transition: transform 120ms ease;
+}
+
+.problems[data-collapsed='true'] .problemsSummary svg {
+	transform: rotate(-90deg);
+}
+
+.problems[data-collapsed='true'] {
+	flex: none;
+	min-height: 0;
+	max-height: none;
+}
+
+.problemsBody {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-height: 0;
+}
+
+.problemsBody[hidden] {
+	display: none;
 }
 
 .counts {
