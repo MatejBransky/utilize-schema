@@ -6,6 +6,15 @@ export const ts = String.raw;
 
 export const NEWLINE = '\n';
 
+/**
+ * Renders an object-literal key. A computed key is the only form that creates
+ * an own `__proto__` property; the plain and quoted forms set the prototype of
+ * the literal instead.
+ */
+export function shapeKey(key: string): string {
+	return key === '__proto__' ? `[${JSON.stringify(key)}]` : JSON.stringify(key);
+}
+
 export function isSchemaObject<S = ParsedJSONSchemaObject>(schema: unknown): schema is S {
 	return isPlainObject(schema);
 }

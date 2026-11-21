@@ -184,6 +184,28 @@ describe('literal values', () => {
 		expect(Root.safeParse({ mode: 'plain' }).success).toBe(true);
 	});
 
+	test('validates an object const or enum with __proto__', async () => {
+		const Const = await compileToZod({
+			const: JSON.parse('{ "__proto__": 12, "name": "x" }'),
+		});
+
+		expect(Const.safeParse(JSON.parse('{ "__proto__": 12, "name": "x" }')).success).toBe(true);
+		expect(Const.safeParse({ name: 'x' }).success).toBe(false);
+		expect(Const.safeParse(JSON.parse('{ "__proto__": 99, "name": "x" }')).success).toBe(false);
+		expect(
+			Const.safeParse(JSON.parse('{ "__proto__": 12, "name": "x", "extra": 1 }')).success
+		).toBe(false);
+
+		const Enum = await compileToZod({
+			enum: [JSON.parse('{ "__proto__": 12, "name": "x" }'), { name: 'y' }],
+		});
+
+		expect(Enum.safeParse({ name: 'x', ['__proto__']: 12 }).success).toBe(true);
+		expect(Enum.safeParse({ name: 'y' }).success).toBe(true);
+		expect(Enum.safeParse({ name: 'x' }).success).toBe(false);
+		expect(Enum.safeParse({ name: 'x', ['__proto__']: 99 }).success).toBe(false);
+	});
+
 	test('requires exactly one oneOf branch to match', async () => {
 		const Root = await compileToZod({
 			type: 'number',
@@ -230,5 +252,157 @@ describe('sibling constraints on literals', () => {
 		expect(Root.safeParse({ a: 'x' }).success).toBe(true);
 		expect(Root.safeParse({ b: 1 }).success).toBe(true);
 		expect(Root.safeParse({ a: 'x', b: 1 }).success).toBe(false);
+	});
+});
+
+describe('a __proto__ property', () => {
+	test('is validated and required', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: { ['__proto__']: { type: 'number' } },
+			required: ['__proto__'],
+		});
+
+		expect(Root.safeParse(JSON.parse('{ "__proto__": 12 }')).success).toBe(true);
+		expect(Root.safeParse(JSON.parse('{ "__proto__": "text" }')).success).toBe(false);
+		expect(Root.safeParse({}).success).toBe(false);
+	});
+
+	test('is validated but may be omitted when optional', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: { ['__proto__']: { type: 'number' } },
+		});
+
+		expect(Root.safeParse({}).success).toBe(true);
+		expect(Root.safeParse(JSON.parse('{ "__proto__": 12 }')).success).toBe(true);
+		expect(Root.safeParse(JSON.parse('{ "__proto__": "text" }')).success).toBe(false);
+	});
+
+	test('is required when it has no properties entry', async () => {
+		const Root = await compileToZod({ type: 'object', required: ['__proto__'] });
+
+		expect(Root.safeParse(JSON.parse('{ "__proto__": 12 }')).success).toBe(true);
+		expect(Root.safeParse({}).success).toBe(false);
+	});
+
+	test('is validated when it comes from allOf', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			allOf: [
+				{ type: 'object', properties: { ['__proto__']: { type: 'number' } } },
+				{ type: 'object', properties: { b: { type: 'string' } } },
+			],
+		});
+
+		expect(Root.safeParse(JSON.parse('{ "__proto__": 12 }')).success).toBe(true);
+		expect(Root.safeParse({ b: 'x' }).success).toBe(true);
+		expect(Root.safeParse(JSON.parse('{ "__proto__": "text" }')).success).toBe(false);
+		expect(Root.safeParse({ b: 1 }).success).toBe(false);
+	});
+
+	test('is validated through the getter of a circular schema', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: { ['__proto__']: { $ref: '#' } },
+		});
+
+		expect(Root.safeParse({}).success).toBe(true);
+		expect(Root.safeParse(JSON.parse('{ "__proto__": {} }')).success).toBe(true);
+		expect(Root.safeParse(JSON.parse('{ "__proto__": { "__proto__": {} } }')).success).toBe(true);
+		expect(Root.safeParse(JSON.parse('{ "__proto__": 12 }')).success).toBe(false);
+	});
+
+	test('is validated by a matching patternProperties', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			patternProperties: { '^__': { type: 'number' } },
+		});
+
+		expect(Root.safeParse(JSON.parse('{ "__proto__": 12 }')).success).toBe(true);
+		expect(Root.safeParse(JSON.parse('{ "__proto__": "text" }')).success).toBe(false);
+	});
+
+	test('uses additionalProperties when no pattern matches', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: { name: { type: 'string' } },
+			patternProperties: { '^x_': { type: 'number' } },
+			additionalProperties: { type: 'boolean' },
+		});
+
+		expect(Root.safeParse(JSON.parse('{ "name": "a", "__proto__": true }')).success).toBe(true);
+		expect(Root.safeParse(JSON.parse('{ "name": "a", "__proto__": 12 }')).success).toBe(false);
+	});
+
+	test('is rejected by additionalProperties: false when patterns exist', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			patternProperties: { '^x_': { type: 'number' } },
+			additionalProperties: false,
+		});
+
+		expect(Root.safeParse({ x_a: 1 }).success).toBe(true);
+		expect(Root.safeParse(JSON.parse('{ "__proto__": 12 }')).success).toBe(false);
+	});
+
+	test('is rejected by additionalProperties: false without patterns', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			additionalProperties: false,
+		});
+
+		expect(Root.safeParse({}).success).toBe(true);
+		expect(Root.safeParse(JSON.parse('{ "__proto__": 12 }')).success).toBe(false);
+	});
+
+	test('is allowed by additionalProperties: false when it is declared', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: { ['__proto__']: { type: 'number' } },
+			additionalProperties: false,
+		});
+
+		expect(Root.safeParse(JSON.parse('{ "__proto__": 12 }')).success).toBe(true);
+		expect(Root.safeParse(JSON.parse('{ "__proto__": "text" }')).success).toBe(false);
+	});
+
+	test('is validated by a typed additionalProperties', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			additionalProperties: { type: 'number' },
+		});
+
+		expect(Root.safeParse(JSON.parse('{ "__proto__": 12 }')).success).toBe(true);
+		expect(Root.safeParse(JSON.parse('{ "__proto__": "text" }')).success).toBe(false);
+	});
+});
+
+describe('prototype-named properties', () => {
+	test('validate toString and constructor only when they are own properties', async () => {
+		const toStringSchema: JSONSchema = {
+			type: 'object',
+			properties: { length: { type: 'string' } },
+		};
+		const constructorSchema: JSONSchema = { type: 'number' };
+		const Root = await compileToZod({
+			type: 'object',
+			properties: {
+				toString: toStringSchema,
+				constructor: constructorSchema,
+			},
+		});
+
+		expect(Root.safeParse({}).success).toBe(true);
+		expect(Root.safeParse({ toString: { length: 'x' }, constructor: 1 }).success).toBe(true);
+		expect(Root.safeParse({ toString: { length: 37 } }).success).toBe(false);
+		expect(Root.safeParse({ constructor: 'x' }).success).toBe(false);
+	});
+
+	test('require toString and constructor when they have no properties entry', async () => {
+		const Root = await compileToZod({ type: 'object', required: ['toString', 'constructor'] });
+
+		expect(Root.safeParse({}).success).toBe(false);
+		expect(Root.safeParse({ toString: {}, constructor: 1 }).success).toBe(true);
 	});
 });

@@ -287,10 +287,63 @@ const cases: ParityCase[] = [
 				{ type: 'object', properties: { b: { type: 'string' } } },
 			],
 		} as TestSchema,
-		// The Zod output does not check the type of `__proto__` itself, so that
-		// value is only covered by the Effect runtime tests.
 		valid: [{ b: 'x' }, { ['__proto__']: 12 }],
-		invalid: [{ b: 1 }],
+		invalid: [{ b: 1 }, { ['__proto__']: 'text' }],
+	},
+	{
+		name: 'required __proto__ property',
+		schema: {
+			type: 'object',
+			properties: { ['__proto__']: { type: 'number' } },
+			required: ['__proto__'],
+		} as TestSchema,
+		valid: [{ ['__proto__']: 12 }, { ['__proto__']: 12, a: 'x' }],
+		invalid: [{}, { a: 'x' }, { ['__proto__']: 'text' }],
+	},
+	{
+		name: '__proto__ property in patternProperties',
+		schema: {
+			type: 'object',
+			patternProperties: { '^__': { type: 'number' } },
+		} as TestSchema,
+		valid: [{ ['__proto__']: 12 }, {}],
+		invalid: [{ ['__proto__']: 'text' }],
+	},
+	{
+		name: '__proto__ property in additionalProperties',
+		schema: {
+			type: 'object',
+			additionalProperties: { type: 'number' },
+		} as TestSchema,
+		valid: [{ ['__proto__']: 12 }, { a: 1 }],
+		invalid: [{ ['__proto__']: 'text' }, { a: 'text' }],
+	},
+	{
+		name: 'prototype-named properties',
+		schema: {
+			type: 'object',
+			properties: {
+				['toString']: { type: 'object', properties: { length: { type: 'string' } } },
+				['constructor']: { type: 'number' },
+			},
+		} as TestSchema,
+		valid: [{}, { ['toString']: { length: 'x' }, ['constructor']: 1 }],
+		invalid: [{ ['toString']: { length: 37 } }, { ['constructor']: 'x' }],
+	},
+	{
+		name: 'required prototype-named properties without declarations',
+		schema: {
+			type: 'object',
+			required: ['toString', 'constructor'],
+		} as TestSchema,
+		valid: [{ ['toString']: 1, ['constructor']: 2 }],
+		invalid: [{}, { ['toString']: 1 }, { ['constructor']: 2 }],
+	},
+	{
+		name: 'required __proto__ property without a declaration',
+		schema: { type: 'object', required: ['__proto__'] } as TestSchema,
+		valid: [{ ['__proto__']: 12 }],
+		invalid: [{}],
 	},
 	{
 		name: 'allOf objects',
