@@ -40,6 +40,7 @@
 	},
 	"devDependencies": {
 		"@changesets/cli": "3.0.3",
+		"@vitest/coverage-v8": "catalog:",
 		"oxfmt": "catalog:",
 		"oxlint": "catalog:",
 		"typescript": "catalog:"
