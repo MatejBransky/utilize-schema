@@ -1,6 +1,5 @@
-import { dialectOf, type ParsedJSONSchemaObject } from '@utilize/json-schema';
+import { dialectOf, type ParsedJSONSchemaObject, type SchemaEdge } from '@utilize/json-schema';
 
-import type { SchemaEdge } from './collectStandaloneSchemas';
 import { withoutAlwaysValidAnyOf } from './generators/alwaysValidAnyOf';
 import { generator as arrayGenerator } from './generators/arrayGenerator';
 import { generator as multipleTypeGenerator } from './generators/multipleTypeGenerator';
