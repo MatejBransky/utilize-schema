@@ -3,10 +3,10 @@ import {
 	Meta,
 	type ParsedJSONSchema,
 	type ParsedJSONSchemaObject,
+	toSafeString,
 } from '@utilize/json-schema';
 
 import { UnresolvedReferenceError } from './errors';
-import { toSafeString } from './resolveName';
 
 export interface TypeContext {
 	/** Name of an already declared standalone schema. */

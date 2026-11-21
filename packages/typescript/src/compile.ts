@@ -1,12 +1,16 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { type ExternalSchemas, type JSONSchema, parse } from '@utilize/json-schema';
+import {
+	type CustomNameResolver,
+	type ExternalSchemas,
+	type JSONSchema,
+	parse,
+} from '@utilize/json-schema';
 
 import { load as loadYaml } from 'js-yaml';
 
 import { generate, type CustomSchemaResolver } from './generator';
-import type { CustomNameResolver } from './resolveName';
 
 export interface CompileOptions {
 	/** Path of the JSON Schema file, resolved against `cwd`. */
