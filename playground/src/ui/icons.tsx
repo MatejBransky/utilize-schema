@@ -29,3 +29,11 @@ export function PlusIcon() {
 		</svg>
 	);
 }
+
+export function ChevronDownIcon() {
+	return (
+		<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor">
+			<path d="M4 6l4 4 4-4" strokeWidth="1.5" />
+		</svg>
+	);
+}

@@ -21,11 +21,14 @@
 		"ajv": "8.20.0",
 		"ajv-draft-04": "1.0.0",
 		"buffer": "6.0.3",
+		"effect": "catalog:",
+		"es-module-lexer": "2.3.2",
 		"monaco-editor": "0.57.0",
 		"path-browserify": "1.0.1",
 		"prettier": "3.10.1",
 		"react": "19.3.1",
-		"react-dom": "19.3.1"
+		"react-dom": "19.3.1",
+		"zod": "catalog:"
 	},
 	"devDependencies": {
 		"@types/node": "catalog:",
@@ -34,12 +37,10 @@
 		"@types/react-dom": "19.3.0",
 		"@vitejs/plugin-react-swc": "4.3.3",
 		"@vitest/browser-playwright": "5.1.0",
-		"effect": "catalog:",
 		"playwright": "1.65.1",
 		"typescript": "catalog:",
 		"vite": "8.3.8",
 		"vitest": "catalog:",
-		"vitest-browser-react": "2.3.0",
-		"zod": "catalog:"
+		"vitest-browser-react": "2.3.0"
 	}
 }

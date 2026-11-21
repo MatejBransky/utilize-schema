@@ -1,4 +1,5 @@
 import { createAgent } from '@ui-sdk/react/agent';
+import { page } from 'vitest/browser';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 
@@ -90,6 +91,16 @@ async function dropFiles(mode: 'add' | 'replace', files: DropFile[]) {
 
 function savedFiles(): SchemaFile[] {
 	return JSON.parse(localStorage.getItem('utilize-schema-playground') ?? '{"files":[]}').files;
+}
+
+function savedData(): string {
+	return JSON.parse(localStorage.getItem('utilize-schema-playground') ?? '{"data":""}').data;
+}
+
+function resultStatus(target: 'zod' | 'effect'): string | null {
+	return (
+		document.querySelector(`[data-testid="result-${target}"]`)?.getAttribute('data-status') ?? null
+	);
 }
 
 test('dragging JSON files over the editor shows the add and replace targets', async () => {
@@ -270,6 +281,27 @@ test('the header pickers are selects rather than text inputs', async () => {
 	await expect.element(screen.getByRole('combobox', { name: 'Format' })).toBeVisible();
 });
 
+test('the schema and test data sections can be resized', async () => {
+	await page.viewport(1200, 800);
+
+	try {
+		const screen = await render(<App />);
+		const separator = screen
+			.getByRole('separator', { name: 'Resize schema and test data sections' })
+			.element();
+
+		expect(separator.getAttribute('aria-valuenow')).toBe('60');
+
+		separator.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('58'));
+
+		separator.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('80'));
+	} finally {
+		await page.viewport(414, 896);
+	}
+});
+
 test('the generator select offers only implemented generators', async () => {
 	const screen = await render(<App />);
 
@@ -343,6 +375,25 @@ test('an agent can switch the generator', async () => {
 	await vi.waitFor(() =>
 		expect(new URL(location.href).searchParams.get('generator')).toBe('effect')
 	);
+});
+
+test('the validation panel can be collapsed', async () => {
+	const screen = await render(<App />);
+	const toggle = screen.getByRole('button', { name: /Validation/ });
+	const body = document.querySelector('#validation-problems');
+
+	expect(toggle.element().getAttribute('aria-expanded')).toBe('true');
+	expect(body?.hasAttribute('hidden')).toBe(false);
+
+	await toggle.click();
+
+	await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('false'));
+	expect(body?.hasAttribute('hidden')).toBe(true);
+
+	await toggle.click();
+
+	await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('true'));
+	expect(body?.hasAttribute('hidden')).toBe(false);
 });
 
 test('the keyword policy shows foreign keywords as errors or warnings', async () => {
@@ -517,4 +568,61 @@ test('rejects renaming to an existing file name', async () => {
 
 	await expect.element(screen.getByText('A file with this name already exists.')).toBeVisible();
 	expect(screen.getByLabelText('File name')).toBeInTheDocument();
+});
+
+test('the test data is validated by the generated Zod schema', async () => {
+	const screen = await render(<App />);
+
+	await expect.element(screen.getByTestId('data-editor')).toBeVisible();
+	await expect.element(screen.getByTestId('validator-results')).toBeVisible();
+	expect(document.querySelector('[data-testid="result-effect"]')).toBeNull();
+
+	await vi.waitFor(() => expect(resultStatus('zod')).toBe('valid'), { timeout: 15_000 });
+	expect(savedData()).toContain('"firstName": "Ada"');
+
+	await screen.getByRole('button', { name: 'Invalid' }).click();
+
+	await vi.waitFor(() => expect(resultStatus('zod')).toBe('invalid'), { timeout: 15_000 });
+
+	const zodCard = document.querySelector('[data-testid="result-zod"]');
+
+	expect(zodCard?.textContent).toContain('$.address.zip');
+	expect(savedData()).toContain('"zip": "12"');
+});
+
+test('the result pane follows the selected generator', async () => {
+	const screen = await render(<App />);
+
+	await vi.waitFor(() => expect(resultStatus('zod')).toBe('valid'), { timeout: 15_000 });
+
+	await screen.getByRole('combobox', { name: 'Generator' }).click();
+	await screen.getByRole('option', { name: /Effect Schema/ }).click();
+
+	await vi.waitFor(() => expect(resultStatus('effect')).toBe('valid'), { timeout: 15_000 });
+	expect(document.querySelector('[data-testid="result-zod"]')).toBeNull();
+
+	await screen.getByRole('button', { name: 'Invalid' }).click();
+	await vi.waitFor(() => expect(resultStatus('effect')).toBe('invalid'), { timeout: 15_000 });
+	expect(document.querySelector('[data-testid="result-zod"]')).toBeNull();
+
+	await screen.getByRole('combobox', { name: 'Generator' }).click();
+	await screen.getByRole('option', { name: /TypeScript/ }).click();
+
+	await expect.element(screen.getByText(/emits types only/)).toBeVisible();
+	expect(document.querySelector('[data-testid="result-effect"]')).toBeNull();
+});
+
+test('switching examples loads their test data', async () => {
+	const screen = await render(<App />);
+
+	await screen.getByRole('combobox', { name: 'Example' }).click();
+	await screen.getByRole('option', { name: /Enum/ }).click();
+
+	await vi.waitFor(() => expect(savedData()).toBe('"green"'));
+	await vi.waitFor(() => expect(resultStatus('zod')).toBe('valid'), { timeout: 15_000 });
+
+	await screen.getByRole('button', { name: 'Invalid' }).click();
+
+	await vi.waitFor(() => expect(resultStatus('zod')).toBe('invalid'), { timeout: 15_000 });
+	expect(savedData()).toBe('"purple"');
 });

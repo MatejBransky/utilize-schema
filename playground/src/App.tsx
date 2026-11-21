@@ -1,7 +1,4 @@
-import { generate as generateEffect } from '@utilize/effect';
-import { type KeywordPolicy, parse, type ParsedJSONSchema } from '@utilize/json-schema';
-import { generate as generateTypeScript } from '@utilize/typescript';
-import { generate as generateZod } from '@utilize/zod';
+import { type KeywordPolicy, parse } from '@utilize/json-schema';
 import { Button } from '@ui-sdk/react/button';
 import { Input } from '@ui-sdk/react/input';
 import {
@@ -20,7 +17,15 @@ import {
 	SelectValue,
 } from '@ui-sdk/react/select';
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@ui-sdk/react/tabs';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+	type CSSProperties,
+	type KeyboardEvent as ReactKeyboardEvent,
+	type PointerEvent as ReactPointerEvent,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from 'react';
 
 import {
 	buildBundle,
@@ -31,18 +36,27 @@ import {
 	type SchemaFile,
 } from './bundle';
 import { collectDroppedFiles, readDroppedSchemas, type DropMode } from './drop';
-import { exampleGeneratorOptions, type ExampleGeneratorOptions } from './exampleOptions';
-import { defaultExampleId, exampleById, examples } from './examples';
+import { exampleGeneratorOptions } from './exampleOptions';
+import {
+	defaultExampleId,
+	exampleById,
+	exampleCaseForData,
+	exampleData,
+	examples,
+} from './examples';
 import { defaultFormatMode, formatModes, isFormatMode, type FormatMode } from './formatMode';
+import { generateCodeFor, type RuntimeSource } from './generateCode';
 import { formatTypeScript } from './monaco/format';
 import { MonacoEditor, type MonacoEditorHandle } from './monaco/MonacoEditor';
 import { defaultTarget, isTargetId, targets, type TargetId } from './targets';
 import { loadColorMode, THEME_STORAGE_KEY, type ColorMode } from './theme';
 import { Header } from './ui/Header';
-import { CheckIcon, CloseIcon, PencilIcon, PlusIcon } from './ui/icons';
+import { CheckIcon, ChevronDownIcon, CloseIcon, PencilIcon, PlusIcon } from './ui/icons';
 import { SelectPicker } from './ui/SelectPicker';
+import { ValidatorResults } from './ui/ValidatorResults';
 import { useFileDrop } from './useFileDrop';
 import { validateSchemas } from './validation';
+import { useValidatorResults } from './validator/useValidatorResults';
 
 import styles from './App.module.css';
 
@@ -52,11 +66,19 @@ const GENERATOR_PARAM = 'generator';
 const KEYWORD_POLICY_PARAM = 'keyword-policy';
 const FORMAT_MODE_PARAM = 'format-mode';
 
+const DEFAULT_SPLIT = 0.6;
+const MIN_SPLIT = 0.2;
+const MAX_SPLIT = 0.8;
+const SPLIT_STEP = 0.02;
+const LARGE_SPLIT_STEP = 0.1;
+
 interface AppState {
 	files: SchemaFile[];
 	target: TargetId;
 	keywordPolicy: KeywordPolicy;
 	formatMode: FormatMode;
+	/** JSON document validated against the generated schemas. */
+	data: string;
 }
 
 const keywordPolicyOptions: Array<{ value: KeywordPolicy; label: string; hint: string }> = [
@@ -71,12 +93,14 @@ export default function App() {
 	const [target, setTarget] = useState<TargetId>(initial.target);
 	const [keywordPolicy, setKeywordPolicy] = useState<KeywordPolicy>(initial.keywordPolicy);
 	const [formatMode, setFormatMode] = useState<FormatMode>(initial.formatMode);
+	const [data, setData] = useState(initial.data);
 	const [activeId, setActiveId] = useState(initial.files[0]?.id ?? '');
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [draftName, setDraftName] = useState('');
 	const [renameError, setRenameError] = useState<string | null>(null);
 	const [code, setCode] = useState('');
 	const [busy, setBusy] = useState(false);
+	const [runtime, setRuntime] = useState<RuntimeSource | null>(null);
 	const [generationProblems, setGenerationProblems] = useState<Problem[]>([]);
 	const [cursor, setCursor] = useState({ line: 1, column: 1 });
 	const [pendingPosition, setPendingPosition] = useState<{ line: number; column: number }>();
@@ -86,8 +110,14 @@ export default function App() {
 	);
 	const [copied, setCopied] = useState(false);
 	const [shared, setShared] = useState(false);
+	const [split, setSplit] = useState(DEFAULT_SPLIT);
+	const [resizing, setResizing] = useState(false);
+	const [problemsCollapsed, setProblemsCollapsed] = useState(false);
+	const workspaceRef = useRef<HTMLElement>(null);
 	const schemaEditorRef = useRef<MonacoEditorHandle>(null);
+	const dataEditorRef = useRef<MonacoEditorHandle>(null);
 	const codeEditorRef = useRef<MonacoEditorHandle>(null);
+	const validation = useValidatorResults(target, runtime, data, busy);
 	const { dragging, activeMode, drop } = useFileDrop({ onDrop: handleDrop });
 
 	const resolvedTheme = colorMode === 'auto' ? (systemDark ? 'dark' : 'light') : colorMode;
@@ -151,6 +181,8 @@ export default function App() {
 	const errorCount = problems.filter((problem) => problem.severity === 'error').length;
 	const warningCount = problems.length - errorCount;
 	const active = files.find((file) => file.id === activeId) ?? files[0];
+	const activeExample = exampleById(exampleId);
+	const activeCase = activeExample ? exampleCaseForData(activeExample, data) : undefined;
 
 	useEffect(() => {
 		if (!files.some((file) => file.id === activeId) && files[0]) {
@@ -162,17 +194,17 @@ export default function App() {
 		try {
 			localStorage.setItem(
 				STORAGE_KEY,
-				JSON.stringify({ files, target, keywordPolicy, formatMode })
+				JSON.stringify({ files, target, keywordPolicy, formatMode, data })
 			);
 		} catch {
 			// Storage can be full or denied. Keep the workspace in memory.
 		}
-	}, [files, target, keywordPolicy, formatMode]);
+	}, [files, target, keywordPolicy, formatMode, data]);
 
 	useEffect(() => {
 		setShared(false);
 		setCopied(false);
-	}, [files, target, keywordPolicy]);
+	}, [files, target, keywordPolicy, data]);
 
 	useEffect(() => {
 		if (!copied) {
@@ -191,10 +223,13 @@ export default function App() {
 		const timer = setTimeout(async () => {
 			let nextCode = '';
 			const nextProblems: Problem[] = [];
+			let nextRuntime: RuntimeSource | null = null;
 
 			if (bundle.root !== null) {
 				try {
-					const { root } = await parse(bundle.root as never, {
+					// `parse` resolves the schema in place, so every run gets a copy;
+					// otherwise switching targets reuses names chosen for the previous one.
+					const { root } = await parse(structuredClone(bundle.root) as never, {
 						cwd: '/',
 						fileName: bundle.rootFileName,
 						keywordPolicy,
@@ -202,7 +237,13 @@ export default function App() {
 					});
 
 					const generatorOptions = exampleId ? exampleGeneratorOptions[exampleId] : undefined;
-					const rawCode = generateCodeFor(target, root, generatorOptions, formatMode);
+
+					const generated = generateCodeFor(target, root, formatMode, generatorOptions);
+
+					nextRuntime = generated.runtime;
+
+					const rawCode = generated.code;
+
 					const formatCode =
 						generatorOptions?.format ??
 						((source: string) => formatTypeScript(source).catch(() => source));
@@ -218,6 +259,7 @@ export default function App() {
 
 			if (!cancelled) {
 				setCode(nextCode);
+				setRuntime(nextRuntime);
 				setGenerationProblems(nextProblems);
 				setBusy(false);
 			}
@@ -297,6 +339,7 @@ export default function App() {
 		setTarget(next.target);
 		setKeywordPolicy(next.keywordPolicy);
 		setFormatMode(next.formatMode);
+		setData(next.data);
 		setActiveId(next.files[0]?.id ?? '');
 		setEditingId(null);
 	}
@@ -431,6 +474,7 @@ export default function App() {
 
 		setFiles(example.files);
 		setActiveId(example.files[0]?.id ?? '');
+		setData(exampleData(example));
 		setEditingId(null);
 		setExampleUrl(example.id, 'push');
 	}
@@ -495,7 +539,7 @@ export default function App() {
 	}
 
 	async function share() {
-		const encoded = encodeState({ files, target, keywordPolicy, formatMode });
+		const encoded = encodeState({ files, target, keywordPolicy, formatMode, data });
 		const url = new URL(location.href);
 
 		url.searchParams.delete(EXAMPLE_PARAM);
@@ -523,6 +567,68 @@ export default function App() {
 			column: problem.column ?? 1,
 		});
 	}
+
+	function resizeWorkspace(clientY: number) {
+		const rect = workspaceRef.current?.getBoundingClientRect();
+
+		if (!rect || rect.height === 0) {
+			return;
+		}
+
+		setSplit(clampSplit((clientY - rect.top) / rect.height));
+	}
+
+	function startResizing(event: ReactPointerEvent<HTMLDivElement>) {
+		if (event.button !== 0) {
+			return;
+		}
+
+		event.preventDefault();
+		event.currentTarget.setPointerCapture(event.pointerId);
+		setResizing(true);
+	}
+
+	function moveSplitter(event: ReactPointerEvent<HTMLDivElement>) {
+		if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+			resizeWorkspace(event.clientY);
+		}
+	}
+
+	function stopResizing(event: ReactPointerEvent<HTMLDivElement>) {
+		if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+			event.currentTarget.releasePointerCapture(event.pointerId);
+		}
+
+		setResizing(false);
+	}
+
+	function resizeWithKeyboard(event: ReactKeyboardEvent<HTMLDivElement>) {
+		const step = event.shiftKey ? LARGE_SPLIT_STEP : SPLIT_STEP;
+
+		switch (event.key) {
+			case 'ArrowUp':
+				setSplit((value) => clampSplit(value - step));
+				break;
+			case 'ArrowDown':
+				setSplit((value) => clampSplit(value + step));
+				break;
+			case 'Home':
+				setSplit(MIN_SPLIT);
+				break;
+			case 'End':
+				setSplit(MAX_SPLIT);
+				break;
+			default:
+				return;
+		}
+
+		event.preventDefault();
+	}
+
+	const splitStyle = {
+		'--workspace-top': `${split * 100}%`,
+		'--workspace-bottom': `${(1 - split) * 100}%`,
+	} as CSSProperties;
 
 	if (!active) {
 		return <main className={styles.empty}>Add a JSON Schema file to start.</main>;
@@ -606,7 +712,12 @@ export default function App() {
 				</div>
 			</Header>
 
-			<main className={styles.workspace}>
+			<main
+				ref={workspaceRef}
+				className={styles.workspace}
+				style={splitStyle}
+				data-resizing={resizing ? 'true' : undefined}
+			>
 				<section className={`${styles.pane} ${styles.schemaPane}`}>
 					<Tabs
 						className={styles.tabs}
@@ -801,48 +912,135 @@ export default function App() {
 						readOnly
 					/>
 
-					<div className={styles.problems} data-testid="problems">
-						<div className={styles.problemsHeader}>
-							<h2 className={styles.heading}>Validation</h2>
-							<span className={styles.counts} data-severity={errorCount > 0 ? 'error' : 'ok'}>
-								{errorCount} errors, {warningCount} warnings
+					<div
+						className={styles.problems}
+						data-testid="problems"
+						data-collapsed={problemsCollapsed ? 'true' : undefined}
+					>
+						<button
+							type="button"
+							className={styles.problemsHeader}
+							aria-expanded={!problemsCollapsed}
+							aria-controls="validation-problems"
+							onClick={() => setProblemsCollapsed((collapsed) => !collapsed)}
+						>
+							<span className={styles.heading}>Validation</span>
+							<span className={styles.problemsSummary}>
+								<span className={styles.counts} data-severity={errorCount > 0 ? 'error' : 'ok'}>
+									{errorCount} errors, {warningCount} warnings
+								</span>
+								<ChevronDownIcon />
 							</span>
+						</button>
+						<div
+							id="validation-problems"
+							className={styles.problemsBody}
+							hidden={problemsCollapsed}
+						>
+							{problems.length === 0 ? (
+								<p className={styles.ok}>No problems found.</p>
+							) : (
+								<ScrollArea className={styles.problemScroll} type="auto">
+									<ScrollAreaViewport className={styles.problemViewport}>
+										<ScrollAreaContent>
+											{problems.map((problem) => (
+												<Button
+													key={`${problem.fileId ?? ''}|${problem.severity}|${problem.line ?? ''}|${problem.column ?? ''}|${problem.message}`}
+													className={styles.problem}
+													onClick={() => selectProblem(problem)}
+												>
+													<span className={styles.severity}>
+														{problem.severity === 'error' ? 'Error' : 'Warning'}
+													</span>
+													<span className={styles.problemFile}>
+														{files.find((file) => file.id === problem.fileId)?.name ?? 'project'}
+													</span>
+													<span className={styles.problemMessage}>
+														{problem.message}
+														{problem.line
+															? ` (line ${problem.line}${problem.column ? `, col ${problem.column}` : ''})`
+															: ''}
+													</span>
+												</Button>
+											))}
+										</ScrollAreaContent>
+									</ScrollAreaViewport>
+									<ScrollAreaScrollbar orientation="vertical">
+										<ScrollAreaThumb />
+									</ScrollAreaScrollbar>
+								</ScrollArea>
+							)}
 						</div>
-						{problems.length === 0 ? (
-							<p className={styles.ok}>No problems found.</p>
-						) : (
-							<ScrollArea className={styles.problemScroll} type="auto">
-								<ScrollAreaViewport className={styles.problemViewport}>
-									<ScrollAreaContent>
-										{problems.map((problem) => (
-											<Button
-												key={`${problem.fileId ?? ''}|${problem.severity}|${problem.line ?? ''}|${problem.column ?? ''}|${problem.message}`}
-												className={styles.problem}
-												onClick={() => selectProblem(problem)}
-											>
-												<span className={styles.severity}>
-													{problem.severity === 'error' ? 'Error' : 'Warning'}
-												</span>
-												<span className={styles.problemFile}>
-													{files.find((file) => file.id === problem.fileId)?.name ?? 'project'}
-												</span>
-												<span className={styles.problemMessage}>
-													{problem.message}
-													{problem.line
-														? ` (line ${problem.line}${problem.column ? `, col ${problem.column}` : ''})`
-														: ''}
-												</span>
-											</Button>
-										))}
-									</ScrollAreaContent>
-								</ScrollAreaViewport>
-								<ScrollAreaScrollbar orientation="vertical">
-									<ScrollAreaThumb />
-								</ScrollAreaScrollbar>
-							</ScrollArea>
-						)}
 					</div>
 				</section>
+
+				<section className={`${styles.pane} ${styles.dataPane}`}>
+					<div className={`${styles.outputHeader} ${styles.sectionHeader}`}>
+						<h2 className={styles.heading}>Test data</h2>
+						<div className={styles.outputActions}>
+							{activeExample ? (
+								<div className={styles.cases} aria-label="Example test data">
+									{activeExample.cases.map((item) => (
+										<Button
+											key={item.label}
+											className={styles.case}
+											data-expect={item.expect}
+											data-selected={item === activeCase ? 'true' : undefined}
+											aria-pressed={item === activeCase}
+											onClick={() => setData(JSON.stringify(item.data, null, 2))}
+										>
+											{item.label}
+										</Button>
+									))}
+								</div>
+							) : null}
+							<Button
+								className={styles.statusButton}
+								onClick={() => dataEditorRef.current?.format()}
+							>
+								Format data
+							</Button>
+						</div>
+					</div>
+					<div className={styles.editorFill}>
+						<MonacoEditor
+							ref={dataEditorRef}
+							testId="data-editor"
+							ariaLabel="Test data JSON"
+							language="json"
+							theme={monacoTheme}
+							value={data}
+							onChange={setData}
+						/>
+					</div>
+				</section>
+
+				<section className={`${styles.pane} ${styles.resultPane}`}>
+					<div className={`${styles.outputHeader} ${styles.sectionHeader}`}>
+						<h2 className={styles.heading}>Generated validator results</h2>
+						<span className={styles.muted}>
+							{activeCase ? `Expected: ${activeCase.expect}` : 'Custom test data'}
+						</span>
+					</div>
+					<ValidatorResults target={target} state={validation} />
+				</section>
+
+				<div
+					className={styles.splitter}
+					role="separator"
+					aria-label="Resize schema and test data sections"
+					aria-orientation="horizontal"
+					aria-valuemin={MIN_SPLIT * 100}
+					aria-valuemax={MAX_SPLIT * 100}
+					aria-valuenow={Math.round(split * 100)}
+					tabIndex={0}
+					onPointerDown={startResizing}
+					onPointerMove={moveSplitter}
+					onPointerUp={stopResizing}
+					onPointerCancel={stopResizing}
+					onLostPointerCapture={() => setResizing(false)}
+					onKeyDown={resizeWithKeyboard}
+				/>
 			</main>
 		</div>
 	);
@@ -856,6 +1054,7 @@ function defaultState(): AppState {
 		target: defaultTarget,
 		keywordPolicy: 'warn',
 		formatMode: defaultFormatMode,
+		data: exampleData(example),
 	};
 }
 
@@ -889,6 +1088,7 @@ function readUrlState(): AppState | null {
 			target: target ?? defaultTarget,
 			keywordPolicy: policy,
 			formatMode: format,
+			data: exampleData(example),
 		};
 	}
 
@@ -898,6 +1098,7 @@ function readUrlState(): AppState | null {
 			target: target ?? base.target,
 			keywordPolicy: policy,
 			formatMode: format,
+			data: base.data,
 		};
 	}
 
@@ -971,7 +1172,14 @@ function normalizeState(value: unknown): AppState | null {
 		target: isAvailableTarget(state.target) ? state.target : defaultTarget,
 		keywordPolicy: isKeywordPolicy(state.keywordPolicy) ? state.keywordPolicy : 'warn',
 		formatMode: isFormatMode(state.formatMode) ? state.formatMode : defaultFormatMode,
+		data: typeof state.data === 'string' ? state.data : dataForFiles(state.files),
 	};
+}
+
+function dataForFiles(files: SchemaFile[]): string {
+	const example = exampleById(resolveExampleId(files));
+
+	return example ? exampleData(example) : '{}';
 }
 
 function resolveExampleId(files: SchemaFile[]): string | null {
@@ -1047,21 +1255,6 @@ function uniqueName(base: string, files: SchemaFile[]): string {
 	return `${stem}-${counter}${extension}`;
 }
 
-function generateCodeFor(
-	target: TargetId,
-	root: ParsedJSONSchema,
-	options: ExampleGeneratorOptions | undefined,
-	formatMode: FormatMode
-): string {
-	switch (target) {
-		case 'effect':
-			return generateEffect(root, { importEffect: true, formatMode, ...options?.effect });
-		case 'typescript':
-			// A type cannot check a format, so the option does not apply here.
-			return generateTypeScript(root, { ...options?.typescript });
-		case 'zod':
-			return generateZod(root, { importZod: true, formatMode, ...options?.zod });
-		default:
-			throw new Error(`The ${target} generator is not available yet.`);
-	}
+function clampSplit(value: number): number {
+	return Math.min(MAX_SPLIT, Math.max(MIN_SPLIT, value));
 }

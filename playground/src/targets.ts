@@ -1,5 +1,8 @@
 export type TargetId = 'zod' | 'effect' | 'typescript';
 
+/** Targets whose generated code is a runtime validator the playground can run. */
+export type RuntimeTargetId = Extract<TargetId, 'zod' | 'effect'>;
+
 export interface Target {
 	value: TargetId;
 	label: string;
@@ -17,4 +20,8 @@ export const defaultTarget: TargetId = 'zod';
 
 export function isTargetId(value: unknown): value is TargetId {
 	return typeof value === 'string' && targets.some((target) => target.value === value);
+}
+
+export function isRuntimeTarget(value: TargetId): value is RuntimeTargetId {
+	return value === 'zod' || value === 'effect';
 }

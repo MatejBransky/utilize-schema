@@ -37,10 +37,50 @@
 	min-width: var(--anchor-width);
 }
 .workspace {
+	position: relative;
 	flex: 1;
 	min-height: 0;
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	grid-template-rows:
+		minmax(0, var(--workspace-top, 60%))
+		minmax(0, var(--workspace-bottom, 40%));
+}
+
+.workspace[data-resizing='true'] {
+	user-select: none;
+}
+
+.splitter {
+	position: absolute;
+	top: calc(var(--workspace-top, 60%) - 3px);
+	right: 0;
+	left: 0;
+	z-index: 5;
+	height: 6px;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	cursor: row-resize;
+	touch-action: none;
+}
+
+.splitter::before {
+	content: '';
+	position: absolute;
+	inset: 2px 0 auto;
+	height: 2px;
+	background: var(--ui-border);
+}
+
+.splitter:hover::before,
+.splitter:focus-visible::before,
+.workspace[data-resizing='true'] .splitter::before {
+	background: var(--ui-foreground);
+}
+
+.splitter:focus-visible {
+	outline: none;
 }
 
 .pane {
@@ -54,10 +94,16 @@
 .schemaPane {
 	position: relative;
 	border-right: 1px solid var(--ui-border);
+	border-bottom: 1px solid var(--ui-border);
 }
 
 .outputPane {
-	border-top: 0;
+	border-bottom: 1px solid var(--ui-border);
+}
+
+.dataPane {
+	position: relative;
+	border-right: 1px solid var(--ui-border);
 }
 
 .tabs {
@@ -309,8 +355,45 @@
 	color: var(--ui-foreground);
 }
 
+.cases {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: calc(var(--ui-spacing) * 1);
+}
+
+.case {
+	height: 1.5rem;
+	min-height: 0;
+	padding: 0 calc(var(--ui-spacing) * 1.5);
+	border: 1px solid var(--ui-border);
+	border-radius: 0;
+	background: transparent;
+	font-family: var(--ui-font-sans);
+	font-size: 0.6875rem;
+	font-weight: 400;
+	color: var(--ui-muted-foreground);
+}
+
+.case[data-expect='invalid'] {
+	border-style: dashed;
+}
+
+.case:hover:not([data-selected]):not(:disabled) {
+	background: var(--ui-muted);
+	color: var(--ui-foreground);
+}
+
+.case[data-selected] {
+	border-color: var(--ui-foreground);
+	border-style: solid;
+	background: var(--ui-foreground);
+	color: var(--ui-background);
+}
+
 .outputHeader {
 	display: flex;
+	flex: none;
 	flex-wrap: wrap;
 	align-items: center;
 	justify-content: space-between;
@@ -324,6 +407,10 @@
 	display: flex;
 	align-items: center;
 	gap: calc(var(--ui-spacing) * 2);
+}
+
+.sectionHeader {
+	height: 2.5rem;
 }
 
 .heading {
@@ -353,8 +440,59 @@
 	align-items: center;
 	justify-content: space-between;
 	gap: calc(var(--ui-spacing) * 2);
-	padding: calc(var(--ui-spacing) * 2) calc(var(--ui-spacing) * 3);
+	width: 100%;
+	min-height: calc(var(--ui-spacing) * 7 - 1px);
+	padding: calc(var(--ui-spacing) * 0.5) calc(var(--ui-spacing) * 3);
+	border: 0;
 	border-bottom: 1px solid var(--ui-border);
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.problemsHeader:hover {
+	background: var(--ui-muted);
+}
+
+.problemsHeader:focus-visible {
+	outline: 2px solid var(--ui-foreground);
+	outline-offset: -2px;
+}
+
+.problemsSummary {
+	display: inline-flex;
+	align-items: center;
+	gap: calc(var(--ui-spacing) * 2);
+}
+
+.problemsSummary svg {
+	flex: none;
+	width: 0.875rem;
+	height: 0.875rem;
+	transition: transform 120ms ease;
+}
+
+.problems[data-collapsed='true'] .problemsSummary svg {
+	transform: rotate(-90deg);
+}
+
+.problems[data-collapsed='true'] {
+	flex: none;
+	min-height: 0;
+	max-height: none;
+}
+
+.problemsBody {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-height: 0;
+}
+
+.problemsBody[hidden] {
+	display: none;
 }
 
 .counts {
@@ -486,12 +624,21 @@
 @media (max-width: 900px) {
 	.workspace {
 		grid-template-columns: minmax(0, 1fr);
-		grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+		grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.6fr) minmax(0, 0.6fr);
 	}
 
-	.schemaPane {
+	.splitter {
+		display: none;
+	}
+
+	.schemaPane,
+	.dataPane {
 		border-right: 0;
 		border-bottom: 1px solid var(--ui-border);
+	}
+
+	.resultPane {
+		border-bottom: 0;
 	}
 
 	.problems {
@@ -525,6 +672,14 @@
 
 	.outputPane {
 		height: 34rem;
+	}
+
+	.dataPane {
+		height: 20rem;
+	}
+
+	.resultPane {
+		height: 24rem;
 	}
 
 	.outputHeader {
