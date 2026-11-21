@@ -1,5 +1,7 @@
 import { isPlainObject } from '@utilize/json-schema';
 
+import { protoInputCheck } from './protoProperty';
+
 import { shapeKey, ts } from '../utils';
 
 /**
@@ -23,14 +25,25 @@ export function renderLiteral(value: unknown): string {
 
 	if (isPlainObject(value)) {
 		const entries = Object.entries(value);
-
-		if (entries.length === 0) {
-			return ts`z.strictObject({})`;
-		}
-
-		return ts`z.strictObject({
+		const shape =
+			entries.length === 0
+				? ts`z.strictObject({})`
+				: ts`z.strictObject({
   ${entries.map(([key, entry]) => `${shapeKey(key)}: ${renderLiteral(entry)}`).join(`,\n  `)}
 })`;
+
+		// Zod's object parser skips an own `__proto__`, so the shape alone would
+		// accept any value for it. Validate it on the raw input instead.
+		if (!Object.hasOwn(value, '__proto__')) {
+			return shape;
+		}
+
+		return ts`z.any().superRefine((value, ctx) => {
+  ${protoInputCheck({
+		required: true,
+		valueExpressions: [renderLiteral(value['__proto__'])],
+	})}
+}).pipe(${shape})`;
 	}
 
 	return ts`z.literal(${JSON.stringify(value)})`;

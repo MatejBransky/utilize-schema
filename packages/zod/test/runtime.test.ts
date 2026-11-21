@@ -184,6 +184,28 @@ describe('literal values', () => {
 		expect(Root.safeParse({ mode: 'plain' }).success).toBe(true);
 	});
 
+	test('validates an object const or enum with __proto__', async () => {
+		const Const = await compileToZod({
+			const: JSON.parse('{ "__proto__": 12, "name": "x" }'),
+		});
+
+		expect(Const.safeParse(JSON.parse('{ "__proto__": 12, "name": "x" }')).success).toBe(true);
+		expect(Const.safeParse({ name: 'x' }).success).toBe(false);
+		expect(Const.safeParse(JSON.parse('{ "__proto__": 99, "name": "x" }')).success).toBe(false);
+		expect(
+			Const.safeParse(JSON.parse('{ "__proto__": 12, "name": "x", "extra": 1 }')).success
+		).toBe(false);
+
+		const Enum = await compileToZod({
+			enum: [JSON.parse('{ "__proto__": 12, "name": "x" }'), { name: 'y' }],
+		});
+
+		expect(Enum.safeParse({ name: 'x', ['__proto__']: 12 }).success).toBe(true);
+		expect(Enum.safeParse({ name: 'y' }).success).toBe(true);
+		expect(Enum.safeParse({ name: 'x' }).success).toBe(false);
+		expect(Enum.safeParse({ name: 'x', ['__proto__']: 99 }).success).toBe(false);
+	});
+
 	test('requires exactly one oneOf branch to match', async () => {
 		const Root = await compileToZod({
 			type: 'number',
@@ -322,6 +344,27 @@ describe('a __proto__ property', () => {
 
 		expect(Root.safeParse({ x_a: 1 }).success).toBe(true);
 		expect(Root.safeParse(JSON.parse('{ "__proto__": 12 }')).success).toBe(false);
+	});
+
+	test('is rejected by additionalProperties: false without patterns', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			additionalProperties: false,
+		});
+
+		expect(Root.safeParse({}).success).toBe(true);
+		expect(Root.safeParse(JSON.parse('{ "__proto__": 12 }')).success).toBe(false);
+	});
+
+	test('is allowed by additionalProperties: false when it is declared', async () => {
+		const Root = await compileToZod({
+			type: 'object',
+			properties: { ['__proto__']: { type: 'number' } },
+			additionalProperties: false,
+		});
+
+		expect(Root.safeParse(JSON.parse('{ "__proto__": 12 }')).success).toBe(true);
+		expect(Root.safeParse(JSON.parse('{ "__proto__": "text" }')).success).toBe(false);
 	});
 
 	test('is validated by a typed additionalProperties', async () => {

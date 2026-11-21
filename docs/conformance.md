@@ -16,7 +16,7 @@ Every project here runs the official
 passes when every spec-valid instance is accepted and every spec-invalid one is
 rejected. Draft-07 baseline on suite commit `e2a68a1`:
 
-- 281 of 304 cases (1,397 of 1,655 assertions).
+- 283 of 304 cases (1,399 of 1,655 assertions).
 - Cases that need external schemas are served from memory through
   `externalSchemas`. Format cases run in the mode they are tagged for:
   `format-annotation` with `formatMode: 'annotate'`, `format-assertion` with
