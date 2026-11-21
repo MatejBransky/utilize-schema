@@ -30,7 +30,7 @@ export interface SuiteFile {
 
 const require = createRequire(import.meta.url);
 
-export const suiteDirectory = join(
+const suiteDirectory = join(
 	dirname(require.resolve('json-schema-test-suite/package.json')),
 	'validation',
 	'tests'
