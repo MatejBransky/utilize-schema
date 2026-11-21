@@ -14,6 +14,7 @@ import './polyfills';
 import { buildBundle, parseJsonFile } from './bundle';
 import { exampleGeneratorOptions, type ExampleGeneratorOptions } from './exampleOptions';
 import { examples, type Example } from './examples';
+import { defaultFormatMode } from './formatMode';
 import { generateCodeFor } from './generateCode';
 import {
 	loadModule,
@@ -105,6 +106,7 @@ for (const example of examples) {
 			const { runtime } = generateCodeFor(
 				target,
 				await parseExample(example),
+				defaultFormatMode,
 				exampleGeneratorOptions[example.id]
 			);
 
@@ -130,6 +132,7 @@ for (const example of examples) {
 			const { runtime: source } = generateCodeFor(
 				target,
 				await parseExample(example),
+				defaultFormatMode,
 				exampleGeneratorOptions[example.id]
 			);
 

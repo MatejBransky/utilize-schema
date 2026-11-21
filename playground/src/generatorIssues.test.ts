@@ -4,6 +4,7 @@ import { expect, test } from 'vitest';
 
 import './polyfills';
 
+import { defaultFormatMode } from './formatMode';
 import { generateCodeFor } from './generateCode';
 import { loadModule, validateModule } from './runtime';
 
@@ -38,7 +39,7 @@ for (const target of ['zod', 'effect'] as const) {
 			cwd: '/',
 			fileName: 'person.json',
 		});
-		const { runtime } = generateCodeFor(target, root);
+		const { runtime } = generateCodeFor(target, root, defaultFormatMode);
 
 		if (!runtime || runtime.status !== 'generated' || !runtime.rootName) {
 			throw new Error(`The ${target} validator was not generated.`);
