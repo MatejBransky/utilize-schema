@@ -1,4 +1,5 @@
 import { createAgent } from '@ui-sdk/react/agent';
+import { page } from 'vitest/browser';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 
@@ -292,6 +293,27 @@ test('the color mode button cycles through auto, light and dark', async () => {
 	await vi.waitFor(() => expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark'));
 	await button.click();
 	await vi.waitFor(() => expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('auto'));
+});
+
+test('the schema and test data sections can be resized', async () => {
+	await page.viewport(1200, 800);
+
+	try {
+		const screen = await render(<App />);
+		const separator = screen
+			.getByRole('separator', { name: 'Resize schema and test data sections' })
+			.element();
+
+		expect(separator.getAttribute('aria-valuenow')).toBe('60');
+
+		separator.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('58'));
+
+		separator.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('80'));
+	} finally {
+		await page.viewport(414, 896);
+	}
 });
 
 test('the generator select offers only implemented generators', async () => {
