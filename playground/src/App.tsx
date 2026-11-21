@@ -116,6 +116,9 @@ export default function App() {
 	const [problemsCollapsed, setProblemsCollapsed] = useState(false);
 	const [dataCollapsed, setDataCollapsed] = useState(false);
 	const [dataDragging, setDataDragging] = useState(false);
+	const [narrowLayout, setNarrowLayout] = useState(
+		() => window.matchMedia('(max-width: 900px)').matches
+	);
 	const workspaceRef = useRef<HTMLElement>(null);
 	const schemaEditorRef = useRef<MonacoEditorHandle>(null);
 	const dataEditorRef = useRef<MonacoEditorHandle>(null);
@@ -293,6 +296,22 @@ export default function App() {
 	}, [colorMode, resolvedTheme]);
 
 	useEffect(() => {
+		const query = window.matchMedia('(max-width: 900px)');
+		const syncLayout = () => {
+			setNarrowLayout(query.matches);
+
+			if (query.matches) {
+				setDataCollapsed(false);
+			}
+		};
+
+		syncLayout();
+		query.addEventListener('change', syncLayout);
+
+		return () => query.removeEventListener('change', syncLayout);
+	}, []);
+
+	useEffect(() => {
 		if (!pendingPosition) {
 			return;
 		}
@@ -373,6 +392,11 @@ export default function App() {
 		setFiles((current) => current.map((file) => (file.id === id ? { ...file, ...patch } : file)));
 	}
 
+	function updateData(content: string) {
+		clearExampleUrl();
+		setData(content);
+	}
+
 	function addFile() {
 		const id = newFileId();
 		const name = uniqueName('untitled.json', files);
@@ -420,7 +444,7 @@ export default function App() {
 	}
 
 	function allowDataDrop(event: ReactDragEvent<HTMLElement>) {
-		if (!hasFileDrag(event.dataTransfer)) {
+		if (dataCollapsed || !hasFileDrag(event.dataTransfer)) {
 			return;
 		}
 
@@ -440,7 +464,7 @@ export default function App() {
 	}
 
 	async function dropData(event: ReactDragEvent<HTMLElement>) {
-		if (!hasFileDrag(event.dataTransfer)) {
+		if (dataCollapsed || !hasFileDrag(event.dataTransfer)) {
 			return;
 		}
 
@@ -453,7 +477,7 @@ export default function App() {
 		const document = documents?.[0];
 
 		if (document) {
-			setData(document.content);
+			updateData(document.content);
 		}
 	}
 
@@ -1023,16 +1047,20 @@ export default function App() {
 					onDrop={dropData}
 				>
 					<div className={`${styles.outputHeader} ${styles.sectionHeader}`}>
-						<button
-							type="button"
-							className={styles.sectionToggle}
-							aria-expanded={!dataCollapsed}
-							aria-controls="test-data-editor"
-							onClick={() => setDataCollapsed((collapsed) => !collapsed)}
-						>
+						{narrowLayout ? (
 							<span className={styles.heading}>Test data</span>
-							<ChevronDownIcon />
-						</button>
+						) : (
+							<button
+								type="button"
+								className={styles.sectionToggle}
+								aria-expanded={!dataCollapsed}
+								aria-controls="test-data-editor"
+								onClick={() => setDataCollapsed((collapsed) => !collapsed)}
+							>
+								<span className={styles.heading}>Test data</span>
+								<ChevronDownIcon />
+							</button>
+						)}
 						<div className={styles.outputActions}>
 							{activeExample ? (
 								<div className={styles.cases} aria-label="Example test data">
@@ -1043,7 +1071,7 @@ export default function App() {
 											data-expect={item.expect}
 											data-selected={item === activeCase ? 'true' : undefined}
 											aria-pressed={item === activeCase}
-											onClick={() => setData(JSON.stringify(item.data, null, 2))}
+											onClick={() => updateData(JSON.stringify(item.data, null, 2))}
 										>
 											{item.label}
 										</Button>
@@ -1066,7 +1094,7 @@ export default function App() {
 							language="json"
 							theme={monacoTheme}
 							value={data}
-							onChange={setData}
+							onChange={updateData}
 						/>
 					</div>
 					{dataDragging && !dataCollapsed ? (

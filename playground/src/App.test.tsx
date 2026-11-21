@@ -428,26 +428,64 @@ test('the validation panel can be collapsed', async () => {
 });
 
 test('the test data section collapses to its header', async () => {
+	await page.viewport(1200, 800);
+
+	try {
+		const screen = await render(<App />);
+		const toggle = screen.getByRole('button', { name: 'Test data' });
+		const editor = document.querySelector('#test-data-editor');
+		const results = document.querySelector('#validator-results-panel');
+
+		expect(toggle.element().getAttribute('aria-expanded')).toBe('true');
+		expect(editor?.hasAttribute('hidden')).toBe(false);
+		expect(results?.hasAttribute('hidden')).toBe(false);
+
+		await toggle.click();
+
+		await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('false'));
+		expect(editor?.hasAttribute('hidden')).toBe(true);
+		expect(results?.hasAttribute('hidden')).toBe(true);
+
+		await toggle.click();
+
+		await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('true'));
+		expect(editor?.hasAttribute('hidden')).toBe(false);
+		expect(results?.hasAttribute('hidden')).toBe(false);
+	} finally {
+		await page.viewport(414, 896);
+	}
+});
+
+test('the test data collapse control is hidden on narrow screens', async () => {
 	const screen = await render(<App />);
-	const toggle = screen.getByRole('button', { name: 'Test data' });
-	const editor = document.querySelector('#test-data-editor');
-	const results = document.querySelector('#validator-results-panel');
 
-	expect(toggle.element().getAttribute('aria-expanded')).toBe('true');
-	expect(editor?.hasAttribute('hidden')).toBe(false);
-	expect(results?.hasAttribute('hidden')).toBe(false);
+	expect(screen.getByRole('button', { name: 'Test data' }).query()).toBeNull();
+});
 
-	await toggle.click();
+test('dropping a JSON file on a collapsed test data header is ignored', async () => {
+	await page.viewport(1200, 800);
 
-	await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('false'));
-	expect(editor?.hasAttribute('hidden')).toBe(true);
-	expect(results?.hasAttribute('hidden')).toBe(true);
+	try {
+		const screen = await render(<App />);
+		const editor = document.querySelector('[data-testid="data-editor"]')!;
+		const pane = editor.closest('section')!;
+		const before = editor.getAttribute('data-value');
 
-	await toggle.click();
+		await screen.getByRole('button', { name: 'Test data' }).click();
+		await vi.waitFor(() =>
+			expect(document.querySelector('#test-data-editor')?.hasAttribute('hidden')).toBe(true)
+		);
 
-	await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('true'));
-	expect(editor?.hasAttribute('hidden')).toBe(false);
-	expect(results?.hasAttribute('hidden')).toBe(false);
+		pane.dispatchEvent(
+			fileDrag('dragenter', [{ name: 'payload.json', content: '{"changed":true}' }])
+		);
+		pane.dispatchEvent(fileDrag('drop', [{ name: 'payload.json', content: '{"changed":true}' }]));
+		await new Promise((resolve) => setTimeout(resolve, 250));
+
+		expect(editor.getAttribute('data-value')).toBe(before);
+	} finally {
+		await page.viewport(414, 896);
+	}
 });
 
 test('the keyword policy shows foreign keywords as errors or warnings', async () => {
@@ -679,4 +717,5 @@ test('switching examples loads their test data', async () => {
 
 	await vi.waitFor(() => expect(resultStatus('zod')).toBe('invalid'), { timeout: 15_000 });
 	expect(savedData()).toBe('"purple"');
+	await vi.waitFor(() => expect(new URL(location.href).searchParams.has('example')).toBe(false));
 });
