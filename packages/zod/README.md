@@ -137,6 +137,15 @@ standalone schema is declared once and referenced wherever it appears. An
 value, such as `anyOf: [X, {}]`, is left out: it never rejects a value, so
 `.parse()` returns what the rest of the schema keeps.
 
+### `__proto__` properties
+
+A `__proto__` property in your schema is validated as an own property of the
+input: `required` and its value schema are enforced, also for `const` and `enum`
+values and for `additionalProperties`. The parsed output does not contain it,
+because Zod drops `__proto__` from parsed objects and records on purpose. Do
+not read a `__proto__` value from the result of `.parse()`; read it from the
+input you passed in.
+
 ## Naming
 
 Each standalone schema gets the name resolved from `$id`, `title`, the `$defs`
