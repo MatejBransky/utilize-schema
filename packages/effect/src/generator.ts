@@ -1,16 +1,22 @@
 // oxlint-disable unicorn/no-array-sort -- the emitted helper sorts keys by code point; the source function is stringified into generated code
 import {
+	allocateName,
 	collectStandaloneSchemas,
 	type Dialect,
 	dialectOf,
 	containsBounds,
 	isKeywordApplicable,
 	isPlainObject,
+	mapDeclarationNames,
 	Meta,
 	narrowUntypedSchema,
 	type ParsedJSONSchema,
 	type ParsedJSONSchemaObject,
+	resolveName,
 	type SchemaEdge,
+	type CustomNameResolver,
+	type DeclarationNames,
+	type NameMapper,
 } from '@utilize/json-schema';
 
 import { typedAlternatives } from './alternatives';
@@ -21,14 +27,6 @@ import { formatCheck } from './formats';
 import { ANNOTATION_KEYWORDS } from './keywords';
 import { mergeObjectSchemas } from './mergeObjects';
 import { planReferenceSiblings } from './refSiblings';
-import {
-	allocateName,
-	mapDeclarationNames,
-	resolveName,
-	type CustomNameResolver,
-	type DeclarationNames,
-	type NameMapper,
-} from './resolveName';
 import { literalType, renderValueTypeDeclaration, type ValueTypeContext } from './valueTypes';
 
 export interface GenerateOptions {

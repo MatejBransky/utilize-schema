@@ -22,4 +22,4 @@ export {
 	toSafeString,
 	type CustomNameResolver,
 	type NameMapper,
-} from './resolveName';
+} from '@utilize/json-schema';
