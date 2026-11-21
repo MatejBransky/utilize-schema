@@ -712,6 +712,7 @@ test('switching examples loads their test data', async () => {
 
 	await vi.waitFor(() => expect(savedData()).toBe('"green"'));
 	await vi.waitFor(() => expect(resultStatus('zod')).toBe('valid'), { timeout: 15_000 });
+	await vi.waitFor(() => expect(new URL(location.href).searchParams.get('example')).toBe('enum'));
 
 	await screen.getByRole('button', { name: 'Invalid' }).click();
 

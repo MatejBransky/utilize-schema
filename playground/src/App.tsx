@@ -393,6 +393,12 @@ export default function App() {
 	}
 
 	function updateData(content: string) {
+		// The editor also reports programmatic value changes (for example when an
+		// example loads); those must keep the example URL intact.
+		if (content === data) {
+			return;
+		}
+
 		clearExampleUrl();
 		setData(content);
 	}
