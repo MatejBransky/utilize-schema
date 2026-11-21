@@ -1,7 +1,6 @@
 import type { Dialect, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
-import { generateSchema } from './generateSchema';
 
 import { NEWLINE, ts } from '../utils';
 
@@ -13,7 +12,7 @@ export const generator = createGenerator(
 
 		return tupleItems(schema, dialect) !== undefined;
 	},
-	(schema, context) => {
+	(schema, context, { generateSchema }) => {
 		const items = tupleItems(schema, context.dialect)!;
 		const minItems = schema.minItems ?? 0;
 		const rest = tupleRest(schema, context.dialect);

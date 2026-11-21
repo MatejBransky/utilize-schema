@@ -6,6 +6,7 @@ import {
 } from '@utilize/json-schema';
 
 import { withoutAlwaysValidAnyOf } from './alwaysValidAnyOf';
+import type { Recursion } from './createGenerator';
 import { generator as refGenerator, referenceTo } from './refGenerator';
 import { composedSchemaParts, refSiblingConstraints } from './schemaParts';
 import { selectGenerator } from './selectGenerator';
@@ -67,6 +68,9 @@ export const generateSchema = (schema: ParsedJSONSchema | undefined, context: Ge
 	return expression;
 };
 
+/** Passed to every keyword generator, so it can generate its subschemas. */
+const recursion: Recursion = { generateSchema, selectGenerator };
+
 /**
  * True for a `$ref` node in a dialect that ignores every keyword next to the
  * reference (draft-07 and older), so no refinement may be applied to it.
@@ -92,7 +96,7 @@ function generateCore(schema: ParsedJSONSchemaObject, context: GeneratorContext)
 	const { dialect } = context;
 
 	if (isRefNode(schema)) {
-		const reference = refGenerator.generate(schema, context);
+		const reference = refGenerator.generate(schema, context, recursion);
 
 		if (dialect.refSiblings === 'apply') {
 			const rest = refSiblingConstraints(schema);
@@ -114,7 +118,7 @@ function generateCore(schema: ParsedJSONSchemaObject, context: GeneratorContext)
 		)})`;
 	}
 
-	return selectGenerator(schema, context.dialect).generate(schema, context);
+	return selectGenerator(schema, context.dialect).generate(schema, context, recursion);
 }
 
 function withMetadata(

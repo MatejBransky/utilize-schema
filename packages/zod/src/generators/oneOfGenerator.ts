@@ -2,10 +2,8 @@ import { dialectOf, type ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
 import { areMutuallyExclusive } from './exclusiveBranches';
-import { generateSchema } from './generateSchema';
 import { generator as objectGenerator } from './objectGenerator';
 import { composedSchemaParts } from './schemaParts';
-import { selectGenerator } from './selectGenerator';
 
 import { isResolvedByCaller, ts } from '../utils';
 
@@ -16,7 +14,7 @@ export const generator = createGenerator<
 	}
 >(
 	(schema) => Array.isArray(schema.oneOf),
-	(schema, context) => {
+	(schema, context, { generateSchema, selectGenerator }) => {
 		const subschemas = schema.oneOf.map((subschema) => generateSchema(subschema, context));
 
 		const discriminable = schema.oneOf.every(
