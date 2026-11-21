@@ -114,6 +114,9 @@ importers:
       '@apidevtools/json-schema-ref-parser':
         specifier: 'catalog:'
         version: 16.0.8(@types/json-schema@7.0.15)
+      js-yaml:
+        specifier: 5.4.2
+        version: 5.4.2
     devDependencies:
       '@total-typescript/tsconfig':
         specifier: 'catalog:'
