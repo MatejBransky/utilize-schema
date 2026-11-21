@@ -12,9 +12,6 @@
 
 const format = 'format validation disagrees with the Zod helpers (strict or loose)';
 
-const prototypeNames =
-	'property names that live on Object.prototype (__proto__, constructor) are not handled';
-
 const idRefs = '$id/$anchor based $ref resolution is not implemented';
 
 const idCycle = 'a self-referencing $id or URN schema is reported as an unsupported cycle';
@@ -45,11 +42,6 @@ export const knownFailures: Record<string, string> = {
 	'id.json :: simple URN base URI with $ref via the URN': idCycle,
 	'id.json :: simple base URI using an arbitrary URI scheme with $ref to that URI': idCycle,
 	'id.json :: simple tag URI base URI with $ref via the tag URI': idCycle,
-
-	// property names with special meaning
-	'properties.json :: properties whose names are Javascript object property names': prototypeNames,
-	'required.json :: required properties whose names are Javascript object property names':
-		prototypeNames,
 
 	// recursion
 	'ref.json :: root pointer ref': typelessCycle,

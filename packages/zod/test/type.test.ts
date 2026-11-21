@@ -52,7 +52,28 @@ describe('type', () => {
 				additionalProperties: { type: 'boolean' },
 			})
 		).toMatchCode(ts`
-      export const Root = z.record(z.string(), z.boolean())
+      export const Root = z
+        .any()
+        .superRefine((value, ctx) => {
+          if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+            const descriptor = Object.getOwnPropertyDescriptor(value, '__proto__');
+
+            if (descriptor !== undefined) {
+              const result = z.boolean().safeParse(descriptor.value);
+
+              if (!result.success) {
+                for (const issue of result.error.issues) {
+                  ctx.addIssue({
+                    code: 'custom',
+                    message: issue.message,
+                    path: ['__proto__', ...issue.path],
+                  });
+                }
+              }
+            }
+          }
+        })
+        .pipe(z.record(z.string(), z.boolean()));
       export type Root = z.infer<typeof Root>;
     `);
 	});
@@ -75,9 +96,28 @@ describe('type', () => {
 				additionalProperties: { type: 'boolean' },
 			})
 		).toMatchCode(ts`
-      export const Root = z.object({
-        field: z.boolean().optional(),
-      }).catchall(z.boolean())
+      export const Root = z
+        .any()
+        .superRefine((value, ctx) => {
+          if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+            const descriptor = Object.getOwnPropertyDescriptor(value, '__proto__');
+
+            if (descriptor !== undefined) {
+              const result = z.boolean().safeParse(descriptor.value);
+
+              if (!result.success) {
+                for (const issue of result.error.issues) {
+                  ctx.addIssue({
+                    code: 'custom',
+                    message: issue.message,
+                    path: ['__proto__', ...issue.path],
+                  });
+                }
+              }
+            }
+          }
+        })
+        .pipe(z.object({ field: z.boolean().optional() }).catchall(z.boolean()));
       export type Root = z.infer<typeof Root>;
     `);
 	});

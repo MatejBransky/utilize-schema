@@ -32,7 +32,7 @@ await compile({
 });
 ```
 
-`@utilize/zod` requires `zod` 4 as a peer dependency:
+`@utilize/zod` requires `zod` 4.5 or newer as a peer dependency:
 
 ```sh
 pnpm add zod
@@ -217,7 +217,7 @@ The suite is pinned to a commit and installed as a dev dependency. Each test
 case is compiled to a Zod schema in memory and every instance from the suite is
 run through `safeParse`.
 
-Today it passes **281 of 304 draft-07 cases (1,397 of 1,655 assertions)**. Format
+Today it passes **283 of 304 draft-07 cases (1,399 of 1,655 assertions)**. Format
 cases run in the mode they are tagged for, so both the annotation and the
 assertion cases are measured.
 
