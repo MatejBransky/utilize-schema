@@ -10,6 +10,7 @@ import {
 	resolveDialect,
 	type ResolvedDialect,
 } from './dialect';
+import { SCHEMA_ARRAY_KEYWORDS, SCHEMA_MAP_KEYWORDS, SINGLE_SCHEMA_KEYWORDS } from './keywords';
 import type { Path } from './model';
 import { isPlainObject } from './utils';
 
@@ -35,27 +36,6 @@ export interface PrepareSchemaOptions extends DialectOptions {
 	inheritedDialect?: DialectId;
 }
 
-const MAP_KEYWORDS = new Set([
-	'properties',
-	'patternProperties',
-	'$defs',
-	'definitions',
-	'dependentSchemas',
-]);
-const SINGLE_SCHEMA_KEYWORDS = new Set([
-	'additionalProperties',
-	'additionalItems',
-	'unevaluatedProperties',
-	'unevaluatedItems',
-	'contentSchema',
-	'contains',
-	'propertyNames',
-	'if',
-	'then',
-	'else',
-	'not',
-]);
-const ARRAY_SCHEMA_KEYWORDS = new Set(['allOf', 'anyOf', 'oneOf', 'prefixItems']);
 /** Keywords whose value may be a boolean even in draft-04. */
 const BOOLEAN_FORM_KEYWORDS = new Set(['additionalProperties', 'additionalItems']);
 
@@ -154,7 +134,7 @@ export function prepareSchema(schema: unknown, options: PrepareSchemaOptions = {
 				} else {
 					visit(value, resolved, [...path, key], false);
 				}
-			} else if (MAP_KEYWORDS.has(key) && isPlainObject(value)) {
+			} else if (SCHEMA_MAP_KEYWORDS.has(key) && isPlainObject(value)) {
 				for (const [name, subschema] of Object.entries(value)) {
 					visit(subschema, resolved, [...path, key, name], false);
 				}
@@ -165,7 +145,7 @@ export function prepareSchema(schema: unknown, options: PrepareSchemaOptions = {
 				}
 
 				visit(value, resolved, [...path, key], false);
-			} else if (ARRAY_SCHEMA_KEYWORDS.has(key) && Array.isArray(value)) {
+			} else if (SCHEMA_ARRAY_KEYWORDS.has(key) && Array.isArray(value)) {
 				value.forEach((item, index) => visit(item, resolved, [...path, key, index], false));
 			} else if (key === 'dependencies' && isPlainObject(value)) {
 				for (const [name, dependency] of Object.entries(value)) {
