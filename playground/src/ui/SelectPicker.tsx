@@ -10,7 +10,7 @@ import {
 
 import styles from './SelectPicker.module.css';
 
-export interface PickerOption {
+interface PickerOption {
 	value: string;
 	label: string;
 	keywords?: string[];
