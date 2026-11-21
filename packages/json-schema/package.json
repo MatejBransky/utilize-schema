@@ -41,9 +41,7 @@
 		"dev": "tsdown --watch"
 	},
 	"dependencies": {
-		"@apidevtools/json-schema-ref-parser": "catalog:",
-		"dequal": "2.0.3",
-		"moize": "6.1.7"
+		"@apidevtools/json-schema-ref-parser": "catalog:"
 	},
 	"devDependencies": {
 		"@total-typescript/tsconfig": "catalog:",
