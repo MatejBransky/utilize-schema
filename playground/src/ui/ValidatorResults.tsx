@@ -57,12 +57,6 @@ function ValidatorCard({ id, name, state }: ValidatorCardProps) {
 			data-testid={`result-${id}`}
 			data-status={status}
 		>
-			<div className={styles.cardHeader}>
-				<h3 className={styles.name}>{name}</h3>
-				<span className={styles.badge}>
-					{status === 'running' ? 'Running…' : status === 'valid' ? 'Valid' : 'Invalid'}
-				</span>
-			</div>
 			{status === 'running' ? (
 				<p className={styles.note}>Compiling the generated schema…</p>
 			) : result?.ok ? (
