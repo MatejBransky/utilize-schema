@@ -410,6 +410,29 @@ test('the validation panel can be collapsed', async () => {
 	expect(body?.hasAttribute('hidden')).toBe(false);
 });
 
+test('the test data section collapses to its header', async () => {
+	const screen = await render(<App />);
+	const toggle = screen.getByRole('button', { name: 'Test data' });
+	const editor = document.querySelector('#test-data-editor');
+	const results = document.querySelector('#validator-results-panel');
+
+	expect(toggle.element().getAttribute('aria-expanded')).toBe('true');
+	expect(editor?.hasAttribute('hidden')).toBe(false);
+	expect(results?.hasAttribute('hidden')).toBe(false);
+
+	await toggle.click();
+
+	await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('false'));
+	expect(editor?.hasAttribute('hidden')).toBe(true);
+	expect(results?.hasAttribute('hidden')).toBe(true);
+
+	await toggle.click();
+
+	await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('true'));
+	expect(editor?.hasAttribute('hidden')).toBe(false);
+	expect(results?.hasAttribute('hidden')).toBe(false);
+});
+
 test('the keyword policy shows foreign keywords as errors or warnings', async () => {
 	localStorage.setItem(
 		'utilize-schema-playground',

@@ -59,6 +59,14 @@
 	user-select: none;
 }
 
+.workspace[data-collapsed='true'] {
+	grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.workspace[data-collapsed='true'] .splitter {
+	display: none;
+}
+
 .splitter {
 	position: absolute;
 	top: calc(var(--workspace-top, 60%) - 3px);
@@ -318,6 +326,52 @@
 	display: flex;
 	height: 100%;
 	min-height: 0;
+}
+
+.editorFill[hidden],
+.resultBody[hidden] {
+	display: none;
+}
+
+.resultBody {
+	display: flex;
+	flex: 1;
+	min-height: 0;
+}
+
+.sectionToggle {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	gap: calc(var(--ui-spacing) * 2);
+	min-width: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.sectionToggle:hover {
+	color: var(--ui-foreground);
+}
+
+.sectionToggle:focus-visible {
+	outline: 2px solid var(--ui-foreground);
+	outline-offset: 2px;
+}
+
+.sectionToggle svg {
+	flex: none;
+	width: 0.875rem;
+	height: 0.875rem;
+	transition: transform 120ms ease;
+}
+
+.workspace[data-collapsed='true'] .sectionToggle svg {
+	transform: rotate(180deg);
 }
 
 .editorFill > div {
@@ -635,6 +689,10 @@
 		grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.6fr) minmax(0, 0.6fr);
 	}
 
+	.workspace[data-collapsed='true'] {
+		grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.6fr) minmax(0, 0.6fr);
+	}
+
 	.splitter {
 		display: none;
 	}
@@ -668,7 +726,8 @@
 		min-height: 100%;
 	}
 
-	.workspace {
+	.workspace,
+	.workspace[data-collapsed='true'] {
 		flex: none;
 		grid-template-rows: none;
 	}

@@ -113,6 +113,7 @@ export default function App() {
 	const [split, setSplit] = useState(DEFAULT_SPLIT);
 	const [resizing, setResizing] = useState(false);
 	const [problemsCollapsed, setProblemsCollapsed] = useState(false);
+	const [dataCollapsed, setDataCollapsed] = useState(false);
 	const workspaceRef = useRef<HTMLElement>(null);
 	const schemaEditorRef = useRef<MonacoEditorHandle>(null);
 	const dataEditorRef = useRef<MonacoEditorHandle>(null);
@@ -715,6 +716,7 @@ export default function App() {
 				className={styles.workspace}
 				style={splitStyle}
 				data-resizing={resizing ? 'true' : undefined}
+				data-collapsed={dataCollapsed ? 'true' : undefined}
 			>
 				<section className={`${styles.pane} ${styles.schemaPane}`}>
 					<Tabs
@@ -972,9 +974,21 @@ export default function App() {
 					</div>
 				</section>
 
-				<section className={`${styles.pane} ${styles.dataPane}`}>
+				<section
+					className={`${styles.pane} ${styles.dataPane}`}
+					data-collapsed={dataCollapsed ? 'true' : undefined}
+				>
 					<div className={`${styles.outputHeader} ${styles.sectionHeader}`}>
-						<h2 className={styles.heading}>Test data</h2>
+						<button
+							type="button"
+							className={styles.sectionToggle}
+							aria-expanded={!dataCollapsed}
+							aria-controls="test-data-editor"
+							onClick={() => setDataCollapsed((collapsed) => !collapsed)}
+						>
+							<span className={styles.heading}>Test data</span>
+							<ChevronDownIcon />
+						</button>
 						<div className={styles.outputActions}>
 							{activeExample ? (
 								<div className={styles.cases} aria-label="Example test data">
@@ -1000,7 +1014,7 @@ export default function App() {
 							</Button>
 						</div>
 					</div>
-					<div className={styles.editorFill}>
+					<div id="test-data-editor" className={styles.editorFill} hidden={dataCollapsed}>
 						<MonacoEditor
 							ref={dataEditorRef}
 							testId="data-editor"
@@ -1020,7 +1034,9 @@ export default function App() {
 							{activeCase ? `Expected: ${activeCase.expect}` : 'Custom test data'}
 						</span>
 					</div>
-					<ValidatorResults target={target} state={validation} />
+					<div id="validator-results-panel" className={styles.resultBody} hidden={dataCollapsed}>
+						<ValidatorResults target={target} state={validation} />
+					</div>
 				</section>
 
 				<div
