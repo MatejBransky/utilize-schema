@@ -1,10 +1,4 @@
-import {
-	type DialectOptions,
-	type JSONSchema,
-	Meta,
-	parse,
-	type ParsedJSONSchemaObject,
-} from '@utilize/json-schema';
+import { type DialectOptions, type JSONSchema, parse } from '@utilize/json-schema';
 import { format as formatCode } from 'oxfmt';
 import { type z } from 'zod';
 
@@ -41,16 +35,6 @@ function formatSource(code: string) {
 
 export function normalizeCode(code: string): string {
 	return code.replace(/\r\n?/g, '\n').trim();
-}
-
-export function withMeta(obj: JSONSchema, meta: Partial<Meta> = {}) {
-	Object.defineProperty(obj, Meta, {
-		enumerable: false,
-		value: { ...meta },
-		writable: true,
-		configurable: true,
-	});
-	return obj as ParsedJSONSchemaObject;
 }
 
 export interface CompileOptions extends TestGenerateOptions {
