@@ -11,8 +11,12 @@ type GeneratedSchema = Parameters<typeof Schema.decodeUnknownSync>[0];
  * Compiles a schema to an Effect Schema in memory. Generated code is stripped of
  * its TypeScript syntax and evaluated with `Schema` in scope, which keeps the
  * suite fast: hundreds of schemas compile without touching the filesystem.
+ *
+ * The `compileToSchema` helper in `test-utils.ts` writes a module and imports
+ * it. That is the right tool for a handful of schemas; the suite runs over
+ * hundreds.
  */
-export async function compileToSchema(
+export async function compileToEffectSchema(
 	schema: JSONSchema | boolean,
 	externalSchemas?: ExternalSchemas,
 	formatMode?: FormatMode
