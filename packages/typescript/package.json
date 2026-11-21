@@ -46,8 +46,7 @@
 		"dev": "tsdown --watch"
 	},
 	"dependencies": {
-		"@utilize/json-schema": "workspace:*",
-		"js-yaml": "5.5.0"
+		"@utilize/json-schema": "workspace:*"
 	},
 	"devDependencies": {
 		"@total-typescript/tsconfig": "catalog:",
