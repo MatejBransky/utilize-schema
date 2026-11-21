@@ -73,8 +73,7 @@ export async function runGeneratorCli<Flags extends ParseArgsOptionsConfig, Opti
 	try {
 		parsed = parseArgs({ args: argv, allowPositionals: true, options: flags });
 	} catch (error) {
-		io.stderr.write(`${(error as Error).message}\n`);
-		return 1;
+		return fail(io, (error as Error).message);
 	}
 
 	const { positionals } = parsed;
@@ -86,78 +85,106 @@ export async function runGeneratorCli<Flags extends ParseArgsOptionsConfig, Opti
 		return 0;
 	}
 
-	const cwd = path.resolve(values.cwd ?? process.cwd());
-	const input = values.input ?? positionals[0];
-	const output = values.output ?? positionals[1];
-	const banner = values['no-banner'] ? false : undefined;
 	const options = cli.readOptions(parsed.values as CliFlagValues<Flags>, io);
 
 	if (!options.ok) {
-		io.stderr.write(`${options.error}\n`);
-		return 1;
+		return fail(io, options.error);
 	}
+
+	const run: CliRun<Options> = {
+		cwd: path.resolve(values.cwd ?? process.cwd()),
+		input: values.input ?? positionals[0],
+		output: values.output ?? positionals[1],
+		banner: values['no-banner'] ? false : undefined,
+		options: options.options,
+	};
 
 	try {
-		if (!input) {
-			const source = io.stdin ?? (await readStdin());
-			const code = await cli.compileSchema(parseSchemaSource(source), {
-				cwd,
-				fileName: 'Root.json',
-				...options.options,
-			});
-			const content = cli.withBanner(code, banner);
-
-			if (output) {
-				writeFile(path.resolve(cwd, output), content);
-			} else {
-				io.stdout.write(content);
-			}
-
-			return 0;
-		}
-
-		const files = discover(input, cwd);
-
-		if (files.length === 0) {
-			io.stderr.write(`No schema files found for "${input}"\n`);
-			return 1;
-		}
-
-		if (files.length > 1 && !output) {
-			io.stderr.write('An output directory is required when compiling several files.\n');
-			return 1;
-		}
-
-		const targets = output ? outputTargets(files, output, cwd) : [];
-		const duplicate = targets.find((target, index) => targets.indexOf(target) !== index);
-
-		if (duplicate) {
-			io.stderr.write(
-				`Refusing to overwrite ${duplicate}; several inputs map to the same output file.\n`
-			);
-			return 1;
-		}
-
-		for (const [index, file] of files.entries()) {
-			const code = await cli.compileFile(file.path, options.options);
-			const content = cli.withBanner(code, banner);
-
-			if (!output) {
-				io.stdout.write(content);
-				continue;
-			}
-
-			const target = targets[index]!;
-
-			writeFile(target, content);
-			io.stderr.write(`${file.path} -> ${target}\n`);
-		}
-
-		return 0;
+		return run.input
+			? await compileInputFiles(run.input, run, cli, io)
+			: await compileStdin(run, cli, io);
 	} catch (error) {
-		io.stderr.write(`${(error as Error).message}\n`);
-		return 1;
+		return fail(io, (error as Error).message);
 	}
+}
+
+/** What one CLI run compiles, read from its flags and arguments. */
+interface CliRun<Options> {
+	cwd: string;
+	input: string | undefined;
+	output: string | undefined;
+	banner: false | undefined;
+	options: Options;
+}
+
+/** Prints `message` to stderr and returns the failure exit code. */
+function fail(io: CliIo, message: string): number {
+	io.stderr.write(`${message}\n`);
+	return 1;
+}
+
+async function compileStdin<Flags extends ParseArgsOptionsConfig, Options>(
+	run: CliRun<Options>,
+	cli: GeneratorCli<Flags, Options>,
+	io: CliIo
+): Promise<number> {
+	const source = io.stdin ?? (await readStdin());
+	const code = await cli.compileSchema(parseSchemaSource(source), {
+		cwd: run.cwd,
+		fileName: 'Root.json',
+		...run.options,
+	});
+	const content = cli.withBanner(code, run.banner);
+
+	if (run.output) {
+		writeFile(path.resolve(run.cwd, run.output), content);
+	} else {
+		io.stdout.write(content);
+	}
+
+	return 0;
+}
+
+async function compileInputFiles<Flags extends ParseArgsOptionsConfig, Options>(
+	input: string,
+	run: CliRun<Options>,
+	cli: GeneratorCli<Flags, Options>,
+	io: CliIo
+): Promise<number> {
+	const { cwd, output } = run;
+	const files = discover(input, cwd);
+
+	if (files.length === 0) {
+		return fail(io, `No schema files found for "${input}"`);
+	}
+
+	if (!output) {
+		if (files.length > 1) {
+			return fail(io, 'An output directory is required when compiling several files.');
+		}
+
+		io.stdout.write(cli.withBanner(await cli.compileFile(files[0]!.path, run.options), run.banner));
+		return 0;
+	}
+
+	const targets = outputTargets(files, output, cwd);
+	const duplicate = targets.find((target, index) => targets.indexOf(target) !== index);
+
+	if (duplicate) {
+		return fail(
+			io,
+			`Refusing to overwrite ${duplicate}; several inputs map to the same output file.`
+		);
+	}
+
+	for (const [index, file] of files.entries()) {
+		const target = targets[index]!;
+
+		writeFile(target, cli.withBanner(await cli.compileFile(file.path, run.options), run.banner));
+		io.stderr.write(`${file.path} -> ${target}\n`);
+	}
+
+	return 0;
 }
 
 /**
