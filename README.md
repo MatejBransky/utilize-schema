@@ -28,6 +28,7 @@ Generate robust, type-safe Zod or Effect Schema codecs — or plain TypeScript t
 
 [![npm version](https://img.shields.io/npm/v/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
 [![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
+[![Unit test coverage](.github/badges/coverage-json-schema.svg)](CONTRIBUTING.md#coverage-badge)
 
 > Core utilities for resolving $refs and linking JSON Schema. Provides a generator-agnostic pipeline for schema transformation.
 
@@ -35,6 +36,7 @@ Generate robust, type-safe Zod or Effect Schema codecs — or plain TypeScript t
 
 [![npm version](https://img.shields.io/npm/v/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
 [![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
+[![Unit test coverage](.github/badges/coverage-zod.svg)](CONTRIBUTING.md#coverage-badge)
 
 > Zod code generator. Walks the parsed JSON Schema and emits Zod schemas + TypeScript types.
 
@@ -42,6 +44,7 @@ Generate robust, type-safe Zod or Effect Schema codecs — or plain TypeScript t
 
 [![npm version](https://img.shields.io/npm/v/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)
 [![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)
+[![Unit test coverage](.github/badges/coverage-effect.svg)](CONTRIBUTING.md#coverage-badge)
 
 > Effect Schema code generator. Walks the parsed JSON Schema and emits Effect Schema codecs + TypeScript types, with every `$ref` emitted through `Schema.suspend`.
 
@@ -49,6 +52,7 @@ Generate robust, type-safe Zod or Effect Schema codecs — or plain TypeScript t
 
 [![npm version](https://img.shields.io/npm/v/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)
 [![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)
+[![Unit test coverage](.github/badges/coverage-typescript.svg)](CONTRIBUTING.md#coverage-badge)
 
 > TypeScript type generator. Walks the parsed JSON Schema and emits interfaces and type aliases, with no runtime dependency.
 
