@@ -1,5 +1,44 @@
 # @utilize/zod
 
+## 0.11.0
+
+### Minor Changes
+
+- 00cd219: Support `minContains` and `maxContains` in the runtime generators. The parser no longer rejects them, and both generators count the items matching `contains`, applying the bounds only in 2019-09 and newer. `minContains: 0` allows an array without a match, and both keywords are ignored without `contains`. A plain `contains` keeps its single-match check and its message.
+
+  Zod also compiles `pattern` and `patternProperties` regular expressions in Unicode mode, so property escapes such as `\p{Letter}` match as the specification expects. A pattern that is not valid in Unicode mode (`\-`, `a{`, ...) now fails at generation time with an error that names the keyword and the pattern, instead of crashing while emitting code.
+
+  Effect now skips `contains` in dialects that do not have it (draft-04), as Zod does, so a schema whose ignored `contains` subschema Effect cannot express no longer fails to generate.
+
+- 19536a4: Add `externalSchemas` so absolute `$ref` URIs can be served from memory instead of disk or the network. The parser indexes identifiers declared inside a provided document (`$id`, or the draft-04 `id`), and the three `compile()` and `compileSchema()` APIs pass the option through.
+- d99505f: Keep the document root when the root is a `$ref`. `parse()` resolved the root pointer with `$refs.get('#')`, so `root` was the referenced value and `root[Meta]` described that value instead of the document. Generated code now emits the root as an alias to the referenced declaration instead of inlining or merging the target, and `referencedSchemas` no longer includes the root document.
+- 9f90e21: `format` is now switchable in both runtime generators and asserted by default,
+  so `@utilize/zod` and `@utilize/effect` agree on what a known format does.
+
+  Both generators turn known formats into validation (`format: "email"` becomes
+  `z.email()` or a `Schema.String.check(formatEmail)`), and keep unknown formats
+  as annotations. Pass `formatMode: 'annotate'` to keep `format` as metadata
+  (`.meta({ format })` / `.annotate({ format })`); both CLIs take
+  `--format-mode annotate|assert`. `formatMap` entries apply in both modes.
+
+  The Effect generator gains the format checks in this release, so schemas with a
+  known `format` now reject invalid values by default.
+
+### Patch Changes
+
+- 83be704: Add `narrowUntypedSchema`, the helper both runtime generators use to narrow a
+  subschema to the type of the value it is applied to (`propertyNames`, schema
+  dependencies and `not`/`if`/`then`/`else`). The Zod generator now calls it
+  instead of keeping its own copy, so the exclusion list and the type-specific
+  keyword gate cannot drift between the packages.
+- b17a201: Validate `__proto__` and other `Object.prototype` property names instead of letting Zod read the prototype chain. A `__proto__` property is emitted as a computed key and checked on the raw input (including `required`, `patternProperties`, `additionalProperties`, records and `const`/`enum` object values, since Zod's object and record parsers skip it). Object schemas that declare or require `toString`, `constructor` and similar names get a null-prototype clone of the input, so an absent key is no longer validated against the inherited value and is reported as missing when required. This fixes the two draft-07 prototype-name suite cases. The generated code relies on Zod 4.5's handling of a computed `__proto__` key, so the peer range is now `>=4.5.0 <5` instead of `>=4.0.0 <5`.
+- 5e0d94e: Apply keywords on a schema without `type` for every type they constrain. Each constrained type now gets its own guarded check, so `{ minLength: 2, minimum: 5 }` validates strings and numbers instead of falling back to `z.unknown()`, which accepted every value.
+- Updated dependencies [00cd219]
+- Updated dependencies [19536a4]
+- Updated dependencies [d99505f]
+- Updated dependencies [83be704]
+  - @utilize/json-schema@0.6.0
+
 ## 0.10.0
 
 ### Minor Changes

@@ -1,5 +1,26 @@
 # @utilize/json-schema
 
+## 0.6.0
+
+### Minor Changes
+
+- 00cd219: Support `minContains` and `maxContains` in the runtime generators. The parser no longer rejects them, and both generators count the items matching `contains`, applying the bounds only in 2019-09 and newer. `minContains: 0` allows an array without a match, and both keywords are ignored without `contains`. A plain `contains` keeps its single-match check and its message.
+
+  Zod also compiles `pattern` and `patternProperties` regular expressions in Unicode mode, so property escapes such as `\p{Letter}` match as the specification expects. A pattern that is not valid in Unicode mode (`\-`, `a{`, ...) now fails at generation time with an error that names the keyword and the pattern, instead of crashing while emitting code.
+
+  Effect now skips `contains` in dialects that do not have it (draft-04), as Zod does, so a schema whose ignored `contains` subschema Effect cannot express no longer fails to generate.
+
+- 19536a4: Add `externalSchemas` so absolute `$ref` URIs can be served from memory instead of disk or the network. The parser indexes identifiers declared inside a provided document (`$id`, or the draft-04 `id`), and the three `compile()` and `compileSchema()` APIs pass the option through.
+- d99505f: Keep the document root when the root is a `$ref`. `parse()` resolved the root pointer with `$refs.get('#')`, so `root` was the referenced value and `root[Meta]` described that value instead of the document. Generated code now emits the root as an alias to the referenced declaration instead of inlining or merging the target, and `referencedSchemas` no longer includes the root document.
+
+### Patch Changes
+
+- 83be704: Add `narrowUntypedSchema`, the helper both runtime generators use to narrow a
+  subschema to the type of the value it is applied to (`propertyNames`, schema
+  dependencies and `not`/`if`/`then`/`else`). The Zod generator now calls it
+  instead of keeping its own copy, so the exclusion list and the type-specific
+  keyword gate cannot drift between the packages.
+
 ## 0.5.1
 
 ### Patch Changes
