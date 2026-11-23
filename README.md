@@ -94,11 +94,14 @@ Constraints survive the trip: `format: "email"` becomes
 ```ts
 import { Schema } from 'effect';
 
-const formatEmail = Schema.isPattern(new RegExp('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$', 'u'));
+const formatEmail = Schema.isPattern(
+  new RegExp('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$', 'u')
+);
 
-export const Address = Schema.StructWithRest(Schema.Struct({ city: Schema.String }), [
-  Schema.Record(Schema.String, Schema.Json),
-]);
+export const Address = Schema.StructWithRest(
+  Schema.Struct({ city: Schema.String }),
+  [Schema.Record(Schema.String, Schema.Json)]
+);
 
 export type Address = typeof Address.Type;
 
@@ -106,13 +109,17 @@ export const User = Schema.StructWithRest(
   Schema.Struct({
     email: Schema.String.check(formatEmail).annotate({ format: 'email' }),
     role: Schema.Literals(['admin', 'member']).annotate({ default: 'member' }),
-    age: Schema.optionalKey(Schema.Int.check(Schema.isGreaterThanOrEqualTo(18))),
+    age: Schema.optionalKey(
+      Schema.Int.check(Schema.isGreaterThanOrEqualTo(18))
+    ),
     address: Schema.optionalKey(Schema.suspend(() => Address)),
   }),
   [Schema.Record(Schema.String, Schema.Json)]
 ).check(
   Schema.makeFilter((value) =>
-    Object.keys(value).every((key) => ['email', 'role', 'age', 'address'].includes(key))
+    Object.keys(value).every((key) =>
+      ['email', 'role', 'age', 'address'].includes(key)
+    )
       ? undefined
       : 'Unexpected property'
   )
@@ -193,7 +200,7 @@ draft-07. Numbers and remaining gaps are in
 | [`@utilize/typescript`](./packages/typescript)   | [![npm](https://img.shields.io/npm/v/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)   | [![downloads](https://img.shields.io/npm/dw/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)   | Emits interfaces and type aliases. No runtime dependency.                                                  |
 
 The runtime generators need their runtime as a peer dependency: `zod`
-(`>=4.0.0 <5`) and `effect` (`>=4.0.0 <5`).
+(`>=4.5.0 <5`) and `effect` (`>=4.0.0 <5`).
 
 ```sh
 pnpm add zod effect
@@ -324,7 +331,7 @@ against each other by a differential test suite
 CI. All three generators are also checked against the official JSON Schema Test
 Suite for draft-07:
 
-- **Zod:** 281 of 304 cases (1,397 of 1,655 assertions) pass.
+- **Zod:** 283 of 304 cases (1,399 of 1,655 assertions) pass.
   [Known gaps](./packages/zod/test/suite/knownFailures.ts)
 - **Effect Schema:** 286 of 304 cases (1,400 of 1,655 assertions) pass.
   [Known gaps](./packages/effect/test/suite/knownFailures.ts)
@@ -345,9 +352,9 @@ case when its `compatibility` allows draft-07, which leaves 304 of 613 cases
 | draft-07 cases in the suite | 304 | 304           | 304        |
 | − `format-assertion` cases  | —   | —             | 19         |
 | **= cases run**             | 304 | 304           | 285        |
-| − known gaps                | 23  | 18            | 13         |
+| − known gaps                | 21  | 18            | 13         |
 | − type-level gaps           | —   | —             | 81         |
-| **= cases passing**         | 281 | 286           | 191        |
+| **= cases passing**         | 283 | 286           | 191        |
 
 The runtime generators measure both format groups: `format-annotation` cases
 compile with `formatMode: 'annotate'` and `format-assertion` cases with
@@ -372,8 +379,8 @@ Assertions add up the same way, because one instance is one assertion:
 | Step                        | Zod   | Effect Schema |
 | --------------------------- | ----- | ------------- |
 | instances in draft-07 cases | 1,655 | 1,655         |
-| − failing                   | 258   | 255           |
-| **= passing**               | 1,397 | 1,400         |
+| − failing                   | 256   | 255           |
+| **= passing**               | 1,399 | 1,400         |
 
 The type-level runner reports accepted and rejected instances separately instead
 of a pass count; those numbers are in [docs/conformance.md](./docs/conformance.md).
