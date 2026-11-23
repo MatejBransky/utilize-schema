@@ -286,6 +286,15 @@ remaining flags.
   <img src="docs/playground.png" alt="Playground with person.json split across referenced files, the generated Zod schema on the right and a validation panel below" width="100%">
 </p>
 
+<details>
+<summary>Watch the drag-and-drop demo (20 s)</summary>
+
+<p align="center">
+  <img src="docs/playground.gif" alt="Dropping person.json and address.json onto the playground, choosing the Replace target, switching to the Effect Schema generator and flipping the format mode to annotate" width="100%">
+</p>
+
+</details>
+
 The [`playground`](./playground) is a browser app for editing multiple JSON
 Schema files with references. Switch between the Zod, Effect Schema and
 TypeScript generators, change the keyword policy and the format mode, and watch
