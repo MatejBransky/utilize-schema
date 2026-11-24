@@ -12,8 +12,8 @@
 		"ci:test": "vitest run"
 	},
 	"dependencies": {
-		"@ui-sdk/core": "0.1.0-beta.3",
-		"@ui-sdk/react": "0.1.0-beta.3",
+		"@ui-sdk/core": "0.1.0-beta.13",
+		"@ui-sdk/react": "0.1.0-beta.13",
 		"@utilize/effect": "workspace:*",
 		"@utilize/json-schema": "workspace:*",
 		"@utilize/typescript": "workspace:*",
