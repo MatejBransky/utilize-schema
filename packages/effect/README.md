@@ -3,6 +3,11 @@
 [![npm version](https://img.shields.io/npm/v/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)
 [![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)
 [![Unit test coverage](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/coverage-effect.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/CONTRIBUTING.md#coverage-badge)
+[![draft-04 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-effect-draft-04.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/effect/README.md#testing)
+[![draft-06 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-effect-draft-06.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/effect/README.md#testing)
+[![draft-07 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-effect-draft-07.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/effect/README.md#testing)
+[![2019-09 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-effect-2019-09.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/effect/README.md#testing)
+[![2020-12 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-effect-2020-12.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/effect/README.md#testing)
 
 TypeScript/Effect Schema code generator for JSON Schema. Converts a JSON Schema
 (with references, `$defs` and `definitions`) into standalone Effect Schema
@@ -154,11 +159,16 @@ because a target that emits only types has no schema variable to name.
 
 ```sh
 pnpm test          # unit tests
-pnpm test:suite    # official JSON Schema Test Suite (draft-07)
+pnpm test:suite    # official JSON Schema Test Suite (all dialects)
 ```
 
 The generator is checked against the official
 [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
+All five dialects are measured: draft-04, draft-06, draft-07, 2019-09 and
+2020-12. Draft-07 is pinned case by case; the other dialects are pinned by the
+case and instance counts recorded in `test/suite/baseline.ts`. The badges at the
+top of this README show the case rate of each dialect.
+
 Today it passes **286 of 304 draft-07 cases (1,400 of 1,655 assertions)**. Format
 cases run in the mode they are tagged for, so both the annotation and the
 assertion cases are measured; cases that need external schemas are served from
