@@ -47,7 +47,7 @@
 	},
 	"dependencies": {
 		"@utilize/json-schema": "workspace:*",
-		"js-yaml": "5.4.2"
+		"js-yaml": "5.5.0"
 	},
 	"devDependencies": {
 		"@total-typescript/tsconfig": "catalog:",
