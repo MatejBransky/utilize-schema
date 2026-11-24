@@ -168,7 +168,7 @@ describe('JSON Schema Test Suite (draft-07, type level)', () => {
 				`${stats.typeGaps} type gaps`,
 				`${stats.known} known gaps`,
 				`${stats.skippedFormat} skipped (format assertion)`,
-				`${stats.skippedDialect} filtered out (other dialects)`,
+				`${stats.skippedDialect} outside this dialect (measured in the baseline)`,
 			].join(' · '),
 		];
 
@@ -181,10 +181,96 @@ describe('JSON Schema Test Suite (draft-07, type level)', () => {
 
 		expect(results.unattributed).toEqual([]);
 		// eslint-disable-next-line unicorn/no-array-sort -- both arrays are fresh
+		const recorded = baseline['draft-07'];
+
 		expect([...failures.keys()].sort()).toEqual(Object.keys(knownGaps).sort());
-		expect(stats.conformant).toBe(baseline.conformant);
-		expect(stats.typeGaps).toBe(baseline.typeGaps);
-	});
+		expect(runnable.length).toBe(recorded.cases);
+		expect(stats.conformant).toBe(recorded.passing);
+		expect(stats.typeGaps).toBe(recorded.typeGaps);
+		expect(stats.known).toBe(recorded.gaps);
+	}, 120_000);
+});
+
+const OTHER_DIALECTS = {
+	'draft-04': 4,
+	'draft-06': 6,
+	'2019-09': 2019,
+	'2020-12': 2020,
+} as const;
+
+describe('other dialects', () => {
+	for (const dialect of Object.keys(OTHER_DIALECTS) as Array<keyof typeof OTHER_DIALECTS>) {
+		const token = OTHER_DIALECTS[dialect];
+
+		test(`${dialect} matches the recorded baseline`, async () => {
+			const runnable: RunnableCase[] = [];
+
+			for (const file of files) {
+				for (const testCase of file.cases) {
+					if (!isCompatible(testCase.compatibility, token)) {
+						continue;
+					}
+
+					if (testCase.tags?.includes('format-assertion')) {
+						continue;
+					}
+
+					runnable.push({ testCase, key: suiteCaseKey(file, testCase) });
+				}
+			}
+
+			const modules: TypecheckModule[] = [];
+			const crashes = new Map<string, string>();
+
+			for (const { testCase, key } of runnable) {
+				try {
+					modules.push({ key, module: await renderCaseModule(testCase, dialect) });
+				} catch (error) {
+					crashes.set(key, error instanceof Error ? error.message : String(error));
+				}
+			}
+
+			const results = await typecheckCases(modules);
+			let passing = 0;
+			let typeGaps = 0;
+			const gaps: string[] = [];
+
+			for (const { key } of runnable) {
+				const reasons: string[] = [];
+				const crash = crashes.get(key);
+
+				if (crash !== undefined) {
+					reasons.push(`crashes: ${crash.split('\n')[0]}`);
+				}
+
+				for (const message of results.invalidModules.get(key) ?? []) {
+					reasons.push(`invalid TypeScript: ${message}`);
+				}
+
+				for (const index of results.validRejected.get(key) ?? []) {
+					reasons.push(`rejects valid instance ${index}`);
+				}
+
+				if (reasons.length > 0) {
+					gaps.push(`${key}: ${reasons.join('; ')}`);
+					continue;
+				}
+
+				if ((results.invalidAccepted.get(key) ?? []).length > 0) {
+					typeGaps++;
+					continue;
+				}
+
+				passing++;
+			}
+
+			expect(results.unattributed).toEqual([]);
+			expect(
+				{ cases: runnable.length, passing, typeGaps, gaps: gaps.length },
+				`Failing ${dialect} cases (${gaps.length}):\n${gaps.join('\n')}`
+			).toEqual(baseline[dialect as keyof typeof baseline]);
+		}, 120_000);
+	}
 });
 
 describe('known gaps', () => {
