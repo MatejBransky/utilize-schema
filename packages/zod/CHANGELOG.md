@@ -1,5 +1,11 @@
 # @utilize/zod
 
+## 0.11.1
+
+### Patch Changes
+
+- f012b77: Bump js-yaml from 5.4.2 to 5.5.0.
+
 ## 0.11.0
 
 ### Minor Changes
