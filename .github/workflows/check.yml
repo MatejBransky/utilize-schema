@@ -67,6 +67,9 @@ jobs:
       - name: Check coverage badges
         run: pnpm run check:coverage-badge
 
+      - name: Check conformance badges
+        run: pnpm run check:suite-badge
+
   # Dependency audits run weekly in audit.yml. Keeping them out of the pull
   # request workflow means an advisory without a published fix cannot block
   # every pull request.
