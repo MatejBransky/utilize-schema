@@ -1,5 +1,6 @@
 import { afterAll, describe, expect, test } from 'vitest';
 
+import { baseline } from './suite/baseline';
 import { DRAFT_7, isCompatible } from './suite/compatibility';
 import { compileToZodSchema } from './suite/compile';
 import { knownFailureInstances } from './suite/knownFailureInstances';
@@ -9,9 +10,9 @@ import { loadSuiteFiles, type SuiteCase, suiteCaseKey } from './suite/loadSuite'
 /**
  * Runs the official JSON Schema Test Suite against the generated Zod schemas.
  *
- * Scope: draft-07, the dialect this package generates for. The suite keeps all
- * dialects in one file and marks each case with `compatibility`, so cases for
- * older and newer releases are filtered out here.
+ * Scope: every released dialect. The per-case expected failures below are
+ * pinned for draft-07; cases outside draft-07 are measured against the
+ * recorded dialect counts in `suite/baseline.ts`.
  *
  * Format cases are compiled in the mode they describe: `format-annotation`
  * cases with `formatMode: 'annotate'` and `format-assertion` cases with
@@ -66,7 +67,7 @@ afterAll(() => {
 			`${stats.run - stats.knownGaps}/${stats.run} cases, ${
 				stats.assertions - stats.failedAssertions
 			}/${stats.assertions} assertions`,
-			`${stats.skippedDialect} filtered out (other dialects)`,
+			`${stats.skippedDialect} outside this dialect (measured in the baseline)`,
 		].join(' · ')
 	);
 });
@@ -212,4 +213,79 @@ describe('known failures', () => {
 
 		expect(problems).toEqual([]);
 	});
+});
+
+describe('baseline', () => {
+	test('matches the recorded conformance baseline', () => {
+		const recorded = baseline['draft-07'];
+
+		expect({
+			cases: stats.run,
+			passing: stats.run - stats.knownGaps,
+			instances: stats.assertions,
+			passingInstances: stats.assertions - stats.failedAssertions,
+		}).toEqual(recorded);
+	});
+});
+
+const OTHER_DIALECTS = {
+	'draft-04': 4,
+	'draft-06': 6,
+	'2019-09': 2019,
+	'2020-12': 2020,
+} as const;
+
+describe('other dialects', () => {
+	for (const dialect of Object.keys(OTHER_DIALECTS) as Array<keyof typeof OTHER_DIALECTS>) {
+		const token = OTHER_DIALECTS[dialect];
+
+		test(`${dialect} matches the recorded baseline`, async () => {
+			let cases = 0;
+			let passing = 0;
+			let instances = 0;
+			let passingInstances = 0;
+			const failing: string[] = [];
+
+			for (const file of files) {
+				for (const testCase of file.cases) {
+					if (!isCompatible(testCase.compatibility, token)) {
+						continue;
+					}
+
+					cases++;
+					instances += testCase.tests.length;
+
+					let failed: number;
+
+					try {
+						const zodSchema = await compileToZodSchema(
+							testCase.schema,
+							testCase.externalSchemas,
+							formatModeFor(testCase),
+							dialect
+						);
+
+						failed = testCase.tests.filter(
+							(suiteTest) => zodSchema.safeParse(suiteTest.data).success !== suiteTest.valid
+						).length;
+					} catch {
+						failed = testCase.tests.length;
+					}
+
+					passingInstances += testCase.tests.length - failed;
+
+					if (failed === 0) {
+						passing++;
+					} else {
+						failing.push(`${suiteCaseKey(file, testCase)} (${failed} failed)`);
+					}
+				}
+			}
+
+			expect(
+				{ cases, passing, instances, passingInstances },
+				`Failing ${dialect} cases (${failing.length}):\n${failing.join('\n')}`
+			).toEqual(baseline[dialect as keyof typeof baseline]);
+		}, 120_000);
+	}
 });

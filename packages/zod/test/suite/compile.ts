@@ -1,4 +1,10 @@
-import { type ExternalSchemas, Meta, type JSONSchema, parse } from '@utilize/json-schema';
+import {
+	type DialectId,
+	type ExternalSchemas,
+	Meta,
+	type JSONSchema,
+	parse,
+} from '@utilize/json-schema';
 
 import { stripTypeScriptTypes } from 'node:module';
 
@@ -17,12 +23,14 @@ import { type FormatMode, generate } from '../../src/generator';
 export async function compileToZodSchema(
 	schema: JSONSchema | boolean,
 	externalSchemas?: ExternalSchemas,
-	formatMode?: FormatMode
+	formatMode?: FormatMode,
+	dialect?: DialectId
 ): Promise<z.ZodType> {
 	const { root } = await parse(schema as JSONSchema, {
 		cwd: __dirname + '/',
 		fileName: 'Root.json',
 		externalSchemas,
+		dialect,
 	});
 
 	const code = generate(root, {
