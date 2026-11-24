@@ -288,7 +288,7 @@ remaining flags.
 ## 🧪 Playground
 
 <p align="center">
-  <img src="docs/playground.png" alt="Playground with person.json split across referenced files, the generated Zod schema on the right and a validation panel below" width="100%">
+  <img src="docs/playground.png" alt="Playground with person.json split across referenced files, the generated Zod schema on the right, and below them a test-data editor next to the generated validator's decoded value" width="100%">
 </p>
 
 <details>
@@ -304,6 +304,14 @@ The [`playground`](./playground) is a browser app for editing multiple JSON
 Schema files with references. Switch between the Zod, Effect Schema and
 TypeScript generators, change the keyword policy and the format mode, and watch
 the generated code and validation update live.
+
+Below the schemas, a test-data editor runs the selected generator's validator on
+a JSON document you write or drop in. The pane next to it shows the decoded
+value, defaults included, or every validation issue with its JSON path, so you
+can check what the generated code actually returns without leaving the browser.
+Only Zod and Effect Schema validate at runtime; the TypeScript target emits
+types only, so the pane says there is no runtime validator instead of running
+one.
 
 - Hosted: <https://matejbransky.github.io/utilize-schema/>
 - Every pull request gets its own Vercel preview deployment.
