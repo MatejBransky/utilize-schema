@@ -2,6 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
 [![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
+[![Unit test coverage](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/coverage-json-schema.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/CONTRIBUTING.md#coverage-badge)
 
 Generator-agnostic JSON Schema parser and linker. Resolves local and external
 `$ref`s and prepares the schema graph for code generators by annotating each
@@ -63,8 +64,8 @@ include the root document. `get('#')` is unchanged: for a local pointer root
 import { parse, Meta } from '@utilize/json-schema';
 
 const { root } = await parse(schema, {
-	cwd: process.cwd(),
-	fileName: 'schema.json',
+  cwd: process.cwd(),
+  fileName: 'schema.json',
 });
 console.log(root[Meta]);
 ```
@@ -78,15 +79,15 @@ External documents are normally read from disk or fetched over HTTP. Pass
 import { parse } from '@utilize/json-schema';
 
 const { root } = await parse(schema, {
-	cwd: process.cwd(),
-	fileName: 'schema.json',
-	externalSchemas: {
-		'https://example.com/address.json': {
-			type: 'object',
-			properties: { city: { type: 'string' } },
-			required: ['city'],
-		},
-	},
+  cwd: process.cwd(),
+  fileName: 'schema.json',
+  externalSchemas: {
+    'https://example.com/address.json': {
+      type: 'object',
+      properties: { city: { type: 'string' } },
+      required: ['city'],
+    },
+  },
 });
 ```
 
@@ -108,13 +109,13 @@ report them. The library never writes to the console: issues go to
 import { formatIssue, parse } from '@utilize/json-schema';
 
 await parse(schema, {
-	cwd: process.cwd(),
-	fileName: 'schema.json',
-	// dialect: '2020-12',              // force one dialect
-	fallbackDialect: 'draft-07', // used when `$schema` is missing
-	unknownDialect: 'fallback', // or 'error'
-	keywordPolicy: 'warn', // or 'error' / 'ignore'
-	onDialectIssue: (issue) => console.warn(formatIssue(issue)),
+  cwd: process.cwd(),
+  fileName: 'schema.json',
+  // dialect: '2020-12',              // force one dialect
+  fallbackDialect: 'draft-07', // used when `$schema` is missing
+  unknownDialect: 'fallback', // or 'error'
+  keywordPolicy: 'warn', // or 'error' / 'ignore'
+  onDialectIssue: (issue) => console.warn(formatIssue(issue)),
 });
 // parse() also returns the reported issues as `issues`.
 ```

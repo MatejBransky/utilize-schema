@@ -2,6 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
 [![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
+[![Unit test coverage](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/coverage-zod.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/CONTRIBUTING.md#coverage-badge)
 
 TypeScript/Zod code generator for JSON Schema. Converts a JSON Schema (with
 references, `$defs` and `definitions`) into standalone Zod schemas and
@@ -27,8 +28,8 @@ TypeScript types.
 import { compile } from '@utilize/zod';
 
 await compile({
-	input: './schema.json',
-	output: './schema.generated.ts',
+  input: './schema.json',
+  output: './schema.generated.ts',
 });
 ```
 
@@ -115,9 +116,9 @@ Recursive schemas are annotated so TypeScript can infer them:
 ```ts
 type TreeValue = { children?: TreeValue[] };
 export const Tree: z.ZodType<TreeValue> = z.object({
-	get children() {
-		return z.array(Tree).optional();
-	},
+  get children() {
+    return z.array(Tree).optional();
+  },
 });
 export type Tree = z.infer<typeof Tree>;
 ```
@@ -160,10 +161,10 @@ a suffix only has to describe the difference:
 
 ```ts
 await compile({
-	input: './schema.json',
-	output: './schema.generated.ts',
-	schemaName: (name) => `${name}Schema`,
-	typeName: (name) => `${name}Schema`,
+  input: './schema.json',
+  output: './schema.generated.ts',
+  schemaName: (name) => `${name}Schema`,
+  typeName: (name) => `${name}Schema`,
 });
 ```
 

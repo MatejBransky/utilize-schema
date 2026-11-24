@@ -2,6 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)
 [![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)
+[![Unit test coverage](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/coverage-typescript.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/CONTRIBUTING.md#coverage-badge)
 
 TypeScript type generator for JSON Schema. Converts a JSON Schema (with
 references, `$defs` and `definitions`) into interfaces and type aliases — no
@@ -41,8 +42,8 @@ for the cases where you want types without a schema runtime.
 import { compile } from '@utilize/typescript';
 
 await compile({
-	input: './schema.json',
-	output: './schema.generated.ts',
+  input: './schema.json',
+  output: './schema.generated.ts',
 });
 ```
 
@@ -57,8 +58,8 @@ type, while its JSDoc comment and the `?` of a non-required property are kept:
 
 ```ts
 await compile({
-	input: './schema.json',
-	customSchemaResolver: (schema) => (schema.format === 'date-time' ? 'Date' : undefined),
+  input: './schema.json',
+  customSchemaResolver: (schema) => (schema.format === 'date-time' ? 'Date' : undefined),
 });
 ```
 
@@ -90,9 +91,9 @@ Objects become interfaces, with an index signature unless the schema is closed:
 
 ```ts
 export interface Person {
-	name: string;
-	age?: number;
-	[key: string]: unknown;
+  name: string;
+  age?: number;
+  [key: string]: unknown;
 }
 ```
 
@@ -111,9 +112,9 @@ Recursive schemas work without annotations or ordering constraints:
 
 ```ts
 export interface Tree {
-	name: string;
-	children?: Array<Tree>;
-	[key: string]: unknown;
+  name: string;
+  children?: Array<Tree>;
+  [key: string]: unknown;
 }
 ```
 

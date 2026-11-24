@@ -1,3 +1,4 @@
+// oxlint-disable unicorn/no-array-sort -- the emitted helper sorts keys by code point; the source function is stringified into generated code
 import {
 	type Dialect,
 	dialectOf,

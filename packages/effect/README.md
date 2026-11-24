@@ -2,6 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)
 [![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)
+[![Unit test coverage](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/coverage-effect.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/CONTRIBUTING.md#coverage-badge)
 
 TypeScript/Effect Schema code generator for JSON Schema. Converts a JSON Schema
 (with references, `$defs` and `definitions`) into standalone Effect Schema
@@ -24,8 +25,8 @@ codecs and TypeScript types.
 import { compile } from '@utilize/effect';
 
 await compile({
-	input: './schema.json',
-	output: './schema.generated.ts',
+  input: './schema.json',
+  output: './schema.generated.ts',
 });
 ```
 
@@ -88,11 +89,11 @@ inferred `typeof X.Type` would reference itself and collapse to `any`:
 type TreeValue = { name: string; children?: ReadonlyArray<TreeValue> };
 
 export const Tree: Schema.Codec<TreeValue> = Schema.StructWithRest(
-	Schema.Struct({
-		name: Schema.String,
-		children: Schema.optionalKey(Schema.Array(Schema.suspend(() => Tree))),
-	}),
-	[Schema.Record(Schema.String, Schema.Json)]
+  Schema.Struct({
+    name: Schema.String,
+    children: Schema.optionalKey(Schema.Array(Schema.suspend(() => Tree))),
+  }),
+  [Schema.Record(Schema.String, Schema.Json)]
 );
 
 export type Tree = typeof Tree.Type;
@@ -104,11 +105,11 @@ schema emits `Schema.Json` or `Schema.Never` directly.
 
 ```ts
 export const Tree = Schema.StructWithRest(
-	Schema.Struct({
-		name: Schema.String,
-		children: Schema.optionalKey(Schema.Array(Schema.suspend(() => Tree))),
-	}),
-	[Schema.Record(Schema.String, Schema.Json)]
+  Schema.Struct({
+    name: Schema.String,
+    children: Schema.optionalKey(Schema.Array(Schema.suspend(() => Tree))),
+  }),
+  [Schema.Record(Schema.String, Schema.Json)]
 );
 
 export type Tree = typeof Tree.Type;
@@ -121,10 +122,10 @@ a suffix only has to describe the difference:
 
 ```ts
 await compile({
-	input: './schema.json',
-	output: './schema.generated.ts',
-	schemaName: (name) => `${name}Schema`,
-	typeName: (name) => `${name}Schema`,
+  input: './schema.json',
+  output: './schema.generated.ts',
+  schemaName: (name) => `${name}Schema`,
+  typeName: (name) => `${name}Schema`,
 });
 ```
 
