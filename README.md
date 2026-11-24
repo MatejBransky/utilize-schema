@@ -292,10 +292,10 @@ remaining flags.
 </p>
 
 <details>
-<summary>Watch the drag-and-drop demo (20 s)</summary>
+<summary>Watch the demo (20 s)</summary>
 
 <p align="center">
-  <img src="docs/playground.gif" alt="Dropping person.json and address.json onto the playground, choosing the Replace target, switching to the Effect Schema generator and flipping the format mode to annotate" width="100%">
+  <img src="docs/playground.gif" alt="Dropping person.json and address.json onto the playground, choosing the Replace target, dropping a JSON document into the test data, then switching the Format mode to annotate and the generator to Effect Schema while the code and the validator result update" width="100%">
 </p>
 
 </details>
