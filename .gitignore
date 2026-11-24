@@ -13,3 +13,5 @@ __generated__-*/
 packages/zod/test/snapshots/*.generated.ts
 
 .playwright-mcp/
+
+coverage/
