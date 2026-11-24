@@ -1,4 +1,10 @@
-import { type ExternalSchemas, Meta, type JSONSchema, parse } from '@utilize/json-schema';
+import {
+	type DialectId,
+	type ExternalSchemas,
+	Meta,
+	type JSONSchema,
+	parse,
+} from '@utilize/json-schema';
 import { Schema } from 'effect';
 
 import { stripTypeScriptTypes } from 'node:module';
@@ -15,12 +21,14 @@ type GeneratedSchema = Parameters<typeof Schema.decodeUnknownSync>[0];
 export async function compileToSchema(
 	schema: JSONSchema | boolean,
 	externalSchemas?: ExternalSchemas,
-	formatMode?: FormatMode
+	formatMode?: FormatMode,
+	dialect?: DialectId
 ): Promise<GeneratedSchema> {
 	const { root } = await parse(schema as JSONSchema, {
 		cwd: `${import.meta.dirname}/`,
 		fileName: 'Root.json',
 		externalSchemas,
+		dialect,
 	});
 
 	const code = generate(root, {
