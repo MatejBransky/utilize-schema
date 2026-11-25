@@ -398,7 +398,7 @@
 	border-top: 1px solid var(--ui-border);
 }
 
-.problemsHeader {
+.sectionHeader {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;

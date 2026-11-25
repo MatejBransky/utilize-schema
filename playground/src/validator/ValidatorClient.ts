@@ -18,27 +18,35 @@ interface PendingRequest {
 	timer: ReturnType<typeof setTimeout>;
 }
 
+export interface ValidatorClient {
+	run(
+		data: unknown,
+		sources: Partial<Record<RuntimeTargetId, ValidatorSource>>
+	): Promise<ValidatorReports>;
+	dispose(): void;
+}
+
 /**
  * Sends validation requests to the validator worker. A request that does not
  * finish in time, for example because a schema pattern backtracks forever,
  * stops the worker; the next request starts a fresh one.
  */
-export class ValidatorClient {
-	#worker: Worker | null = null;
-	#pending = new Map<number, PendingRequest>();
-	#nextId = 0;
+export function createValidatorClient(): ValidatorClient {
+	let worker: Worker | null = null;
+	const pending = new Map<number, PendingRequest>();
+	let nextId = 0;
 
-	run(
+	function run(
 		data: unknown,
 		sources: Partial<Record<RuntimeTargetId, ValidatorSource>>
 	): Promise<ValidatorReports> {
-		const worker = this.#ensureWorker();
-		const id = (this.#nextId += 1);
+		const current = ensureWorker();
+		const id = (nextId += 1);
 
 		return new Promise((resolve, reject) => {
 			const timer = setTimeout(
 				() =>
-					this.#stop(
+					stop(
 						new Error(
 							`The generated validators did not finish within ${TIMEOUT_MS / 1000} seconds.`
 						)
@@ -46,59 +54,61 @@ export class ValidatorClient {
 				TIMEOUT_MS
 			);
 
-			this.#pending.set(id, { resolve, reject, timer });
+			pending.set(id, { resolve, reject, timer });
 			// oxlint-disable-next-line unicorn/require-post-message-target-origin -- Workers have no target origin.
-			worker.postMessage({ id, data, sources } satisfies ValidationRequest);
+			current.postMessage({ id, data, sources } satisfies ValidationRequest);
 		});
 	}
 
-	dispose() {
-		this.#stop(new Error('The validator worker was stopped.'));
+	function dispose() {
+		stop(new Error('The validator worker was stopped.'));
 	}
 
-	#ensureWorker(): Worker {
-		if (!this.#worker) {
-			const worker = new ValidatorWorker();
+	function ensureWorker(): Worker {
+		if (!worker) {
+			const created = new ValidatorWorker();
 
-			worker.addEventListener('message', (event: MessageEvent<ValidationResponse>) =>
-				this.#settle(event.data)
+			created.addEventListener('message', (event: MessageEvent<ValidationResponse>) =>
+				settle(event.data)
 			);
-			worker.addEventListener('error', (event) =>
-				this.#stop(new Error(event.message || 'The validator worker failed.'))
+			created.addEventListener('error', (event) =>
+				stop(new Error(event.message || 'The validator worker failed.'))
 			);
-			this.#worker = worker;
+			worker = created;
 		}
 
-		return this.#worker;
+		return worker;
 	}
 
-	#settle(response: ValidationResponse) {
-		const pending = this.#pending.get(response.id);
+	function settle(response: ValidationResponse) {
+		const request = pending.get(response.id);
 
-		if (!pending) {
+		if (!request) {
 			return;
 		}
 
-		this.#pending.delete(response.id);
-		clearTimeout(pending.timer);
+		pending.delete(response.id);
+		clearTimeout(request.timer);
 
 		if ('error' in response) {
-			pending.reject(new Error(response.error));
+			request.reject(new Error(response.error));
 		} else {
-			pending.resolve(response.reports);
+			request.resolve(response.reports);
 		}
 	}
 
 	/** Ends the worker and every request still waiting on it. */
-	#stop(error: Error) {
-		this.#worker?.terminate();
-		this.#worker = null;
+	function stop(error: Error) {
+		worker?.terminate();
+		worker = null;
 
-		for (const pending of this.#pending.values()) {
-			clearTimeout(pending.timer);
-			pending.reject(error);
+		for (const request of pending.values()) {
+			clearTimeout(request.timer);
+			request.reject(error);
 		}
 
-		this.#pending.clear();
+		pending.clear();
 	}
+
+	return { run, dispose };
 }

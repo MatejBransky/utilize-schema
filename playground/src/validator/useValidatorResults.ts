@@ -4,7 +4,7 @@ import type { RuntimeSource } from '../generateCode';
 import { emitJavaScript } from '../monaco/transpile';
 import { isRuntimeTarget, targets, type RuntimeTargetId, type TargetId } from '../targets';
 import type { ValidatorReport, ValidatorSource } from './protocol';
-import { ValidatorClient } from './ValidatorClient';
+import { createValidatorClient, type ValidatorClient } from './ValidatorClient';
 
 /** What happened to the validator of the selected generator. */
 export type ValidationState =
@@ -92,7 +92,7 @@ export function useValidatorResults(
 		const timer = setTimeout(async () => {
 			try {
 				const source = await emitSource(target, code, rootName, emitCacheRef.current);
-				const client = (clientRef.current ??= new ValidatorClient());
+				const client = (clientRef.current ??= createValidatorClient());
 				const reports = await client.run(parsed, { [target]: source });
 				const report = reports[target];
 

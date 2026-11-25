@@ -71,7 +71,7 @@ export function OutputPane({ playground }: OutputPaneProps) {
 			/>
 
 			<div className={styles.problems} data-testid="problems">
-				<div className={styles.problemsHeader}>
+				<div className={styles.sectionHeader}>
 					<h2 className={styles.heading}>Validation</h2>
 					<span className={styles.counts} data-severity={errorCount > 0 ? 'error' : 'ok'}>
 						{errorCount} errors, {warningCount} warnings

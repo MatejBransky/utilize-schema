@@ -127,23 +127,27 @@ function isSchemaFile(value: unknown): value is SchemaFile {
 }
 
 function normalizeState(value: unknown): UrlState | null {
-	if (!value || typeof value !== 'object') {
-		return null;
-	}
-
-	const state = value as Partial<UrlState>;
-
-	if (!Array.isArray(state.files) || state.files.length === 0 || !state.files.every(isSchemaFile)) {
+	if (!hasFiles(value)) {
 		return null;
 	}
 
 	return {
-		files: state.files,
-		target: isAvailableTarget(state.target) ? state.target : defaultTarget,
-		keywordPolicy: isKeywordPolicy(state.keywordPolicy) ? state.keywordPolicy : 'warn',
-		formatMode: isFormatMode(state.formatMode) ? state.formatMode : defaultFormatMode,
-		data: typeof state.data === 'string' ? state.data : dataForFiles(state.files),
+		files: value.files,
+		target: isAvailableTarget(value.target) ? value.target : defaultTarget,
+		keywordPolicy: isKeywordPolicy(value.keywordPolicy) ? value.keywordPolicy : 'warn',
+		formatMode: isFormatMode(value.formatMode) ? value.formatMode : defaultFormatMode,
+		data: typeof value.data === 'string' ? value.data : dataForFiles(value.files),
 	};
+}
+
+function hasFiles(value: unknown): value is Partial<UrlState> & { files: SchemaFile[] } {
+	if (!value || typeof value !== 'object') {
+		return false;
+	}
+
+	const state = value as Partial<UrlState>;
+
+	return Array.isArray(state.files) && state.files.length > 0 && state.files.every(isSchemaFile);
 }
 
 /** The test data that belongs to a saved workspace. */
