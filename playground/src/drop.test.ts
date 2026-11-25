@@ -57,3 +57,107 @@ test('readDroppedSchemas keeps names relative to the dropped folders', async () 
 
 	expect(schemas.map((schema) => schema.name)).toEqual(['one/person.json', 'two/person.json']);
 });
+
+function fileEntry(fullPath: string, name: string, content = '{}'): FileSystemEntry {
+	return {
+		isFile: true,
+		isDirectory: false,
+		name,
+		fullPath,
+		file: (resolve: (file: File) => void) => resolve(new File([content], name)),
+	} as unknown as FileSystemEntry;
+}
+
+function unreadableEntry(fullPath: string, name: string): FileSystemEntry {
+	return {
+		isFile: true,
+		isDirectory: false,
+		name,
+		fullPath,
+		file: (_resolve: unknown, reject: () => void) => reject(),
+	} as unknown as FileSystemEntry;
+}
+
+function directoryEntry(
+	fullPath: string,
+	name: string,
+	children: FileSystemEntry[]
+): FileSystemEntry {
+	let read = false;
+
+	return {
+		isFile: false,
+		isDirectory: true,
+		name,
+		fullPath,
+		createReader: () => ({
+			readEntries: (callback: (entries: FileSystemEntry[]) => void) => {
+				const entries = read ? [] : children;
+				read = true;
+				callback(entries);
+			},
+		}),
+	} as unknown as FileSystemEntry;
+}
+
+function transfer(entries: (FileSystemEntry | null)[]): DataTransfer {
+	return {
+		items: entries.map((entry) => ({ kind: 'file', webkitGetAsEntry: () => entry })),
+		files: [],
+	} as unknown as DataTransfer;
+}
+
+test('collectDroppedFiles walks dropped directories and keeps JSON files', async () => {
+	const root = directoryEntry('/root', 'root', [
+		fileEntry('/root/person.json', 'person.json'),
+		fileEntry('/root/notes.txt', 'notes.txt'),
+		directoryEntry('/root/nested', 'nested', [
+			fileEntry('/root/nested/address.json', 'address.json'),
+		]),
+	]);
+
+	const files = await collectDroppedFiles(transfer([root]));
+
+	expect(files.map((entry) => entry.path)).toEqual([
+		'/root/person.json',
+		'/root/nested/address.json',
+	]);
+});
+
+test('collectDroppedFiles skips entries that are neither files nor directories', async () => {
+	const other = { isFile: false, isDirectory: false, fullPath: '/root/pipe' } as FileSystemEntry;
+
+	expect(await collectDroppedFiles(transfer([other]))).toEqual([]);
+});
+
+test('collectDroppedFiles skips a file the browser cannot read', async () => {
+	expect(await collectDroppedFiles(transfer([unreadableEntry('/root/a.json', 'a.json')]))).toEqual(
+		[]
+	);
+});
+
+test('collectDroppedFiles ignores items without an entry and ignores null entries', async () => {
+	const dataTransfer = {
+		items: [
+			{ kind: 'string' },
+			{ kind: 'file', webkitGetAsEntry: () => null },
+			{ kind: 'file', webkitGetAsEntry: () => fileEntry('/root/a.json', 'a.json') },
+		],
+		files: [],
+	} as unknown as DataTransfer;
+
+	const files = await collectDroppedFiles(dataTransfer);
+
+	expect(files.map((entry) => entry.path)).toEqual(['/root/a.json']);
+});
+
+test('collectDroppedFiles drops duplicate paths from nested entries', async () => {
+	const root = directoryEntry('/root', 'root', [
+		fileEntry('/root/a.json', 'a.json'),
+		fileEntry('//root/a.json', 'a.json'),
+	]);
+
+	const files = await collectDroppedFiles(transfer([root]));
+
+	expect(files).toHaveLength(1);
+});
