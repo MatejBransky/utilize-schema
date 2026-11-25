@@ -62,7 +62,6 @@ export default defineConfig({
 		// Burn them down one rule at a time, then delete the corresponding line.
 		'quality/no-chained-type-assertions': 'off',
 		'quality/no-known-value-widening': 'off',
-		'quality/no-unknown-returns': 'off',
 		'quality/no-unsafe-dictionary-type': 'off',
 		'typescript/await-thenable': 'off',
 		'typescript/no-non-null-assertion': 'off',
