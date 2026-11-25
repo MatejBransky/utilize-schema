@@ -374,6 +374,22 @@ describe('prepareSchema', () => {
 		]);
 	});
 
+	test('reports ignored $ref siblings after the other keyword issues', () => {
+		const issues: DialectIssue[] = [];
+
+		prepareSchema(
+			{
+				$schema: draft07,
+				$ref: '#/$defs/target',
+				minimum: 0,
+				prefixItems: [{ type: 'string' }],
+			},
+			{ onDialectIssue: (issue) => issues.push(issue) }
+		);
+
+		expect(issues.map((issue) => issue.keyword)).toEqual(['prefixItems', 'minimum']);
+	});
+
 	test('keeps reporting other issues next to a best-effort unevaluated keyword', () => {
 		const issues: DialectIssue[] = [];
 
