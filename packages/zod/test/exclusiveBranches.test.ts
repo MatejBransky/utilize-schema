@@ -1,5 +1,5 @@
 import { resolveDialect } from '@utilize/json-schema';
-import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
+import type { JSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
 import { areMutuallyExclusive } from '../src/generators/exclusiveBranches';
@@ -10,7 +10,7 @@ const options: ExclusiveBranchesOptions = {
 	isOpaque: () => false,
 };
 
-function branch(schema: unknown): ParsedJSONSchemaObject {
+function branch(schema: JSONSchema): ParsedJSONSchemaObject {
 	return schema as ParsedJSONSchemaObject;
 }
 

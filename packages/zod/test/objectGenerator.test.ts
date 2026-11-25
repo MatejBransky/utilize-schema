@@ -1,5 +1,5 @@
 import { resolveDialect } from '@utilize/json-schema';
-import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
+import type { JSONSchema, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
 import { generator } from '../src/generators/objectGenerator';
@@ -33,7 +33,7 @@ const recursion = {
 	},
 };
 
-function generate(schema: unknown): string {
+function generate(schema: JSONSchema): string {
 	return generator.generate(schema as ParsedJSONSchemaObject, context, recursion);
 }
 

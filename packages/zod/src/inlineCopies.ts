@@ -1,5 +1,5 @@
 import { childSchemasOf, dialectOf, isPlainObject, Meta } from '@utilize/json-schema';
-import type { JSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
+import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { withoutAlwaysValidAnyOf } from './generators/alwaysValidAnyOf';
 import { ignoresRefSiblings } from './generators/generateSchema';
@@ -293,7 +293,9 @@ class StructuralKeys {
 		let key = this.keys.get(value);
 
 		if (key === undefined) {
-			key = Array.isArray(value) ? this.ofArray(value) : this.ofObject(value);
+			key = Array.isArray(value)
+				? this.ofArray(value)
+				: this.ofObject(value as Record<string, unknown>);
 			this.keys.set(value, key);
 		}
 
@@ -304,7 +306,7 @@ class StructuralKeys {
 		return `[${values.map((value) => this.of(value)).join(',')}]`;
 	}
 
-	private ofObject(value: JSONSchema): string {
+	private ofObject(value: Record<string, unknown>): string {
 		if (!isPlainObject(value)) {
 			return `#${this.identityOf(value)}`;
 		}

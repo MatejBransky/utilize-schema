@@ -1,5 +1,5 @@
 import { resolveDialect } from '@utilize/json-schema';
-import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
+import type { JSONSchema, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
 import { generator } from '../src/generators/tupleGenerator';
@@ -27,7 +27,7 @@ const recursion = {
 	},
 };
 
-function generate(schema: unknown, dialect = draft07): string {
+function generate(schema: JSONSchema, dialect = draft07): string {
 	return generator.generate(schema as ParsedJSONSchemaObject, contextFor(dialect), recursion);
 }
 
