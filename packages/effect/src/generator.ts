@@ -98,6 +98,19 @@ const FALLBACK_ROOT_NAME = 'Root';
 const JSON_VALUE_TYPES = ['string', 'number', 'object', 'array'] as const;
 type JSONValueType = (typeof JSON_VALUE_TYPES)[number];
 
+const TYPE_GENERATORS: Record<
+	string,
+	(schema: ParsedJSONSchemaObject, context: Context) => string
+> = {
+	string: generateString,
+	number: (schema) => generateNumber(schema, false),
+	integer: (schema) => generateNumber(schema, true),
+	boolean: () => 'Schema.Boolean',
+	null: () => 'Schema.Null',
+	array: generateArray,
+	object: generateObject,
+};
+
 /**
  * Generates Effect Schema (v4) code from a linked JSON Schema.
  *
@@ -283,6 +296,31 @@ function nameDeclarations(
 }
 
 function generateSchema(schema: ParsedJSONSchema, context: Context): string {
+	const simple = generateSimpleSchema(schema);
+
+	if (simple !== undefined) {
+		return simple;
+	}
+
+	const object = schema as ParsedJSONSchemaObject;
+	const customExpression = context.customSchemaResolver?.(object);
+
+	if (customExpression !== undefined) {
+		return customExpression;
+	}
+
+	const dialect = dialectOf(object, context.dialect);
+	const nodeContext = dialect === context.dialect ? context : { ...context, dialect };
+	const filters = filterChecks(object, nodeContext);
+	const expression =
+		typeof object.$ref === 'string'
+			? generateReference(object, filters, nodeContext)
+			: applyChecks(generateExpression(object, nodeContext), filters);
+
+	return applyAnnotations(expression, object);
+}
+
+function generateSimpleSchema(schema: ParsedJSONSchema): string | undefined {
 	if (schema === undefined || schema === null || schema === true) {
 		return 'Schema.Json';
 	}
@@ -291,73 +329,85 @@ function generateSchema(schema: ParsedJSONSchema, context: Context): string {
 		return 'Schema.Never';
 	}
 
-	if (!isPlainObject(schema)) {
-		return 'Schema.Json';
-	}
-
-	const customExpression = context.customSchemaResolver?.(schema);
-
-	if (customExpression !== undefined) {
-		return customExpression;
-	}
-
-	const dialect = dialectOf(schema, context.dialect);
-	const nodeContext = dialect === context.dialect ? context : { ...context, dialect };
-
-	const filters = filterChecks(schema, nodeContext);
-	const expression =
-		typeof schema.$ref === 'string'
-			? generateReference(schema, filters, nodeContext)
-			: applyChecks(generateExpression(schema, nodeContext), filters);
-
-	return applyAnnotations(expression, schema);
+	return isPlainObject(schema) ? undefined : 'Schema.Json';
 }
 
 function generateExpression(schema: ParsedJSONSchemaObject, context: Context): string {
-	const dialect = context.dialect;
+	const literalExpression = generateLiteralExpression(schema, context);
 
-	if (Object.hasOwn(schema, 'const') && isKeywordApplicable(dialect, 'const')) {
+	if (literalExpression !== undefined) {
+		return literalExpression;
+	}
+
+	const intersection = generateAllOfExpression(schema, context);
+
+	if (intersection !== undefined) {
+		return intersection;
+	}
+
+	return generateAlternativeExpression(schema, context) ?? generateType(schema, context);
+}
+
+function generateLiteralExpression(
+	schema: ParsedJSONSchemaObject,
+	context: Context
+): string | undefined {
+	if (Object.hasOwn(schema, 'const') && isKeywordApplicable(context.dialect, 'const')) {
 		return literal(schema.const, context);
 	}
 
-	if (Array.isArray(schema.enum)) {
-		return literals(schema.enum, context);
-	}
+	return Array.isArray(schema.enum) ? literals(schema.enum, context) : undefined;
+}
 
+function generateAllOfExpression(
+	schema: ParsedJSONSchemaObject,
+	context: Context
+): string | undefined {
 	if (Array.isArray(schema.allOf) && schema.allOf.length > 0) {
 		return generateIntersection([parentSchema(schema), ...schema.allOf], context);
 	}
 
-	const alternatives = Array.isArray(schema.anyOf)
-		? schema.anyOf
-		: Array.isArray(schema.oneOf)
-			? schema.oneOf
-			: undefined;
+	return undefined;
+}
 
-	if (alternatives) {
-		// When both are present, each is applied on its own: `anyOf` becomes the
-		// union and `oneOf` stays in the base, which counts its own matches.
-		const keyword = Array.isArray(schema.anyOf) ? 'anyOf' : 'oneOf';
-		const { members, allTyped } = typedAlternatives(schema, alternatives);
-		const union = generateUnion(members, keyword === 'oneOf', context);
-		const base = alternativesBase(schema, keyword, allTyped);
+function generateAlternativeExpression(
+	schema: ParsedJSONSchemaObject,
+	context: Context
+): string | undefined {
+	const keyword = alternativeKeyword(schema);
 
-		if (base === undefined) {
-			return union;
-		}
-
-		const constraints = generateSchema(base, context);
-
-		// Unknown keywords (`x-*`) generate `Schema.Json`, so a filter over them
-		// would accept everything and only make the output noisier.
-		if (constraints === 'Schema.Json') {
-			return union;
-		}
-
-		return applyChecks(union, [siblingKeywordsCheck(constraints, keyword)]);
+	if (keyword === undefined) {
+		return undefined;
 	}
 
-	return generateType(schema, context);
+	const alternatives = schema[keyword]!;
+	// When both are present, each is applied on its own: `anyOf` becomes the
+	// union and `oneOf` stays in the base, which counts its own matches.
+	const { members, allTyped } = typedAlternatives(schema, alternatives);
+	const union = generateUnion(members, keyword === 'oneOf', context);
+	const base = alternativesBase(schema, keyword, allTyped);
+
+	if (base === undefined) {
+		return union;
+	}
+
+	const constraints = generateSchema(base, context);
+
+	// Unknown keywords (`x-*`) generate `Schema.Json`, so a filter over them
+	// would accept everything and only make the output noisier.
+	if (constraints === 'Schema.Json') {
+		return union;
+	}
+
+	return applyChecks(union, [siblingKeywordsCheck(constraints, keyword)]);
+}
+
+function alternativeKeyword(schema: ParsedJSONSchemaObject): 'anyOf' | 'oneOf' | undefined {
+	if (Array.isArray(schema.anyOf)) {
+		return 'anyOf';
+	}
+
+	return Array.isArray(schema.oneOf) ? 'oneOf' : undefined;
 }
 
 /**
@@ -456,42 +506,37 @@ function generateUnion(
 }
 
 function generateType(schema: ParsedJSONSchemaObject, context: Context): string {
-	if (Array.isArray(schema.type)) {
-		const members = [
-			...new Set(
-				schema.type.map((type) => {
-					const branch = schemaWithType(schema, type as ParsedJSONSchemaObject['type']);
+	const union = generateTypeUnion(schema, context);
 
-					return context.customSchemaResolver?.(branch) ?? generateType(branch, context);
-				})
-			),
-		];
-
-		if (members.length === 0) {
-			return 'Schema.Never';
-		}
-
-		return members.length === 1 ? members[0]! : `Schema.Union([${members.join(', ')}])`;
+	if (union !== undefined) {
+		return union;
 	}
 
-	switch (schema.type) {
-		case 'string':
-			return generateString(schema, context);
-		case 'number':
-			return generateNumber(schema, false);
-		case 'integer':
-			return generateNumber(schema, true);
-		case 'boolean':
-			return 'Schema.Boolean';
-		case 'null':
-			return 'Schema.Null';
-		case 'array':
-			return generateArray(schema, context);
-		case 'object':
-			return generateObject(schema, context);
-		default:
-			return generateUntyped(schema, context);
+	const type = schema.type as string | undefined;
+
+	return TYPE_GENERATORS[type ?? '']?.(schema, context) ?? generateUntyped(schema, context);
+}
+
+function generateTypeUnion(schema: ParsedJSONSchemaObject, context: Context): string | undefined {
+	if (!Array.isArray(schema.type)) {
+		return undefined;
 	}
+
+	const members = [
+		...new Set(
+			schema.type.map((type) => generateTypeMember(schemaWithType(schema, type), context))
+		),
+	];
+
+	if (members.length === 0) {
+		return 'Schema.Never';
+	}
+
+	return members.length === 1 ? members[0]! : `Schema.Union([${members.join(', ')}])`;
+}
+
+function generateTypeMember(schema: ParsedJSONSchemaObject, context: Context): string {
+	return context.customSchemaResolver?.(schema) ?? generateType(schema, context);
 }
 
 /** Drops metadata so that only the keyword applicability of each union member remains. */
