@@ -31,3 +31,18 @@ export function assert(condition: unknown, message?: string): asserts condition 
 		throw new Error(message ?? 'Assertion failed');
 	}
 }
+
+/**
+ * Returns `value`, or throws when it is `null` or `undefined`. Use it where the
+ * domain guarantees a value and the old code used a non-null assertion.
+ */
+export function expectDefined<T>(
+	value: T | null | undefined,
+	message = 'Expected a defined value'
+): T {
+	if (value === null || value === undefined) {
+		throw new Error(message);
+	}
+
+	return value;
+}

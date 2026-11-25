@@ -1,4 +1,4 @@
-import { dialectOf, isPlainObject, Meta } from '@utilize/json-schema';
+import { dialectOf, expectDefined, isPlainObject, Meta } from '@utilize/json-schema';
 import type { Dialect, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { generator as allOfGenerator } from './generators/allOfGenerator';
@@ -173,7 +173,7 @@ function renderAllOfType(schema: ParsedJSONSchemaObject, context: ValueTypeConte
 	}
 
 	if (subschemas.length === 1) {
-		return renderType(subschemas[0]!, context);
+		return renderType(expectDefined(subschemas[0]), context);
 	}
 
 	return subschemas.map((subschema) => parenthesize(renderType(subschema, context))).join(' & ');

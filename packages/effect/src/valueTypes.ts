@@ -1,4 +1,10 @@
-import { dialectOf, isKeywordApplicable, isPlainObject, Meta } from '@utilize/json-schema';
+import {
+	dialectOf,
+	expectDefined,
+	isKeywordApplicable,
+	isPlainObject,
+	Meta,
+} from '@utilize/json-schema';
 import type { Dialect, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { typedAlternatives } from './alternatives';
@@ -274,7 +280,7 @@ function renderCombinatorValueType(
 		return undefined;
 	}
 
-	const { members } = typedAlternatives(schema, schema[keyword]!);
+	const { members } = typedAlternatives(schema, expectDefined(schema[keyword]));
 
 	return union(members.map((subschema) => renderValueType(subschema, context)));
 }

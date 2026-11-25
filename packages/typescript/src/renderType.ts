@@ -1,4 +1,4 @@
-import { isPlainObject, Meta, toSafeString } from '@utilize/json-schema';
+import { expectDefined, isPlainObject, Meta, toSafeString } from '@utilize/json-schema';
 import type {
 	JSONSchemaTypeName,
 	ParsedJSONSchema,
@@ -801,7 +801,7 @@ function intersection(types: string[]): string {
 	}
 
 	if (unique.length === 1) {
-		return unique[0]!;
+		return expectDefined(unique[0]);
 	}
 
 	return unique.map(parenthesize).join(' & ');

@@ -1,3 +1,5 @@
+import { expectDefined } from '@utilize/json-schema';
+
 import type { SchemaFile } from './bundle';
 import { defaultExampleId, exampleById, examples } from './examples';
 import { defaultFormatMode, isFormatMode } from './formatMode';
@@ -100,7 +102,7 @@ export function uniqueName(base: string, files: SchemaFile[]): string {
 }
 
 function defaultState(): UrlState {
-	const example = exampleById(defaultExampleId)!;
+	const example = expectDefined(exampleById(defaultExampleId));
 
 	return {
 		files: example.files,

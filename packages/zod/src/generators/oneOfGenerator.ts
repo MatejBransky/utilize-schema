@@ -1,4 +1,4 @@
-import { dialectOf } from '@utilize/json-schema';
+import { dialectOf, expectDefined } from '@utilize/json-schema';
 import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
@@ -35,7 +35,7 @@ export const generator = createGenerator<
 		}
 
 		if (subschemas.length === 1) {
-			return subschemas[0]!;
+			return expectDefined(subschemas[0]);
 		}
 
 		const exclusive = areMutuallyExclusive(schema.oneOf, {

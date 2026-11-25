@@ -1,4 +1,4 @@
-import { parse } from '@utilize/json-schema';
+import { expectDefined, parse } from '@utilize/json-schema';
 import type { DialectOptions, JSONSchema } from '@utilize/json-schema';
 import type { z } from 'zod';
 
@@ -78,5 +78,5 @@ export async function compileToZod(
 	options?: CompileOptions & DialectOptions
 ): Promise<z.ZodType> {
 	const module = await compileModule(schema, options);
-	return module.Root!;
+	return expectDefined(module.Root);
 }

@@ -1,4 +1,10 @@
-import { childSchemasOf, dialectOf, isPlainObject, Meta } from '@utilize/json-schema';
+import {
+	childSchemasOf,
+	dialectOf,
+	expectDefined,
+	isPlainObject,
+	Meta,
+} from '@utilize/json-schema';
 import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { withoutAlwaysValidAnyOf } from './generators/alwaysValidAnyOf';
@@ -203,7 +209,7 @@ function hoistRepeatedSchemas(
 			continue;
 		}
 
-		const source = generated[0]!;
+		const source = expectDefined(generated[0]);
 		const declaration = declarationFrom(source);
 		hoisted.set(declaration, source);
 
@@ -213,7 +219,7 @@ function hoistRepeatedSchemas(
 	}
 
 	return [...hoisted]
-		.map(([declaration, source]) => ({ declaration, position: order.get(source)! }))
+		.map(([declaration, source]) => ({ declaration, position: expectDefined(order.get(source)) }))
 		.sort((a, b) => a.position - b.position)
 		.map(({ declaration }) => declaration);
 }

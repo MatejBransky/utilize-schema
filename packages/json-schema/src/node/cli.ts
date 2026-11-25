@@ -8,6 +8,7 @@ import { dialectCliOptions, readDialectCliOptions } from '../cliOptions';
 import { formatIssue } from '../dialect';
 import type { DialectIssue, DialectOptions } from '../dialect';
 import type { JSONSchema } from '../model';
+import { expectDefined } from '../utils';
 import { parseSchemaSource } from './compile';
 
 export interface Writable {
@@ -165,7 +166,9 @@ async function compileInputFiles<Flags extends ParseArgsOptionsConfig, Options>(
 			return fail(io, 'An output directory is required when compiling several files.');
 		}
 
-		io.stdout.write(cli.withBanner(await cli.compileFile(files[0]!.path, run.options), run.banner));
+		io.stdout.write(
+			cli.withBanner(await cli.compileFile(expectDefined(files[0]).path, run.options), run.banner)
+		);
 		return 0;
 	}
 
@@ -180,7 +183,7 @@ async function compileInputFiles<Flags extends ParseArgsOptionsConfig, Options>(
 	}
 
 	for (const [index, file] of files.entries()) {
-		const target = targets[index]!;
+		const target = expectDefined(targets[index]);
 
 		writeFile(target, cli.withBanner(await cli.compileFile(file.path, run.options), run.banner));
 		io.stderr.write(`${file.path} -> ${target}\n`);
