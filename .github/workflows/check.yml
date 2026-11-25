@@ -133,6 +133,10 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      # The sticky PR comment needs `pull-requests: write`, the Fallow Check Run
+      # needs `checks: write`. Both are scoped to this PR-only job.
+      pull-requests: write
+      checks: write
 
     steps:
       - name: Checkout code repository
@@ -147,6 +151,7 @@ jobs:
           gate: new-only
           fail-on-issues: true
           fail-on-empty-analysis: true
+          comment: true
           sarif: true
           annotations: true
 
