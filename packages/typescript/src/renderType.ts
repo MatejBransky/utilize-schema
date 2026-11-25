@@ -62,7 +62,7 @@ function indent(level: number): string {
 }
 
 export function renderType(schema: ParsedJSONSchema, context: TypeContext, level = 0): string {
-	const prepared = prepareSchema(schema);
+	const prepared = prepareSchemaInput(schema);
 
 	if (typeof prepared === 'string') {
 		return prepared;
@@ -91,7 +91,9 @@ export function renderType(schema: ParsedJSONSchema, context: TypeContext, level
 	return renderTyped(prepared, context, level);
 }
 
-function prepareSchema(schema: ParsedJSONSchema): ParsedJSONSchemaObject | 'unknown' | 'never' {
+function prepareSchemaInput(
+	schema: ParsedJSONSchema
+): ParsedJSONSchemaObject | 'unknown' | 'never' {
 	if (schema === undefined || schema === null || schema === true) {
 		return 'unknown';
 	}

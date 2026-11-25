@@ -8,7 +8,4 @@ export default defineConfig({
 	platform: 'node',
 	outDir: 'node_modules/.cache/utilize-bench',
 	outExtensions: () => ({ js: '.mjs' }),
-	deps: {
-		neverBundle: ['json-schema'],
-	},
 });
