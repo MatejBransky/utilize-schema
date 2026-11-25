@@ -107,9 +107,10 @@ It audits staged content against `HEAD`. `git commit --no-verify` is available
 for a WIP commit that will be squashed, but it is not a way around a finding you
 disagree with. Fix the code or update `.fallowrc.jsonc` with a documented reason.
 
-The `Fallow audit` CI job runs on pull requests, uploads SARIF and fails on
-introduced findings. The strict full-repository gate runs next to it in the
-same workflow (see below), so a change cannot raise a measured score.
+The `Fallow audit` CI job runs on pull requests, posts a sticky comment with the
+findings, publishes a check run and uploads SARIF, and fails on introduced
+findings. The strict full-repository gate runs next to it in the same workflow
+(see below), so a change cannot raise a measured score.
 
 Regenerate and check the health badge with:
 
