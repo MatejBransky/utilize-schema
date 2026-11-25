@@ -59,10 +59,13 @@ export function mergeObjectSchemas(schemas: ParsedJSONSchema[]): MergeResult {
 }
 
 function createMergeState(): MergeState {
+	// Without a prototype, `properties.__proto__ = ...` adds a property instead
+	// of replacing the prototype.
+	const properties: MergeState['properties'] = {};
+	Object.setPrototypeOf(properties, null);
+
 	return {
-		// Without a prototype, `properties.__proto__ = ...` adds a property instead
-		// of replacing the prototype.
-		properties: Object.create(null) as MergeState['properties'],
+		properties,
 		propertyOwners: new Map(),
 		required: new Set(),
 		additionalProperties: undefined,
