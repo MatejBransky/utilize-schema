@@ -51,7 +51,7 @@ export function inferTypeKeywords(
 		return [];
 	}
 
-	const record = schema as unknown as Record<string, unknown>;
+	const record = Object.fromEntries(Object.entries(schema));
 	const categories = [
 		['object', objectKeywords],
 		['array', arrayKeywords],

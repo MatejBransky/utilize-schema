@@ -60,7 +60,7 @@ function linkNode(
 	}
 
 	if (Object.hasOwn(schema, Meta)) {
-		return schema as unknown as ParsedJSONSchemaObject;
+		return schema as ParsedJSONSchemaObject;
 	}
 
 	const meta = createMeta(schema, parent, path, context);
@@ -110,7 +110,7 @@ function resolveReference(
 		pointer = fallbackPointer(ref, context.filePath);
 
 		if (context.$refs.exists(pointer, {})) {
-			reference = context.$refs.get(pointer) as unknown as ParsedJSONSchema;
+			reference = context.$refs.get(pointer) as ParsedJSONSchema;
 
 			if (reference === undefined) {
 				throw new Error(`Reference not found: ${pointer}`);
@@ -183,7 +183,7 @@ function linkReferenceChildren(
 
 	context.stack.delete(schema);
 
-	return schema as unknown as ParsedJSONSchemaObject;
+	return schema as ParsedJSONSchemaObject;
 }
 
 function linkChildren(
@@ -203,7 +203,7 @@ function linkChildren(
 
 	context.stack.delete(schema);
 
-	return schema as unknown as ParsedJSONSchemaObject;
+	return schema as ParsedJSONSchemaObject;
 }
 
 function linkChild(schema: JSONSchema, parent: JSONSchema, path: Path, context: LinkContext): void {

@@ -312,7 +312,7 @@ function renderArray(
 	self: string | undefined
 ): string {
 	const dialect = dialectOf(schema, context.dialect);
-	const items = schema.items as unknown as ParsedJSONSchema | ParsedJSONSchema[] | undefined;
+	const items = schema.items as ParsedJSONSchema | ParsedJSONSchema[] | undefined;
 	const prefixItems = prefixItemsOf(schema, dialect);
 	const singleItem = Array.isArray(items) ? undefined : items;
 

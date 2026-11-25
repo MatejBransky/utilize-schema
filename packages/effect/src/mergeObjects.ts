@@ -214,6 +214,7 @@ function mergedObject(state: MergeState): ParsedJSONSchemaObject {
 		merged.additionalProperties = state.additionalProperties;
 	}
 
+	// oxlint-disable-next-line quality/no-chained-type-assertions -- synthetic node; it has no source Meta to copy
 	return merged as unknown as ParsedJSONSchemaObject;
 }
 
@@ -225,7 +226,7 @@ function unmergeableReason(schema: ParsedJSONSchemaObject): string | undefined {
 		return 'nested references cannot be merged';
 	}
 
-	const record = schema as unknown as Record<string, unknown>;
+	const record = Object.fromEntries(Object.entries(schema));
 	const keyword = Object.keys(schema).find(
 		(key) =>
 			record[key] !== undefined && !ANNOTATION_KEYWORDS.has(key) && !MERGEABLE_KEYWORDS.has(key)

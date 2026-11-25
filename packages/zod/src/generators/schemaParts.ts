@@ -50,7 +50,7 @@ export function composedSchemaParts(
 		main: {
 			[keyword]: value,
 			discriminator: schema.discriminator,
-		} as unknown as ParsedJSONSchemaObject,
+		} as ParsedJSONSchemaObject,
 		rest,
 	};
 }
@@ -154,7 +154,7 @@ const structuralKeywords = new Set<string>([
  * need an intersection: the outer schema already applies those.
  */
 function hasStructuralKeywords(schema: ParsedJSONSchemaObject): boolean {
-	const record = schema as unknown as Record<string, unknown>;
+	const record = Object.fromEntries(Object.entries(schema));
 
 	for (const keyword of structuralKeywords) {
 		if (record[keyword] !== undefined) {
@@ -169,13 +169,9 @@ function withoutKeys(
 	schema: ParsedJSONSchemaObject,
 	keys: readonly string[]
 ): ParsedJSONSchemaObject {
-	const clone = withSourceMeta(schema, { ...schema }) as unknown as Record<string, unknown>;
+	const entries = Object.entries(schema).filter(([key]) => !keys.includes(key));
 
-	for (const key of keys) {
-		delete clone[key];
-	}
-
-	return clone as unknown as ParsedJSONSchemaObject;
+	return withSourceMeta(schema, Object.fromEntries(entries));
 }
 
 /** Keywords handled by `applyRefinements` on the whole schema. */

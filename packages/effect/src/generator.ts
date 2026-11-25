@@ -644,7 +644,7 @@ function generateNumber(schema: ParsedJSONSchemaObject, integer: boolean): strin
 
 function generateArray(schema: ParsedJSONSchemaObject, context: Context): string {
 	const dialect = context.dialect;
-	const items = schema.items as unknown as ParsedJSONSchema | ParsedJSONSchema[] | undefined;
+	const items = schema.items as ParsedJSONSchema | ParsedJSONSchema[] | undefined;
 	const prefixItems = prefixItemsOf(schema, dialect);
 	const checks = arrayChecks(schema, context);
 	const singleItem = Array.isArray(items) ? undefined : items;
@@ -1042,7 +1042,7 @@ function appliesTo(
 	dialect: Dialect,
 	assertFormats: boolean
 ): boolean {
-	const record = schema as unknown as Record<string, unknown>;
+	const record = Object.fromEntries(Object.entries(schema));
 	const anyKeyword = (keywords: string[]) =>
 		keywords.some(
 			(keyword) => record[keyword] !== undefined && isKeywordApplicable(dialect, keyword)
@@ -1105,7 +1105,7 @@ function generateIntersection(schemas: ParsedJSONSchema[], context: Context): st
 
 	const members = flattened.filter(
 		(schema): schema is ParsedJSONSchemaObject =>
-			isPlainObject(schema) && !isEmptySchema(schema as unknown as ParsedJSONSchemaObject)
+			isPlainObject(schema) && !isEmptySchema(schema as ParsedJSONSchemaObject)
 	);
 
 	if (members.length === 0) {
@@ -1163,11 +1163,11 @@ function generateConjunction(
 
 			// `anyOf` and `oneOf` both constrain the value, so they stay separate.
 			if (Array.isArray(anyOf)) {
-				parts.push({ anyOf } as unknown as ParsedJSONSchemaObject);
+				parts.push({ anyOf } as ParsedJSONSchemaObject);
 			}
 
 			if (Array.isArray(oneOf)) {
-				parts.push({ oneOf } as unknown as ParsedJSONSchemaObject);
+				parts.push({ oneOf } as ParsedJSONSchemaObject);
 			}
 
 			continue;
@@ -1573,6 +1573,7 @@ function renderTypedSchema(
 		}
 	}
 
+	// oxlint-disable-next-line quality/no-chained-type-assertions -- synthetic node; it has no source Meta to copy
 	return merged as unknown as ParsedJSONSchemaObject;
 }
 
@@ -1594,7 +1595,7 @@ function mergeableType(schema: ParsedJSONSchemaObject): MergeableType | undefine
 }
 
 function mergeTypeCandidates(schema: ParsedJSONSchemaObject): MergeableType[] {
-	const record = schema as unknown as Record<string, unknown>;
+	const record = Object.fromEntries(Object.entries(schema));
 	const has = (keywords: string[]) => keywords.some((keyword) => record[keyword] !== undefined);
 	const candidates: MergeableType[] = [];
 

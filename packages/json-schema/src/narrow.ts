@@ -73,7 +73,7 @@ export function narrowUntypedSchema(
 }
 
 function hasTypeSpecificKeywords(schema: ParsedJSONSchemaObject, dialect: Dialect): boolean {
-	const record = schema as unknown as Record<string, unknown>;
+	const record = Object.fromEntries(Object.entries(schema));
 
 	return TYPE_SPECIFIC_KEYWORDS.some(
 		(keyword) =>
