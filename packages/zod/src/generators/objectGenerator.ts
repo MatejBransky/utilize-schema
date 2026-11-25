@@ -1,4 +1,4 @@
-import { Meta, type ParsedJSONSchemaObject } from '@utilize/json-schema';
+import { Meta, type ParsedJSONSchema, type ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator, type Recursion } from './createGenerator';
 import { protoInputCheck } from './protoProperty';
@@ -13,32 +13,12 @@ export const generator = createGenerator(
 	(schema) => schema.type === 'object',
 	(schema, context, { generateSchema }) => {
 		const declaredProperties = schema.properties ?? {};
-		const properties = Object.entries(declaredProperties).map(([key, value]) => {
-			const keyExpression = shapeKey(key);
-			let optionalPart = '.optional()';
-
-			if (
-				typeof value === 'object' &&
-				value !== null &&
-				'default' in value &&
-				value.default !== undefined
-			) {
-				optionalPart = '';
-			}
-
-			if (schema.required?.includes(key)) {
-				optionalPart = '';
-			}
-
-			if (containsCircularRef(value, context)) {
-				return ts`get ${keyExpression}() {
-            return ${generateSchema(value, context)}${optionalPart};
-          }`;
-			}
-
-			return `${keyExpression}: ${generateSchema(value, context)}${optionalPart}`;
-		});
-		const propertiesPart = properties.join(`,${NEWLINE}`);
+		const propertiesPart = renderProperties(
+			declaredProperties,
+			schema.required,
+			context,
+			generateSchema
+		).join(`,${NEWLINE}`);
 		// `__proto__` is validated against the raw input below, because Zod's
 		// object parser skips that key in both the shape and the output.
 		const requiredWithoutProperties = (schema.required ?? []).filter(
@@ -46,18 +26,10 @@ export const generator = createGenerator(
 		);
 		const additionalProperties = schema.additionalProperties;
 		const patterns = Object.entries(schema.patternProperties ?? {});
-
 		// A required key that is not declared in `properties` is validated by a
 		// matching pattern, or by `additionalProperties`, not by the property
 		// placeholder itself.
-		const requiredValue =
-			patterns.length > 0
-				? ts`z.unknown()`
-				: additionalProperties === false
-					? ts`z.never()`
-					: isSchemaObject<ParsedJSONSchemaObject>(additionalProperties)
-						? generateSchema(additionalProperties, context)
-						: ts`z.unknown()`;
+		const requiredValue = requiredValueFor(patterns, additionalProperties, context, generateSchema);
 		const requiredPart = requiredWithoutProperties
 			.map((key) => `${shapeKey(key)}: ${requiredValue}`)
 			.join(`,${NEWLINE}`);
@@ -76,56 +48,125 @@ export const generator = createGenerator(
         }
       })`
 				: '';
+		const expression = renderObjectExpression(
+			schema,
+			allProperties,
+			patterns,
+			additionalProperties,
+			requiredCheck,
+			context,
+			generateSchema
+		);
 		const protoCheck = protoPropertyCheck(schema, context, generateSchema);
-		const withProtoCheck = (expression: string) => {
-			const checked =
-				protoCheck === ''
-					? expression
-					: ts`z.any().superRefine((value, ctx) => {
+		const checked =
+			protoCheck === ''
+				? expression
+				: ts`z.any().superRefine((value, ctx) => {
         ${protoCheck}
       }).pipe(${expression})`;
 
-			// Zod finds a declared key with `key in input` and reads `input[key]`,
-			// so a name that exists on `Object.prototype` is validated against the
-			// inherited value when the input does not own it. A null-prototype
-			// clone hides the inherited names.
-			return needsPrototypeNamesClone(schema)
-				? ts`z.preprocess((value) =>
+		// Zod finds a declared key with `key in input` and reads `input[key]`,
+		// so a name that exists on `Object.prototype` is validated against the
+		// inherited value when the input does not own it. A null-prototype
+		// clone hides the inherited names.
+		return needsPrototypeNamesClone(schema)
+			? ts`z.preprocess((value) =>
         typeof value === 'object' && value !== null && !Array.isArray(value)
           ? Object.assign(Object.create(null), value)
           : value,
         ${checked}
       )`
-				: checked;
-		};
-
-		if (patterns.length > 0) {
-			return withProtoCheck(ts`z.looseObject({
-        ${allProperties}
-      })${patternRefinement(schema, patterns, context, generateSchema)}${requiredCheck}`);
-		}
-
-		const catchAllPart = isSchemaObject<ParsedJSONSchemaObject>(additionalProperties)
-			? ts`.catchall(${generateSchema(additionalProperties, context)})`
-			: '';
-
-		if (additionalProperties === false) {
-			return withProtoCheck(ts`z.strictObject({
-        ${allProperties}
-      })${requiredCheck}`);
-		}
-
-		if (additionalProperties === true) {
-			return withProtoCheck(ts`z.looseObject({
-        ${allProperties}
-      })${requiredCheck}`);
-		}
-
-		return withProtoCheck(ts`z.object({
-      ${allProperties}
-    })${catchAllPart}${requiredCheck}`);
+			: checked;
 	}
 );
+
+function renderProperties(
+	properties: Record<string, Exclude<ParsedJSONSchema, null>>,
+	required: string[] | undefined,
+	context: GeneratorContext,
+	generateSchema: Recursion['generateSchema']
+): string[] {
+	return Object.entries(properties).map(([key, value]) => {
+		const keyExpression = shapeKey(key);
+		let optionalPart = '.optional()';
+
+		if (
+			typeof value === 'object' &&
+			value !== null &&
+			'default' in value &&
+			value.default !== undefined
+		) {
+			optionalPart = '';
+		}
+
+		if (required?.includes(key)) {
+			optionalPart = '';
+		}
+
+		if (containsCircularRef(value, context)) {
+			return ts`get ${keyExpression}() {
+            return ${generateSchema(value, context)}${optionalPart};
+          }`;
+		}
+
+		return `${keyExpression}: ${generateSchema(value, context)}${optionalPart}`;
+	});
+}
+
+function requiredValueFor(
+	patterns: Array<[string, ParsedJSONSchemaObject]>,
+	additionalProperties: ParsedJSONSchemaObject['additionalProperties'],
+	context: GeneratorContext,
+	generateSchema: Recursion['generateSchema']
+): string {
+	if (patterns.length > 0) {
+		return ts`z.unknown()`;
+	}
+
+	if (additionalProperties === false) {
+		return ts`z.never()`;
+	}
+
+	return isSchemaObject<ParsedJSONSchemaObject>(additionalProperties)
+		? generateSchema(additionalProperties, context)
+		: ts`z.unknown()`;
+}
+
+function renderObjectExpression(
+	schema: ParsedJSONSchemaObject,
+	allProperties: string,
+	patterns: Array<[string, ParsedJSONSchemaObject]>,
+	additionalProperties: ParsedJSONSchemaObject['additionalProperties'],
+	requiredCheck: string,
+	context: GeneratorContext,
+	generateSchema: Recursion['generateSchema']
+): string {
+	if (patterns.length > 0) {
+		return ts`z.looseObject({
+        ${allProperties}
+      })${patternRefinement(schema, patterns, context, generateSchema)}${requiredCheck}`;
+	}
+
+	const catchAllPart = isSchemaObject<ParsedJSONSchemaObject>(additionalProperties)
+		? ts`.catchall(${generateSchema(additionalProperties, context)})`
+		: '';
+
+	if (additionalProperties === false) {
+		return ts`z.strictObject({
+        ${allProperties}
+      })${requiredCheck}`;
+	}
+
+	if (additionalProperties === true) {
+		return ts`z.looseObject({
+        ${allProperties}
+      })${requiredCheck}`;
+	}
+
+	return ts`z.object({
+      ${allProperties}
+    })${catchAllPart}${requiredCheck}`;
+}
 
 /**
  * Zod's object parser skips an own `__proto__` key: the shape never validates
