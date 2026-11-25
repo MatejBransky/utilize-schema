@@ -73,20 +73,28 @@ export function relativeNames(paths: string[]): string[] {
 	return normalized.map((path) => path.split('/').slice(common.length).join('/'));
 }
 
+function isFileEntry(entry: FileSystemEntry): entry is FileSystemFileEntry {
+	return 'file' in entry;
+}
+
+function isDirectoryEntry(entry: FileSystemEntry): entry is FileSystemDirectoryEntry {
+	return 'createReader' in entry;
+}
+
 async function readEntry(entry: FileSystemEntry): Promise<DroppedFile[]> {
-	if (entry.isFile) {
+	if (isFileEntry(entry)) {
 		const file = await new Promise<File | null>((resolve) => {
-			(entry as FileSystemFileEntry).file(resolve, () => resolve(null));
+			entry.file(resolve, () => resolve(null));
 		});
 
 		return file && isJsonPath(file.name) ? [{ path: entry.fullPath, file }] : [];
 	}
 
-	if (!entry.isDirectory) {
+	if (!isDirectoryEntry(entry)) {
 		return [];
 	}
 
-	const children = await readDirectory((entry as FileSystemDirectoryEntry).createReader());
+	const children = await readDirectory(entry.createReader());
 
 	return (await Promise.all(children.map(readEntry))).flat();
 }

@@ -74,6 +74,25 @@ export default defineConfig({
 			],
 			rules: { 'quality/no-unsafe-dictionary-type': 'off' },
 		},
+		{
+			// The parser and linker validate the document shape once, and the
+			// generators then bridge the dialect-specific `JSONSchema` fields into
+			// the parsed model. Tests and benchmarks build fixtures on purpose, so a
+			// narrowing assertion in those places is the boundary, not missing
+			// evidence.
+			files: [
+				'**/*.{test,spec}.{ts,tsx}',
+				'**/test/**',
+				'**/bench/**',
+				'packages/json-schema/src/**',
+				'packages/test-utils/src/**',
+				'packages/zod/src/**',
+				'packages/effect/src/**',
+				'packages/typescript/src/**',
+				'playground/src/bundle.ts',
+			],
+			rules: { 'typescript/no-unsafe-type-assertion': 'off' },
+		},
 	],
 	rules: {
 		// Project-specific tuning carried over from the previous configuration.
@@ -88,8 +107,5 @@ export default defineConfig({
 		// check in `isPlainObject`; the rule rejects both.
 		'@nkzw/no-instanceof': 'off',
 
-		// The rules below were newly enabled by the preset and still have findings.
-		// Burn them down one rule at a time, then delete the corresponding line.
-		'typescript/no-unsafe-type-assertion': 'off',
 	},
 });

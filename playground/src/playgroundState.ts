@@ -1,4 +1,4 @@
-import { expectDefined } from '@utilize/json-schema';
+import { expectDefined, isPlainObject } from '@utilize/json-schema';
 
 import type { SchemaFile } from './bundle';
 import { defaultExampleId, exampleById, examples } from './examples';
@@ -122,14 +122,14 @@ function loadSavedState(): UrlState | null {
 }
 
 function isSchemaFile(value: unknown): value is SchemaFile {
-	if (!value || typeof value !== 'object') {
+	if (!isPlainObject(value)) {
 		return false;
 	}
 
-	const file = value as SchemaFile;
-
 	return (
-		typeof file.id === 'string' && typeof file.name === 'string' && typeof file.content === 'string'
+		typeof value.id === 'string' &&
+		typeof value.name === 'string' &&
+		typeof value.content === 'string'
 	);
 }
 

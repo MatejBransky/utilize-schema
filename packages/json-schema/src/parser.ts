@@ -25,7 +25,7 @@ export interface ParseOptions extends DialectOptions {
 }
 
 export async function parse(
-	schema: JSONSchema,
+	schema: JSONSchema | boolean,
 	options: ParseOptions
 ): Promise<{
 	root: ParsedJSONSchema;

@@ -7,7 +7,7 @@ import {
 	SCHEMA_MAP_KEYWORDS,
 	SINGLE_SCHEMA_KEYWORDS,
 } from '@utilize/json-schema';
-import type { DialectId, KeywordPolicy } from '@utilize/json-schema';
+import type { DialectId, JSONSchema, KeywordPolicy } from '@utilize/json-schema';
 
 /** A JSON value before schema parsing; the bundler rewrites it without validating it. */
 type UnparsedJson =
@@ -39,7 +39,7 @@ export interface ParsedFile {
 }
 
 export interface BundleResult {
-	root: unknown;
+	root: JSONSchema | boolean | null;
 	rootFileName: string;
 	problems: Problem[];
 	keyByFile: Map<string, string>;
@@ -133,7 +133,7 @@ export function buildBundle(
 	});
 
 	return {
-		root,
+		root: root as JSONSchema | boolean,
 		rootFileName: rootParsed.file.name,
 		problems,
 		keyByFile,
