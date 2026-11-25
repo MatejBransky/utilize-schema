@@ -183,8 +183,8 @@ function renderStructuredValueType(
 ): string | undefined {
 	return (
 		renderReferenceValueType(schema, context, self, deferred, dialect) ??
-		renderLiteralValueType(schema, context, self, deferred, dialect) ??
-		renderCombinatorValueType(schema, context, self, deferred, dialect) ??
+		renderLiteralValueType(schema, dialect) ??
+		renderCombinatorValueType(schema, context, self, deferred) ??
 		renderTypeArrayValueType(schema, context)
 	);
 }
@@ -253,9 +253,6 @@ function renderReferenceTarget(
 
 function renderLiteralValueType(
 	schema: ParsedJSONSchemaObject,
-	context: ValueTypeContext,
-	self: string | undefined,
-	deferred: boolean,
 	dialect: Dialect
 ): string | undefined {
 	if (Object.hasOwn(schema, 'const') && isKeywordApplicable(dialect, 'const')) {
@@ -269,8 +266,7 @@ function renderCombinatorValueType(
 	schema: ParsedJSONSchemaObject,
 	context: ValueTypeContext,
 	self: string | undefined,
-	deferred: boolean,
-	dialect: Dialect
+	deferred: boolean
 ): string | undefined {
 	if (Array.isArray(schema.allOf)) {
 		return intersection([
