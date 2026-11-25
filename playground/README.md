@@ -48,8 +48,9 @@ GitHub Pages under `/utilize-schema/`.
 ## Deployment
 
 `.github/workflows/pages.yml` builds and deploys the playground to GitHub
-Pages on every push to `main`. Every pull request also gets a Vercel preview
-deployment; see [CONTRIBUTING.md](../CONTRIBUTING.md#playground-previews).
+Pages on every push to `main`. Pull requests get a Vercel preview deployment
+only when they have the `Preview` label; see
+[CONTRIBUTING.md](../CONTRIBUTING.md#playground-previews).
 
 ## Adding a generator
 

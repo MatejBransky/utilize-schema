@@ -44,10 +44,18 @@ target needs to show up in the UI.
 
 ## Playground previews
 
-Every pull request gets a preview deployment of the playground on Vercel. The
-project uses the **Root Directory** `playground` and `playground/vercel.json`,
-so Vercel installs the pnpm workspace from the repository root and then builds
-only the playground (`playground/dist`).
+Only pull requests with the `Preview` label get a preview deployment of the
+playground on Vercel. Add the label when a live preview is needed; every new
+commit on that pull request refreshes the preview. Pull requests without the
+label do not create a Vercel deployment. Production still deploys from `main`.
+
+The project uses the **Root Directory** `playground` and
+`playground/vercel.json`, so Vercel installs the pnpm workspace from the
+repository root and then builds only the playground (`playground/dist`).
+`git.deploymentEnabled` allows Git deployments only for `main`; this avoids
+creating deployments that would count toward the Hobby plan's daily limit just
+to cancel them. `.github/workflows/vercel-preview.yml` deploys labeled pull
+requests from the same repository through the Vercel CLI instead.
 
 Keep `vercel.json` inside the Root Directory: Vercel resolves its paths relative
 to it, so a `vercel.json` at the repository root would point at
@@ -59,8 +67,13 @@ To set this up on a fork or a new repository:
    `playground`.
 2. Keep the framework preset on Vite; `playground/vercel.json` supplies the
    build command and output directory.
-3. Do not add a custom domain to preview deployments, so every PR keeps its own
-   URL.
+3. Create a `Preview` label for pull requests that should get a preview.
+4. Add `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` as GitHub Actions
+   repository secrets. The token needs access to the Vercel project; the IDs
+   are available in `.vercel/project.json` after running `vercel link` or in
+   the Vercel dashboard.
+5. Do not add a custom domain to preview deployments, so every preview keeps its
+   own URL.
 
 ## Development Workflow
 
