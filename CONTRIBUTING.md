@@ -129,6 +129,11 @@ fully cleared; the strict main gate is enabled separately.
 imports are errors in the generator packages outside `compile.ts` and `cli.ts`.
 Policy violations are errors in both the audit and the full run.
 
+The `Fallow security gate` PR job runs `fallow security --gate
+newly-reachable`. The existing low candidates in the test-only evaluator are
+reviewed and stay advisory; a change fails only when it makes a candidate newly
+reachable from an entry point.
+
 ## Running Tests
 
 - Run all tests:
