@@ -265,6 +265,74 @@ describe('cyclic references', () => {
 			).trim()
 		);
 	});
+
+	test('read-only recursive type lists keep object and array wrappers', async () => {
+		const result = await compile(
+			{
+				$schema: 'https://json-schema.org/draft/2020-12/schema',
+				readOnly: true,
+				type: ['object', 'array', 'null'],
+				properties: {
+					name: { type: 'string' },
+					next: { $ref: '#' },
+				},
+				items: { type: ['string', 'number'] },
+				additionalProperties: { type: 'boolean' },
+			},
+			{ readOnlyKeyword: true }
+		);
+		const valueType = result.match(/type RootValue =[\s\S]*?;\n(?=export const)/)?.[0];
+
+		expect(valueType?.trim()).toBe(
+			(
+				await ts`
+      type RootValue =
+        | Readonly<{
+            name?: string;
+            next?: RootValue;
+            [key: string]: string | RootValue | boolean | undefined;
+          }>
+        | ReadonlyArray<string | number>
+        | null;
+    `
+			).trim()
+		);
+	});
+
+	test('recursive value type unions and intersections preserve branch rendering', async () => {
+		const union = await compile(
+			{
+				readOnly: true,
+				anyOf: [{ type: 'object', properties: { next: { $ref: '#' } } }, { type: 'string' }],
+			},
+			{ readOnlyKeyword: true }
+		);
+		const intersection = await compile(
+			{
+				readOnly: true,
+				allOf: [
+					{ type: 'object', properties: { next: { $ref: '#' } } },
+					{ type: 'object', properties: { flag: { type: 'boolean' } } },
+				],
+			},
+			{ readOnlyKeyword: true }
+		);
+
+		expect(union.match(/type RootValue =\s*[\s\S]*?;/)?.[0]?.trim()).toBe(
+			(
+				await ts`
+      type RootValue = { next?: RootValue } | string;
+    `
+			).trim()
+		);
+		expect(intersection.match(/type RootValue =\s*[\s\S]*?;/)?.[0]?.trim()).toBe(
+			(
+				await ts`
+      type RootValue = { next?: RootValue } & { flag?: boolean };
+    `
+			).trim()
+		);
+	});
 });
 
 describe('recursive references at runtime', () => {
