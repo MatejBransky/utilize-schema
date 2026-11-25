@@ -181,10 +181,16 @@ CANDIDATE="$PWD/packages/json-schema/node_modules/.cache/utilize-bench/refactor.
 pnpm --filter @utilize/json-schema bench:compare "$BASELINE" "$CANDIDATE" prepare
 ```
 
-The case is `prepare`, `index`, `link`, or `all`. The runner alternates baseline
-and candidate samples, performs 2,000 measured iterations after 300 warmup
-iterations, and fails when mean or median latency regresses by more than 5%.
-Run it three times and include the results in the PR description.
+The case is `prepare`, `index`, `external`, `link`, or `all`. The runner
+alternates baseline and candidate samples, performs 2,000 measured iterations
+after 300 warmup iterations, and fails when mean or median latency regresses by
+more than 5%. Run it three times and include the results in the PR description.
+
+When the baseline predates the harness, for example in the pull request that
+introduces it, copy the harness files and `bench:build` / `bench:compare`
+scripts from the candidate into the baseline checkout without changing its
+`src/`. Build the copied entry against the baseline source, then compare it with
+the candidate bundle.
 
 ## Dependency Versions
 
