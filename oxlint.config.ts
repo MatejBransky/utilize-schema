@@ -55,8 +55,14 @@ export default defineConfig({
 			// honest boundary type there; the playground bundler rewrites the same
 			// values before they reach the parser, and tests build fixtures.
 			files: [
-				'packages/json-schema/src/**',
-				'packages/test-utils/src/**',
+				'packages/json-schema/src/dialect.ts',
+				'packages/json-schema/src/externalSchemas.ts',
+				'packages/json-schema/src/identifiers.ts',
+				'packages/json-schema/src/narrow.ts',
+				'packages/json-schema/src/normalize.ts',
+				'packages/json-schema/src/parser.ts',
+				'packages/json-schema/src/utils.ts',
+				'packages/test-utils/src/suite/evaluate.ts',
 				'packages/effect/src/generator.ts',
 				'packages/effect/src/mergeObjects.ts',
 				'packages/effect/src/constraints.ts',
