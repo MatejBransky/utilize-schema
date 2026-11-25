@@ -108,8 +108,8 @@ for a WIP commit that will be squashed, but it is not a way around a finding you
 disagree with. Fix the code or update `.fallowrc.jsonc` with a documented reason.
 
 The `Fallow audit` CI job runs on pull requests, uploads SARIF and fails on
-introduced findings. A strict full-repository gate is intentionally not enabled
-yet because the existing complexity backlog is still being reduced.
+introduced findings. The strict full-repository gate runs next to it in the
+same workflow (see below), so a change cannot raise a measured score.
 
 Regenerate and check the health badge with:
 
@@ -118,14 +118,14 @@ pnpm fallow:badge
 pnpm check:fallow-badge
 ```
 
-On every push to `main`, the `Fallow full repository` job runs all unit tests
-with V8 coverage, merges their Istanbul data, and publishes `fallow health
---coverage --format github-summary` to the job summary. It also runs the
-type-aware pass in `best-effort` mode against every package tsconfig. This gives
-CRAP scores measured against real coverage and confirms dead-code candidates
-with the TypeScript checker, without slowing the PR audit or commit hook. The
-step is gating: the measured backlog is empty, so a function above the cyclomatic,
-cognitive or CRAP threshold fails the run.
+In every pull request and on every push to `main`, the `Fallow full repository`
+job runs all unit tests with V8 coverage, merges their Istanbul data, and
+publishes `fallow health --coverage --format github-summary` to the job summary.
+It also runs the type-aware pass in `best-effort` mode against every package
+tsconfig. This gives CRAP scores measured against real coverage and confirms
+dead-code candidates with the TypeScript checker. The step is gating: the
+measured backlog is empty, so a function above the cyclomatic, cognitive or CRAP
+threshold fails the run.
 
 `rule-packs/utilize-policy.jsonc` keeps generator source browser-safe: `node:*`
 imports are errors in the generator packages outside `compile.ts` and `cli.ts`.
