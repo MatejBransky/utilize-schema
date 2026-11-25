@@ -99,6 +99,7 @@ export default defineConfig({
 				'packages/json-schema/src/node/cli.ts',
 				'packages/json-schema/src/node/compile.ts',
 				'packages/json-schema/src/resolveName.ts',
+				'packages/json-schema/src/utils.ts',
 			],
 			rules: { 'typescript/no-unsafe-type-assertion': 'off' },
 		},
@@ -111,6 +112,7 @@ export default defineConfig({
 				'packages/zod/src/generators/createGenerator.ts',
 				'packages/zod/src/generators/generateSchema.ts',
 				'packages/zod/src/generators/schemaParts.ts',
+				'packages/zod/src/inlineCopies.ts',
 				'packages/zod/src/inferTypes.ts',
 				'packages/zod/src/refinements.ts',
 				'packages/zod/src/valueTypes.ts',
@@ -151,6 +153,5 @@ export default defineConfig({
 		// `instanceof` is idiomatic for DOM nodes and for the constructor-identity
 		// check in `isPlainObject`; the rule rejects both.
 		'@nkzw/no-instanceof': 'off',
-
 	},
 });
