@@ -182,6 +182,17 @@
 			"**/*.test.ts",
 			"**/*.test.tsx",
 			"packages/test-utils/**",
+			// The barrel is the published API surface: it re-exports declarations
+			// that live in another module, and the tests import the module under
+			// test directly rather than the barrel. The health pass therefore
+			// cannot find a test path to those re-exports and reports each one as
+			// a coverage gap, while the dead-code pass still checks the barrel.
+			"packages/*/src/index.ts",
+			// The Vite shell and the module that mounts it are the runtime entry
+			// of the playground; a test would have to boot the whole app to reach
+			// them, and the browser tests already render every screen they own.
+			"playground/index.html",
+			"playground/src/main.tsx",
 			// Measurement plumbing is tooling; its branches implement reporting and
 			// fixture setup rather than production behavior.
 			"packages/json-schema/bench/**",
@@ -349,10 +360,10 @@
 		"weakened-tests": "error",
 		"test-only-branch": "error",
 
-		// Every runtime file and export has a test dependency path: each package
-		// has a public-API surface test for the helpers only its CLI uses, the
-		// playground entry exports `mount` for its browser test, and a node test
-		// reads `index.html` through Vite's `?raw` import.
+		// Every runtime file and export has a test dependency path. The published
+		// barrels and the playground's Vite entry are excluded under `health.ignore`
+		// with the reason there: a test of a re-export would only assert that the
+		// barrel re-exports, and the browser tests already render every screen.
 		"coverage-gaps": "error",
 
 		// Suppressions must carry a reason, and a suppression that matches
