@@ -75,7 +75,7 @@ export async function writeAzureTemplate(directory: string) {
 							additionalProperties: { type: 'string' },
 						},
 						...(index === 0
-							? {}
+							? undefined
 							: {
 									dependsOn: {
 										type: 'array',

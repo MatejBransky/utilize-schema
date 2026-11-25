@@ -150,7 +150,7 @@ describe('generated schemas at runtime', () => {
 
 function makeTreeSchema(options: { title?: string; childRef?: string } = {}): JSONSchema {
 	return {
-		...(options.title ? { title: options.title } : {}),
+		...(options.title ? { title: options.title } : undefined),
 		type: 'object',
 		properties: {
 			name: { type: 'string' },

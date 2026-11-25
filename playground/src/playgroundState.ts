@@ -32,8 +32,8 @@ export function loadState(): UrlState {
 	// hash so they can be changed without editing the hash.
 	return {
 		...fromHash,
-		...(keywordPolicy ? { keywordPolicy } : {}),
-		...(formatMode ? { formatMode } : {}),
+		...(keywordPolicy ? { keywordPolicy } : undefined),
+		...(formatMode ? { formatMode } : undefined),
 	};
 }
 
