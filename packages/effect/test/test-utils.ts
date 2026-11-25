@@ -1,10 +1,4 @@
-import {
-	type DialectOptions,
-	type JSONSchema,
-	Meta,
-	parse,
-	type ParsedJSONSchemaObject,
-} from '@utilize/json-schema';
+import { type DialectOptions, type JSONSchema, type NameMapper, parse } from '@utilize/json-schema';
 import { Schema } from 'effect';
 import { format as formatCode } from 'oxfmt';
 
@@ -12,7 +6,6 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { generate, type CustomSchemaResolver, type FormatMode } from '../src/generator';
-import type { NameMapper } from '../src/resolveName';
 
 /** JSON Schema 2020-12 keywords that the draft-07 based `JSONSchema` type lacks. */
 export type TestSchema = JSONSchema & {
@@ -47,17 +40,6 @@ const formatOptions = {
 
 function formatSource(code: string) {
 	return formatCode('code.ts', code, formatOptions).then((result) => result.code);
-}
-
-export function withMeta(obj: JSONSchema, meta: Partial<Meta> = {}) {
-	Object.defineProperty(obj, Meta, {
-		enumerable: false,
-		value: { ...meta },
-		writable: true,
-		configurable: true,
-	});
-
-	return obj as ParsedJSONSchemaObject;
 }
 
 export function normalizeCode(code: string): string {

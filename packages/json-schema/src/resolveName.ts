@@ -1,5 +1,9 @@
-import { type ParsedJSONSchemaObject, Meta } from '@utilize/json-schema';
+import { Meta, type ParsedJSONSchemaObject } from './model';
 
+/**
+ * Names a standalone schema before the generator does. Returning nothing
+ * falls back to the generated name.
+ */
 export type CustomNameResolver = (
 	schema: ParsedJSONSchemaObject,
 	usedNames: Set<string>
@@ -92,32 +96,26 @@ export function allocateName(base: string, usedNames: Set<string>): string {
 	return name;
 }
 
-interface ResolveNameOptions {
+export interface ResolveNameOptions {
 	schema: ParsedJSONSchemaObject;
 	usedNames?: Set<string>;
 	customResolver?: CustomNameResolver;
 }
 
+/**
+ * Names a standalone schema: by the custom resolver, `$id` or `title`, else by
+ * its `$defs`/`definitions` key, by the file name of an external schema, or
+ * `Unknown`. A name from the custom resolver is used as it is.
+ */
 export function resolveName({
 	schema,
 	usedNames = new Set(),
 	customResolver,
 }: ResolveNameOptions): string {
-	// 0. If user provided a custom resolver, use it first
-	if (customResolver) {
-		const customName = customResolver(schema, usedNames);
-		if (customName) {
-			return customName;
-		}
-	}
+	const explicitName = resolveExplicitName({ schema, usedNames, customResolver });
 
-	// 1. Prefer $id or title if present
-	if (schema.$id) {
-		const id = schema.$id.split(/[/#]/).filter(Boolean).pop()!;
-		return generateName(id, usedNames);
-	}
-	if (schema.title) {
-		return generateName(schema.title, usedNames);
+	if (explicitName !== undefined) {
+		return explicitName;
 	}
 
 	// 2. If schema is in $defs/definitions, use the key name from path
@@ -140,7 +138,37 @@ export function resolveName({
 	return generateName(base, usedNames);
 }
 
-function generateName(from: string, usedNames: Set<string>) {
+/** The name from the custom resolver, `$id` or `title`, if there is one. */
+export function resolveExplicitName({
+	schema,
+	usedNames = new Set(),
+	customResolver,
+}: ResolveNameOptions): string | undefined {
+	// 0. If user provided a custom resolver, use it first
+	if (customResolver) {
+		const customName = customResolver(schema, usedNames);
+		if (customName) {
+			return customName;
+		}
+	}
+
+	// 1. Prefer $id or title if present
+	if (schema.$id) {
+		const id = schema.$id.split(/[/#]/).filter(Boolean).pop()!;
+		return generateName(id, usedNames);
+	}
+	if (schema.title) {
+		return generateName(schema.title, usedNames);
+	}
+
+	return undefined;
+}
+
+/**
+ * Turns `from` into an identifier and reserves it in `usedNames`, with the first
+ * free numeric suffix if it is taken.
+ */
+export function generateName(from: string, usedNames: Set<string>) {
 	let name: string = toSafeString(justName(from) ?? from);
 	if (!name) name = 'NoName';
 
@@ -214,7 +242,7 @@ function deburr(str: string): string {
 /**
  * Eg. `foo/bar/baz.json` => `baz`
  */
-function justName(filename = ''): string | undefined {
+export function justName(filename = ''): string | undefined {
 	const parts = filename.split(/[\\/]/);
 	const lastPart = parts.at(-1);
 	if (!lastPart) {
@@ -226,7 +254,7 @@ function justName(filename = ''): string | undefined {
 /**
  * Avoid appending "js" to top-level unnamed schemas
  */
-function stripExtension(filename: string): string {
+export function stripExtension(filename: string): string {
 	const lastDot = filename.lastIndexOf('.');
 	if (lastDot > 0) {
 		return filename.slice(0, lastDot);

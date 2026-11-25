@@ -1,4 +1,5 @@
 import {
+	type CustomNameResolver,
 	isPlainObject,
 	Meta,
 	type ParsedJSONSchema,
@@ -17,7 +18,7 @@ import {
 	renderType,
 	type TypeContext,
 } from './renderType';
-import { resolveName, type CustomNameResolver } from './resolveName';
+import { resolveName } from './resolveName';
 
 export type { CustomSchemaResolver } from './renderType';
 
