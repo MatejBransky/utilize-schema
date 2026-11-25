@@ -385,13 +385,15 @@
 		"introduced-clone-group": "error",
 		"diverged-clone-sibling": "error",
 
-		// Advisory design signals: reported on every run and in the audit
-		// comment, never a merge blocker. Each one is a judgement call about
-		// shape, not a defect.
-		"prop-drilling": "warn",
-		"thin-wrapper": "warn",
-		"duplicate-prop-shape": "warn",
-		"absent-component-props": "warn",
+		// Component-shape heuristics. Each one reports zero findings today, so the
+		// gate is free, and a new occurrence is a design decision the change makes
+		// on purpose: a prop forwarded unchanged through intermediate components,
+		// a component that only forwards `props`, three components with the same
+		// prop-name set, or an optional prop that no inspected caller passes.
+		"prop-drilling": "error",
+		"thin-wrapper": "error",
+		"duplicate-prop-shape": "error",
+		"absent-component-props": "error",
 
 		// A parameter that every visible call passes the same way, or an optional
 		// parameter that no call passes, is dead flexibility: the value belongs in
