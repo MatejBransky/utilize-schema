@@ -314,4 +314,14 @@ describe('code generation', () => {
 			export type Root = [(number | null)?, string?];
 		`);
 	});
+
+	test('does not treat operators inside string literals as top-level', async () => {
+		await expect(compile({ allOf: [{ const: 'a|b' }, { enum: ['a|b'] }] })).toMatchCode(ts`
+			export type Root = 'a|b';
+		`);
+
+		await expect(compile({ allOf: [{ const: 'a&b' }, { enum: ['a&b'] }] })).toMatchCode(ts`
+			export type Root = 'a&b';
+		`);
+	});
 });

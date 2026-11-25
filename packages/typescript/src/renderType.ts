@@ -773,33 +773,58 @@ function parenthesize(type: string): string {
  * element. An object or tuple body may contain unions of its own; those are
  * already delimited and must not be wrapped.
  */
+const CHARACTER_QUOTE = 1;
+const CHARACTER_OPEN = 2;
+const CHARACTER_CLOSE = 3;
+const CHARACTER_OPERATOR = 4;
+const CHARACTER_KINDS = new Uint8Array(128);
+
+CHARACTER_KINDS[34] = CHARACTER_QUOTE;
+CHARACTER_KINDS[39] = CHARACTER_QUOTE;
+CHARACTER_KINDS[123] = CHARACTER_OPEN;
+CHARACTER_KINDS[91] = CHARACTER_OPEN;
+CHARACTER_KINDS[40] = CHARACTER_OPEN;
+CHARACTER_KINDS[60] = CHARACTER_OPEN;
+CHARACTER_KINDS[125] = CHARACTER_CLOSE;
+CHARACTER_KINDS[93] = CHARACTER_CLOSE;
+CHARACTER_KINDS[41] = CHARACTER_CLOSE;
+CHARACTER_KINDS[62] = CHARACTER_CLOSE;
+CHARACTER_KINDS[124] = CHARACTER_OPERATOR;
+CHARACTER_KINDS[38] = CHARACTER_OPERATOR;
+
 function hasTopLevelOperator(type: string): boolean {
 	let depth = 0;
-	let quote: '"' | "'" | undefined;
+	let quote: number | undefined;
 
 	for (let index = 0; index < type.length; index++) {
-		const character = type[index]!;
+		const code = type.charCodeAt(index);
 
 		if (quote !== undefined) {
-			if (character === '\\') {
+			if (code === 92) {
 				index++;
-			} else if (character === quote) {
-				quote = undefined;
+			} else {
+				quote = updatedQuote(code, quote);
 			}
 
 			continue;
 		}
 
-		if (character === '"' || character === "'") {
-			quote = character;
-		} else if (character === '{' || character === '[' || character === '(' || character === '<') {
+		const kind = CHARACTER_KINDS[code];
+
+		if (kind === CHARACTER_QUOTE) {
+			quote = code;
+		} else if (kind === CHARACTER_OPEN) {
 			depth++;
-		} else if (character === '}' || character === ']' || character === ')' || character === '>') {
+		} else if (kind === CHARACTER_CLOSE) {
 			depth = Math.max(0, depth - 1);
-		} else if ((character === '|' || character === '&') && depth === 0) {
+		} else if (kind === CHARACTER_OPERATOR && depth === 0) {
 			return true;
 		}
 	}
 
 	return false;
+}
+
+function updatedQuote(code: number, quote: number): number | undefined {
+	return code === quote ? undefined : quote;
 }
