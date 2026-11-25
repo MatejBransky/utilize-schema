@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest';
 
 import type { BundleResult } from './bundle';
-import { collectProblems } from './problems';
+import { collectProblems, fileHasError } from './problems';
 
 function bundle(problems: BundleResult['problems']): BundleResult['problems'] {
 	return problems;
@@ -60,4 +60,15 @@ test('treats a missing line as distinct from line one', () => {
 	const lineOne = { ...noLine, line: 1 };
 
 	expect(collectProblems([noLine], [lineOne], [])).toEqual([noLine, lineOne]);
+});
+
+test('finds file errors without treating warnings as errors', () => {
+	const problems = [
+		{ fileId: 'root', severity: 'warning' as const, message: 'Warning' },
+		{ fileId: 'child', severity: 'error' as const, message: 'Error' },
+	];
+
+	expect(fileHasError('root', problems)).toBe(false);
+	expect(fileHasError('child', problems)).toBe(true);
+	expect(fileHasError('missing', problems)).toBe(false);
 });

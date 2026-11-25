@@ -27,6 +27,10 @@ export function collectProblems(
 	});
 }
 
+export function fileHasError(fileId: string, problems: Problem[]): boolean {
+	return problems.some((problem) => problem.fileId === fileId && problem.severity === 'error');
+}
+
 function issueText(message: string): string {
 	return message.replace(/\s+\([^()]*\)$/, '');
 }
