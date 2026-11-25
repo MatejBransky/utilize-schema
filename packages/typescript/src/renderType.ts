@@ -4,7 +4,6 @@ import {
 	Meta,
 	schemaRecord,
 	toSafeString,
-	withSourceMeta,
 } from '@utilize/json-schema';
 import type {
 	JSONSchemaTypeName,
@@ -377,7 +376,8 @@ function referenceSiblings(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObje
 		sibling[key] = record[key];
 	}
 
-	return withSourceMeta(schema, sibling);
+	// oxlint-disable-next-line quality/no-chained-type-assertions -- synthetic sibling; it has no Meta of its own
+	return sibling as unknown as ParsedJSONSchemaObject;
 }
 
 function renderLiteral(value: unknown): string {
