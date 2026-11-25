@@ -83,6 +83,41 @@ To set this up on a fork or a new repository:
 - Write or update tests for any new features or bug fixes.
 - Use TypeScript and follow the existing code style (oxlint and oxfmt).
 
+## What Fallow enforces here
+
+Fallow checks unused code, dependency hygiene, duplication, import cycles,
+complexity and package boundaries from one repository graph.
+
+Run the changed-file audit before opening a PR:
+
+```sh
+pnpm fallow:audit
+```
+
+The audit uses `gate: new-only`, so existing complexity findings do not block a
+change; findings introduced by the change do.
+
+Install the optional local pre-commit hook:
+
+```sh
+pnpm hooks:install
+```
+
+It audits staged content against `HEAD`. `git commit --no-verify` is available
+for a WIP commit that will be squashed, but it is not a way around a finding you
+disagree with. Fix the code or update `.fallowrc.jsonc` with a documented reason.
+
+The `Fallow audit` CI job runs on pull requests, uploads SARIF and fails on
+introduced findings. A strict full-repository gate is intentionally not enabled
+yet because the existing complexity backlog is still being reduced.
+
+Regenerate and check the health badge with:
+
+```sh
+pnpm fallow:badge
+pnpm check:fallow-badge
+```
+
 ## Running Tests
 
 - Run all tests:
