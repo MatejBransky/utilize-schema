@@ -46,3 +46,11 @@ export function expectDefined<T>(
 
 	return value;
 }
+
+/**
+ * Reads the keywords of a linked schema node without copying it. The parser and
+ * linker already validated the document, so the node's own keys are fields.
+ */
+export function schemaRecord(schema: object): Record<string, unknown> {
+	return schema as Record<string, unknown>;
+}

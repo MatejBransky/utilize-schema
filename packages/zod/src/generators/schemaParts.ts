@@ -1,5 +1,6 @@
 import {
 	ANNOTATION_KEYWORDS,
+	schemaRecord,
 	dialectOf,
 	isKeywordApplicable,
 	withSourceMeta,
@@ -154,7 +155,7 @@ const structuralKeywords = new Set<string>([
  * need an intersection: the outer schema already applies those.
  */
 function hasStructuralKeywords(schema: ParsedJSONSchemaObject): boolean {
-	const record = Object.fromEntries(Object.entries(schema));
+	const record = schemaRecord(schema);
 
 	for (const keyword of structuralKeywords) {
 		if (record[keyword] !== undefined) {

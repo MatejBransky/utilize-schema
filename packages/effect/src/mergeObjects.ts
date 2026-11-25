@@ -1,4 +1,4 @@
-import { isPlainObject, Meta } from '@utilize/json-schema';
+import { isPlainObject, Meta, schemaRecord } from '@utilize/json-schema';
 import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { UnresolvedReferenceError } from './errors';
@@ -226,7 +226,7 @@ function unmergeableReason(schema: ParsedJSONSchemaObject): string | undefined {
 		return 'nested references cannot be merged';
 	}
 
-	const record = Object.fromEntries(Object.entries(schema));
+	const record = schemaRecord(schema);
 	const keyword = Object.keys(schema).find(
 		(key) =>
 			record[key] !== undefined && !ANNOTATION_KEYWORDS.has(key) && !MERGEABLE_KEYWORDS.has(key)

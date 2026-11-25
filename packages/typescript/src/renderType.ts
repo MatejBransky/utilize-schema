@@ -256,7 +256,7 @@ function isOfType(
 }
 
 function hasOnlyTypeKeyword(schema: ParsedJSONSchemaObject): boolean {
-	const record = Object.fromEntries(Object.entries(schema));
+	const record = schemaRecord(schema);
 
 	for (const keyword of TYPE_KEYWORDS) {
 		if (keyword !== 'type' && record[keyword] !== undefined) {
@@ -317,7 +317,7 @@ function renderUntyped(
  * `unknown`.
  */
 function inferFamily(schema: ParsedJSONSchemaObject): 'object' | 'array' | undefined {
-	const record = Object.fromEntries(Object.entries(schema));
+	const record = schemaRecord(schema);
 
 	if (OBJECT_KEYWORDS.some((keyword) => record[keyword] !== undefined)) {
 		return 'object';
@@ -362,7 +362,7 @@ function renderReference(
  * keywords. Those siblings are intersected with the referenced type.
  */
 function referenceSiblings(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject | undefined {
-	const record = Object.fromEntries(Object.entries(schema));
+	const record = schemaRecord(schema);
 	const keys = Object.keys(schema).filter(
 		(keyword) => keyword !== '$ref' && TYPE_KEYWORDS.has(keyword) && record[keyword] !== undefined
 	);
@@ -747,7 +747,7 @@ function remainingSchema(
 }
 
 function hasRenderableKeywords(schema: ParsedJSONSchemaObject): boolean {
-	const record = Object.fromEntries(Object.entries(schema));
+	const record = schemaRecord(schema);
 
 	for (const keyword of TYPE_KEYWORDS) {
 		if (keyword === '$ref') {

@@ -2,7 +2,7 @@ import { dialectOf, isKeywordApplicable } from './dialect';
 import type { Dialect } from './dialect';
 import { withSourceMeta } from './model';
 import type { ParsedJSONSchema, ParsedJSONSchemaObject } from './model';
-import { isPlainObject } from './utils';
+import { isPlainObject, schemaRecord } from './utils';
 
 const TYPE_SPECIFIC_KEYWORDS = [
 	'properties',
@@ -73,7 +73,7 @@ export function narrowUntypedSchema(
 }
 
 function hasTypeSpecificKeywords(schema: ParsedJSONSchemaObject, dialect: Dialect): boolean {
-	const record = Object.fromEntries(Object.entries(schema));
+	const record = schemaRecord(schema);
 
 	return TYPE_SPECIFIC_KEYWORDS.some(
 		(keyword) =>

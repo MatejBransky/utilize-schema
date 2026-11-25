@@ -1,5 +1,6 @@
 import {
 	allocateName,
+	schemaRecord,
 	collectStandaloneSchemas,
 	dialectOf,
 	expectDefined,
@@ -1042,7 +1043,7 @@ function appliesTo(
 	dialect: Dialect,
 	assertFormats: boolean
 ): boolean {
-	const record = Object.fromEntries(Object.entries(schema));
+	const record = schemaRecord(schema);
 	const anyKeyword = (keywords: string[]) =>
 		keywords.some(
 			(keyword) => record[keyword] !== undefined && isKeywordApplicable(dialect, keyword)
@@ -1595,7 +1596,7 @@ function mergeableType(schema: ParsedJSONSchemaObject): MergeableType | undefine
 }
 
 function mergeTypeCandidates(schema: ParsedJSONSchemaObject): MergeableType[] {
-	const record = Object.fromEntries(Object.entries(schema));
+	const record = schemaRecord(schema);
 	const has = (keywords: string[]) => keywords.some((keyword) => record[keyword] !== undefined);
 	const candidates: MergeableType[] = [];
 
