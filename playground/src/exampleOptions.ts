@@ -18,7 +18,7 @@ export interface ExampleGeneratorOptions {
 	format?: (code: string) => string | Promise<string>;
 }
 
-export const exampleGeneratorOptions = new Map<string, ExampleGeneratorOptions>([
+const exampleGeneratorOptions = new Map<string, ExampleGeneratorOptions>([
 	[
 		'format-map',
 		{
