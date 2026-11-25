@@ -37,7 +37,7 @@ export async function run(
 ): Promise<number> {
 	return runGeneratorCli(argv, io, {
 		help: HELP,
-		flags: formatAndDialectFlags,
+		parseOptions: formatAndDialectFlags,
 		readOptions: readFormatAndDialectFlags,
 		compileSchema,
 		compileFile,
