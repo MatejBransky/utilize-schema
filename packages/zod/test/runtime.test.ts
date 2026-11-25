@@ -149,8 +149,7 @@ describe('generated schemas at runtime', () => {
 });
 
 function makeTreeSchema(options: { title?: string; childRef?: string } = {}): JSONSchema {
-	return {
-		...(options.title ? { title: options.title } : undefined),
+	const schema: JSONSchema = {
 		type: 'object',
 		properties: {
 			name: { type: 'string' },
@@ -161,6 +160,12 @@ function makeTreeSchema(options: { title?: string; childRef?: string } = {}): JS
 		},
 		required: ['name'],
 	};
+
+	if (options.title) {
+		schema.title = options.title;
+	}
+
+	return schema;
 }
 
 describe('literal values', () => {
