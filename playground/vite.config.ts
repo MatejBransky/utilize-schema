@@ -1,10 +1,12 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, join, normalize, relative, sep } from 'node:path';
+import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 
 import react from '@vitejs/plugin-react-swc';
 import { defineConfig, type Plugin } from 'vite';
+
+import { collectDeclarations } from './src/viteDeclarations.ts';
 
 const require = createRequire(import.meta.url);
 const zodRoot = dirname(require.resolve('zod/package.json'));
@@ -68,34 +70,6 @@ function effectTypesPlugin(): Plugin {
 			return `export default ${JSON.stringify(files)};`;
 		},
 	};
-}
-
-function collectDeclarations(entry: string, root: string): Record<string, string> {
-	const files: Record<string, string> = {};
-	const seen = new Set<string>();
-	const queue = [entry];
-
-	while (queue.length > 0) {
-		const file = queue.pop()!;
-
-		if (seen.has(file) || !existsSync(file)) {
-			continue;
-		}
-
-		seen.add(file);
-
-		const content = readFileSync(file, 'utf8')
-			.replace(/(from\s+["'])(\.[^"']+)\.ts(["'])/g, '$1$2.d.ts$3')
-			.replace(/(import\(\s*["'])(\.[^"']+)\.ts(["']\s*\))/g, '$1$2.d.ts$3');
-
-		files[relative(root, file).split(sep).join('/')] = content;
-
-		for (const match of content.matchAll(/(?:from|import)\s*\(?\s*["'](\.[^"']+)["']/g)) {
-			queue.push(normalize(join(dirname(file), match[1])));
-		}
-	}
-
-	return files;
 }
 
 export default defineConfig({
