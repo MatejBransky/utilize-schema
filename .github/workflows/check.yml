@@ -108,7 +108,7 @@ jobs:
 
       - name: Full Fallow health with measured coverage and type-aware pass
         run: |
-          pnpm fallow:coverage --report-only --format github-summary \
+          pnpm fallow:coverage --format github-summary \
             --type-aware --type-aware-require best-effort \
             --type-aware-project packages/json-schema/tsconfig.json \
             --type-aware-project packages/zod/tsconfig.json \

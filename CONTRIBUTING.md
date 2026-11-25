@@ -123,9 +123,9 @@ with V8 coverage, merges their Istanbul data, and publishes `fallow health
 --coverage --format github-summary` to the job summary. It also runs the
 type-aware pass in `best-effort` mode against every package tsconfig. This gives
 CRAP scores measured against real coverage and confirms dead-code candidates
-with the TypeScript checker, without slowing the PR audit or commit hook. It
-runs report-only until the measured backlog is fully cleared; the strict main
-gate is enabled separately.
+with the TypeScript checker, without slowing the PR audit or commit hook. The
+step is gating: the measured backlog is empty, so a function above the cyclomatic,
+cognitive or CRAP threshold fails the run.
 
 `rule-packs/utilize-policy.jsonc` keeps generator source browser-safe: `node:*`
 imports are errors in the generator packages outside `compile.ts` and `cli.ts`.
