@@ -24,7 +24,7 @@ export function evaluateGeneratedCode<T>(code: string, scope: Record<string, unk
 	// A boolean root schema is emitted as a bare expression.
 	if (!code.includes('export ')) {
 		// fallow-ignore-next-line security-sink -- the suite evaluates generated code in memory; no input comes from outside the test process
-		return new Function(...names, `return ${code}`)(...values) as T; // oxlint-disable-line typescript/no-unsafe-call -- generated code is executed in-memory by this test helper
+		return new Function(...names, `return ${code}`)(...values) as T;
 	}
 
 	// `stripTypeScriptTypes` removes type-only declarations but keeps the ESM
@@ -35,5 +35,5 @@ export function evaluateGeneratedCode<T>(code: string, scope: Record<string, unk
 	);
 
 	// fallow-ignore-next-line security-sink -- the suite evaluates generated code in memory; no input comes from outside the test process
-	return new Function(...names, `${javascript}\nreturn Root;`)(...values) as T; // oxlint-disable-line typescript/no-unsafe-call -- generated code is executed in-memory by this test helper
+	return new Function(...names, `${javascript}\nreturn Root;`)(...values) as T;
 }

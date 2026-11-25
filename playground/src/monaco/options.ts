@@ -1,4 +1,3 @@
-// oxlint-disable-next-line import/no-namespace -- monaco-editor only exposes a namespace
 import type * as monaco from 'monaco-editor';
 
 const FONT_FAMILY =

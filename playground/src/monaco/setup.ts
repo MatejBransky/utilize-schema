@@ -1,4 +1,3 @@
-// oxlint-disable-next-line import/no-namespace -- monaco-editor only exposes a namespace
 import * as monaco from 'monaco-editor';
 import editorWorker from 'monaco-editor/editor/editor.worker.js?worker';
 import jsonWorker from 'monaco-editor/languages/features/json/json.worker.js?worker';

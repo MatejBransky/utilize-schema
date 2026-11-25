@@ -1,6 +1,6 @@
 import type { $Refs } from '@apidevtools/json-schema-ref-parser';
 
-import { join as pathJoin, dirname } from 'node:path';
+import { join as pathJoin, dirname } from 'path';
 
 import { resolveDialect } from './dialect';
 import type { SchemaIndex } from './identifiers';

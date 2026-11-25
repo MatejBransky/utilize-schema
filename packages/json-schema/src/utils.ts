@@ -11,13 +11,14 @@ export function isPlainObject(value: unknown): value is Record<string, unknown> 
 		return false;
 	}
 
-	const proto = Object.getPrototypeOf(value);
+	const proto: object | null = Object.getPrototypeOf(value);
 	if (proto === null) {
 		return true;
 	}
 
-	// oxlint-disable-next-line typescript/no-unsafe-argument, typescript/no-unsafe-member-access -- Object.getPrototypeOf returns `any` by declaration
-	const Ctor: unknown = Object.hasOwn(proto, 'constructor') && proto.constructor;
+	const Ctor = Object.hasOwn(proto, 'constructor')
+		? (proto as { constructor?: unknown }).constructor
+		: undefined;
 	return (
 		typeof Ctor === 'function' &&
 		Ctor instanceof Ctor &&

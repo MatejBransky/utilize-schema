@@ -488,7 +488,6 @@ function collectRefSiblingIssue(
 
 /** Writes an issue to `console.warn`, for callers that want the default CLI-like output. */
 export function warnDialectIssue(issue: DialectIssue): void {
-	// oxlint-disable-next-line no-console -- this is the default CLI-like issue sink
 	console.warn(formatIssue(issue));
 }
 

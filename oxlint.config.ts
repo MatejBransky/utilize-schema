@@ -21,6 +21,29 @@ export default defineConfig({
 			files: ['playground/src/**/*.{ts,tsx}'],
 			rules: { 'react/set-state-in-effect': 'off' },
 		},
+		{
+			// The playground bundles these modules for the browser, where only the
+			// bare Node specifiers resolve to the browser shims.
+			files: ['packages/json-schema/src/linker.ts', 'playground/src/polyfills.ts'],
+			rules: { 'unicorn/prefer-node-protocol': 'off' },
+		},
+		{
+			// These modules warn about unsupported schemas on the console; that is
+			// their documented default sink for callers that do not pass a hook.
+			files: ['packages/json-schema/src/dialect.ts', 'packages/zod/src/generators/refGenerator.ts'],
+			rules: { 'no-console': 'off' },
+		},
+		{
+			// monaco-editor only exposes its API through a namespace.
+			files: ['playground/src/monaco/options.ts', 'playground/src/monaco/setup.ts'],
+			rules: { 'import/no-namespace': 'off' },
+		},
+		{
+			// The suite evaluates generated code in memory, so every call goes
+			// through `new Function`.
+			files: ['packages/test-utils/src/suite/evaluate.ts'],
+			rules: { 'typescript/no-unsafe-call': 'off' },
+		},
 	],
 	rules: {
 		// Project-specific tuning carried over from the previous configuration.
