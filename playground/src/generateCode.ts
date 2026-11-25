@@ -26,11 +26,11 @@ export interface GeneratedCode {
 
 const runtimeGenerators: Record<
 	RuntimeTargetId,
-	(root: ParsedJSONSchema, options?: ExampleGeneratorOptions, formatMode?: FormatMode) => string
+	(root: ParsedJSONSchema, formatMode: FormatMode, options?: ExampleGeneratorOptions) => string
 > = {
-	zod: (root, options, formatMode) =>
+	zod: (root, formatMode, options) =>
 		generateZod(root, { importZod: true, formatMode, ...options?.zod }),
-	effect: (root, options, formatMode) =>
+	effect: (root, formatMode, options) =>
 		generateEffect(root, { importEffect: true, formatMode, ...options?.effect }),
 };
 
@@ -38,18 +38,17 @@ const runtimeGenerators: Record<
 export function generateCodeFor(
 	target: TargetId,
 	root: ParsedJSONSchema,
-	options?: ExampleGeneratorOptions,
-	formatMode?: FormatMode
+	formatMode: FormatMode,
+	options?: ExampleGeneratorOptions
 ): GeneratedCode {
 	switch (target) {
 		case 'zod':
 		case 'effect': {
-			const runtime = generateRuntimeSource(root, target, options, formatMode);
+			const runtime = generateRuntimeSource(root, target, formatMode, options);
 
 			return { code: generatedCode(runtime), runtime };
 		}
 		case 'typescript':
-			// A type cannot check a format, so the option does not apply here.
 			return { code: generateTypeScript(root, { ...options?.typescript }), runtime: null };
 		default: {
 			const unknownTarget: never = target;
@@ -62,11 +61,11 @@ export function generateCodeFor(
 function generateRuntimeSource(
 	root: ParsedJSONSchema,
 	target: RuntimeTargetId,
-	options?: ExampleGeneratorOptions,
-	formatMode?: FormatMode
+	formatMode: FormatMode,
+	options?: ExampleGeneratorOptions
 ): RuntimeSource {
 	try {
-		const code = runtimeGenerators[target](root, options, formatMode);
+		const code = runtimeGenerators[target](root, formatMode, options);
 
 		return { status: 'generated', code, rootName: rootDeclarationName(root) };
 	} catch (error) {

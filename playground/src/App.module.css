@@ -45,11 +45,58 @@
 	min-width: var(--anchor-width);
 }
 .workspace {
+	position: relative;
 	flex: 1;
 	min-height: 0;
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-	grid-template-rows: minmax(0, 1.2fr) minmax(0, 0.8fr);
+	grid-template-rows:
+		minmax(0, var(--workspace-top, 60%))
+		minmax(0, var(--workspace-bottom, 40%));
+}
+
+.workspace[data-resizing='true'] {
+	user-select: none;
+}
+
+.workspace[data-collapsed='true'] {
+	grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.workspace[data-collapsed='true'] .splitter {
+	display: none;
+}
+
+.splitter {
+	position: absolute;
+	top: calc(var(--workspace-top, 60%) - 3px);
+	right: 0;
+	left: 0;
+	z-index: 5;
+	height: 6px;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	cursor: row-resize;
+	touch-action: none;
+}
+
+.splitter::before {
+	content: '';
+	position: absolute;
+	inset: 2px 0 auto;
+	height: 2px;
+	background: var(--ui-border);
+}
+
+.splitter:hover::before,
+.splitter:focus-visible::before,
+.workspace[data-resizing='true'] .splitter::before {
+	background: var(--ui-foreground);
+}
+
+.splitter:focus-visible {
+	outline: none;
 }
 
 .pane {
@@ -281,6 +328,52 @@
 	min-height: 0;
 }
 
+.editorFill[hidden],
+.resultBody[hidden] {
+	display: none;
+}
+
+.resultBody {
+	display: flex;
+	flex: 1;
+	min-height: 0;
+}
+
+.sectionToggle {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	gap: calc(var(--ui-spacing) * 2);
+	min-width: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.sectionToggle:hover {
+	color: var(--ui-foreground);
+}
+
+.sectionToggle:focus-visible {
+	outline: 2px solid var(--ui-foreground);
+	outline-offset: 2px;
+}
+
+.sectionToggle svg {
+	flex: none;
+	width: 0.875rem;
+	height: 0.875rem;
+	transition: transform 120ms ease;
+}
+
+.workspace[data-collapsed='true'] .sectionToggle svg {
+	transform: rotate(180deg);
+}
+
 .editorFill > div {
 	flex: 1;
 	min-width: 0;
@@ -362,6 +455,7 @@
 
 .outputHeader {
 	display: flex;
+	flex: none;
 	flex-wrap: wrap;
 	align-items: center;
 	justify-content: space-between;
@@ -375,6 +469,10 @@
 	display: flex;
 	align-items: center;
 	gap: calc(var(--ui-spacing) * 2);
+}
+
+.sectionHeader {
+	height: 2.5rem;
 }
 
 .heading {
@@ -398,14 +496,69 @@
 	border-top: 1px solid var(--ui-border);
 }
 
-.sectionHeader {
+.problemsHeader {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
 	justify-content: space-between;
 	gap: calc(var(--ui-spacing) * 2);
-	padding: calc(var(--ui-spacing) * 2) calc(var(--ui-spacing) * 3);
+	width: 100%;
+	min-height: calc(var(--ui-spacing) * 7 - 1px);
+	padding: calc(var(--ui-spacing) * 0.5) calc(var(--ui-spacing) * 3);
+	border: 0;
 	border-bottom: 1px solid var(--ui-border);
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.problemsHeader:hover {
+	background: var(--ui-muted);
+}
+
+.problemsHeader:focus-visible {
+	outline: 2px solid var(--ui-foreground);
+	outline-offset: -2px;
+}
+
+.problemsSummary {
+	display: inline-flex;
+	align-items: center;
+	gap: calc(var(--ui-spacing) * 2);
+}
+
+.problemsSummary svg {
+	flex: none;
+	width: 0.875rem;
+	height: 0.875rem;
+	transition: transform 120ms ease;
+}
+
+.problems[data-collapsed='true'] .problemsSummary svg {
+	transform: rotate(-90deg);
+}
+
+.problems[data-collapsed='true'] {
+	flex: none;
+	min-height: 0;
+	max-height: none;
+}
+
+.problems[data-collapsed='true'] .problemsHeader {
+	border-bottom: 0;
+}
+
+.problemsBody {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-height: 0;
+}
+
+.problemsBody[hidden] {
+	display: none;
 }
 
 .counts {
@@ -491,6 +644,18 @@
 	background: rgb(0 0 0 / 0.72);
 }
 
+.dataDropOverlay {
+	position: absolute;
+	inset: 0;
+	z-index: 10;
+	display: flex;
+	background: rgb(0 0 0 / 0.72);
+}
+
+.dataDropOverlay .dropTarget {
+	flex: 1;
+}
+
 .dropTarget {
 	display: flex;
 	flex-direction: column;
@@ -540,6 +705,14 @@
 		grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.6fr) minmax(0, 0.6fr);
 	}
 
+	.workspace[data-collapsed='true'] {
+		grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.6fr) minmax(0, 0.6fr);
+	}
+
+	.splitter {
+		display: none;
+	}
+
 	.schemaPane,
 	.dataPane {
 		border-right: 0;
@@ -569,7 +742,8 @@
 		min-height: 100%;
 	}
 
-	.workspace {
+	.workspace,
+	.workspace[data-collapsed='true'] {
 		flex: none;
 		grid-template-rows: none;
 	}

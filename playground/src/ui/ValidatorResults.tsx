@@ -2,7 +2,6 @@ import { targets, type TargetId } from '../targets';
 import type { ValidatorReport } from '../validator/protocol';
 import type { ValidationState } from '../validator/useValidatorResults';
 
-import appStyles from '../App.module.css';
 import styles from './ValidatorResults.module.css';
 
 export interface ValidatorResultsProps {
@@ -11,12 +10,6 @@ export interface ValidatorResultsProps {
 }
 
 type CardStatus = 'running' | 'valid' | 'invalid';
-
-const STATUS_LABELS: Record<CardStatus, string> = {
-	running: 'Running…',
-	valid: 'Valid',
-	invalid: 'Invalid',
-};
 
 export function ValidatorResults({ target, state }: ValidatorResultsProps) {
 	if (state.status === 'unavailable') {
@@ -58,19 +51,14 @@ interface ValidatorCardProps {
 
 function ValidatorCard({ id, name, state }: ValidatorCardProps) {
 	const result = state.status === 'ready' ? state.result : undefined;
-	const status = statusOf(result);
 
 	return (
 		<section
 			className={styles.card}
 			aria-label={`${name} validation result`}
 			data-testid={`result-${id}`}
-			data-status={status}
+			data-status={statusOf(result)}
 		>
-			<div className={appStyles.sectionHeader}>
-				<h3 className={styles.name}>{name}</h3>
-				<span className={styles.badge}>{STATUS_LABELS[status]}</span>
-			</div>
 			<CardBody result={result} />
 		</section>
 	);

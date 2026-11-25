@@ -213,7 +213,7 @@ export const examples: Example[] = [
 				port: { type: 'integer' },
 			},
 		},
-		[valid(8080), invalid(0)]
+		[valid(443), invalid(0)]
 	),
 	single(
 		'all-of-additional-properties',
@@ -224,7 +224,7 @@ export const examples: Example[] = [
 			allOf: [{ properties: { label: {} } }],
 			additionalProperties: { type: 'boolean' },
 		},
-		[valid({ label: true, enabled: false }), invalid({ label: 'release', enabled: true })]
+		[valid({ active: true }), invalid({ active: 'yes' })]
 	),
 	single(
 		'any-of-base',
@@ -235,7 +235,7 @@ export const examples: Example[] = [
 			type: 'string',
 			anyOf: [{ maxLength: 2 }, { minLength: 4 }],
 		},
-		[valid('ab'), invalid('abc')]
+		[valid('ok'), invalid('abc')]
 	),
 	single(
 		'untyped-contains',
@@ -245,7 +245,7 @@ export const examples: Example[] = [
 			title: 'Tags',
 			contains: { const: 'featured' },
 		},
-		[valid(['json', 'featured']), invalid(['json'])]
+		[valid(['featured', 'json']), invalid(['json'])]
 	),
 	single(
 		'all-of',
@@ -410,7 +410,7 @@ export const examples: Example[] = [
 			minContains: 2,
 			maxContains: 3,
 		},
-		[valid(['featured', 'featured']), invalid(['featured'])]
+		[valid(['featured', 'featured', 'json']), invalid(['featured', 'json'])]
 	),
 	single(
 		'unicode-pattern',
@@ -421,7 +421,7 @@ export const examples: Example[] = [
 			type: 'string',
 			pattern: '^\\p{Letter}+$',
 		},
-		[valid('Héllo'), invalid('abc123')]
+		[valid('Český'), invalid('abc123')]
 	),
 	single(
 		'not',
@@ -445,7 +445,7 @@ export const examples: Example[] = [
 			},
 			$ref: '#/definitions/name',
 		},
-		[valid('Ada'), invalid(42)]
+		[valid('Ada Lovelace'), invalid(42)]
 	),
 	single(
 		'local-ref',
@@ -620,8 +620,8 @@ export const examples: Example[] = [
 			valid({
 				email: 'ada@example.com',
 				website: 'https://example.com',
-				id: '3f2504e0-4f89-11d3-9a0c-0305e82c3301',
-				createdAt: '2024-01-01T00:00:00Z',
+				id: '123e4567-e89b-12d3-a456-426614174000',
+				createdAt: '2026-11-21T10:00:00Z',
 			}),
 			invalid({ email: 'not-an-email' }),
 		]

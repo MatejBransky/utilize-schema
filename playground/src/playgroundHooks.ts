@@ -29,6 +29,8 @@ import {
 import { targets, type TargetId } from './targets';
 import { loadColorMode, THEME_STORAGE_KEY, type ColorMode } from './theme';
 import { useFileDrop } from './useFileDrop';
+import { useDataDrop } from './useDataDrop';
+import { useWorkspaceLayout } from './useWorkspaceLayout';
 import type { UrlState } from './urlState';
 import { validateSchemas } from './validation';
 import { useValidatorResults } from './validator/useValidatorResults';
@@ -66,6 +68,11 @@ export function usePlayground() {
 	);
 	const theme = useTheme();
 	const editors = useEditorNavigation(workspace.setActiveId);
+	const layout = useWorkspaceLayout();
+	const dataDrop = useDataDrop({
+		collapsed: layout.dataCollapsed,
+		onData: testData.updateData,
+	});
 	const validation = useValidatorResults(
 		settings.target,
 		generation.runtime,
@@ -128,6 +135,8 @@ export function usePlayground() {
 		...feedback,
 		...testData,
 		validation,
+		layout,
+		dataDrop,
 		activeExample,
 		activeCase,
 		applyExample,
@@ -198,7 +207,18 @@ function useGeneratorSettings(initial: UrlState) {
 function useTestData(initial: string) {
 	const [data, setData] = useState(initial);
 
-	return { data, setData };
+	function updateData(content: string) {
+		// The editor also reports programmatic value changes (for example when an
+		// example loads); those must keep the example URL intact.
+		if (content === data) {
+			return;
+		}
+
+		clearExampleUrl();
+		setData(content);
+	}
+
+	return { data, setData, updateData };
 }
 
 function useSchemaFiles(initialFiles: SchemaFile[], settings: SettingsSetters) {
@@ -424,7 +444,7 @@ function useGeneration(
 					});
 
 					const generatorOptions = exampleId ? exampleGeneratorOptions[exampleId] : undefined;
-					const generated = generateCodeFor(target, root, generatorOptions, formatMode);
+					const generated = generateCodeFor(target, root, formatMode, generatorOptions);
 
 					nextRuntime = generated.runtime;
 

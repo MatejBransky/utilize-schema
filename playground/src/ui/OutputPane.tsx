@@ -10,6 +10,7 @@ import {
 import type { Problem, SchemaFile } from '../bundle';
 import { MonacoEditor } from '../monaco/MonacoEditor';
 import type { Playground } from '../playgroundHooks';
+import { ChevronDownIcon } from './icons';
 
 import styles from '../App.module.css';
 
@@ -25,6 +26,7 @@ export type OutputPaneModel = Pick<
 	| 'codeEditorRef'
 	| 'copyCode'
 	| 'selectProblem'
+	| 'layout'
 >;
 
 export interface OutputPaneProps {
@@ -43,6 +45,7 @@ export function OutputPane({ playground }: OutputPaneProps) {
 		codeEditorRef,
 		copyCode: onCopyCode,
 		selectProblem: onSelectProblem,
+		layout,
 	} = playground;
 	const errorCount = problems.filter((problem) => problem.severity === 'error').length;
 	const warningCount = problems.length - errorCount;
@@ -70,14 +73,33 @@ export function OutputPane({ playground }: OutputPaneProps) {
 				readOnly
 			/>
 
-			<div className={styles.problems} data-testid="problems">
-				<div className={styles.sectionHeader}>
-					<h2 className={styles.heading}>Validation</h2>
-					<span className={styles.counts} data-severity={errorCount > 0 ? 'error' : 'ok'}>
-						{errorCount} errors, {warningCount} warnings
+			<div
+				className={styles.problems}
+				data-testid="problems"
+				data-collapsed={layout.problemsCollapsed ? 'true' : undefined}
+			>
+				<button
+					type="button"
+					className={styles.problemsHeader}
+					aria-expanded={!layout.problemsCollapsed}
+					aria-controls="validation-problems"
+					onClick={layout.toggleProblemsCollapsed}
+				>
+					<span className={styles.heading}>Validation</span>
+					<span className={styles.problemsSummary}>
+						<span className={styles.counts} data-severity={errorCount > 0 ? 'error' : 'ok'}>
+							{errorCount} errors, {warningCount} warnings
+						</span>
+						<ChevronDownIcon />
 					</span>
+				</button>
+				<div
+					id="validation-problems"
+					className={styles.problemsBody}
+					hidden={layout.problemsCollapsed}
+				>
+					<ProblemList problems={problems} files={files} onSelect={onSelectProblem} />
 				</div>
-				<ProblemList problems={problems} files={files} onSelect={onSelectProblem} />
 			</div>
 		</section>
 	);

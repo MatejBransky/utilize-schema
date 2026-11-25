@@ -1,4 +1,5 @@
 import { createAgent } from '@ui-sdk/react/agent';
+import { page } from 'vitest/browser';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 
@@ -15,7 +16,7 @@ vi.mock('./monaco/MonacoEditor', async () => {
 	const { forwardRef, useImperativeHandle } = await import('react');
 
 	const MonacoEditor = forwardRef(function MonacoEditorMock(
-		{ testId }: { testId?: string },
+		{ testId, value }: { testId?: string; value?: string },
 		ref: import('react').Ref<unknown>
 	) {
 		useImperativeHandle(ref, () => ({
@@ -23,10 +24,10 @@ vi.mock('./monaco/MonacoEditor', async () => {
 			autoFormat: async () => {},
 			focus() {},
 			focusAt() {},
-			getValue: () => '',
+			getValue: () => value ?? '',
 		}));
 
-		return <div data-testid={testId} />;
+		return <div data-testid={testId} data-value={value} />;
 	});
 
 	return { MonacoEditor };
@@ -162,6 +163,23 @@ test('dropping files on the add target keeps the open files', async () => {
 	expect(tabNames().at(-1)).toContain('extra.json');
 });
 
+test('dropping a JSON file on the test data editor replaces the test data', async () => {
+	const screen = await render(<App />);
+	const editor = document.querySelector('[data-testid="data-editor"]')!;
+	const pane = editor.closest('section')!;
+	const content = JSON.stringify({ dropped: true }, null, 2);
+	const dropped = [{ name: 'payload.json', content }];
+
+	pane.dispatchEvent(fileDrag('dragenter', dropped));
+
+	await expect.element(screen.getByText('Drop a JSON document')).toBeVisible();
+
+	pane.dispatchEvent(fileDrag('drop', dropped));
+
+	await vi.waitFor(() => expect(editor.getAttribute('data-value')).toBe(content));
+	await expect.element(screen.getByText('Drop a JSON document')).not.toBeInTheDocument();
+});
+
 test('the copy button resets when the schema changes', async () => {
 	Object.defineProperty(navigator, 'clipboard', {
 		configurable: true,
@@ -294,6 +312,27 @@ test('the color mode button cycles through auto, light and dark', async () => {
 	await vi.waitFor(() => expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('auto'));
 });
 
+test('the schema and test data sections can be resized', async () => {
+	await page.viewport(1200, 800);
+
+	try {
+		const screen = await render(<App />);
+		const separator = screen
+			.getByRole('separator', { name: 'Resize schema and test data sections' })
+			.element();
+
+		expect(separator.getAttribute('aria-valuenow')).toBe('60');
+
+		separator.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('58'));
+
+		separator.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('80'));
+	} finally {
+		await page.viewport(414, 896);
+	}
+});
+
 test('the generator select offers only implemented generators', async () => {
 	const screen = await render(<App />);
 
@@ -367,6 +406,86 @@ test('an agent can switch the generator', async () => {
 	await vi.waitFor(() =>
 		expect(new URL(location.href).searchParams.get('generator')).toBe('effect')
 	);
+});
+
+test('the validation panel can be collapsed', async () => {
+	const screen = await render(<App />);
+	const toggle = screen.getByRole('button', { name: /Validation/ });
+	const body = document.querySelector('#validation-problems');
+
+	expect(toggle.element().getAttribute('aria-expanded')).toBe('true');
+	expect(body?.hasAttribute('hidden')).toBe(false);
+
+	await toggle.click();
+
+	await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('false'));
+	expect(body?.hasAttribute('hidden')).toBe(true);
+
+	await toggle.click();
+
+	await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('true'));
+	expect(body?.hasAttribute('hidden')).toBe(false);
+});
+
+test('the test data section collapses to its header', async () => {
+	await page.viewport(1200, 800);
+
+	try {
+		const screen = await render(<App />);
+		const toggle = screen.getByRole('button', { name: 'Test data' });
+		const editor = document.querySelector('#test-data-editor');
+		const results = document.querySelector('#validator-results-panel');
+
+		expect(toggle.element().getAttribute('aria-expanded')).toBe('true');
+		expect(editor?.hasAttribute('hidden')).toBe(false);
+		expect(results?.hasAttribute('hidden')).toBe(false);
+
+		await toggle.click();
+
+		await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('false'));
+		expect(editor?.hasAttribute('hidden')).toBe(true);
+		expect(results?.hasAttribute('hidden')).toBe(true);
+
+		await toggle.click();
+
+		await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('true'));
+		expect(editor?.hasAttribute('hidden')).toBe(false);
+		expect(results?.hasAttribute('hidden')).toBe(false);
+	} finally {
+		await page.viewport(414, 896);
+	}
+});
+
+test('the test data collapse control is hidden on narrow screens', async () => {
+	const screen = await render(<App />);
+
+	expect(screen.getByRole('button', { name: 'Test data' }).query()).toBeNull();
+});
+
+test('dropping a JSON file on a collapsed test data header is ignored', async () => {
+	await page.viewport(1200, 800);
+
+	try {
+		const screen = await render(<App />);
+		const editor = document.querySelector('[data-testid="data-editor"]')!;
+		const pane = editor.closest('section')!;
+		const before = editor.getAttribute('data-value');
+
+		await screen.getByRole('button', { name: 'Test data' }).click();
+		await vi.waitFor(() =>
+			expect(document.querySelector('#test-data-editor')?.hasAttribute('hidden')).toBe(true)
+		);
+
+		pane.dispatchEvent(
+			fileDrag('dragenter', [{ name: 'payload.json', content: '{"changed":true}' }])
+		);
+		pane.dispatchEvent(fileDrag('drop', [{ name: 'payload.json', content: '{"changed":true}' }]));
+		await new Promise((resolve) => setTimeout(resolve, 250));
+
+		expect(editor.getAttribute('data-value')).toBe(before);
+	} finally {
+		await page.viewport(414, 896);
+	}
 });
 
 test('the keyword policy shows foreign keywords as errors or warnings', async () => {
@@ -593,9 +712,11 @@ test('switching examples loads their test data', async () => {
 
 	await vi.waitFor(() => expect(savedData()).toBe('"green"'));
 	await vi.waitFor(() => expect(resultStatus('zod')).toBe('valid'), { timeout: 15_000 });
+	await vi.waitFor(() => expect(new URL(location.href).searchParams.get('example')).toBe('enum'));
 
 	await screen.getByRole('button', { name: 'Invalid' }).click();
 
 	await vi.waitFor(() => expect(resultStatus('zod')).toBe('invalid'), { timeout: 15_000 });
 	expect(savedData()).toBe('"purple"');
+	await vi.waitFor(() => expect(new URL(location.href).searchParams.has('example')).toBe(false));
 });

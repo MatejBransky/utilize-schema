@@ -39,6 +39,7 @@ export type SchemaPaneModel = Pick<
 	| 'updateFile'
 	| 'setCursor'
 	| 'drop'
+	| 'dataDrop'
 >;
 
 export interface SchemaPaneProps {
@@ -68,6 +69,7 @@ export function SchemaPane({ playground, active }: SchemaPaneProps) {
 		updateFile: onUpdateFile,
 		setCursor: onCursorChange,
 		drop: onDrop,
+		dataDrop,
 	} = playground;
 	return (
 		<section className={`${styles.pane} ${styles.schemaPane}`}>
@@ -106,7 +108,9 @@ export function SchemaPane({ playground, active }: SchemaPaneProps) {
 				/>
 				<SchemaStatusBar active={active} cursor={cursor} schemaEditorRef={schemaEditorRef} />
 			</Tabs>
-			{dragging ? <DropOverlay activeMode={activeMode} onDrop={onDrop} /> : null}
+			{dragging && !dataDrop.dragging ? (
+				<DropOverlay activeMode={activeMode} onDrop={onDrop} />
+			) : null}
 		</section>
 	);
 }

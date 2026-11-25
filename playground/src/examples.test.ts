@@ -14,6 +14,7 @@ import './polyfills';
 import { buildBundle, parseJsonFile } from './bundle';
 import { exampleGeneratorOptions, type ExampleGeneratorOptions } from './exampleOptions';
 import { examples, type Example } from './examples';
+import { defaultFormatMode } from './formatMode';
 import { generateCodeFor } from './generateCode';
 import {
 	loadModule,
@@ -52,6 +53,14 @@ const generators: Array<{
 		generate: (root, options) => generateTypeScript(root, { ...options?.typescript }),
 	},
 ];
+
+/**
+ * These tests generate code and import the generated module, which Vite
+ * transforms on demand. That takes a few milliseconds locally, but the shared
+ * CI runner runs the browser project at the same time, so the default 5 s
+ * budget has timed out there.
+ */
+const runtimeTestTimeout = 30_000;
 
 async function parseExample(example: Example) {
 	const parsed = example.files.map(parseJsonFile);
@@ -98,38 +107,44 @@ for (const example of examples) {
 		});
 	}
 
-	test(`example "${example.name}" accepts and rejects its test data`, async () => {
-		expect(example.cases.length).toBeGreaterThan(0);
+	test(
+		`example "${example.name}" accepts and rejects its test data`,
+		async () => {
+			expect(example.cases.length).toBeGreaterThan(0);
 
-		for (const target of ['zod', 'effect'] as const) {
-			const { runtime } = generateCodeFor(
-				target,
-				await parseExample(example),
-				exampleGeneratorOptions[example.id]
-			);
+			for (const target of ['zod', 'effect'] as const) {
+				const { runtime } = generateCodeFor(
+					target,
+					await parseExample(example),
+					defaultFormatMode,
+					exampleGeneratorOptions[example.id]
+				);
 
-			if (!runtime || runtime.status !== 'generated' || !runtime.rootName) {
-				throw new Error(`${example.name}: the ${target} validator was not generated.`);
+				if (!runtime || runtime.status !== 'generated' || !runtime.rootName) {
+					throw new Error(`${example.name}: the ${target} validator was not generated.`);
+				}
+
+				const module = await importModule(runtime.code);
+				const schema = rootValidator(module, runtime.rootName);
+				const validate = target === 'zod' ? validateWithZod : validateWithEffect;
+
+				for (const item of example.cases) {
+					const result = validate(schema, item.data);
+					const expected = item.expect === 'valid';
+
+					expect(result.ok, `${example.name} / ${item.label} (${target})`).toBe(expected);
+				}
 			}
-
-			const module = await importModule(runtime.code);
-			const schema = rootValidator(module, runtime.rootName);
-			const validate = target === 'zod' ? validateWithZod : validateWithEffect;
-
-			for (const item of example.cases) {
-				const result = validate(schema, item.data);
-				const expected = item.expect === 'valid';
-
-				expect(result.ok, `${example.name} / ${item.label} (${target})`).toBe(expected);
-			}
-		}
-	});
+		},
+		runtimeTestTimeout
+	);
 
 	test(`example "${example.name}" runs its test data the way the playground does`, async () => {
 		for (const target of ['zod', 'effect'] as const) {
 			const { runtime: source } = generateCodeFor(
 				target,
 				await parseExample(example),
+				defaultFormatMode,
 				exampleGeneratorOptions[example.id]
 			);
 

@@ -1,0 +1,142 @@
+import {
+	type CSSProperties,
+	type KeyboardEvent as ReactKeyboardEvent,
+	type PointerEvent as ReactPointerEvent,
+	useEffect,
+	useRef,
+	useState,
+} from 'react';
+
+/** The top row starts at 60 % of the workspace and can move between 20 % and 80 %. */
+const DEFAULT_SPLIT = 0.6;
+export const MIN_SPLIT = 0.2;
+export const MAX_SPLIT = 0.8;
+
+const SPLIT_STEP = 0.02;
+const LARGE_SPLIT_STEP = 0.1;
+const NARROW_LAYOUT = '(max-width: 900px)';
+
+interface SplitterHandlers {
+	onPointerDown(event: ReactPointerEvent<HTMLElement>): void;
+	onPointerMove(event: ReactPointerEvent<HTMLElement>): void;
+	onPointerUp(event: ReactPointerEvent<HTMLElement>): void;
+	onPointerCancel(event: ReactPointerEvent<HTMLElement>): void;
+	onLostPointerCapture(): void;
+	onKeyDown(event: ReactKeyboardEvent<HTMLElement>): void;
+}
+
+/**
+ * The workspace layout: the split between the schema row and the test data
+ * row, and the two independently collapsible sections. The test data row only
+ * collapses on wide screens, where both rows are visible at once.
+ */
+export function useWorkspaceLayout() {
+	const [split, setSplit] = useState(DEFAULT_SPLIT);
+	const [resizing, setResizing] = useState(false);
+	const [problemsCollapsed, setProblemsCollapsed] = useState(false);
+	const [dataCollapsed, setDataCollapsed] = useState(false);
+	const [narrowLayout, setNarrowLayout] = useState(() => window.matchMedia(NARROW_LAYOUT).matches);
+	const workspaceRef = useRef<HTMLElement>(null);
+
+	useEffect(() => {
+		const query = window.matchMedia(NARROW_LAYOUT);
+		const syncLayout = () => {
+			setNarrowLayout(query.matches);
+
+			if (query.matches) {
+				setDataCollapsed(false);
+			}
+		};
+
+		syncLayout();
+		query.addEventListener('change', syncLayout);
+
+		return () => query.removeEventListener('change', syncLayout);
+	}, []);
+
+	function resizeWorkspace(clientY: number) {
+		const rect = workspaceRef.current?.getBoundingClientRect();
+
+		if (!rect || rect.height === 0) {
+			return;
+		}
+
+		setSplit(clampSplit((clientY - rect.top) / rect.height));
+	}
+
+	function startResizing(event: ReactPointerEvent<HTMLElement>) {
+		if (event.button !== 0) {
+			return;
+		}
+
+		event.preventDefault();
+		event.currentTarget.setPointerCapture(event.pointerId);
+		setResizing(true);
+	}
+
+	function moveSplitter(event: ReactPointerEvent<HTMLElement>) {
+		if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+			resizeWorkspace(event.clientY);
+		}
+	}
+
+	function stopResizing(event: ReactPointerEvent<HTMLElement>) {
+		if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+			event.currentTarget.releasePointerCapture(event.pointerId);
+		}
+
+		setResizing(false);
+	}
+
+	function resizeWithKeyboard(event: ReactKeyboardEvent<HTMLElement>) {
+		const step = event.shiftKey ? LARGE_SPLIT_STEP : SPLIT_STEP;
+
+		switch (event.key) {
+			case 'ArrowUp':
+				setSplit((value) => clampSplit(value - step));
+				break;
+			case 'ArrowDown':
+				setSplit((value) => clampSplit(value + step));
+				break;
+			case 'Home':
+				setSplit(MIN_SPLIT);
+				break;
+			case 'End':
+				setSplit(MAX_SPLIT);
+				break;
+			default:
+				return;
+		}
+
+		event.preventDefault();
+	}
+
+	const style = {
+		'--workspace-top': `${split * 100}%`,
+		'--workspace-bottom': `${(1 - split) * 100}%`,
+	} as CSSProperties;
+
+	return {
+		split,
+		resizing,
+		dataCollapsed,
+		problemsCollapsed,
+		narrowLayout,
+		workspaceRef,
+		style,
+		toggleDataCollapsed: () => setDataCollapsed((collapsed) => !collapsed),
+		toggleProblemsCollapsed: () => setProblemsCollapsed((collapsed) => !collapsed),
+		splitter: {
+			onPointerDown: startResizing,
+			onPointerMove: moveSplitter,
+			onPointerUp: stopResizing,
+			onPointerCancel: stopResizing,
+			onLostPointerCapture: () => setResizing(false),
+			onKeyDown: resizeWithKeyboard,
+		} satisfies SplitterHandlers,
+	};
+}
+
+function clampSplit(value: number): number {
+	return Math.min(MAX_SPLIT, Math.max(MIN_SPLIT, value));
+}

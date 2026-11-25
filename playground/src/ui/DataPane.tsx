@@ -3,12 +3,13 @@ import { Button } from '@ui-sdk/react/button';
 import { exampleById, exampleCaseForData } from '../examples';
 import { MonacoEditor } from '../monaco/MonacoEditor';
 import type { Playground } from '../playgroundHooks';
+import { ChevronDownIcon } from './icons';
 
 import styles from '../App.module.css';
 
 export type DataPaneModel = Pick<
 	Playground,
-	'exampleId' | 'data' | 'setData' | 'monacoTheme' | 'dataEditorRef'
+	'exampleId' | 'data' | 'updateData' | 'monacoTheme' | 'dataEditorRef' | 'layout' | 'dataDrop'
 >;
 
 export interface DataPaneProps {
@@ -16,13 +17,39 @@ export interface DataPaneProps {
 }
 
 export function DataPane({ playground }: DataPaneProps) {
-	const { exampleId, data, setData: onDataChange, monacoTheme, dataEditorRef } = playground;
+	const {
+		exampleId,
+		data,
+		updateData: onDataChange,
+		monacoTheme,
+		dataEditorRef,
+		layout,
+		dataDrop,
+	} = playground;
 	const example = exampleById(exampleId);
 	const activeCase = example ? exampleCaseForData(example, data) : undefined;
+	const collapsed = layout.dataCollapsed;
 	return (
-		<section className={`${styles.pane} ${styles.dataPane}`}>
-			<div className={styles.outputHeader}>
-				<h2 className={styles.heading}>Test data</h2>
+		<section
+			className={`${styles.pane} ${styles.dataPane}`}
+			data-collapsed={collapsed ? 'true' : undefined}
+			{...dataDrop.handlers}
+		>
+			<div className={`${styles.outputHeader} ${styles.sectionHeader}`}>
+				{layout.narrowLayout ? (
+					<span className={styles.heading}>Test data</span>
+				) : (
+					<button
+						type="button"
+						className={styles.sectionToggle}
+						aria-expanded={!collapsed}
+						aria-controls="test-data-editor"
+						onClick={layout.toggleDataCollapsed}
+					>
+						<span className={styles.heading}>Test data</span>
+						<ChevronDownIcon />
+					</button>
+				)}
 				<div className={styles.outputActions}>
 					{example ? (
 						<div className={styles.cases} aria-label="Example test data">
@@ -45,7 +72,7 @@ export function DataPane({ playground }: DataPaneProps) {
 					</Button>
 				</div>
 			</div>
-			<div className={styles.editorFill}>
+			<div id="test-data-editor" className={styles.editorFill} hidden={collapsed}>
 				<MonacoEditor
 					ref={dataEditorRef}
 					testId="data-editor"
@@ -56,6 +83,15 @@ export function DataPane({ playground }: DataPaneProps) {
 					onChange={onDataChange}
 				/>
 			</div>
+			{dataDrop.dragging && !collapsed ? (
+				<div className={styles.dataDropOverlay} role="group" aria-label="Drop JSON test data">
+					<div className={styles.dropTarget} data-active="true">
+						<span className={styles.dropKicker}>Test data</span>
+						<h2 className={styles.dropTitle}>Drop a JSON document</h2>
+						<p className={styles.dropText}>Its content replaces the current test data.</p>
+					</div>
+				</div>
+			) : null}
 		</section>
 	);
 }
