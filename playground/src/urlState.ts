@@ -29,7 +29,11 @@ export function readGeneratorParam(url: URL): TargetId | null {
 export function readKeywordPolicyParam(url: URL): KeywordPolicy | null {
 	const value = url.searchParams.get(KEYWORD_POLICY_PARAM);
 
-	return value === 'error' || value === 'warn' || value === 'ignore' ? value : null;
+	return isKeywordPolicy(value) ? value : null;
+}
+
+export function isKeywordPolicy(value: unknown): value is KeywordPolicy {
+	return value === 'error' || value === 'warn' || value === 'ignore';
 }
 
 export function readFormatModeParam(url: URL): FormatMode | null {
