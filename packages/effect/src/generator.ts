@@ -846,7 +846,7 @@ function additionalChecksFor(
 	keys: string[],
 	additional: ParsedJSONSchemaObject['additionalProperties'],
 	context: Context,
-	patterns: PatternEntry[] = []
+	patterns: PatternEntry[]
 ): string[] {
 	if (additional === undefined || additional === true) {
 		return [];

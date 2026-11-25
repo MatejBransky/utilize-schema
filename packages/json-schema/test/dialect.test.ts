@@ -5,7 +5,6 @@ import {
 	DialectError,
 	Meta,
 	detectDialect,
-	detectSchemaVersion,
 	dialectOf,
 	type JSONSchema,
 	normalizeSchema,
@@ -30,12 +29,6 @@ describe('detectDialect', () => {
 		['https://json-schema.org/draft/2020-12/schema', '2020-12'],
 	] as const)('maps %s to %s', (uri, id) => {
 		expect(detectDialect({ $schema: uri })?.dialect.id).toBe(id);
-	});
-
-	test('keeps the deprecated version helper working', () => {
-		expect(detectSchemaVersion({ $schema: twentyTwentyTwelve })).toBe('2020-12');
-		expect(detectSchemaVersion({})).toBe('draft-07');
-		expect(detectSchemaVersion({}, '2019-09')).toBe('2019-09');
 	});
 
 	test('returns undefined for an unknown meta-schema', () => {

@@ -274,7 +274,7 @@ function appendPropertyNamesCheck(
           const result = ${propertyNames}.safeParse(key);
 
           if (!result.success) {
-            ${issueBlock('result', 'key')}
+            ${issueBlock('key')}
           }
         }
       }
@@ -328,11 +328,11 @@ function appendDependencyChecks(
 	}
 }
 
-function checkBlock(expression: string, pathPrefix?: string): string {
+function checkBlock(expression: string): string {
 	return ts`const result = ${expression}.safeParse(value);
 
         if (!result.success) {
-          ${issueBlock('result', pathPrefix)}
+          ${issueBlock()}
         }`;
 }
 
@@ -340,10 +340,10 @@ function checkBlock(expression: string, pathPrefix?: string): string {
  * Emits the loop that copies Zod issues into the surrounding `superRefine`
  * context. `pathPrefix` narrows issues to a nested key.
  */
-function issueBlock(resultName: string, pathPrefix?: string): string {
+function issueBlock(pathPrefix?: string): string {
 	const path = pathPrefix ? `[${pathPrefix}, ...issue.path]` : '[...issue.path]';
 
-	return ts`for (const issue of ${resultName}.error.issues) {
+	return ts`for (const issue of result.error.issues) {
       ctx.addIssue({
         code: 'custom',
         message: issue.message,
