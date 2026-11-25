@@ -11,7 +11,7 @@ import type { GeneratorContext } from './generators/types';
 import { inferTypeKeywords } from './inferTypes';
 import { ts } from './utils';
 
-type Generate = (schema: ParsedJSONSchema, context: GeneratorContext) => string;
+export type Generate = (schema: ParsedJSONSchema, context: GeneratorContext) => string;
 
 /**
  * Guards for the types `inferTypeKeywords` can infer. Keywords on an untyped

@@ -8,7 +8,7 @@ import { type DialectIssue, type DialectOptions, formatIssue } from '../dialect'
 import type { JSONSchema } from '../model';
 import { parseSchemaSource } from './compile';
 
-interface Writable {
+export interface Writable {
 	write(chunk: string): unknown;
 }
 

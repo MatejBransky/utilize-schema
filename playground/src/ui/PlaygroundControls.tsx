@@ -21,7 +21,7 @@ const keywordPolicyOptions: Array<{ value: KeywordPolicy; label: string; hint: s
 	{ value: 'ignore', label: 'Ignore', hint: 'Do not report them' },
 ];
 
-type PlaygroundControlsModel = Pick<
+export type PlaygroundControlsModel = Pick<
 	Playground,
 	| 'target'
 	| 'keywordPolicy'
@@ -35,7 +35,7 @@ type PlaygroundControlsModel = Pick<
 	| 'applyFormatMode'
 >;
 
-interface PlaygroundControlsProps {
+export interface PlaygroundControlsProps {
 	playground: PlaygroundControlsModel;
 }
 

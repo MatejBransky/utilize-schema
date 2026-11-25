@@ -16,7 +16,7 @@ export interface BooleanDefinition {
 	path: Array<string | number>;
 }
 
-interface StandaloneSchemasResult extends StandaloneSchemas {
+export interface StandaloneSchemasResult extends StandaloneSchemas {
 	booleanDefinitions: BooleanDefinition[];
 }
 

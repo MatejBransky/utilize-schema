@@ -161,5 +161,8 @@
 
 		// Rule-pack policy is repository law, not an advisory.
 		"policy-violation": "error",
+
+		// Every exported signature must be nameable by consumers.
+		"private-type-leaks": "error",
 	},
 }

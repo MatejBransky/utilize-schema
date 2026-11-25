@@ -415,7 +415,7 @@ export function isKeywordApplicable(dialect: Dialect, keyword: string): boolean 
 	return dialect.keywords.has(keyword);
 }
 
-type KeywordIssue = Pick<DialectIssue, 'kind' | 'keyword' | 'message'>;
+export type KeywordIssue = Pick<DialectIssue, 'kind' | 'keyword' | 'message'>;
 
 /** Lists every keyword of a node that does not belong to the dialect. */
 export function keywordIssues(schema: Record<string, unknown>, dialect: Dialect): KeywordIssue[] {

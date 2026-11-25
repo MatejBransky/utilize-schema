@@ -17,7 +17,7 @@ interface Position {
 	column: number;
 }
 
-type SchemaPaneModel = Pick<
+export type SchemaPaneModel = Pick<
 	Playground,
 	| 'files'
 	| 'problems'
@@ -41,7 +41,7 @@ type SchemaPaneModel = Pick<
 	| 'drop'
 >;
 
-interface SchemaPaneProps {
+export interface SchemaPaneProps {
 	playground: SchemaPaneModel;
 	active: SchemaFile;
 }

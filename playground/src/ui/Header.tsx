@@ -29,7 +29,7 @@ function ColorModeIcon({ mode }: { mode: ColorMode }) {
 	}
 }
 
-interface HeaderProps {
+export interface HeaderProps {
 	colorMode: ColorMode;
 	onColorModeChange: (mode: ColorMode) => void;
 	onShare: () => void;

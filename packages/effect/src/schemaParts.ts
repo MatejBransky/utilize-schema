@@ -62,7 +62,7 @@ export function arrayRest(
 	return (schema.additionalItems as unknown as ParsedJSONSchema | undefined) ?? true;
 }
 
-interface ObjectKeys {
+export interface ObjectKeys {
 	properties: Record<string, ParsedJSONSchema>;
 	required: Set<string>;
 	/** Every declared property, then every required key that has no property schema. */

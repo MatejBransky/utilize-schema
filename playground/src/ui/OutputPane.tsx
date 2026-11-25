@@ -13,7 +13,7 @@ import type { Playground } from '../playgroundHooks';
 
 import styles from '../App.module.css';
 
-type OutputPaneModel = Pick<
+export type OutputPaneModel = Pick<
 	Playground,
 	| 'files'
 	| 'problems'
@@ -27,7 +27,7 @@ type OutputPaneModel = Pick<
 	| 'selectProblem'
 >;
 
-interface OutputPaneProps {
+export interface OutputPaneProps {
 	playground: OutputPaneModel;
 }
 

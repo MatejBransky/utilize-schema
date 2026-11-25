@@ -10,7 +10,10 @@ import { generate, type GenerateOptions } from '../src/generator';
 import type { CustomSchemaResolver, FormatMap, FormatMode } from '../src/generators/types';
 
 /** Generator options a test can override; the rest keep their test defaults. */
-type TestGenerateOptions = Pick<GenerateOptions, 'schemaName' | 'typeName' | 'runtimeImport'>;
+export type TestGenerateOptions = Pick<
+	GenerateOptions,
+	'schemaName' | 'typeName' | 'runtimeImport'
+>;
 
 export { ts };
 
