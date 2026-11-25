@@ -274,7 +274,7 @@ if (selectedCase === 'all' || selectedCase === 'link') {
 }
 
 if (!results.length) {
-	throw new Error(`Unknown BENCH_CASE: ${selectedCase}`);
+	throw new Error(`Unknown benchmark case: ${selectedCase}`);
 }
 
 if (results.some((passed) => !passed)) {
