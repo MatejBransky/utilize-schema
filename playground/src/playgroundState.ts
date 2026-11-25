@@ -30,11 +30,17 @@ export function loadState(): UrlState {
 
 	// The query parameters win over the settings stored in the shared `#data=`
 	// hash so they can be changed without editing the hash.
-	return {
-		...fromHash,
-		...(keywordPolicy ? { keywordPolicy } : {}),
-		...(formatMode ? { formatMode } : {}),
-	};
+	const state: UrlState = { ...fromHash };
+
+	if (keywordPolicy) {
+		state.keywordPolicy = keywordPolicy;
+	}
+
+	if (formatMode) {
+		state.formatMode = formatMode;
+	}
+
+	return state;
 }
 
 export function encodeState(state: UrlState): string {
