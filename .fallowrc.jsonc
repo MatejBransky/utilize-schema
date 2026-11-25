@@ -1,0 +1,30 @@
+// fallow configuration: https://fallow.tools/docs
+// Every entry says why it exists. Prefer fixing the code or the tool config
+// over adding an exception here, and never add one only to silence a real
+// finding.
+{
+	"$schema": "./node_modules/fallow/schema.json",
+	"minimumVersion": "3.45.0",
+
+	// No `publicPackages`. fallow already reads each package's `main`, `exports`
+	// and `bin`, so the public API of every published package counts as used
+	// (`fallow list --entry-points`). Listing the packages as public on top of
+	// that also stops fallow from reporting unused exports in their internal
+	// modules and tests, which hid 17 real findings.
+
+	"ignoreExports": [
+		// Every generator package exposes the same API shape on purpose, so a user
+		// switches targets by changing only the import. The names are separate
+		// exports of separate packages, not two modules behind one barrel, so the
+		// shared name cannot resolve to the wrong one. Renaming them per target
+		// (`generateZod`, `ZodGenerateOptions`, …) would break that symmetry and
+		// every existing user.
+		{ "file": "packages/*/src/generator.ts", "exports": ["generate", "GenerateOptions"] },
+
+		// The playground's own copy of the `formatMode` option, used for its UI
+		// state across the Zod and Effect targets. It mirrors the generators'
+		// `FormatMode` instead of importing one of them, so the app does not tie a
+		// shared setting to a single target.
+		{ "file": "playground/src/formatMode.ts", "exports": ["FormatMode"] },
+	],
+}
