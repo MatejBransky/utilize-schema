@@ -4,9 +4,6 @@
 	"buildCommand": "pnpm run build",
 	"outputDirectory": "dist",
 	"git": {
-		"deploymentEnabled": {
-			"main": true,
-			"**": false
-		}
+		"deploymentEnabled": false
 	}
 }

@@ -47,15 +47,16 @@ target needs to show up in the UI.
 Only pull requests with the `Preview` label get a preview deployment of the
 playground on Vercel. Add the label when a live preview is needed; every new
 commit on that pull request refreshes the preview. Pull requests without the
-label do not create a Vercel deployment. Production still deploys from `main`.
+label do not create a Vercel deployment. Production is deployed to GitHub Pages
+from `main` by `.github/workflows/pages.yml`.
 
 The project uses the **Root Directory** `playground` and
 `playground/vercel.json`, so Vercel installs the pnpm workspace from the
 repository root and then builds only the playground (`playground/dist`).
-`git.deploymentEnabled` allows Git deployments only for `main`; this avoids
-creating deployments that would count toward the Hobby plan's daily limit just
-to cancel them. `.github/workflows/vercel-preview.yml` deploys labeled pull
-requests from the same repository through the Vercel CLI instead.
+`git.deploymentEnabled: false` disables all automatic Vercel Git deployments,
+including production, so they do not consume the Hobby plan's daily limit.
+`.github/workflows/vercel-preview.yml` deploys labeled pull requests from the
+same repository through the Vercel CLI instead.
 
 Keep `vercel.json` inside the Root Directory: Vercel resolves its paths relative
 to it, so a `vercel.json` at the repository root would point at
