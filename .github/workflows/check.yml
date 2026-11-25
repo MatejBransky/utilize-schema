@@ -108,16 +108,21 @@ jobs:
       # The combined run consults the TypeScript checker too: the config sets
       # `typeAware.enabled`, so dead code, health and duplication are judged on
       # the same semantic program and measured coverage. A type-aware run accepts
-      # only machine and human formats, so the run writes JSON and the step
-      # summary is rendered from that result instead of a second analysis.
+      # only machine and human formats, so the run writes JSON, the gate reads the
+      # documented `gate_outcomes` field (a machine format never sets its exit
+      # code on findings), and the step summary is rendered from the same file.
       - name: Full Fallow run with measured coverage
         run: |
-          pnpm fallow:coverage --format json --quiet --output-file fallow-full.json
+          pnpm fallow:coverage --format json --quiet --output-file .fallow/full.json
+
+      - name: Gate the Fallow result
+        run: |
+          node scripts/fallow-gate.mjs .fallow/full.json
 
       - name: Render the Fallow step summary
-        if: always()
+        if: always() && hashFiles('.fallow/full.json') != ''
         run: |
-          pnpm exec fallow report --from fallow-full.json --format github-summary >> "$GITHUB_STEP_SUMMARY"
+          pnpm exec fallow report --from .fallow/full.json --format github-summary >> "$GITHUB_STEP_SUMMARY"
 
   fallow:
     name: Fallow audit
@@ -209,6 +214,9 @@ jobs:
 
       # Existing low candidates are reviewed in the test-only evaluator. The
       # gate only fails when a change makes a candidate newly runtime-reachable.
+      # Annotations stay on the `new` gate only: its findings sit on the lines
+      # the change adds, while this gate reports pre-existing lines that the same
+      # annotations would duplicate.
       - name: Gate newly reachable security candidates
         uses: fallow-rs/fallow@b802ddc49a09ad9df4e9894cdd465f5b51b1b0c8 # v3.45.0
         with:
@@ -217,7 +225,7 @@ jobs:
           fail-on-issues: true
           fail-on-empty-analysis: true
           sarif: true
-          annotations: true
+          annotations: false
 
   # Dependency audits run weekly in audit.yml. Keeping them out of the pull
   # request workflow means an advisory without a published fix cannot block

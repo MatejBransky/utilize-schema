@@ -94,8 +94,9 @@ Run the changed-file audit before opening a PR:
 pnpm fallow:audit
 ```
 
-The audit uses `gate: new-only`, so existing complexity findings do not block a
-change; findings introduced by the change do.
+The audit uses `gate: new-only`, so findings that already existed do not block
+a change; findings the change introduces do. A finding that already exceeded a
+ceiling and grew counts as introduced (`audit.worsened: "error"`).
 
 Install the optional local pre-commit hook:
 
@@ -122,19 +123,20 @@ pnpm check:fallow-badge
 In every pull request and on every push to `main`, the `Fallow full repository`
 job runs all unit tests with V8 coverage, merges their Istanbul data, and runs
 `fallow` in combined mode on it: dead code, duplication, maintainability and
-CRAP measured against real coverage, plus rule-pack policy. A separate
-`fallow dead-code --type-aware` pass in `best-effort` mode against every package
-tsconfig confirms dead-code candidates with the TypeScript checker. Both steps
-are gating: the measured backlog is empty, so a new finding fails the run.
+CRAP measured against real coverage, plus rule-pack policy and type-aware
+refinement from the configured tsconfigs. The run writes its JSON result,
+`scripts/fallow-gate.mjs` fails the job when any gate in that result failed (a
+machine format does not enforce its own exit code), and `fallow report` renders
+the same result as the job summary.
 
 `rule-packs/utilize-policy.jsonc` keeps generator source browser-safe: `node:*`
 imports are errors in the generator packages outside `compile.ts` and `cli.ts`.
 Policy violations are errors in both the audit and the full run.
 
-The `Fallow security gate` PR job runs `fallow security --gate
-newly-reachable`. The existing low candidates in the test-only evaluator are
-reviewed and stay advisory; a change fails only when it makes a candidate newly
-reachable from an entry point.
+The `Fallow security gate` PR job runs `fallow security` twice: `--gate new`
+fails a change that adds a candidate on an added line, and `--gate
+newly-reachable` fails a change that makes an existing candidate reachable from
+an entry point. A candidate is a review trigger, not a proven exploit.
 
 `private-type-leaks` is an error: every type referenced by an exported
 signature must also be exported, so consumers can name it.

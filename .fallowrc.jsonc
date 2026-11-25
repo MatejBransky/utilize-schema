@@ -5,10 +5,11 @@
 //
 // The policy is strict on purpose: every rule that reports a defect is `error`,
 // so it fails the commit hook, the pull request audit and the whole-project CI
-// job. Rules that stay `warn` are design or inventory signals (styling taste,
-// prop-forwarding, feature flags) that a reviewer should read but that must not
-// block a merge, plus the two audit diff-risk rules that describe a review item
-// rather than a defect.
+// job. A rule stays `warn` only when it reports a design or inventory signal
+// rather than a defect — styling taste, prop forwarding, feature-flag inventory,
+// static coverage gaps, and the two audit diff-risk items that describe a review
+// decision. Every such rule carries its reason next to the entry, and
+// `pnpm exec fallow suppressions` lists each suppression with its reason.
 {
 	"$schema": "./node_modules/fallow/schema.json",
 	"minimumVersion": "3.45.0",
@@ -165,7 +166,7 @@
 		//   past it is new risk. The default 20 would let a function almost double
 		//   before the gate noticed.
 		// - file length 900 is the longest hand-written file below the Effect
-		//   generator (874 lines); the generator itself carries a measured ceiling
+		//   generator (873 lines); the generator itself carries a measured ceiling
 		//   in `thresholdOverrides`.
 		//
 		// Test code is left out of the complexity checks and the health score
@@ -201,9 +202,10 @@
 			{
 				// The Effect generator is the one file that renders the whole Effect
 				// target; splitting it would separate the renderer from the case it
-				// renders. Record the measured ceiling so the file may not grow.
+				// renders. The ceiling is the measured 1,779 lines, so the file may
+				// not grow at all.
 				"files": ["packages/effect/src/generator.ts"],
-				"maxFileLines": 1800,
+				"maxFileLines": 1779,
 				"reason": "Measured ceiling for the Effect generator; it renders one target and does not split along a readable seam.",
 			},
 		],
@@ -276,9 +278,11 @@
 	},
 
 	"rules": {
-		// Dead code and dependency hygiene gate at `error`. Their defaults are
-		// already `error`; the explicit entries keep a future default change from
-		// quietly demoting a check this repository relies on.
+		// Dead code and dependency hygiene gate at `error`. Several of these
+		// default to `warn` (dev and optional dependencies, store, inject and
+		// component rules), so the entries are the policy rather than a restatement
+		// of the defaults, and a future default change cannot demote a check this
+		// repository relies on.
 		"unused-files": "error",
 		"unused-exports": "error",
 		"unused-types": "error",
@@ -406,11 +410,10 @@
 		// becomes stale is a retirement candidate, not a broken build.
 		"feature-flags": "warn",
 
-		// `secret-to-network` has no client root in a Vite app (the detector
-		// reports that it measures nothing), and it becomes meaningful only when
-		// the project grows a `"use client"` boundary. The security job gates
-		// the candidates themselves.
-		"security-client-server-leak": "warn",
+		// A Vite app has no `"use client"` root, so the detector reports that it
+		// measures nothing and finds nothing. The rule still gates, so the first
+		// secret that crosses a client boundary fails the run.
+		"security-client-server-leak": "error",
 
 		// Audit diff-risk items that describe the change for the reviewer: a new
 		// suppression and a new dependency are decisions a human verifies, and
