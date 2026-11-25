@@ -8,8 +8,8 @@ import { dialectCliOptions, readDialectCliOptions } from '../cliOptions';
 import { formatIssue } from '../dialect';
 import type { DialectIssue, DialectOptions } from '../dialect';
 import type { JSONSchema } from '../model';
-import { parseSchemaSource } from './compile';
 import { expectDefined } from '../utils';
+import { parseSchemaSource } from './compile';
 
 export interface Writable {
 	write(chunk: string): void;

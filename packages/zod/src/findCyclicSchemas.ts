@@ -154,7 +154,7 @@ function popComponent(
 	do {
 		const popped = stack.pop();
 		if (popped === undefined) {
-			throw new Error(`DEBUG undefined pop, length ${stack.length}`);
+			throw new Error('Cyclic component stack underflow');
 		}
 		member = popped;
 		onStack.delete(member);

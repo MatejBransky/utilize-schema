@@ -1,8 +1,8 @@
 import {
 	allocateName,
-	expectDefined,
 	collectStandaloneSchemas,
 	dialectOf,
+	expectDefined,
 	containsBounds,
 	isKeywordApplicable,
 	isPlainObject,
