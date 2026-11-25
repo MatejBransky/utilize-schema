@@ -350,6 +350,46 @@ describe('prepareSchema', () => {
 		expect(issues.map((issue) => issue.keyword)).toEqual(['prefixItems', 'dependentRequired']);
 	});
 
+	test('preserves keyword issue ordering across validators', () => {
+		const issues: DialectIssue[] = [];
+
+		prepareSchema(
+			{
+				$schema: twentyTwentyTwelve,
+				additionalItems: false,
+				dependencies: { a: ['b'] },
+				items: [{ type: 'string' }],
+				exclusiveMinimum: true,
+				exclusiveMaximum: false,
+			},
+			{ onDialectIssue: (issue) => issues.push(issue) }
+		);
+
+		expect(issues.map((issue) => issue.keyword)).toEqual([
+			'additionalItems',
+			'dependencies',
+			'items',
+			'exclusiveMinimum',
+			'exclusiveMaximum',
+		]);
+	});
+
+	test('reports ignored $ref siblings after the other keyword issues', () => {
+		const issues: DialectIssue[] = [];
+
+		prepareSchema(
+			{
+				$schema: draft07,
+				$ref: '#/$defs/target',
+				minimum: 0,
+				prefixItems: [{ type: 'string' }],
+			},
+			{ onDialectIssue: (issue) => issues.push(issue) }
+		);
+
+		expect(issues.map((issue) => issue.keyword)).toEqual(['prefixItems', 'minimum']);
+	});
+
 	test('keeps reporting other issues next to a best-effort unevaluated keyword', () => {
 		const issues: DialectIssue[] = [];
 
