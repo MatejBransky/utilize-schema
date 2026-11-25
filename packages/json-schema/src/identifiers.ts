@@ -60,37 +60,24 @@ export function createSchemaIndex(): SchemaIndex & {
 			return;
 		}
 
-		if (!isPlainObject(node)) {
-			return;
+		if (isPlainObject(node)) {
+			indexNode(node, baseUri, inheritedDialect, nodeDialects);
 		}
+	}
 
+	function indexNode(
+		node: Record<string, unknown>,
+		baseUri: string,
+		inheritedDialect: Dialect,
+		nodeDialects: DialectMap | undefined
+	) {
 		const dialect = nodeDialects?.get(node)?.dialect ?? inheritedDialect;
-		let nextBase = baseUri;
 		// In draft-07 and older `$ref` replaces the rest of the schema, including
 		// a sibling `$id` or `$anchor`, so it must not change the base URI that the
 		// reference itself is resolved against. 2019-09 and newer apply them.
 		const ignoresSiblings = typeof node.$ref === 'string' && dialect.refSiblings === 'ignore';
-		const rawId = node[idKeyword(dialect)];
-		const id =
-			!ignoresSiblings && typeof rawId === 'string' && rawId.length > 0 ? rawId : undefined;
-
-		if (id) {
-			const hashIndex = id.indexOf('#');
-			const resourcePart = hashIndex === -1 ? id : id.slice(0, hashIndex);
-			const fragment = hashIndex === -1 ? '' : id.slice(hashIndex + 1);
-
-			if (resourcePart) {
-				nextBase = stripHash(resolveUri(baseUri, resourcePart));
-				resources.set(nextBase, node);
-			}
-
-			// A non-empty fragment in `$id` (`id` in draft-04) is the draft-07 way
-			// to declare a location-independent identifier; `$anchor` is the
-			// 2019-09+ form.
-			if (fragment) {
-				anchors.set(`${nextBase}#${fragment}`, node);
-			}
-		}
+		const id = identifierOf(node, dialect, ignoresSiblings);
+		const nextBase = indexIdentifier(node, id, baseUri);
 
 		if (!ignoresSiblings && typeof node.$anchor === 'string' && node.$anchor.length > 0) {
 			anchors.set(`${nextBase}#${node.$anchor}`, node);
@@ -101,6 +88,45 @@ export function createSchemaIndex(): SchemaIndex & {
 		for (const child of schemaChildren(node)) {
 			walk(child, nextBase, dialect, nodeDialects);
 		}
+	}
+
+	function identifierOf(
+		node: Record<string, unknown>,
+		dialect: Dialect,
+		ignoresSiblings: boolean
+	): string | undefined {
+		const rawId = node[idKeyword(dialect)];
+
+		return !ignoresSiblings && typeof rawId === 'string' && rawId.length > 0 ? rawId : undefined;
+	}
+
+	function indexIdentifier(
+		node: Record<string, unknown>,
+		id: string | undefined,
+		baseUri: string
+	): string {
+		if (!id) {
+			return baseUri;
+		}
+
+		const hashIndex = id.indexOf('#');
+		const resourcePart = hashIndex === -1 ? id : id.slice(0, hashIndex);
+		const fragment = hashIndex === -1 ? '' : id.slice(hashIndex + 1);
+		let nextBase = baseUri;
+
+		if (resourcePart) {
+			nextBase = stripHash(resolveUri(baseUri, resourcePart));
+			resources.set(nextBase, node);
+		}
+
+		// A non-empty fragment in `$id` (`id` in draft-04) is the draft-07 way
+		// to declare a location-independent identifier; `$anchor` is the
+		// 2019-09+ form.
+		if (fragment) {
+			anchors.set(`${nextBase}#${fragment}`, node);
+		}
+
+		return nextBase;
 	}
 
 	function resolve(ref: string, baseUri: string): JSONSchema | boolean | undefined {
@@ -153,11 +179,7 @@ function idKeyword(dialect: Dialect): 'id' | '$id' {
 export function* schemaChildren(node: Record<string, unknown>): Generator<unknown> {
 	for (const [keyword, value] of Object.entries(node)) {
 		if (keyword === 'items') {
-			if (Array.isArray(value)) {
-				yield* value;
-			} else {
-				yield value;
-			}
+			yield* itemsChildren(value);
 			continue;
 		}
 
@@ -177,11 +199,23 @@ export function* schemaChildren(node: Record<string, unknown>): Generator<unknow
 		}
 
 		if (keyword === 'dependencies' && isPlainObject(value)) {
-			for (const dependency of Object.values(value)) {
-				if (!Array.isArray(dependency)) {
-					yield dependency;
-				}
-			}
+			yield* dependencyChildren(value);
+		}
+	}
+}
+
+function* itemsChildren(value: unknown): Generator<unknown> {
+	if (Array.isArray(value)) {
+		yield* value;
+	} else {
+		yield value;
+	}
+}
+
+function* dependencyChildren(value: Record<string, unknown>): Generator<unknown> {
+	for (const dependency of Object.values(value)) {
+		if (!Array.isArray(dependency)) {
+			yield dependency;
 		}
 	}
 }

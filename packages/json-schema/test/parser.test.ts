@@ -213,6 +213,25 @@ test('resolves a $ref to a fragment-only $id', async () => {
 	expect(reference.type).toBe('integer');
 });
 
+test('indexes identifiers in schema children but not annotation values', async () => {
+	const schema = {
+		definitions: {
+			A: { $id: '#foo', type: 'integer' },
+		},
+		default: { $id: '#foo', type: 'string' },
+		examples: [{ $id: '#foo', type: 'boolean' }],
+		dependencies: { a: ['b'] },
+		allOf: [{ $ref: '#foo' }],
+	} as JSONSchema;
+	const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Unknown' });
+
+	assert(typeof parsed.root === 'object' && parsed.root !== null);
+	const reference = parsed.root.allOf?.[0]?.[Meta].reference;
+
+	assert(typeof reference === 'object' && reference !== null);
+	expect(reference.type).toBe('integer');
+});
+
 test('resolves a $ref against the nearest $id', async () => {
 	const schema = {
 		$id: 'http://example.com/root/',
