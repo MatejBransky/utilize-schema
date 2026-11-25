@@ -10,7 +10,7 @@ const options: ExclusiveBranchesOptions = {
 	isOpaque: () => false,
 };
 
-function branch(schema: object): ParsedJSONSchemaObject {
+function branch(schema: unknown): ParsedJSONSchemaObject {
 	return schema as ParsedJSONSchemaObject;
 }
 

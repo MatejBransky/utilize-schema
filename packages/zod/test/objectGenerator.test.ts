@@ -33,7 +33,7 @@ const recursion = {
 	},
 };
 
-function generate(schema: object): string {
+function generate(schema: unknown): string {
 	return generator.generate(schema as ParsedJSONSchemaObject, context, recursion);
 }
 

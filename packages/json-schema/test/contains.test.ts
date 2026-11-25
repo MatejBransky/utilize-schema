@@ -7,7 +7,7 @@ import type { ParsedJSONSchemaObject } from '../src/model';
 const draft07 = dialects['draft-07'];
 const twentyNineteen = dialects['2019-09'];
 
-function schema(value: object): ParsedJSONSchemaObject {
+function schema(value: unknown): ParsedJSONSchemaObject {
 	return value as ParsedJSONSchemaObject;
 }
 

@@ -7,7 +7,7 @@ import { narrowUntypedSchema } from '../src/narrow';
 const draft07 = dialects['draft-07'];
 const twentyTwentyTwelve = dialects['2020-12'];
 
-function schema(value: object): ParsedJSONSchemaObject {
+function schema(value: unknown): ParsedJSONSchemaObject {
 	return value as ParsedJSONSchemaObject;
 }
 

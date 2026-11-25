@@ -27,7 +27,7 @@ const recursion = {
 	},
 };
 
-function generate(schema: object, dialect = draft07): string {
+function generate(schema: unknown, dialect = draft07): string {
 	return generator.generate(schema as ParsedJSONSchemaObject, contextFor(dialect), recursion);
 }
 

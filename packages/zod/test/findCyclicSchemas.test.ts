@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest';
 
 import { findCyclicSchemas } from '../src/findCyclicSchemas';
 
-function schemaNode(schema: object): ParsedJSONSchemaObject {
+function schemaNode(schema: unknown): ParsedJSONSchemaObject {
 	return schema as ParsedJSONSchemaObject;
 }
 
