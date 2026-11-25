@@ -23,7 +23,7 @@ components.
 
 ## Fallow checks
 
-Use fallow for code-quality, cleanup, and setup tasks in this repository. Fallow checks the changed code before each `git commit` and `git push`. In Claude Code and Codex, a PreToolUse hook from `pnpm exec fallow agent install` runs this check and blocks the command when the verdict is `fail`. Other agents run the check themselves: `pnpm exec fallow audit --format json --quiet --explain --gate-marker agent`. If the verdict is `fail`, fix the reported findings before you try again. A JSON runtime error such as `{ "error": true, ... }` does not block.
+Use fallow for code-quality, cleanup, and setup tasks in this repository. Fallow checks the changed code before each `git commit` in Claude Code and before each `git push` there through the same gate. In Claude Code, a PreToolUse hook from `pnpm exec fallow agent install` runs this check and blocks the command when the verdict is `fail`. The optional `pnpm hooks:install` installs a Git pre-commit hook only; other agents and pushes outside Claude Code run the check themselves: `pnpm exec fallow audit --format json --quiet --explain --gate-marker agent`. If the verdict is `fail`, fix the reported findings before you try again. A JSON runtime error such as `{ "error": true, ... }` does not block.
 
 Audit defaults to `gate=new-only`: only findings introduced by the current changeset affect the verdict. Inherited findings on touched files are reported under `attribution` and annotated with `introduced: false`, but do not block the commit. Set `"gate": "all"` in the `audit` section of `.fallowrc.jsonc` to gate every finding in changed files.
 

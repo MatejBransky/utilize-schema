@@ -12,4 +12,4 @@ This pointer skill was written by `fallow agent install`. The complete, version-
 - `node_modules/fallow/skills/fallow-setup/SKILL.md` (start here)
 - `node_modules/fallow/skills/fallow-setup/references/` (tooling detection, configuration and install, CI gate)
 
-Read that `SKILL.md` before running fallow. Resolve current flags from `fallow --help` and `fallow <command> --help`, never from memory.
+Read that `SKILL.md` before running fallow. Resolve current flags from `pnpm exec fallow --help` and `pnpm exec fallow <command> --help`, never from memory.
