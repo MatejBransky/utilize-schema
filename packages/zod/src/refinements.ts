@@ -11,7 +11,7 @@ import type { GeneratorContext } from './generators/types';
 import { inferTypeKeywords } from './inferTypes';
 import { ts } from './utils';
 
-export type Generate = (schema: ParsedJSONSchema, context: GeneratorContext) => string;
+export type GenerateSubschema = (schema: ParsedJSONSchema, context: GeneratorContext) => string;
 
 /**
  * Guards for the types `inferTypeKeywords` can infer. Keywords on an untyped
@@ -37,7 +37,7 @@ export function applyRefinements(
 	expression: string,
 	schema: ParsedJSONSchemaObject,
 	context: GeneratorContext,
-	generate: Generate
+	generate: GenerateSubschema
 ): string {
 	const checks: string[] = [];
 	const contextType = typeof schema.type === 'string' ? schema.type : undefined;
@@ -62,7 +62,7 @@ function appendImplicitTypeChecks(
 	checks: string[],
 	schema: ParsedJSONSchemaObject,
 	context: GeneratorContext,
-	generate: Generate
+	generate: GenerateSubschema
 ): void {
 	// Keywords on a schema without `type` only apply to their own type, so each
 	// constrained type gets a separate guarded check. A schema can constrain
@@ -103,7 +103,7 @@ function appendNotAndConditionalChecks(
 	schema: ParsedJSONSchemaObject,
 	contextType: Parameters<typeof narrowUntypedSchema>[1],
 	context: GeneratorContext,
-	generate: Generate
+	generate: GenerateSubschema
 ): void {
 	if (schema.not !== undefined) {
 		const not = generate(narrowUntypedSchema(schema.not, contextType, context.dialect), context);
@@ -155,7 +155,7 @@ function appendContainsCheck(
 	checks: string[],
 	schema: ParsedJSONSchemaObject,
 	context: GeneratorContext,
-	generate: Generate
+	generate: GenerateSubschema
 ): void {
 	if (schema.contains !== undefined && isKeywordApplicable(context.dialect, 'contains')) {
 		const contains = generate(schema.contains, context);
@@ -260,7 +260,7 @@ function appendPropertyNamesCheck(
 	checks: string[],
 	schema: ParsedJSONSchemaObject,
 	context: GeneratorContext,
-	generate: Generate
+	generate: GenerateSubschema
 ): void {
 	if (schema.propertyNames !== undefined && isKeywordApplicable(context.dialect, 'propertyNames')) {
 		const propertyNames = generate(
@@ -286,7 +286,7 @@ function appendDependencyChecks(
 	checks: string[],
 	schema: ParsedJSONSchemaObject,
 	context: GeneratorContext,
-	generate: Generate
+	generate: GenerateSubschema
 ): void {
 	// `dependencies` is either native to the dialect or merged from
 	// `dependentRequired` / `dependentSchemas` by the normalizer. A foreign

@@ -2,7 +2,7 @@ import { resolveDialect } from '@utilize/json-schema';
 import type { JSONSchema, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
-import { generator } from '../src/generators/tupleGenerator';
+import { tupleGenerator } from '../src/generators/tupleGenerator';
 import type { GeneratorContext } from '../src/generators/types';
 
 const draft07 = 'http://json-schema.org/draft-07/schema#';
@@ -28,7 +28,7 @@ const recursion = {
 };
 
 function generate(schema: JSONSchema, dialect = draft07): string {
-	return generator.generate(schema as ParsedJSONSchemaObject, contextFor(dialect), recursion);
+	return tupleGenerator.generate(schema as ParsedJSONSchemaObject, contextFor(dialect), recursion);
 }
 
 describe('tuple generator', () => {

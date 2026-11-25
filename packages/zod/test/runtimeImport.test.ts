@@ -6,7 +6,7 @@ import { join } from 'node:path';
 
 import { run } from '../src/cli';
 import { compileSchema } from '../src/compile';
-import { compile, compileToZod, ts } from './test-utils';
+import { generateCode, compileToZod, ts } from './test-utils';
 
 const overlappingOneOf: JSONSchema = {
 	oneOf: [{ type: 'string' }, { type: 'string', maxLength: 3 }],
@@ -14,7 +14,7 @@ const overlappingOneOf: JSONSchema = {
 
 describe('runtimeImport', () => {
 	test('imports the oneOf helper instead of declaring it', async () => {
-		await expect(compile(overlappingOneOf, { runtimeImport: '@utilize/zod/runtime' }))
+		await expect(generateCode(overlappingOneOf, { runtimeImport: '@utilize/zod/runtime' }))
 			.toMatchCode(ts`
 			import { oneOfSchema } from '@utilize/zod/runtime';
 
@@ -24,7 +24,7 @@ describe('runtimeImport', () => {
 	});
 
 	test('adds no import when no schema needs the helper', async () => {
-		await expect(compile({ type: 'string' }, { runtimeImport: '@utilize/zod/runtime' }))
+		await expect(generateCode({ type: 'string' }, { runtimeImport: '@utilize/zod/runtime' }))
 			.toMatchCode(ts`
 			export const Root = z.string();
 			export type Root = z.infer<typeof Root>;
@@ -66,7 +66,7 @@ describe('runtimeImport', () => {
 	});
 
 	test('the exported helper is the one generated files declare', async () => {
-		const declaredHelper = helperSource(await compile(overlappingOneOf));
+		const declaredHelper = helperSource(await generateCode(overlappingOneOf));
 		const runtimeSource = await readFile(join(__dirname, '../src/runtime.ts'), 'utf8');
 		// Format it like the generated code, so only real differences remain.
 		const exportedHelper = helperSource(await ts`${runtimeSource}`);

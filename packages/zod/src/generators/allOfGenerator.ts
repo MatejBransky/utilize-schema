@@ -5,7 +5,7 @@ import { createGenerator } from './createGenerator';
 
 import { NEWLINE, ts } from '../utils';
 
-export const generator = createGenerator<
+export const allOfGenerator = createGenerator<
 	ParsedJSONSchemaObject & {
 		allOf: ParsedJSONSchemaObject[];
 	}
