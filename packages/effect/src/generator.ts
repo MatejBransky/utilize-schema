@@ -1185,6 +1185,9 @@ function generateConjunction(
 }
 
 /** Keywords a typed subschema may use and still be merged. */
+const MERGEABLE_TYPES = ['number', 'integer', 'string', 'array'] as const;
+type MergeableType = (typeof MERGEABLE_TYPES)[number];
+
 const MERGEABLE_KEYWORDS: Record<'number' | 'string' | 'array', ReadonlySet<string>> = {
 	number: new Set(['minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf']),
 	string: new Set(['minLength', 'maxLength', 'pattern']),
@@ -1398,25 +1401,26 @@ function mergeTypedSchemas(members: ParsedJSONSchemaObject[]): ParsedJSONSchemaO
 }
 
 /** The type a subschema constrains, from `type` or its keyword family. */
-function mergeableType(
-	schema: ParsedJSONSchemaObject
-): 'number' | 'integer' | 'string' | 'array' | undefined {
-	if (
-		schema.type === 'number' ||
-		schema.type === 'integer' ||
-		schema.type === 'string' ||
-		schema.type === 'array'
-	) {
-		return schema.type;
+function mergeableType(schema: ParsedJSONSchemaObject): MergeableType | undefined {
+	const declared = MERGEABLE_TYPES.find((type) => type === schema.type);
+
+	if (declared !== undefined) {
+		return declared;
 	}
 
 	if (schema.type !== undefined) {
 		return undefined;
 	}
 
+	const candidates = mergeTypeCandidates(schema);
+
+	return candidates.length === 1 ? candidates[0] : undefined;
+}
+
+function mergeTypeCandidates(schema: ParsedJSONSchemaObject): MergeableType[] {
 	const record = schema as unknown as Record<string, unknown>;
 	const has = (keywords: string[]) => keywords.some((keyword) => record[keyword] !== undefined);
-	const candidates: Array<'number' | 'string' | 'array'> = [];
+	const candidates: MergeableType[] = [];
 
 	if (has(['minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf'])) {
 		candidates.push('number');
@@ -1430,7 +1434,7 @@ function mergeableType(
 		candidates.push('array');
 	}
 
-	return candidates.length === 1 ? candidates[0] : undefined;
+	return candidates;
 }
 
 function reference(schema: ParsedJSONSchemaObject, context: Context): string {
@@ -1556,24 +1560,44 @@ function applyChecks(expression: string, checks: string[]): string {
 function applyAnnotations(expression: string, schema: ParsedJSONSchemaObject): string {
 	const annotations: string[] = [];
 
+	appendStringAnnotations(annotations, schema);
+	appendValueAnnotations(annotations, schema);
+	appendIdentifierAnnotations(annotations, schema);
+	appendBooleanAnnotations(annotations, schema);
+
+	return annotations.length > 0
+		? `${expression}.annotate({ ${annotations.join(', ')} })`
+		: expression;
+}
+
+function appendStringAnnotations(annotations: string[], schema: ParsedJSONSchemaObject): void {
 	if (typeof schema.title === 'string') {
 		annotations.push(`title: ${JSON.stringify(schema.title)}`);
 	}
 	if (typeof schema.description === 'string') {
 		annotations.push(`description: ${JSON.stringify(schema.description)}`);
 	}
+}
+
+function appendValueAnnotations(annotations: string[], schema: ParsedJSONSchemaObject): void {
 	if (schema.default !== undefined) {
 		annotations.push(`default: ${JSON.stringify(schema.default)}`);
 	}
 	if (Array.isArray(schema.examples)) {
 		annotations.push(`examples: ${JSON.stringify(schema.examples)}`);
 	}
+}
+
+function appendIdentifierAnnotations(annotations: string[], schema: ParsedJSONSchemaObject): void {
 	if (typeof schema.$id === 'string') {
 		annotations.push(`identifier: ${JSON.stringify(schema.$id)}`);
 	}
 	if (typeof schema.format === 'string') {
 		annotations.push(`format: ${JSON.stringify(schema.format)}`);
 	}
+}
+
+function appendBooleanAnnotations(annotations: string[], schema: ParsedJSONSchemaObject): void {
 	if (typeof schema.readOnly === 'boolean') {
 		annotations.push(`readOnly: ${schema.readOnly}`);
 	}
@@ -1583,8 +1607,4 @@ function applyAnnotations(expression: string, schema: ParsedJSONSchemaObject): s
 	if (typeof schema.deprecated === 'boolean') {
 		annotations.push(`deprecated: ${schema.deprecated}`);
 	}
-
-	return annotations.length > 0
-		? `${expression}.annotate({ ${annotations.join(', ')} })`
-		: expression;
 }
