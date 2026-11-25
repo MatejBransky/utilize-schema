@@ -106,9 +106,16 @@ jobs:
       - name: Build packages
         run: pnpm build:dev
 
-      - name: Full Fallow health with measured coverage
+      - name: Full Fallow health with measured coverage and type-aware pass
         run: |
-          pnpm fallow:coverage --report-only --format github-summary >> "$GITHUB_STEP_SUMMARY"
+          pnpm fallow:coverage --report-only --format github-summary \
+            --type-aware --type-aware-require best-effort \
+            --type-aware-project packages/json-schema/tsconfig.json \
+            --type-aware-project packages/zod/tsconfig.json \
+            --type-aware-project packages/effect/tsconfig.json \
+            --type-aware-project packages/typescript/tsconfig.json \
+            --type-aware-project packages/test-utils/tsconfig.json \
+            --type-aware-project playground/tsconfig.json >> "$GITHUB_STEP_SUMMARY"
 
   fallow:
     name: Fallow audit
@@ -130,6 +137,33 @@ jobs:
         with:
           command: audit
           gate: new-only
+          fail-on-issues: true
+          fail-on-empty-analysis: true
+          sarif: true
+          annotations: true
+
+  security-fallow:
+    name: Fallow security gate
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # Existing low candidates are reviewed in the test-only evaluator. The
+      # gate only fails when a change makes a candidate newly runtime-reachable.
+      - name: Gate newly reachable security candidates
+        uses: fallow-rs/fallow@b802ddc49a09ad9df4e9894cdd465f5b51b1b0c8 # v3.45.0
+        with:
+          command: security
+          security-gate: newly-reachable
           fail-on-issues: true
           fail-on-empty-analysis: true
           sarif: true
