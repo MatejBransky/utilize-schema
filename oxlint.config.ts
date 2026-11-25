@@ -1,5 +1,12 @@
+import { builtinModules } from 'node:module';
+
 import cloudflare from '@cloudflare/oxlint-config';
 import { defineConfig } from 'oxlint';
+
+// Bare built-in names (`fs`, `fs/promises`, ...). The `node:` form is matched
+// by a pattern below, which also covers the prefix-only modules such as
+// `node:sqlite`.
+const bareBuiltins = builtinModules.filter((name) => !name.startsWith('node:'));
 
 export default defineConfig({
 	extends: [cloudflare],
@@ -32,6 +39,37 @@ export default defineConfig({
 			// their documented default sink for callers that do not pass a hook.
 			files: ['packages/json-schema/src/dialect.ts', 'packages/zod/src/generators/refGenerator.ts'],
 			rules: { 'no-console': 'off' },
+		},
+		{
+			// Generator source is bundled into the browser playground. The
+			// `utilize-policy` rule pack bans static imports of Node built-ins and
+			// every `require()` there, but fallow's `banned-import` does not read
+			// dynamic `import()`, so this rule covers that case for the same files.
+			files: ['packages/{zod,effect,typescript}/src/**/*.ts'],
+			rules: {
+				'no-restricted-imports': [
+					'error',
+					{
+						paths: bareBuiltins.map((name) => ({
+							name,
+							message:
+								'Generator source runs in the browser; Node built-ins belong in compile.ts or cli.ts.',
+						})),
+						patterns: [
+							{
+								regex: '^node:',
+								message:
+									'Generator source runs in the browser; Node built-ins belong in compile.ts or cli.ts.',
+							},
+						],
+					},
+				],
+			},
+		},
+		{
+			// The CLI and the Node compile entry are never bundled for the browser.
+			files: ['packages/*/src/compile.ts', 'packages/*/src/cli.ts'],
+			rules: { 'no-restricted-imports': 'off' },
 		},
 		{
 			// monaco-editor only exposes its API through a namespace.
