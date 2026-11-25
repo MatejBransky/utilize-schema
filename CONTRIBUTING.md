@@ -110,8 +110,11 @@ disagree with. Fix the code or update `.fallowrc.jsonc` with a documented reason
 
 The `Fallow audit` CI job runs on pull requests, posts a sticky comment with the
 findings, publishes a check run and uploads SARIF, and fails on introduced
-findings. The strict full-repository gate runs next to it in the same workflow
-(see below), so a change cannot raise a measured score.
+findings. It fails on warnings too: the action treats an audit verdict of `warn`
+as a pass by design, so the job reads the recorded result with
+`scripts/fallow-gate.mjs --warn`. A rule that is `warn` is a finding to fix, not
+background noise. The strict full-repository gate runs next to it in the same
+workflow (see below), so a change cannot raise a measured score.
 
 Regenerate and check the health badge with:
 
@@ -125,9 +128,9 @@ job runs all unit tests with V8 coverage, merges their Istanbul data, and runs
 `fallow` in combined mode on it: dead code, duplication, maintainability and
 CRAP measured against real coverage, plus rule-pack policy and type-aware
 refinement from the configured tsconfigs. The run writes its JSON result,
-`scripts/fallow-gate.mjs` fails the job when any gate in that result failed (a
-machine format does not enforce its own exit code), and `fallow report` renders
-the same result as the job summary.
+`scripts/fallow-gate.mjs --warn` fails the job when any gate in that result
+failed or warned (a machine format does not enforce its own exit code), and
+`fallow report` renders the same result as the job summary.
 
 `rule-packs/utilize-policy.jsonc` keeps generator source browser-safe: `node:*`
 imports are errors in the generator packages outside `compile.ts` and `cli.ts`.

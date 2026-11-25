@@ -115,9 +115,11 @@ jobs:
         run: |
           pnpm fallow:coverage --format json --quiet --output-file .fallow/full.json
 
+      # `--warn` makes a warning fail too: this repository treats a `warn` rule
+      # as something to fix, not as background noise.
       - name: Gate the Fallow result
         run: |
-          node scripts/fallow-gate.mjs .fallow/full.json
+          node scripts/fallow-gate.mjs --warn .fallow/full.json
 
       - name: Render the Fallow step summary
         if: always() && hashFiles('.fallow/full.json') != ''
@@ -169,6 +171,16 @@ jobs:
           comment: true
           sarif: true
           annotations: true
+
+      # The action treats an audit verdict of `warn` as a pass, by design: warn
+      # means "warn-tier findings only". This repository fails on those findings
+      # too, so the recorded result is read with `--warn`. The step is skipped
+      # when the action stopped before writing the result; that run has already
+      # failed on its error findings.
+      - name: Fail on warning findings
+        if: always() && hashFiles('fallow-results.json') != ''
+        run: |
+          node scripts/fallow-gate.mjs --warn fallow-results.json
 
   security-fallow:
     name: Fallow security gate
