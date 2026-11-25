@@ -16,14 +16,20 @@ import { applyRefinements } from '../refinements';
 import { isRefNode, NEWLINE, ts } from '../utils';
 
 export const generateSchema = (schema: ParsedJSONSchema | undefined, context: GeneratorContext) => {
-	if (schema === undefined) {
-		return ts`z.unknown()`;
-	}
+	const simple = simpleSchemaExpression(schema);
 
+	return simple ?? generateObjectSchema(schema as ParsedJSONSchemaObject, context);
+};
+
+function simpleSchemaExpression(schema: ParsedJSONSchema | undefined): string | undefined {
 	if (typeof schema !== 'object' || schema === null) {
 		return schema === true ? ts`z.any()` : schema === false ? ts`z.never()` : ts`z.unknown()`;
 	}
 
+	return undefined;
+}
+
+function generateObjectSchema(schema: ParsedJSONSchemaObject, context: GeneratorContext): string {
 	const customExpression = context.customSchemaResolver?.(schema);
 
 	if (customExpression !== undefined) {
@@ -39,34 +45,47 @@ export const generateSchema = (schema: ParsedJSONSchema | undefined, context: Ge
 	const dialect = dialectOf(schema, context.dialect);
 	const nodeContext = dialect === context.dialect ? context : { ...context, dialect };
 	const validated = withoutAlwaysValidAnyOf(schema);
-
 	let expression = generateCore(validated, nodeContext);
 
 	if (!ignoresRefSiblings(validated, dialect)) {
 		expression = applyRefinements(expression, validated, nodeContext, generateSchema);
 	}
 
-	if (
+	return applySchemaDecorators(expression, schema, nodeContext);
+}
+
+function applySchemaDecorators(
+	expression: string,
+	schema: ParsedJSONSchemaObject,
+	context: GeneratorContext
+): string {
+	let decorated = expression;
+
+	if (hasMetadata(schema)) {
+		decorated = withMetadata(decorated, schema);
+	}
+
+	if (schema.default !== undefined) {
+		decorated = withDefault(decorated, schema.default, schema);
+	}
+
+	if (context.readOnlyKeyword && schema.readOnly === true) {
+		decorated = ts`${decorated}.readonly()`;
+	}
+
+	return decorated;
+}
+
+function hasMetadata(schema: ParsedJSONSchemaObject): boolean {
+	return Boolean(
 		schema.$id ||
 		schema.title ||
 		schema.description ||
 		schema.examples !== undefined ||
 		schema.deprecated !== undefined ||
 		schema.format !== undefined
-	) {
-		expression = withMetadata(expression, schema);
-	}
-
-	if (schema.default !== undefined) {
-		expression = withDefault(expression, schema.default, schema);
-	}
-
-	if (context.readOnlyKeyword && schema.readOnly === true) {
-		expression = ts`${expression}.readonly()`;
-	}
-
-	return expression;
-};
+	);
+}
 
 /** Passed to every keyword generator, so it can generate its subschemas. */
 const recursion: Recursion = { generateSchema, selectGenerator };
