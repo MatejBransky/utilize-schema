@@ -13,6 +13,7 @@ catalog:
   '@vitest/coverage-v8': 5.1.1
   effect: 4.1.5
   fallow: 3.45.0
+  fallow-type-aware: 3.45.0
   oxfmt: 0.79.0
   oxlint: 1.94.0
   tsdown: 0.23.7

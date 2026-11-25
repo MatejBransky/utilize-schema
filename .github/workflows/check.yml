@@ -106,9 +106,16 @@ jobs:
       - name: Build packages
         run: pnpm build:dev
 
-      - name: Full Fallow health with measured coverage
+      - name: Full Fallow health with measured coverage and type-aware pass
         run: |
-          pnpm fallow:coverage --report-only --format github-summary >> "$GITHUB_STEP_SUMMARY"
+          pnpm fallow:coverage --report-only --format github-summary \
+            --type-aware --type-aware-require best-effort \
+            --type-aware-project packages/json-schema/tsconfig.json \
+            --type-aware-project packages/zod/tsconfig.json \
+            --type-aware-project packages/effect/tsconfig.json \
+            --type-aware-project packages/typescript/tsconfig.json \
+            --type-aware-project packages/test-utils/tsconfig.json \
+            --type-aware-project playground/tsconfig.json >> "$GITHUB_STEP_SUMMARY"
 
   fallow:
     name: Fallow audit
