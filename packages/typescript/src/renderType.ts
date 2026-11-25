@@ -370,7 +370,7 @@ function referenceSiblings(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObje
 		return undefined;
 	}
 
-	const sibling: Record<string, unknown> = {};
+	const sibling: Record<string, ParsedJSONSchema> = {};
 
 	for (const key of keys) {
 		sibling[key] = record[key];
