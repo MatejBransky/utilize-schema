@@ -196,6 +196,75 @@ describe('cyclic references', () => {
       export type Root = z.infer<typeof Root>;
     `);
 	});
+
+	test('value type object members keep optional, default, quoted and undeclared required keys', async () => {
+		const result = await compile({
+			type: 'object',
+			properties: {
+				plain: { type: 'string' },
+				withDefault: { type: 'number', default: 0 },
+				'order-id': { type: 'boolean' },
+				next: { $ref: '#' },
+			},
+			required: ['order-id', 'extra'],
+			additionalProperties: { type: 'number' },
+		});
+		const valueType = result.match(/interface RootValue \{[\s\S]*?\n\}/)?.[0];
+
+		expect(valueType?.trim()).toBe(
+			(
+				await ts`
+      interface RootValue {
+        plain?: string;
+        withDefault: number;
+        "order-id": boolean;
+        next?: RootValue;
+        extra: number;
+        [key: string]: string | number | boolean | RootValue | undefined;
+      }
+    `
+			).trim()
+		);
+	});
+
+	test('value type object members use an unknown index for pattern properties', async () => {
+		const result = await compile({
+			type: 'object',
+			properties: { name: { type: 'string' } },
+			patternProperties: { '^x-': { $ref: '#' } },
+			additionalProperties: { type: 'integer' },
+		});
+		const valueType = result.match(/interface RootValue \{[\s\S]*?\n\}/)?.[0];
+
+		expect(valueType?.trim()).toBe(
+			(
+				await ts`
+      interface RootValue {
+        name?: string;
+        [key: string]: unknown;
+      }
+    `
+			).trim()
+		);
+	});
+
+	test('value type object members make undeclared required keys never when additional properties are forbidden', async () => {
+		const result = await compile({
+			type: 'object',
+			properties: { next: { $ref: '#' } },
+			required: ['extra'],
+			additionalProperties: false,
+		});
+		const valueType = result.match(/type RootValue = \{[\s\S]*?\};/)?.[0];
+
+		expect(valueType?.trim()).toBe(
+			(
+				await ts`
+      type RootValue = { next?: RootValue; extra: never };
+    `
+			).trim()
+		);
+	});
 });
 
 describe('recursive references at runtime', () => {
