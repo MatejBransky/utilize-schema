@@ -38,7 +38,7 @@ ${dialectCliHelp}
   -h, --help            show this help
 `;
 
-const flags = {
+const parseOptions = {
 	readonly: { type: 'boolean', default: false },
 	'runtime-import': { type: 'string' },
 	...formatAndDialectFlags,
@@ -55,7 +55,7 @@ export async function run(
 ): Promise<number> {
 	return runGeneratorCli(argv, io, {
 		help: HELP,
-		flags,
+		parseOptions,
 		readOptions,
 		compileSchema,
 		compileFile,
@@ -63,7 +63,10 @@ export async function run(
 	});
 }
 
-function readOptions(values: CliFlagValues<typeof flags>, io: CliIo): CliOptionsResult<CliOptions> {
+function readOptions(
+	values: CliFlagValues<typeof parseOptions>,
+	io: CliIo
+): CliOptionsResult<CliOptions> {
 	const shared = readFormatAndDialectFlags(values, io);
 
 	if (!shared.ok) {

@@ -42,9 +42,9 @@ export type CliOptionsResult<Options> =
 export interface GeneratorCli<Flags extends ParseArgsOptionsConfig, Options> {
 	/** Printed for `--help`. */
 	help: string;
-	/** The generator's own `parseArgs` flags. `input`, `output`, `cwd`, `no-banner` and `help` are added. */
-	flags: Flags;
-	/** Turns the generator's flags into compile options. */
+	/** The generator's own `parseArgs` options. `input`, `output`, `cwd`, `no-banner` and `help` are added. */
+	parseOptions: Flags;
+	/** Turns the parsed options into compile options. */
 	readOptions(values: CliFlagValues<Flags>, io: CliIo): CliOptionsResult<Options>;
 	/** Compiles schema text read from stdin. */
 	compileSchema(
@@ -67,17 +67,17 @@ export async function runGeneratorCli<Flags extends ParseArgsOptionsConfig, Opti
 	io: CliIo,
 	cli: GeneratorCli<Flags, Options>
 ): Promise<number> {
-	const flags: ParseArgsOptionsConfig = { ...commonFlags, ...cli.flags };
+	const parseOptions: ParseArgsOptionsConfig = { ...commonFlags, ...cli.parseOptions };
 	let parsed;
 
 	try {
-		parsed = parseArgs({ args: argv, allowPositionals: true, options: flags });
+		parsed = parseArgs({ args: argv, allowPositionals: true, options: parseOptions });
 	} catch (error) {
 		return fail(io, (error as Error).message);
 	}
 
 	const { positionals } = parsed;
-	// `flags` loses the literal types `parseArgs` infers the values from, so they are restored here.
+	// The merged options lose the literal types `parseArgs` infers the values from, so they are restored here.
 	const values = parsed.values as CliFlagValues<typeof commonFlags>;
 
 	if (values.help) {

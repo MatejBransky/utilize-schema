@@ -268,13 +268,12 @@
 		},
 	},
 
-	// Flag detection covers the built-in SDK patterns and env prefixes. The
-	// config-object heuristic stays off: it reports the CLI's own options object
-	// (`cli.flags` in `packages/json-schema/src/node/cli.ts`) as a feature flag,
-	// and every audit comment would carry that false positive. The rule itself
-	// stays a `warn`, so a real flag is listed without blocking.
+	// Flag detection covers the built-in SDK patterns, the env prefixes and the
+	// config-object heuristic. The heuristic's only false positive was the CLI's
+	// own option map, which is now called `parseOptions` rather than `flags`, so
+	// a `feature*` / `flag*` object access is a real flag and gates.
 	"flags": {
-		"configObjectHeuristics": false,
+		"configObjectHeuristics": true,
 	},
 
 	"rules": {
@@ -413,10 +412,11 @@
 		"css-duplicate-block": "warn",
 		"css-selector-complexity": "warn",
 
-		// A feature flag is an inventory item, not a defect: `fallow audit`
-		// shows a new flag in the comment so the reviewer sees it. A flag that
-		// becomes stale is a retirement candidate, not a broken build.
-		"feature-flags": "warn",
+		// A detected feature flag is a live branch in the product, so it gates:
+		// the run lists each one and a new flag is a decision the change makes on
+		// purpose. There are none today, and `fallow flags` reports the ones that
+		// can retire.
+		"feature-flags": "error",
 
 		// A Vite app has no `"use client"` root, so the detector reports that it
 		// measures nothing and finds nothing. The rule still gates, so the first
