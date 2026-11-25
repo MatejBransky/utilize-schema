@@ -118,6 +118,13 @@ pnpm fallow:badge
 pnpm check:fallow-badge
 ```
 
+On every push to `main`, the `Fallow full repository` job runs all unit tests
+with V8 coverage, merges their Istanbul data, and publishes `fallow health
+--coverage --format github-summary` to the job summary. This gives CRAP scores
+measured against real coverage instead of the static estimate used by the fast
+PR audit and commit hook. It runs report-only until the measured backlog is
+fully cleared; the strict main gate is enabled separately.
+
 ## Running Tests
 
 - Run all tests:
