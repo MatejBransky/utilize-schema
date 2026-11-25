@@ -2,6 +2,13 @@
 // Every entry says why it exists. Prefer fixing the code or the tool config
 // over adding an exception here, and never add one only to silence a real
 // finding.
+//
+// The policy is strict on purpose: every rule that reports a defect is `error`,
+// so it fails the commit hook, the pull request audit and the whole-project CI
+// job. Rules that stay `warn` are design or inventory signals (styling taste,
+// prop-forwarding, feature flags) that a reviewer should read but that must not
+// block a merge, plus the two audit diff-risk rules that describe a review item
+// rather than a defect.
 {
 	"$schema": "./node_modules/fallow/schema.json",
 	"minimumVersion": "3.45.0",
@@ -9,6 +16,10 @@
 	// A source file Fallow cannot parse must fail the run instead of silently
 	// disappearing from every analysis.
 	"failOnParseError": true,
+
+	// The config may not inherit from another directory, an npm package or a
+	// URL: everything this project checks stays in this repository.
+	"sealed": true,
 
 	// Benchmark harnesses are developer tools, not production entry points.
 	"supportEntry": [
@@ -20,9 +31,42 @@
 	// Repository policy that boundaries cannot express.
 	"rulePacks": ["rule-packs/utilize-policy.jsonc"],
 
-	// Commit hooks and PR CI judge only findings introduced by the change.
+	// Every analysis asks the TypeScript checker before it reports an unused
+	// export, type or class member, so a declaration that an interface or an
+	// override requires is never reported. The projects are listed explicitly
+	// because a workspace root without a `tsconfig.json` gives the checker no
+	// project to load and every answer would be `no-project`.
+	//
+	// `require` stays `best-effort`: with `fallow-type-aware@3.45.0` the
+	// TypeScript 7 backend reports two blocking diagnostics per project for these
+	// tsconfigs, so a `complete` requirement fails every run with exit code 2.
+	// Switch it to `complete` when the backend answers completely for all six
+	// projects (`fallow health --type-coupling` shows the status).
+	"typeAware": {
+		"enabled": true,
+		"require": "best-effort",
+		"projects": [
+			"packages/json-schema/tsconfig.json",
+			"packages/zod/tsconfig.json",
+			"packages/effect/tsconfig.json",
+			"packages/typescript/tsconfig.json",
+			"packages/test-utils/tsconfig.json",
+			"playground/tsconfig.json",
+		],
+	},
+
+	// Mutation runs stay opt-in (`fallow mutation`) and unconfigured: Vitest is
+	// installed per workspace, not at the repository root, so a run from the root
+	// has no runner to resolve and `fallow doctor` reports that instead of
+	// pretending the guard is active.
+	//
+	// Commit hooks and PR CI judge only findings introduced by the change,
+	// while the `fallow-full` CI job gates the whole repository.
 	"audit": {
 		"gate": "new-only",
+		// A complexity finding that already exceeded a ceiling and grew counts
+		// as introduced: a change may not make existing risk worse.
+		"worsened": "error",
 	},
 
 	// No `publicPackages`. fallow already reads each package's `main`, `exports`
@@ -114,7 +158,15 @@
 
 	"health": {
 		// The fallow defaults apply (cyclomatic 20, cognitive 15, CRAP 30, unit
-		// size 60) and stay that way.
+		// size 60) except for the two ceilings that this repository can ratchet
+		// without a refactor:
+		//
+		// - cyclomatic 12 is the worst function today, so any function that grows
+		//   past it is new risk. The default 20 would let a function almost double
+		//   before the gate noticed.
+		// - file length 900 is the longest hand-written file below the Effect
+		//   generator (874 lines); the generator itself carries a measured ceiling
+		//   in `thresholdOverrides`.
 		//
 		// Test code is left out of the complexity checks and the health score
 		// only. A table-driven test or a `describe` block with many cases is long
@@ -122,6 +174,8 @@
 		// Dead-code and duplication checks still cover every test file.
 		// `packages/test-utils` is the private package of shared test helpers;
 		// nothing published imports it.
+		"maxCyclomatic": 12,
+		"maxFileLines": 900,
 		"ignore": [
 			"**/test/**",
 			"**/*.test.ts",
@@ -144,25 +198,224 @@
 				"maxCognitive": 16,
 				"reason": "Monaco lifecycle hook density, measured at cognitive 16; refactoring requires a browser lifecycle benchmark.",
 			},
+			{
+				// The Effect generator is the one file that renders the whole Effect
+				// target; splitting it would separate the renderer from the case it
+				// renders. Record the measured ceiling so the file may not grow.
+				"files": ["packages/effect/src/generator.ts"],
+				"maxFileLines": 1800,
+				"reason": "Measured ceiling for the Effect generator; it renders one target and does not split along a readable seam.",
+			},
 		],
 	},
 
+	// The catalogue is admitted in full, including the two include-required
+	// categories (`hardcoded-secret`, `secret-to-network`) that a default run
+	// leaves out. A finding is still an unverified candidate; `fallow security`
+	// and the two CI gates decide whether it blocks.
+	"security": {
+		"categories": {
+			"include": [
+				"angular-trusted-html",
+				"cleartext-transport",
+				"code-injection",
+				"command-injection",
+				"dangerous-html",
+				"deprecated-cipher",
+				"dom-document-write",
+				"dynamic-module-load",
+				"dynamic-regex",
+				"electron-unsafe-webpreferences",
+				"hardcoded-secret",
+				"header-injection",
+				"insecure-cookie",
+				"insecure-randomness",
+				"insecure-temp-file",
+				"jquery-html",
+				"jwt-alg-none",
+				"jwt-verify-missing-algorithms",
+				"llm-call-injection",
+				"mass-assignment",
+				"mysql-multiple-statements",
+				"nextjs-open-redirect",
+				"nosql-injection",
+				"open-redirect",
+				"path-traversal",
+				"permissive-cors",
+				"postmessage-wildcard-origin",
+				"prototype-pollution",
+				"redos-regex",
+				"resource-amplification",
+				"route-send-file",
+				"secret-pii-log",
+				"secret-to-network",
+				"sql-injection",
+				"ssrf",
+				"ssti",
+				"template-escape-bypass",
+				"tls-validation-disabled",
+				"unsafe-buffer-alloc",
+				"unsafe-deserialization",
+				"weak-crypto",
+				"webview-injection",
+				"world-writable-permission",
+				"xpath-injection",
+				"xxe",
+				"zip-slip",
+			],
+		},
+	},
+
+	// Flag detection covers the built-in SDK patterns and env prefixes. The
+	// config-object heuristic stays off: it reports the CLI's own options object
+	// (`cli.flags` in `packages/json-schema/src/node/cli.ts`) as a feature flag,
+	// and every audit comment would carry that false positive. The rule itself
+	// stays a `warn`, so a real flag is listed without blocking.
+	"flags": {
+		"configObjectHeuristics": false,
+	},
+
 	"rules": {
-		// Dependency hygiene is clean today; keep it from regressing.
+		// Dead code and dependency hygiene gate at `error`. Their defaults are
+		// already `error`; the explicit entries keep a future default change from
+		// quietly demoting a check this repository relies on.
+		"unused-files": "error",
+		"unused-exports": "error",
+		"unused-types": "error",
+		"unused-dependencies": "error",
 		"unused-dev-dependencies": "error",
-		"type-only-dependencies": "error",
-		"test-only-dependencies": "error",
-
-		// `fallow audit` (the commit hook and the PR gate) only warns about a
-		// clone group that a change introduces by default. As an error, a change
-		// that copies code (for example from one generator into another) fails
-		// the audit instead of passing with a warning.
-		"introduced-clone-group": "error",
-
-		// Rule-pack policy is repository law, not an advisory.
-		"policy-violation": "error",
+		"unused-optional-dependencies": "error",
+		"unused-enum-members": "error",
+		"unused-class-members": "error",
+		"unused-protected-class-members": "error",
+		"unused-namespace-members": "error",
+		"unused-store-members": "error",
+		"unprovided-injects": "error",
+		"unrendered-components": "error",
+		"unused-component-props": "error",
+		"unused-component-emits": "error",
+		"unused-component-inputs": "error",
+		"unused-component-outputs": "error",
+		"unused-svelte-events": "error",
+		"unused-effect-layers": "error",
+		"unused-tagged-errors": "error",
+		"unproduced-catch-tags": "error",
+		"unused-server-actions": "error",
+		"unused-load-data-keys": "error",
 
 		// Every exported signature must be nameable by consumers.
 		"private-type-leaks": "error",
+
+		// A published package keeps a deprecated alias until the next major, so
+		// the two public deprecations in `packages/json-schema/src/dialect.ts`
+		// carry a suppression with the reason instead of demoting the rule.
+		"deprecated-exports-in-use": "error",
+
+		// Dependency placement: a package that only types or tests use belongs in
+		// `devDependencies`, and production code may not import a dev dependency.
+		"type-only-dependencies": "error",
+		"test-only-dependencies": "error",
+		"dev-dependencies-in-production": "error",
+		"unlisted-dependencies": "error",
+		"unlisted-binaries": "error",
+
+		// Import graph health.
+		"unresolved-imports": "error",
+		"duplicate-exports": "error",
+		"duplicate-export-aliases": "error",
+		"circular-dependencies": "error",
+		"re-export-cycle": "error",
+		"package-cycle": "error",
+		"boundary-violation": "error",
+
+		// Catalog and override hygiene in `pnpm-workspace.yaml`.
+		"unused-catalog-entries": "error",
+		"empty-catalog-groups": "error",
+		"unresolved-catalog-references": "error",
+		"unused-dependency-overrides": "error",
+		"misconfigured-dependency-overrides": "error",
+
+		// Complexity gates. The thresholds live in `health` above.
+		"complexity-cyclomatic": "error",
+		"complexity-cognitive": "error",
+		"complexity-crap": "error",
+		"complexity-file-lines": "error",
+
+		// Test-signal integrity: a weakened test, a skipped case or a test-only
+		// branch in production code fails.
+		"weakened-tests": "error",
+		"test-only-branch": "error",
+
+		// Static test coverage gaps stay advisory: the detector has no test path
+		// for the playground's Vite entry (`index.html`, `main.tsx`) and reports
+		// public barrel exports that the suite exercises indirectly through a
+		// generator. They are listed on every run, and `fallow mutation` is the
+		// gate that measures whether a test actually catches a change.
+		"coverage-gaps": "warn",
+
+		// Suppressions must carry a reason, and a suppression that matches
+		// nothing is removed instead of accumulating.
+		"require-suppression-reason": "error",
+		"stale-suppressions": "error",
+
+		// Security candidates. The two heads in
+		// `packages/test-utils/src/suite/evaluate.ts` carry a suppression with
+		// the reason: the suite evaluates generated code in memory and no input
+		// comes from outside the test process.
+		"security-sink": "error",
+
+		// The repository policy pack is repository law, not an advisory.
+		"policy-violation": "error",
+
+		// Next.js / RSC structure, kept honest even while the playground is a
+		// plain Vite app.
+		"invalid-client-export": "error",
+		"mixed-client-server-barrel": "error",
+		"misplaced-directive": "error",
+		"route-collision": "error",
+		"dynamic-segment-name-conflict": "error",
+
+		// A change may not copy code, so a new clone group fails the audit. A
+		// copy that diverges from its reviewed siblings is reported too: it is
+		// how a shared block rots.
+		"introduced-clone-group": "error",
+		"diverged-clone-sibling": "error",
+
+		// Advisory design signals: reported on every run and in the audit
+		// comment, never a merge blocker. Each one is a judgement call about
+		// shape, not a defect.
+		"prop-drilling": "warn",
+		"thin-wrapper": "warn",
+		"duplicate-prop-shape": "warn",
+		"constant-parameters": "warn",
+		"absent-component-props": "warn",
+
+		// CSS: a broken or dead reference is a defect; token drift, a repeated
+		// block and a long selector are taste. `playground/src/App.module.css`
+		// and `global.css` carry three selector-complexity warnings today, and
+		// rewriting idiomatic `:hover:not(...)` chains would make the cascade
+		// harder to read, not safer.
+		"css-broken-reference": "error",
+		"css-dead-surface": "error",
+		"css-token-drift": "warn",
+		"css-duplicate-block": "warn",
+		"css-selector-complexity": "warn",
+
+		// A feature flag is an inventory item, not a defect: `fallow audit`
+		// shows a new flag in the comment so the reviewer sees it. A flag that
+		// becomes stale is a retirement candidate, not a broken build.
+		"feature-flags": "warn",
+
+		// `secret-to-network` has no client root in a Vite app (the detector
+		// reports that it measures nothing), and it becomes meaningful only when
+		// the project grows a `"use client"` boundary. The security job gates
+		// the candidates themselves.
+		"security-client-server-leak": "warn",
+
+		// Audit diff-risk items that describe the change for the reviewer: a new
+		// suppression and a new dependency are decisions a human verifies, and
+		// blocking them would only teach people to bypass the gate.
+		"added-suppression": "warn",
+		"added-dependency": "warn",
 	},
 }

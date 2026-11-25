@@ -4,7 +4,10 @@ import { isPlainObject } from './utils';
 
 export type DialectId = 'draft-04' | 'draft-06' | 'draft-07' | '2019-09' | '2020-12';
 
-/** @deprecated Use `DialectId`. */
+/**
+ * @deprecated Use `DialectId`.
+ * fallow-ignore-next-line deprecated-export-in-use -- published deprecated alias, removed in the next major
+ */
 export type SchemaVersion = DialectId;
 
 /** Where the dialect of a schema node comes from. */
@@ -356,7 +359,10 @@ export function detectDialect(schema: unknown): DetectedDialect | undefined {
 	return undefined;
 }
 
-/** @deprecated Use `detectDialect`. */
+/**
+ * @deprecated Use `detectDialect`.
+ * fallow-ignore-next-line deprecated-export-in-use -- published deprecated alias, removed in the next major
+ */
 export function detectSchemaVersion(schema: unknown, fallback: DialectId = 'draft-07'): DialectId {
 	return detectDialect(schema)?.dialect.id ?? fallback;
 }
