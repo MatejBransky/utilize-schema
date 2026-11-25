@@ -21,18 +21,18 @@ export interface ValueTypeContext {
 	customSchemaResolver?: CustomSchemaResolver;
 }
 
-const VALUE_TYPE_GENERATORS: Record<
+const VALUE_TYPE_GENERATORS = new Map<
 	string,
 	(schema: ParsedJSONSchemaObject, context: ValueTypeContext, self: string | undefined) => string
-> = {
-	string: () => 'string',
-	number: () => 'number',
-	integer: () => 'number',
-	boolean: () => 'boolean',
-	null: () => 'null',
-	array: renderArray,
-	object: renderObject,
-};
+>([
+	['string', () => 'string'],
+	['number', () => 'number'],
+	['integer', () => 'number'],
+	['boolean', () => 'boolean'],
+	['null', () => 'null'],
+	['array', renderArray],
+	['object', renderObject],
+]);
 
 /**
  * Renders the TypeScript type of a schema that takes part in a reference cycle.
@@ -152,7 +152,7 @@ function renderValueType(
 
 	const type = object.type as string | undefined;
 
-	return VALUE_TYPE_GENERATORS[type ?? '']?.(object, context, self) ?? 'Schema.Json';
+	return VALUE_TYPE_GENERATORS.get(type ?? '')?.(object, context, self) ?? 'Schema.Json';
 }
 
 function simpleValueType(schema: ParsedJSONSchema): string | undefined {

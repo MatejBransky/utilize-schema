@@ -7,7 +7,7 @@ import { collectDeclarations } from './viteDeclarations';
 
 const roots: string[] = [];
 
-function fixture(files: Record<string, string>): { root: string; entry: string } {
+function fixture(files: Record<string, string>) {
 	const root = mkdtempSync(join(tmpdir(), 'utilize-declarations-'));
 	roots.push(root);
 

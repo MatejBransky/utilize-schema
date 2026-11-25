@@ -1,3 +1,4 @@
+import type { InferableType } from './inferTypes';
 import {
 	containsBounds,
 	isKeywordApplicable,
@@ -16,7 +17,7 @@ export type Generate = (schema: ParsedJSONSchema, context: GeneratorContext) => 
  * Guards for the types `inferTypeKeywords` can infer. Keywords on an untyped
  * schema must not reject values of other types.
  */
-const typeGuards: Record<string, string> = {
+const typeGuards: Record<InferableType, string> = {
 	object: `typeof value === 'object' && value !== null && !Array.isArray(value)`,
 	array: 'Array.isArray(value)',
 	string: `typeof value === 'string'`,

@@ -1,5 +1,5 @@
 import { isKeywordApplicable } from '@utilize/json-schema';
-import type { Dialect, JSONSchemaTypeName, ParsedJSONSchemaObject } from '@utilize/json-schema';
+import type { Dialect, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 const objectKeywords = [
 	'properties',
@@ -33,10 +33,12 @@ const numberKeywords = ['minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaxi
  * check. A schema can constrain more than one type, e.g.
  * `{ minLength: 2, minimum: 5 }` constrains strings and numbers.
  */
+export type InferableType = 'object' | 'array' | 'string' | 'number';
+
 export function inferTypeKeywords(
 	schema: ParsedJSONSchemaObject,
 	dialect: Dialect
-): JSONSchemaTypeName[] {
+): InferableType[] {
 	if (
 		schema.type !== undefined ||
 		'$ref' in schema ||

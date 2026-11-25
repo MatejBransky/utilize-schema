@@ -196,8 +196,15 @@ function additionalValueConflict(
 	return undefined;
 }
 
+interface MergedSchema {
+	type: 'object';
+	properties: MergeState['properties'];
+	required: string[];
+	additionalProperties?: MergeState['additionalProperties'];
+}
+
 function mergedObject(state: MergeState): ParsedJSONSchemaObject {
-	const merged: Record<string, unknown> = {
+	const merged: MergedSchema = {
 		type: 'object',
 		properties: state.properties,
 		required: [...state.required],

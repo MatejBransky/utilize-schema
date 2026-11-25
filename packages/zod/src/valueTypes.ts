@@ -344,10 +344,7 @@ function renderInterfaceBody(
 	return `{\n${members}\n\t[key: string]: ${index};\n}`;
 }
 
-function renderObjectMembers(
-	schema: ParsedJSONSchemaObject,
-	context: ValueTypeContext
-): { lines: string[]; index?: string } {
+function renderObjectMembers(schema: ParsedJSONSchemaObject, context: ValueTypeContext) {
 	const lines: string[] = [];
 	const propertyTypes: string[] = [];
 

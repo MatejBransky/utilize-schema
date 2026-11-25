@@ -16,7 +16,7 @@ const parserId =
 const inference =
 	'object and array keywords give an untyped schema its inferred type, so valid instances of other JSON types are rejected';
 
-export const knownGaps: Record<string, string> = {
+export const knownGaps = {
 	// Shared parser: $id/$anchor and URN resolution.
 	'id-legacy.json :: URN ref with nested pointer ref': parserId,
 
@@ -35,4 +35,4 @@ export const knownGaps: Record<string, string> = {
 	'required.json :: required validation': inference,
 	'required.json :: required properties whose names are Javascript object property names':
 		inference,
-};
+} satisfies Record<string, string>;
