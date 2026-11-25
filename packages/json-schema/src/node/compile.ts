@@ -68,7 +68,9 @@ export interface CompileLocation {
 }
 
 export interface CompilePaths {
+	/** Absolute path of the input schema. */
 	inputPath: string;
+	/** Absolute path of the generated module; defaults to `schema.generated.ts`. */
 	outputPath: string;
 }
 
@@ -86,7 +88,9 @@ export function compilePaths(
 }
 
 export interface SchemaFileLocation {
+	/** Directory the schema is parsed from. */
 	cwd: string;
+	/** File name relative to `cwd`. */
 	fileName: string;
 }
 

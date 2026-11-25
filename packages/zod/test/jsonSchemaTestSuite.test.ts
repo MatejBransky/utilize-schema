@@ -3,8 +3,10 @@ import { afterAll, describe, expect, test } from 'vitest';
 import { DRAFT_7, isCompatible } from '@utilize/test-utils/suite/compatibility';
 import { compileToZodSchema } from './suite/compile';
 import { knownFailureInstances } from './suite/knownFailureInstances';
-import type { KnownFailureInstances } from './suite/knownFailureInstances';
 import { knownFailures } from './suite/knownFailures';
+
+const knownFailureByKey = new Map(Object.entries(knownFailures));
+const knownFailureInstanceByKey = new Map(Object.entries(knownFailureInstances));
 import { loadSuiteFiles, suiteCaseKey } from '@utilize/test-utils/suite/loadSuite';
 import type { SuiteCase } from '@utilize/test-utils/suite/loadSuite';
 
@@ -105,11 +107,11 @@ for (const file of files) {
 			stats.assertions += testCase.tests.length;
 
 			const key = suiteCaseKey(file, testCase);
-			const gap = (knownFailures as Record<string, string>)[key];
+			const gap = knownFailureByKey.get(key);
 
 			if (gap) {
 				stats.knownGaps++;
-				const expected = (knownFailureInstances as KnownFailureInstances)[key];
+				const expected = knownFailureInstanceByKey.get(key);
 
 				test(`${testCase.description} — known gap: ${gap}`, async () => {
 					if (expected === 'compile') {
