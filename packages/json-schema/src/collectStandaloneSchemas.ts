@@ -1,4 +1,5 @@
-import { Meta, type ParsedJSONSchema, type ParsedJSONSchemaObject } from './model';
+import { Meta } from './model';
+import type { ParsedJSONSchema, ParsedJSONSchemaObject } from './model';
 
 /**
  * A dependency between two schemas: the first one needs the second. The first
@@ -49,11 +50,15 @@ export function collectStandaloneSchemas(
 	}
 
 	function visit(schema: ParsedJSONSchema | undefined, parent: ParsedJSONSchemaObject | null) {
-		if (!isSchemaObject(schema)) return;
+		if (!isSchemaObject(schema)) {
+			return;
+		}
 
 		edges.push([parent, schema]);
 
-		if (seen.has(schema)) return;
+		if (seen.has(schema)) {
+			return;
+		}
 		seen.add(schema);
 
 		const declaration = inlineCopies.get(schema);
@@ -90,7 +95,9 @@ export function collectStandaloneSchemas(
 function* firstDefinitionsOf(schema: ParsedJSONSchemaObject): Generator<ParsedJSONSchemaObject> {
 	const definitions = schema.$defs || schema.definitions;
 
-	if (!definitions) return;
+	if (!definitions) {
+		return;
+	}
 
 	for (const definition of Object.values(definitions) as ParsedJSONSchema[]) {
 		if (isSchemaObject(definition)) {

@@ -2,10 +2,9 @@ import {
 	containsBounds,
 	isKeywordApplicable,
 	narrowUntypedSchema,
-	type ParsedJSONSchema,
-	type ParsedJSONSchemaObject,
 	withSourceMeta,
 } from '@utilize/json-schema';
+import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import type { GeneratorContext } from './generators/types';
 import { inferTypeKeywords } from './inferTypes';
@@ -88,7 +87,7 @@ function appendImplicitTypeChecks(
 			minProperties: undefined,
 			maxProperties: undefined,
 			uniqueItems: undefined,
-		} as ParsedJSONSchemaObject);
+		});
 
 		checks.push(ts`{
       if (${typeGuards[implicitType]}) {
@@ -311,7 +310,7 @@ function appendDependencyChecks(
 			}
 
 			const dependencySchema = generate(
-				narrowUntypedSchema(dependency as ParsedJSONSchema, 'object', context.dialect),
+				narrowUntypedSchema(dependency, 'object', context.dialect),
 				context
 			);
 

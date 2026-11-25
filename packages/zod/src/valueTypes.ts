@@ -1,10 +1,5 @@
-import {
-	type Dialect,
-	dialectOf,
-	isPlainObject,
-	Meta,
-	type ParsedJSONSchemaObject,
-} from '@utilize/json-schema';
+import { dialectOf, isPlainObject, Meta } from '@utilize/json-schema';
+import type { Dialect, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { generator as allOfGenerator } from './generators/allOfGenerator';
 import { withoutAlwaysValidAnyOf } from './generators/alwaysValidAnyOf';
@@ -309,10 +304,7 @@ function renderReadOnlyType(schema: ParsedJSONSchemaObject, context: ValueTypeCo
 		return `ReadonlyArray<${parenthesize(items)}>`;
 	}
 
-	const inner = renderType(
-		{ ...schema, readOnly: undefined } as unknown as ParsedJSONSchemaObject,
-		context
-	);
+	const inner = renderType({ ...schema, readOnly: undefined }, context);
 
 	if (
 		generator === objectGenerator ||

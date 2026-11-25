@@ -1,12 +1,14 @@
-import { type DialectOptions, type JSONSchema, parse } from '@utilize/json-schema';
-import { type z } from 'zod';
+import { parse } from '@utilize/json-schema';
+import type { DialectOptions, JSONSchema } from '@utilize/json-schema';
+import type { z } from 'zod';
 
 import { formatSource, ts } from '@utilize/test-utils/code';
 
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { generate, type GenerateOptions } from '../src/generator';
+import { generate } from '../src/generator';
+import type { GenerateOptions } from '../src/generator';
 import type { CustomSchemaResolver, FormatMap, FormatMode } from '../src/generators/types';
 
 /** Generator options a test can override; the rest keep their test defaults. */

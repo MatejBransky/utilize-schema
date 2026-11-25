@@ -11,7 +11,8 @@ import {
 	writeAzureTemplate,
 } from '../bench/fixtures';
 
-import { Meta, parse, type ParsedJSONSchemaObject } from '../src';
+import { Meta, parse } from '../src';
+import type { ParsedJSONSchemaObject } from '../src';
 
 describe('large schemas', () => {
 	test('parses an Azure-like template with linked files', async () => {

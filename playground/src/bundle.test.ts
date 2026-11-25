@@ -4,7 +4,8 @@ import { expect, test } from 'vitest';
 
 import './polyfills';
 
-import { buildBundle, detectRootId, parseJsonFile, type SchemaFile } from './bundle';
+import { buildBundle, detectRootId, parseJsonFile } from './bundle';
+import type { SchemaFile } from './bundle';
 
 function file(id: string, name: string, schema: unknown): SchemaFile {
 	return { id, name, content: JSON.stringify(schema) };

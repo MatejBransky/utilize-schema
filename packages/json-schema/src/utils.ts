@@ -3,14 +3,22 @@
  * This function is a replacement for lodash.isPlainObject.
  */
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
-	if (typeof value !== 'object' || value === null) return false;
+	if (typeof value !== 'object' || value === null) {
+		return false;
+	}
 
-	if (Object.prototype.toString.call(value) !== '[object Object]') return false;
+	if (Object.prototype.toString.call(value) !== '[object Object]') {
+		return false;
+	}
 
-	const proto = Object.getPrototypeOf(value);
-	if (proto === null) return true;
+	const proto: object | null = Object.getPrototypeOf(value);
+	if (proto === null) {
+		return true;
+	}
 
-	const Ctor = Object.prototype.hasOwnProperty.call(proto, 'constructor') && proto.constructor;
+	const Ctor = Object.hasOwn(proto, 'constructor')
+		? (proto as { constructor?: unknown }).constructor
+		: undefined;
 	return (
 		typeof Ctor === 'function' &&
 		Ctor instanceof Ctor &&

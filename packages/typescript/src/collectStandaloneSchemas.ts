@@ -2,9 +2,11 @@ import {
 	collectStandaloneSchemas as collectSharedStandaloneSchemas,
 	isPlainObject,
 	Meta,
-	type ParsedJSONSchema,
-	type ParsedJSONSchemaObject,
-	type StandaloneSchemas,
+} from '@utilize/json-schema';
+import type {
+	ParsedJSONSchema,
+	ParsedJSONSchemaObject,
+	StandaloneSchemas,
 } from '@utilize/json-schema';
 
 /**
@@ -13,7 +15,7 @@ import {
  */
 export interface BooleanDefinition {
 	schema: boolean;
-	path: Array<string | number>;
+	path: (string | number)[];
 }
 
 export interface StandaloneSchemasResult extends StandaloneSchemas {
@@ -40,7 +42,9 @@ export function collectStandaloneSchemas(root: ParsedJSONSchemaObject): Standalo
 				| Record<string, ParsedJSONSchema>
 				| undefined;
 
-			if (!isPlainObject(definitions)) continue;
+			if (!isPlainObject(definitions)) {
+				continue;
+			}
 
 			for (const [key, definition] of Object.entries(definitions)) {
 				if (isPlainObject(definition)) {

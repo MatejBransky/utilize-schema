@@ -1,4 +1,5 @@
-import { resolveDialect, type Dialect } from './dialect';
+import { resolveDialect } from './dialect';
+import type { Dialect } from './dialect';
 import { schemaChildren } from './identifiers';
 import type { JSONSchema } from './model';
 

@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'vitest';
 
 import { generate } from '../src/generator';
-import { compile, generateCode, ts, type TestSchema } from './test-utils';
+import { compile, generateCode, ts } from './test-utils';
+import type { TestSchema } from './test-utils';
 
 describe('code generation', () => {
 	test('exports a type for a scalar root schema', async () => {
@@ -137,7 +138,7 @@ describe('code generation', () => {
 	});
 
 	test('escapes string literals', async () => {
-		await expect(compile({ enum: ["it's", 'a\\b', 'say "hi"'] })).toMatchCode(ts`
+		await expect(compile({ enum: ["it's", String.raw`a\b`, 'say "hi"'] })).toMatchCode(ts`
 			export type Root = 'it\'s' | 'a\\b' | 'say "hi"';
 		`);
 	});
@@ -238,7 +239,7 @@ describe('code generation', () => {
 			type: 'object',
 			additionalProperties: false,
 			$defs: { Allowed: true, Denied: false },
-		} as TestSchema);
+		});
 
 		expect(code).toContain('export type Allowed = unknown;');
 		expect(code).toContain('export type Denied = never;');

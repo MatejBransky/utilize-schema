@@ -1,20 +1,18 @@
 import { describe, expect, test, vi } from 'vitest';
 
 import {
-	type DialectIssue,
 	DialectError,
 	Meta,
 	detectDialect,
 	dialectOf,
-	type JSONSchema,
 	normalizeSchema,
 	parse,
-	type ParsedJSONSchemaObject,
 	prepareSchema,
 	readDialectCliOptions,
 	resolveDialect,
 	withSourceMeta,
 } from '../src';
+import type { DialectIssue, JSONSchema, ParsedJSONSchemaObject } from '../src';
 import { dialects } from '../src/dialect';
 
 const draft07 = 'http://json-schema.org/draft-07/schema#';
@@ -504,10 +502,13 @@ describe('parse metadata', () => {
 	});
 
 	test('marks a schema without $schema as a fallback', async () => {
-		const parsed = await parse({ type: 'string' } as JSONSchema, {
-			cwd: __dirname + '/',
-			fileName: 'Root.json',
-		});
+		const parsed = await parse(
+			{ type: 'string' },
+			{
+				cwd: __dirname + '/',
+				fileName: 'Root.json',
+			}
+		);
 		const root = parsed.root as NonNullable<typeof parsed.root>;
 
 		expect((root as { [Meta]: { dialect: string } })[Meta].dialect).toBe('draft-07');

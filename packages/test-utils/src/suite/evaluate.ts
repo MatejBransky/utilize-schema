@@ -1,4 +1,5 @@
-import { type CustomNameResolver, Meta } from '@utilize/json-schema';
+import { Meta } from '@utilize/json-schema';
+import type { CustomNameResolver } from '@utilize/json-schema';
 
 import { stripTypeScriptTypes } from 'node:module';
 
@@ -28,7 +29,7 @@ export function evaluateGeneratedCode<T>(code: string, scope: Record<string, unk
 
 	// `stripTypeScriptTypes` removes type-only declarations but keeps the ESM
 	// `export const` syntax, which the function body cannot contain.
-	const javascript = stripTypeScriptTypes(code, { mode: 'strip' }).replace(
+	const javascript = stripTypeScriptTypes(code, { mode: 'strip' }).replaceAll(
 		/^export const /gm,
 		'const '
 	);

@@ -15,7 +15,7 @@ import { SelectPicker } from './SelectPicker';
 
 import styles from '../App.module.css';
 
-const keywordPolicyOptions: Array<{ value: KeywordPolicy; label: string; hint: string }> = [
+const keywordPolicyOptions: { value: KeywordPolicy; label: string; hint: string }[] = [
 	{ value: 'error', label: 'Error', hint: 'Reject keywords outside the dialect' },
 	{ value: 'warn', label: 'Warning', hint: 'Report them as warnings' },
 	{ value: 'ignore', label: 'Ignore', hint: 'Do not report them' },

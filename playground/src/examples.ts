@@ -108,7 +108,7 @@ export const examples: Example[] = [
 	single('all-of-ref-filter', 'All of with $ref and if', 'Advanced', {
 		title: 'Port',
 		allOf: [{ $ref: '#/definitions/port' }],
-		if: { maximum: 65535 },
+		if: { maximum: 65_535 },
 		then: { minimum: 1 },
 		definitions: {
 			port: { type: 'integer' },
@@ -251,7 +251,7 @@ export const examples: Example[] = [
 	single('unicode-pattern', 'Unicode pattern', 'Advanced', {
 		title: 'Word',
 		type: 'string',
-		pattern: '^\\p{Letter}+$',
+		pattern: String.raw`^\p{Letter}+$`,
 	}),
 	single('not', 'Not', 'Advanced', {
 		title: 'Slug',

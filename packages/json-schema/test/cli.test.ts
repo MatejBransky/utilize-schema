@@ -6,7 +6,8 @@ import type { ParseArgsOptionsConfig } from 'node:util';
 
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
-import { type CliIo, type GeneratorCli, runGeneratorCli } from '../src/node';
+import { runGeneratorCli } from '../src/node';
+import type { CliIo, GeneratorCli } from '../src/node';
 
 type TestFlags = {
 	'custom-flag': { type: 'boolean'; default: false };

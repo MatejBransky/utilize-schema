@@ -86,7 +86,7 @@ export function OutputPane({ playground }: OutputPaneProps) {
 interface ProblemListProps {
 	problems: Problem[];
 	files: SchemaFile[];
-	onSelect(problem: Problem): void;
+	onSelect: (problem: Problem) => void;
 }
 
 function ProblemList({ problems, files, onSelect }: ProblemListProps) {

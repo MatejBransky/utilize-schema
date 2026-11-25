@@ -1,19 +1,17 @@
 import { generate as generateEffect } from '@utilize/effect';
-import { type KeywordPolicy, parse, type ParsedJSONSchema } from '@utilize/json-schema';
+import { parse } from '@utilize/json-schema';
+import type { KeywordPolicy, ParsedJSONSchema } from '@utilize/json-schema';
 import { generate as generateTypeScript } from '@utilize/typescript';
 import { generate as generateZod } from '@utilize/zod';
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { RefObject } from 'react';
 
-import {
-	buildBundle,
-	detectRootId,
-	normalizeName,
-	parseJsonFile,
-	type Problem,
-	type SchemaFile,
-} from './bundle';
-import { collectDroppedFiles, readDroppedSchemas, type DropMode } from './drop';
-import { exampleGeneratorOptions, type ExampleGeneratorOptions } from './exampleOptions';
+import { buildBundle, detectRootId, normalizeName, parseJsonFile } from './bundle';
+import type { Problem, SchemaFile } from './bundle';
+import { collectDroppedFiles, readDroppedSchemas } from './drop';
+import type { DropMode } from './drop';
+import { exampleGeneratorOptions } from './exampleOptions';
+import type { ExampleGeneratorOptions } from './exampleOptions';
 import { examples } from './examples';
 import type { FormatMode } from './formatMode';
 import { formatTypeScript } from './monaco/format';
@@ -28,8 +26,10 @@ import {
 	resolveExampleId,
 	uniqueName,
 } from './playgroundState';
-import { targets, type TargetId } from './targets';
-import { loadColorMode, THEME_STORAGE_KEY, type ColorMode } from './theme';
+import { targets } from './targets';
+import type { TargetId } from './targets';
+import { loadColorMode, THEME_STORAGE_KEY } from './theme';
+import type { ColorMode } from './theme';
 import { useFileDrop } from './useFileDrop';
 import type { UrlState } from './urlState';
 import { validateSchemas } from './validation';
@@ -48,9 +48,9 @@ const exampleOptions = examples.map((example) => ({
 }));
 
 interface SettingsSetters {
-	setTarget(target: TargetId): void;
-	setKeywordPolicy(policy: KeywordPolicy): void;
-	setFormatMode(mode: FormatMode): void;
+	setTarget: (target: TargetId) => void;
+	setKeywordPolicy: (policy: KeywordPolicy) => void;
+	setFormatMode: (mode: FormatMode) => void;
 }
 
 export function usePlayground() {
@@ -127,7 +127,7 @@ function useGeneratorSettings(initial: UrlState) {
 		if (!url.hash && url.searchParams.get(playgroundParams.generator) !== target) {
 			updateUrl({ [playgroundParams.generator]: target }, 'replace');
 		}
-	}, []);
+	}, [target]);
 
 	useEffect(() => {
 		const url = new URL(location.href);
@@ -179,7 +179,11 @@ function useSchemaFiles(initialFiles: SchemaFile[], settings: SettingsSetters) {
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [draftName, setDraftName] = useState('');
 	const [renameError, setRenameError] = useState<string | null>(null);
-	const { dragging, activeMode, drop } = useFileDrop({ onDrop: handleDrop });
+	const { dragging, activeMode, drop } = useFileDrop({
+		onDrop: (dataTransfer, mode) => {
+			void handleDrop(dataTransfer, mode);
+		},
+	});
 
 	useEffect(() => {
 		if (!files.some((file) => file.id === activeId) && files[0]) {
@@ -201,7 +205,7 @@ function useSchemaFiles(initialFiles: SchemaFile[], settings: SettingsSetters) {
 		window.addEventListener('popstate', onPopState);
 
 		return () => window.removeEventListener('popstate', onPopState);
-	}, []);
+	}, [settings]);
 
 	useEffect(() => {
 		if (!editingId) {
@@ -266,12 +270,12 @@ function useSchemaFiles(initialFiles: SchemaFile[], settings: SettingsSetters) {
 
 		if (mode === 'add') {
 			setFiles([...files, ...added]);
-			setActiveId(added[0]!.id);
+			setActiveId(added[0].id);
 			return;
 		}
 
-		const detectedRootId = detectRootId(added) ?? added[0]!.id;
-		const root = added.find((file) => file.id === detectedRootId) ?? added[0]!;
+		const detectedRootId = detectRootId(added) ?? added[0].id;
+		const root = added.find((file) => file.id === detectedRootId) ?? added[0];
 
 		setFiles([root, ...added.filter((file) => file.id !== root.id)]);
 		setActiveId(root.id);
@@ -290,7 +294,7 @@ function useSchemaFiles(initialFiles: SchemaFile[], settings: SettingsSetters) {
 		}
 		setFiles(next);
 		if (activeId === id) {
-			setActiveId(next[0]!.id);
+			setActiveId(next[0].id);
 		}
 	}
 
@@ -377,7 +381,7 @@ function useGeneration(
 		let cancelled = false;
 		setBusy(true);
 
-		const timer = setTimeout(async () => {
+		async function generate() {
 			let nextCode = '';
 			const nextProblems: Problem[] = [];
 
@@ -410,6 +414,10 @@ function useGeneration(
 				setGenerationProblems(nextProblems);
 				setBusy(false);
 			}
+		}
+
+		const timer = setTimeout(() => {
+			void generate();
 		}, 300);
 
 		return () => {

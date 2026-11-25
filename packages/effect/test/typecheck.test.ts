@@ -5,7 +5,8 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 
-import { compile, type CompileOptions, type TestSchema } from './test-utils';
+import { compile } from './test-utils';
+import type { CompileOptions, TestSchema } from './test-utils';
 
 const require = createRequire(import.meta.url);
 const tsc = join(dirname(require.resolve('typescript/package.json')), 'bin/tsc');
@@ -121,13 +122,13 @@ const booleanRefs = {
 
 const structuredLiterals: TestSchema = {
 	enum: [6, 'foo', [], true, { foo: 12 }],
-} as TestSchema;
+};
 
 const structuredConst: TestSchema = {
 	const: { foo: 'bar', baz: 'bax' },
-} as unknown as TestSchema;
+};
 
-const structuredArrayConst: TestSchema = { const: [{ foo: 'bar' }] } as unknown as TestSchema;
+const structuredArrayConst: TestSchema = { const: [{ foo: 'bar' }] };
 
 const recursiveStructuredLiteral: TestSchema = {
 	title: 'Node',

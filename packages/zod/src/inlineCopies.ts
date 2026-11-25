@@ -1,10 +1,5 @@
-import {
-	childSchemasOf,
-	dialectOf,
-	isPlainObject,
-	Meta,
-	type ParsedJSONSchemaObject,
-} from '@utilize/json-schema';
+import { childSchemasOf, dialectOf, isPlainObject, Meta } from '@utilize/json-schema';
+import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { withoutAlwaysValidAnyOf } from './generators/alwaysValidAnyOf';
 import { ignoresRefSiblings } from './generators/generateSchema';
@@ -199,7 +194,6 @@ function hoistRepeatedSchemas(
 	// decides every schema before the schemas inside it.
 	const repeated = [...occurrences]
 		.filter(([key, schemas]) => schemas.length > 1 && !declarations.has(key))
-		// eslint-disable-next-line unicorn/no-array-sort -- spread creates a fresh array
 		.sort(([a], [b]) => b.length - a.length);
 
 	for (const [, schemas] of repeated) {
@@ -218,13 +212,10 @@ function hoistRepeatedSchemas(
 		}
 	}
 
-	return (
-		[...hoisted]
-			.map(([declaration, source]) => ({ declaration, position: order.get(source)! }))
-			// eslint-disable-next-line unicorn/no-array-sort -- map creates a fresh array
-			.sort((a, b) => a.position - b.position)
-			.map(({ declaration }) => declaration)
-	);
+	return [...hoisted]
+		.map(([declaration, source]) => ({ declaration, position: order.get(source)! }))
+		.sort((a, b) => a.position - b.position)
+		.map(({ declaration }) => declaration);
 }
 
 /**
@@ -242,7 +233,7 @@ function declarationFrom(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject
 		value: meta,
 	});
 
-	return declaration as ParsedJSONSchemaObject;
+	return declaration;
 }
 
 /**
@@ -320,7 +311,6 @@ class StructuralKeys {
 
 		const meta = (value as Partial<ParsedJSONSchemaObject>)[Meta];
 		const keywords = Object.keys(value);
-		// eslint-disable-next-line unicorn/no-array-sort -- Object.keys returns a fresh array
 		keywords.sort();
 		const entries = keywords.map(
 			(keyword) => `${JSON.stringify(keyword)}:${this.ofEntry(value, keyword, meta)}`

@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import type { JSONSchema } from '../src';
 import {
-	type CliIo,
 	compilePaths,
 	formatAndDialectFlags,
 	generatedFileBanner,
@@ -17,6 +16,7 @@ import {
 	readSchema,
 	schemaFileLocation,
 } from '../src/node';
+import type { CliIo } from '../src/node';
 
 describe('schema files', () => {
 	let directory: string;

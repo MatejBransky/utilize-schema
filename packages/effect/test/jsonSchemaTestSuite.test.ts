@@ -5,7 +5,8 @@ import { compileToEffectSchema } from './suite/compile';
 import { knownFailureInstances } from './suite/knownFailureInstances';
 import { knownFailures } from './suite/knownFailures';
 import { decode } from './test-utils';
-import { loadSuiteFiles, type SuiteCase, suiteCaseKey } from '@utilize/test-utils/suite/loadSuite';
+import { loadSuiteFiles, suiteCaseKey } from '@utilize/test-utils/suite/loadSuite';
+import type { SuiteCase } from '@utilize/test-utils/suite/loadSuite';
 
 /**
  * Runs the official JSON Schema Test Suite against the generated Zod schemas.
@@ -73,7 +74,7 @@ afterAll(() => {
 });
 
 for (const file of files) {
-	const runnable: Array<{ testCase: SuiteCase; skip: ReturnType<typeof skipReason> }> = [];
+	const runnable: { testCase: SuiteCase; skip: ReturnType<typeof skipReason> }[] = [];
 
 	for (const testCase of file.cases) {
 		stats.cases++;
@@ -145,7 +146,6 @@ for (const file of files) {
 
 					stats.failedAssertions += failures.length;
 
-					// eslint-disable-next-line unicorn/no-array-sort -- both arrays are fresh
 					expect([...failures].sort()).toEqual([...(expected as string[])].sort());
 				});
 				continue;

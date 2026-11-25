@@ -1,4 +1,5 @@
 import { createAgent } from '@ui-sdk/react/agent';
+import type { Ref } from 'react';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 
@@ -16,7 +17,7 @@ vi.mock('./monaco/MonacoEditor', async () => {
 
 	const MonacoEditor = forwardRef(function MonacoEditorMock(
 		{ testId }: { testId?: string },
-		ref: import('react').Ref<unknown>
+		ref: Ref<unknown>
 	) {
 		useImperativeHandle(ref, () => ({
 			format() {},
@@ -90,7 +91,11 @@ async function dropFiles(mode: 'add' | 'replace', files: DropFile[]) {
 }
 
 function savedFiles(): SchemaFile[] {
-	return JSON.parse(localStorage.getItem('utilize-schema-playground') ?? '{"files":[]}').files;
+	return (
+		JSON.parse(localStorage.getItem('utilize-schema-playground') ?? '{"files":[]}') as {
+			files: SchemaFile[];
+		}
+	).files;
 }
 
 test('dragging JSON files over the editor shows the add and replace targets', async () => {
@@ -132,7 +137,7 @@ test('dropping files on the replace target opens them as tabs', async () => {
 	await vi.waitFor(() =>
 		expect(savedFiles().map((file) => file.name)).toEqual(['person.json', 'address.json'])
 	);
-	expect(savedFiles()[0]!.content).toContain('./address.json');
+	expect(savedFiles()[0].content).toContain('./address.json');
 	expect(tabNames()).toHaveLength(2);
 	expect(tabNames()[0]).toContain('person.json');
 	expect(tabNames()[1]).toContain('address.json');
@@ -475,8 +480,8 @@ test('the keyword-policy query parameter overrides the hash state', async () => 
 		keywordPolicy: 'warn',
 	};
 	const encoded = btoa(JSON.stringify(state))
-		.replace(/\+/g, '-')
-		.replace(/\//g, '_')
+		.replaceAll('+', '-')
+		.replaceAll('/', '_')
 		.replace(/=+$/, '');
 	history.replaceState(null, '', `/?keyword-policy=error#data=${encoded}`);
 	await render(<App />);

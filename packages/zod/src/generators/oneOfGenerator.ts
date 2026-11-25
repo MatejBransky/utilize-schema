@@ -1,4 +1,5 @@
-import { dialectOf, type ParsedJSONSchemaObject } from '@utilize/json-schema';
+import { dialectOf } from '@utilize/json-schema';
+import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
 import { areMutuallyExclusive } from './exclusiveBranches';

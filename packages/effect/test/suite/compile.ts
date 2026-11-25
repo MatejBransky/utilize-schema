@@ -1,8 +1,10 @@
-import { type ExternalSchemas, type JSONSchema, parse } from '@utilize/json-schema';
+import { parse } from '@utilize/json-schema';
+import type { ExternalSchemas, JSONSchema } from '@utilize/json-schema';
 import { evaluateGeneratedCode, nameRootSchema } from '@utilize/test-utils/suite/evaluate';
 import { Schema } from 'effect';
 
-import { type FormatMode, generate } from '../../src/generator';
+import { generate } from '../../src/generator';
+import type { FormatMode } from '../../src/generator';
 
 export type SuiteGeneratedSchema = Parameters<typeof Schema.decodeUnknownSync>[0];
 

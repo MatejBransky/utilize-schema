@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { type CliIo, isEntrypoint, runGeneratorCli } from '@utilize/json-schema/node';
+import { isEntrypoint, runGeneratorCli } from '@utilize/json-schema/node';
+import type { CliIo } from '@utilize/json-schema/node';
 
 import { compileFile, compileSchema, withBanner } from './compile';
 

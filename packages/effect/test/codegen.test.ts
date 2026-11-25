@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
-import { compile, compileModule, ts, type TestSchema } from './test-utils';
+import { compile, compileModule, ts } from './test-utils';
+import type { TestSchema } from './test-utils';
 
 describe('code generation', () => {
 	test('exports a const and a type for the root schema', async () => {

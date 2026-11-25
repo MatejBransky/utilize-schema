@@ -7,8 +7,8 @@ import {
 	readGeneratorParam,
 	readKeywordPolicyParam,
 	readUrlState,
-	type UrlState,
 } from './urlState';
+import type { UrlState } from './urlState';
 
 function file(id: string): SchemaFile {
 	return { id, name: `${id}.json`, content: '{}' };

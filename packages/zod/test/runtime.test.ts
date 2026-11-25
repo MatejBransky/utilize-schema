@@ -1,4 +1,4 @@
-import { type JSONSchema } from '@utilize/json-schema';
+import type { JSONSchema } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
 import { compileModule, compileToZod } from './test-utils';

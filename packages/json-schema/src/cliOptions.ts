@@ -1,4 +1,5 @@
-import { type DialectId, type DialectOptions, dialects, type KeywordPolicy } from './dialect';
+import { dialects } from './dialect';
+import type { DialectId, DialectOptions, KeywordPolicy } from './dialect';
 
 /**
  * `node:util` `parseArgs` definitions of the dialect flags that every
@@ -52,8 +53,8 @@ export function readDialectCliOptions(values: DialectCliValues): DialectCliResul
 	return {
 		ok: true,
 		options: {
-			dialect: dialect as DialectId | 'auto' | undefined,
-			fallbackDialect: fallbackDialect as DialectId | undefined,
+			dialect,
+			fallbackDialect,
 			unknownDialect: unknownDialect as DialectOptions['unknownDialect'],
 			keywordPolicy: keywordPolicy as KeywordPolicy | undefined,
 		},

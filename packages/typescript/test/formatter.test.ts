@@ -4,7 +4,8 @@ import { join } from 'node:path';
 
 import { describe, expect, test } from 'vitest';
 
-import { type CodeFormatter, compile, compileSchema, DEFAULT_BANNER } from '../src';
+import { compile, compileSchema, DEFAULT_BANNER } from '../src';
+import type { CodeFormatter } from '../src';
 
 describe('format hook', () => {
 	test('runs a synchronous formatter over generated code', async () => {
