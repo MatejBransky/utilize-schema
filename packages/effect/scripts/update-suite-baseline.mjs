@@ -8,6 +8,8 @@ import { evaluateGeneratedCode, nameRootSchema } from '@utilize/test-utils/suite
 import { loadSuiteFiles, suiteCaseKey } from '@utilize/test-utils/suite/loadSuite';
 import { Schema } from 'effect';
 
+import { reasonFor } from './suiteReasons.mjs';
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const { parse } = await import(pathToFileURL(join(root, '../json-schema/dist/index.mjs')).href);
@@ -32,29 +34,6 @@ async function compileToSchema(schema, externalSchemas, formatMode) {
 	});
 
 	return evaluateGeneratedCode(code, { Schema });
-}
-
-function reasonFor(file) {
-	if (file.startsWith('patternProperties')) {
-		return 'patternProperties is not generated';
-	}
-	if (file.startsWith('format-')) {
-		return 'format validation disagrees with the Zod helpers';
-	}
-	if (/^(ref|anchor|id|recursive|dynamic|vocabulary)/.test(file)) {
-		return 'reference resolution gap';
-	}
-	if (file.startsWith('unevaluated')) {
-		return 'unevaluated keywords are mapped best effort';
-	}
-	if (file.startsWith('allOf')) {
-		return 'allOf is limited to disjoint object subschemas';
-	}
-	if (file.startsWith('oneOf')) {
-		return 'oneOf semantics differ from the Zod generator';
-	}
-
-	return 'keyword is not covered by the Effect Schema generator yet';
 }
 
 function isValid(schema, value) {
