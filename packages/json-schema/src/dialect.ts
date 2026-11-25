@@ -431,6 +431,18 @@ export function keywordIssues(schema: Record<string, unknown>, dialect: Dialect)
 		}
 	}
 
+	collectTupleItemsIssue(schema, dialect, issues);
+	collectExclusiveBoundIssues(schema, dialect, issues);
+	collectRefSiblingIssue(schema, dialect, issues);
+
+	return issues;
+}
+
+function collectTupleItemsIssue(
+	schema: Record<string, unknown>,
+	dialect: Dialect,
+	issues: KeywordIssue[]
+): void {
 	if (Array.isArray(schema.items) && dialect.tuple === 'prefixItems') {
 		issues.push({
 			kind: 'invalid-keyword',
@@ -438,7 +450,13 @@ export function keywordIssues(schema: Record<string, unknown>, dialect: Dialect)
 			message: `The tuple form of "items" was removed in ${dialect.id}; use "prefixItems".`,
 		});
 	}
+}
 
+function collectExclusiveBoundIssues(
+	schema: Record<string, unknown>,
+	dialect: Dialect,
+	issues: KeywordIssue[]
+): void {
 	for (const keyword of ['exclusiveMinimum', 'exclusiveMaximum'] as const) {
 		const value = schema[keyword];
 		const expected = dialect.exclusiveBounds === 'numeric' ? 'number' : 'boolean';
@@ -451,7 +469,13 @@ export function keywordIssues(schema: Record<string, unknown>, dialect: Dialect)
 			});
 		}
 	}
+}
 
+function collectRefSiblingIssue(
+	schema: Record<string, unknown>,
+	dialect: Dialect,
+	issues: KeywordIssue[]
+): void {
 	if (dialect.refSiblings === 'ignore' && typeof schema.$ref === 'string') {
 		const siblings = Object.keys(schema).filter(
 			(keyword) => keyword !== '$ref' && !ANNOTATION_KEYWORDS.has(keyword)
@@ -467,8 +491,6 @@ export function keywordIssues(schema: Record<string, unknown>, dialect: Dialect)
 			});
 		}
 	}
-
-	return issues;
 }
 
 /** Writes an issue to `console.warn`, for callers that want the default CLI-like output. */
