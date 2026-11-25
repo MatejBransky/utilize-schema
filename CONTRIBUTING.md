@@ -125,6 +125,10 @@ measured against real coverage instead of the static estimate used by the fast
 PR audit and commit hook. It runs report-only until the measured backlog is
 fully cleared; the strict main gate is enabled separately.
 
+`rule-packs/utilize-policy.jsonc` keeps generator source browser-safe: `node:*`
+imports are errors in the generator packages outside `compile.ts` and `cli.ts`.
+Policy violations are errors in both the audit and the full run.
+
 ## Running Tests
 
 - Run all tests:

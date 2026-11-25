@@ -17,6 +17,10 @@
 		"packages/json-schema/tsdown.bench.config.ts",
 	],
 
+	// Repository policy that boundaries cannot express. The pack file lands in a
+	// separate earlier PR because the audit loads this config against a base ref.
+	"rulePacks": ["rule-packs/utilize-policy.jsonc"],
+
 	// Commit hooks and PR CI judge only findings introduced by the change.
 	"audit": {
 		"gate": "new-only",
@@ -142,5 +146,8 @@
 		// that copies code (for example from one generator into another) fails
 		// the audit instead of passing with a warning.
 		"introduced-clone-group": "error",
+
+		// Rule-pack policy is repository law, not an advisory.
+		"policy-violation": "error",
 	},
 }
