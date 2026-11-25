@@ -5,12 +5,19 @@
 // consumer should read, so the CI job saves the JSON result once, renders the
 // summary from the same file, and gates here instead of running the analysis a
 // second time in a format that enforces its exit code.
+//
+// `--warn` also fails on a gate whose status is `warn`. The GitHub Action treats
+// an audit verdict of `warn` as a pass by design ("warn-tier findings only"),
+// while this repository fails on those findings too, so the pull-request job
+// reads its recorded result with the same flag.
 import { readFileSync } from 'node:fs';
 
-const path = process.argv[2];
+const args = process.argv.slice(2);
+const includeWarnings = args.includes('--warn');
+const path = args.find((arg) => !arg.startsWith('--'));
 
 if (!path) {
-	console.error('Usage: node scripts/fallow-gate.mjs <fallow-json-results>');
+	console.error('Usage: node scripts/fallow-gate.mjs [--warn] <fallow-json-results>');
 	process.exit(2);
 }
 
@@ -24,13 +31,15 @@ try {
 }
 
 const outcomes = Object.entries(result.gate_outcomes ?? {});
-const failed = outcomes.filter(([, outcome]) => outcome.status === 'fail');
+const failed = outcomes.filter(
+	([, outcome]) => outcome.status === 'fail' || (includeWarnings && outcome.status === 'warn')
+);
 
 if (failed.length > 0) {
 	for (const [gate, outcome] of failed) {
 		const observed = outcome.observed === undefined ? '' : ` (observed ${outcome.observed})`;
 
-		console.error(`Fallow gate failed: ${gate}${observed}`);
+		console.error(`Fallow gate ${outcome.status}: ${gate}${observed}`);
 	}
 
 	process.exit(1);
