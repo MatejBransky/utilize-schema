@@ -15,7 +15,7 @@ async function generateRaw(schema: TestSchema) {
 
 describe('typed allOf merging characterization', () => {
 	test('combines the strictest numeric bounds and narrows number to integer', async () => {
-		await expect(
+		expect(
 			await generateRaw({
 				allOf: [
 					{
@@ -46,7 +46,7 @@ describe('typed allOf merging characterization', () => {
 	});
 
 	test('keeps inferred scalar constraints open to other JSON types', async () => {
-		await expect(await generateRaw({ allOf: [{ minLength: 2 }, { maxLength: 4 }] }))
+		expect(await generateRaw({ allOf: [{ minLength: 2 }, { maxLength: 4 }] }))
 			.toMatchInlineSnapshot(`
 			"export const Root = Schema.Union([Schema.Null, Schema.Boolean, Schema.String.check(Schema.isMinCodePoints(2), Schema.isMaxCodePoints(4)), Schema.Finite, Schema.JsonObject, Schema.Array(Schema.Json)]);
 
@@ -76,7 +76,7 @@ describe('typed allOf merging characterization', () => {
 	});
 
 	test('does not combine different patterns', async () => {
-		await expect(
+		expect(
 			await generateRaw({
 				allOf: [
 					{ type: 'string', pattern: '^a' },
@@ -92,7 +92,7 @@ describe('typed allOf merging characterization', () => {
 	});
 
 	test('does not combine different multiples', async () => {
-		await expect(
+		expect(
 			await generateRaw({
 				allOf: [
 					{ type: 'number', multipleOf: 2 },
@@ -108,7 +108,7 @@ describe('typed allOf merging characterization', () => {
 	});
 
 	test('does not combine boolean exclusive bounds with numeric bounds', async () => {
-		await expect(
+		expect(
 			await generateRaw({
 				$schema: 'http://json-schema.org/draft-04/schema#',
 				allOf: [
@@ -125,7 +125,7 @@ describe('typed allOf merging characterization', () => {
 	});
 
 	test('merges array counts and only keeps uniqueItems when true', async () => {
-		await expect(
+		expect(
 			await generateRaw({
 				allOf: [
 					{ type: 'array', minItems: 1, uniqueItems: false },
@@ -141,8 +141,7 @@ describe('typed allOf merging characterization', () => {
 	});
 
 	test('keeps inferred array constraints open to other JSON types', async () => {
-		await expect(await generateRaw({ allOf: [{ minItems: 1 }, { maxItems: 3 }] }))
-			.toMatchInlineSnapshot(`
+		expect(await generateRaw({ allOf: [{ minItems: 1 }, { maxItems: 3 }] })).toMatchInlineSnapshot(`
 			"export const Root = Schema.Union([Schema.Null, Schema.Boolean, Schema.String, Schema.Finite, Schema.JsonObject, Schema.Array(Schema.Json).check(Schema.isMinLength(1), Schema.isMaxLength(3))]);
 
 			export type Root = typeof Root.Type;
@@ -151,7 +150,7 @@ describe('typed allOf merging characterization', () => {
 	});
 
 	test('does not merge array item schemas', async () => {
-		await expect(
+		expect(
 			await generateRaw({
 				allOf: [{ type: 'array', items: { type: 'number' } }, { minItems: 1 }],
 			})
@@ -164,7 +163,7 @@ describe('typed allOf merging characterization', () => {
 	});
 
 	test('does not merge members that constrain different type families', async () => {
-		await expect(
+		expect(
 			await generateRaw({
 				allOf: [
 					{ type: 'number', minimum: 1 },
@@ -180,7 +179,7 @@ describe('typed allOf merging characterization', () => {
 	});
 
 	test('does not infer a type from ambiguous keyword families', async () => {
-		await expect(
+		expect(
 			await generateRaw({
 				allOf: [{ minimum: 1, minLength: 2 }, { maximum: 5 }],
 			})
@@ -193,7 +192,7 @@ describe('typed allOf merging characterization', () => {
 	});
 
 	test('keeps integer when an integer member precedes a number member', async () => {
-		await expect(
+		expect(
 			await generateRaw({
 				allOf: [
 					{ type: 'integer', minimum: 1 },
@@ -209,7 +208,7 @@ describe('typed allOf merging characterization', () => {
 	});
 
 	test('keeps identical patterns in the merged schema', async () => {
-		await expect(
+		expect(
 			await generateRaw({
 				allOf: [{ pattern: '^a' }, { type: 'string', pattern: '^a' }],
 			})
@@ -222,9 +221,8 @@ describe('typed allOf merging characterization', () => {
 	});
 
 	test('omits uniqueItems when no member enables it', async () => {
-		await expect(
-			await generateRaw({ allOf: [{ type: 'array', uniqueItems: false }, { minItems: 1 }] })
-		).toMatchInlineSnapshot(`
+		expect(await generateRaw({ allOf: [{ type: 'array', uniqueItems: false }, { minItems: 1 }] }))
+			.toMatchInlineSnapshot(`
 			"export const Root = Schema.Array(Schema.Json).check(Schema.isMinLength(1));
 
 			export type Root = typeof Root.Type;
@@ -233,7 +231,7 @@ describe('typed allOf merging characterization', () => {
 	});
 
 	test('keeps contradictory bounds instead of rejecting the schema', async () => {
-		await expect(
+		expect(
 			await generateRaw({
 				allOf: [
 					{ type: 'number', minimum: 10 },
@@ -249,7 +247,7 @@ describe('typed allOf merging characterization', () => {
 	});
 
 	test('does not merge references or non-scalar declared types', async () => {
-		await expect(
+		expect(
 			await generateRaw({
 				$defs: { Number: { type: 'number', minimum: 1 } },
 				allOf: [{ $ref: '#/$defs/Number' }, { maximum: 5 }],
@@ -265,7 +263,7 @@ describe('typed allOf merging characterization', () => {
 			"
 		`);
 
-		await expect(
+		expect(
 			await generateRaw({
 				allOf: [{ type: 'boolean' }, { type: 'boolean' }],
 			})

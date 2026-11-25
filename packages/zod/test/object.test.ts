@@ -7,7 +7,7 @@ describe('object generator', () => {
 		const result = await compile({
 			type: 'object',
 		});
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
       export const Root = z.object({})
       export type Root = z.infer<typeof Root>
     `);
