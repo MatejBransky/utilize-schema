@@ -5,6 +5,7 @@ import {
 	type Dialect,
 	dialectOf,
 	containsBounds,
+	type ContainsBounds,
 	isKeywordApplicable,
 	isPlainObject,
 	mapDeclarationNames,
@@ -556,6 +557,17 @@ function schemaWithType(
 }
 
 function generateString(schema: ParsedJSONSchemaObject, context: Context): string {
+	const checks = stringChecks(schema);
+	const format = stringFormat(schema, context);
+
+	if (format !== undefined) {
+		checks.push(format);
+	}
+
+	return checks.length > 0 ? `Schema.String.check(${checks.join(', ')})` : 'Schema.String';
+}
+
+function stringChecks(schema: ParsedJSONSchemaObject): string[] {
 	const checks: string[] = [];
 
 	if (typeof schema.minLength === 'number') {
@@ -568,18 +580,15 @@ function generateString(schema: ParsedJSONSchemaObject, context: Context): strin
 		checks.push(`Schema.isPattern(${patternExpression(schema.pattern)})`);
 	}
 
-	const format =
-		(context.formatMode ?? 'assert') === 'assert' &&
-		typeof schema.format === 'string' &&
-		formatCheck(schema.format) !== undefined
-			? context.formatOf(schema.format)
-			: undefined;
+	return checks;
+}
 
-	if (format !== undefined) {
-		checks.push(format);
+function stringFormat(schema: ParsedJSONSchemaObject, context: Context): string | undefined {
+	if ((context.formatMode ?? 'assert') !== 'assert' || typeof schema.format !== 'string') {
+		return undefined;
 	}
 
-	return checks.length > 0 ? `Schema.String.check(${checks.join(', ')})` : 'Schema.String';
+	return formatCheck(schema.format) === undefined ? undefined : context.formatOf(schema.format);
 }
 
 /** `date-time` becomes `formatDateTime`, so one constant covers a format. */
@@ -681,27 +690,44 @@ function arrayChecks(schema: ParsedJSONSchemaObject, context: Context): string[]
 	if (schema.uniqueItems === true) {
 		checks.push('Schema.isUnique()');
 	}
-	if (schema.contains !== undefined && isKeywordApplicable(dialect, 'contains')) {
-		const contains = generateSchema(schema.contains, context);
-		const bounds = containsBounds(schema, dialect);
 
-		if (bounds?.counted === true) {
-			const outOfRange =
-				bounds.max === undefined
-					? `matches < ${bounds.min}`
-					: `matches < ${bounds.min} || matches > ${bounds.max}`;
+	const contains = containsCheck(schema, context);
 
-			checks.push(
-				`Schema.makeFilter((value) => { const matches = value.filter((item) => Schema.is(${contains})(item)).length; return ${outOfRange} ? 'Array does not contain the required number of matching items' : undefined; })`
-			);
-		} else if (bounds !== undefined) {
-			checks.push(
-				`Schema.makeFilter((value) => value.some((item) => Schema.is(${contains})(item)) ? undefined : 'Array does not contain a matching item')`
-			);
-		}
+	if (contains !== undefined) {
+		checks.push(contains);
 	}
 
 	return checks;
+}
+
+function containsCheck(schema: ParsedJSONSchemaObject, context: Context): string | undefined {
+	if (schema.contains === undefined) {
+		return undefined;
+	}
+
+	if (!isKeywordApplicable(context.dialect, 'contains')) {
+		return undefined;
+	}
+
+	const contains = generateSchema(schema.contains, context);
+	const bounds = containsBounds(schema, context.dialect);
+
+	if (bounds === undefined) {
+		return undefined;
+	}
+
+	return bounds.counted
+		? countedContainsCheck(contains, bounds)
+		: `Schema.makeFilter((value) => value.some((item) => Schema.is(${contains})(item)) ? undefined : 'Array does not contain a matching item')`;
+}
+
+function countedContainsCheck(contains: string, bounds: ContainsBounds): string {
+	const outOfRange =
+		bounds.max === undefined
+			? `matches < ${bounds.min}`
+			: `matches < ${bounds.min} || matches > ${bounds.max}`;
+
+	return `Schema.makeFilter((value) => { const matches = value.filter((item) => Schema.is(${contains})(item)).length; return ${outOfRange} ? 'Array does not contain the required number of matching items' : undefined; })`;
 }
 
 function generateObject(schema: ParsedJSONSchemaObject, context: Context): string {
