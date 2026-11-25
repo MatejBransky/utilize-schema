@@ -17,8 +17,7 @@
 		"packages/json-schema/tsdown.bench.config.ts",
 	],
 
-	// Repository policy that boundaries cannot express. The pack file lands in a
-	// separate earlier PR because the audit loads this config against a base ref.
+	// Repository policy that boundaries cannot express.
 	"rulePacks": ["rule-packs/utilize-policy.jsonc"],
 
 	// Commit hooks and PR CI judge only findings introduced by the change.
