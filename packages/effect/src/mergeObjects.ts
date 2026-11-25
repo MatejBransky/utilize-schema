@@ -1,4 +1,4 @@
-import { isPlainObject, Meta } from '@utilize/json-schema';
+import { isPlainObject, Meta, schemaRecord } from '@utilize/json-schema';
 import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { UnresolvedReferenceError } from './errors';
@@ -214,6 +214,7 @@ function mergedObject(state: MergeState): ParsedJSONSchemaObject {
 		merged.additionalProperties = state.additionalProperties;
 	}
 
+	// oxlint-disable-next-line quality/no-chained-type-assertions -- synthetic node; it has no source Meta to copy
 	return merged as unknown as ParsedJSONSchemaObject;
 }
 
@@ -225,7 +226,7 @@ function unmergeableReason(schema: ParsedJSONSchemaObject): string | undefined {
 		return 'nested references cannot be merged';
 	}
 
-	const record = schema as unknown as Record<string, unknown>;
+	const record = schemaRecord(schema);
 	const keyword = Object.keys(schema).find(
 		(key) =>
 			record[key] !== undefined && !ANNOTATION_KEYWORDS.has(key) && !MERGEABLE_KEYWORDS.has(key)

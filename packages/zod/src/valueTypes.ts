@@ -277,7 +277,7 @@ function renderReferenceType(
 
 /** The union of a `type` list; each branch keeps `readOnly`, like `.readonly()` on the union. */
 function renderTypeList(schema: ParsedJSONSchemaObject, context: ValueTypeContext): string {
-	const types = schema.type as unknown as string[];
+	const types = schema.type as string[];
 
 	return union(
 		types.map((type) =>

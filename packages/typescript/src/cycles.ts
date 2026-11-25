@@ -68,8 +68,8 @@ function transparentChildren(schema: ParsedJSONSchemaObject): ParsedJSONSchemaOb
 
 		if (Array.isArray(members)) {
 			children.push(
-				...(members as unknown as ParsedJSONSchema[]).filter(
-					(member): member is ParsedJSONSchemaObject => isPlainObject(member)
+				...(members as ParsedJSONSchema[]).filter((member): member is ParsedJSONSchemaObject =>
+					isPlainObject(member)
 				)
 			);
 		}

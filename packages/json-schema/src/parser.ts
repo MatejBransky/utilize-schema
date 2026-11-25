@@ -136,7 +136,7 @@ export async function parse(
 		});
 	}
 
-	const root = rootSchema as unknown as ParsedJSONSchema;
+	const root = rootSchema as ParsedJSONSchema;
 
 	if (typeof root === 'object' && root !== null && !Object.hasOwn(root, Meta)) {
 		link({
@@ -154,7 +154,7 @@ export async function parse(
 
 	return {
 		root,
-		get: ($ref: string) => $refs.get($ref) as unknown as ParsedJSONSchema,
+		get: ($ref: string) => $refs.get($ref) as ParsedJSONSchema,
 		referencedSchemas: documentEntries
 			.filter(([, entrySchema]) => entrySchema !== root)
 			.map(([, entrySchema]) => entrySchema) as ParsedJSONSchema[],

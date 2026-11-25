@@ -96,7 +96,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 
 	function ensureBooleanDefinitionName(definition: BooleanDefinition): string {
 		// A boolean has no metadata of its own, so the name comes from its path.
-		const synthetic = { [Meta]: { path: definition.path } } as unknown as ParsedJSONSchemaObject;
+		const synthetic = { [Meta]: { path: definition.path } } as ParsedJSONSchemaObject;
 
 		return ensureName(synthetic);
 	}

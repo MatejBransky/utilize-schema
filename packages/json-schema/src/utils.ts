@@ -46,3 +46,12 @@ export function expectDefined<T>(
 
 	return value;
 }
+
+/**
+ * Reads the keywords of a linked schema node without copying it. The parser and
+ * linker already validated the document, so the node's own keys are fields.
+ */
+// oxlint-disable-next-line quality/no-object-parameters -- linked nodes are read by dynamic keyword and have no index signature
+export function schemaRecord(schema: object): Record<string, unknown> {
+	return schema as Record<string, unknown>;
+}

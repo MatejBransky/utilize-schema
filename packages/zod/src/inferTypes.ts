@@ -1,4 +1,4 @@
-import { isKeywordApplicable } from '@utilize/json-schema';
+import { isKeywordApplicable, schemaRecord } from '@utilize/json-schema';
 import type { Dialect, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 const objectKeywords = [
@@ -51,7 +51,7 @@ export function inferTypeKeywords(
 		return [];
 	}
 
-	const record = schema as unknown as Record<string, unknown>;
+	const record = schemaRecord(schema);
 	const categories = [
 		['object', objectKeywords],
 		['array', arrayKeywords],

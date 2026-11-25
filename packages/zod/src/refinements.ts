@@ -123,11 +123,11 @@ function appendNotAndConditionalChecks(
 
 	if (schema.if !== undefined && isKeywordApplicable(context.dialect, 'if')) {
 		const condition = generate(
-			narrowUntypedSchema(schema.if as unknown as ParsedJSONSchema, contextType, context.dialect),
+			narrowUntypedSchema(schema.if as ParsedJSONSchema, contextType, context.dialect),
 			context
 		);
-		const thenSchema = schema.then as unknown as ParsedJSONSchema | undefined;
-		const elseSchema = schema.else as unknown as ParsedJSONSchema | undefined;
+		const thenSchema = schema.then as ParsedJSONSchema | undefined;
+		const elseSchema = schema.else as ParsedJSONSchema | undefined;
 		const thenBlock =
 			thenSchema !== undefined
 				? checkBlock(

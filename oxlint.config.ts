@@ -44,6 +44,12 @@ export default defineConfig({
 			files: ['packages/test-utils/src/suite/evaluate.ts'],
 			rules: { 'typescript/no-unsafe-call': 'off' },
 		},
+		{
+			// Tests build deliberately malformed schemas to exercise the parser, so
+			// their fixtures narrow literals the production code never sees.
+			files: ['**/*.{test,spec}.{ts,tsx}', '**/test/**'],
+			rules: { 'quality/no-chained-type-assertions': 'off' },
+		},
 	],
 	rules: {
 		// Project-specific tuning carried over from the previous configuration.
@@ -60,7 +66,6 @@ export default defineConfig({
 
 		// The rules below were newly enabled by the preset and still have findings.
 		// Burn them down one rule at a time, then delete the corresponding line.
-		'quality/no-chained-type-assertions': 'off',
 		'quality/no-unsafe-dictionary-type': 'off',
 		'typescript/no-unsafe-type-assertion': 'off',
 	},
