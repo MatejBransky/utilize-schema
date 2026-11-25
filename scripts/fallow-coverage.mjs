@@ -1,7 +1,8 @@
 // Runs the unit tests of every workspace with V8 coverage, merges the
-// Istanbul `coverage-final.json` files into one, and runs `fallow health` on
-// it, so CRAP scores use measured coverage instead of fallow's static
-// estimate. Extra arguments are passed on to `fallow health`.
+// Istanbul `coverage-final.json` files into one, and runs `fallow` in combined
+// mode on it, so dead code, duplication, complexity and rule-pack policy are
+// judged on the same tree and CRAP uses measured coverage instead of fallow's
+// static estimate. Extra arguments are passed on to `fallow`.
 //
 // Each package's coverage counts only its own `src`, measured by its own
 // tests. Generators import `@utilize/json-schema` through its `dist` (no
@@ -80,7 +81,7 @@ function run() {
 
 	const fallow = spawnSync(
 		'pnpm',
-		['exec', 'fallow', 'health', '--coverage', MERGED_COVERAGE, ...process.argv.slice(2)],
+		['exec', 'fallow', '--coverage', MERGED_COVERAGE, ...process.argv.slice(2)],
 		{ cwd: ROOT, stdio: 'inherit' }
 	);
 	process.exit(fallow.status ?? 1);
