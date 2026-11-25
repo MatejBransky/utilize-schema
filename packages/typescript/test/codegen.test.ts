@@ -316,12 +316,12 @@ describe('code generation', () => {
 	});
 
 	test('does not treat operators inside string literals as top-level', async () => {
-		await expect(compile({ allOf: [{ const: 'a|b' }, { enum: ['a|b'] }] })).toMatchCode(ts`
-			export type Root = 'a|b';
+		await expect(compile({ allOf: [{ const: 'a|b' }, { enum: ['a|b', 'c'] }] })).toMatchCode(ts`
+			export type Root = 'a|b' & ('a|b' | 'c');
 		`);
 
-		await expect(compile({ allOf: [{ const: 'a&b' }, { enum: ['a&b'] }] })).toMatchCode(ts`
-			export type Root = 'a&b';
+		await expect(compile({ allOf: [{ const: 'a&b' }, { enum: ['a&b', 'c'] }] })).toMatchCode(ts`
+			export type Root = 'a&b' & ('a&b' | 'c');
 		`);
 	});
 });
