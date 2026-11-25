@@ -24,6 +24,9 @@ catalogs:
     fallow:
       specifier: 3.45.0
       version: 3.45.0
+    fallow-type-aware:
+      specifier: 3.45.0
+      version: 3.45.0
     oxfmt:
       specifier: 0.79.0
       version: 0.79.0
@@ -57,6 +60,9 @@ importers:
         specifier: 'catalog:'
         version: 5.1.1(@vitest/browser@5.1.1)(vitest@5.1.1)
       fallow:
+        specifier: 'catalog:'
+        version: 3.45.0
+      fallow-type-aware:
         specifier: 'catalog:'
         version: 3.45.0
       oxfmt:
@@ -1539,6 +1545,16 @@ packages:
     resolution: {integrity: sha512-KfYbmpRm0VbLjEvVa9yGwCi9GI34xvi7A/HXYWQO65CSD2u3MczUJSuwXKFIxlGsgBQizV9q5J9NHj4VG0n+pA==}
     engines: {node: '>=12.0.0'}
 
+  fallow-type-aware@3.45.0:
+    resolution: {integrity: sha512-gJJiGrFn6YlxcrcnPBC8CqRdIfgiD5eAUWlrh+fKYPIH9uXPCHM8zYdkEdG6EEopU+Qdd+bfz9NkmXra1iA0dg==}
+    engines: {node: '>=20'}
+    hasBin: true
+    peerDependencies:
+      tsrs: '*'
+    peerDependenciesMeta:
+      tsrs:
+        optional: true
+
   fallow@3.45.0:
     resolution: {integrity: sha512-KJnlOBV/a3cDYafnO8/dqStEDARQPiL1R+65JQ2l9u+r9sgyt0JNNbDK0J1zsZWng+7SQvukeanuNhn0LmNa3g==}
     engines: {node: '>=22'}
@@ -2975,6 +2991,10 @@ snapshots:
       '@types/estree': 1.0.8
 
   expect-type@1.4.0: {}
+
+  fallow-type-aware@3.45.0:
+    dependencies:
+      typescript: 7.0.2
 
   fallow@3.45.0:
     dependencies:
