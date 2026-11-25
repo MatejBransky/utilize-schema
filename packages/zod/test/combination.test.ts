@@ -27,7 +27,7 @@ describe('schema combinations', () => {
 
 		test('empty allOf -> never type', async () => {
 			const result = await compile({ allOf: [] });
-			expect(result).toMatchCode(ts`
+			await expect(result).toMatchCode(ts`
         export const Root = z.never();
         export type Root = z.infer<typeof Root>;
       `);

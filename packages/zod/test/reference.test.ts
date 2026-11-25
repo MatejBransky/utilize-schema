@@ -44,7 +44,7 @@ describe('reference', () => {
 			},
 		});
 
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
       type RootValue = { field?: RootValue };
       export const Root: z.ZodType<RootValue> = z.object({
         get field() {
@@ -67,7 +67,7 @@ describe('reference', () => {
 			},
 		});
 
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
       export const MyType = z.boolean();
       export type MyType = z.infer<typeof MyType>;
 
@@ -96,7 +96,7 @@ describe('reference', () => {
 			},
 		});
 
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
       export const OriginalDataType = z.enum([
         'UNKNOWN',
         'STRING',
@@ -156,7 +156,7 @@ describe('reference', () => {
 			required: ['value'],
 		});
 
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
       type RootValue = { value: string; next?: RootValue };
       export const Root: z.ZodType<RootValue> = z.object({
         value: z.string(),

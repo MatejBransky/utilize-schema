@@ -9,7 +9,7 @@ import { normalizeCode } from './code';
 declare module 'vitest' {
 	// Same type parameters as Vitest's own declaration, which this merges into.
 	interface Matchers<R extends void | Promise<void> = void | Promise<void>, T = unknown> {
-		toMatchCode: (expectedCode: Promise<string>) => R;
+		toMatchCode: (expectedCode: Promise<string>) => Promise<void>;
 	}
 }
 

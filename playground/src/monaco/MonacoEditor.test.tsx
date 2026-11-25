@@ -173,7 +173,7 @@ test('reports the initial cursor and forwards model changes', async () => {
 	fake.state.cursorListener?.({ position: { lineNumber: 3, column: 4 } });
 	expect(cursors.at(-1)).toEqual([3, 4]);
 
-	expect(await screen.getByTestId('editor').element()).toBeInstanceOf(HTMLElement);
+	expect(screen.getByTestId('editor').element()).toBeInstanceOf(HTMLElement);
 });
 
 test('updates the model, the position and the options when props change', async () => {
@@ -197,7 +197,7 @@ test('updates the model, the position and the options when props change', async 
 test('applies a new theme and read-only mode', async () => {
 	const ref = createRef<MonacoEditorHandle>();
 	const screen = await render(<MonacoEditor {...baseProps} ref={ref} />);
-	const host = (await screen.getByTestId('editor').element()) as HTMLElement;
+	const host = screen.getByTestId('editor').element() as HTMLElement;
 
 	await screen.rerender(<MonacoEditor {...baseProps} theme="utilize-dark" ref={ref} />);
 	await vi.waitFor(() => expect(fake.state.themes).toContain('utilize-dark'));
@@ -222,7 +222,7 @@ test('hides the on-screen keyboard on a read-only touch device', async () => {
 	try {
 		const ref = createRef<MonacoEditorHandle>();
 		const screen = await render(<MonacoEditor {...baseProps} readOnly ref={ref} />);
-		const host = (await screen.getByTestId('editor').element()) as HTMLElement;
+		const host = screen.getByTestId('editor').element() as HTMLElement;
 
 		host.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
 		expect(hide).toHaveBeenCalled();

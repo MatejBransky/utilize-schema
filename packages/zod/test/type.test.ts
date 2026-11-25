@@ -300,7 +300,7 @@ describe('type', () => {
 			},
 		});
 
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
       export const Root = z.object({
         stringValue: z.string().default('test'),
         booleanValue: z.boolean().default(false)
