@@ -67,6 +67,34 @@ jobs:
       - name: Check coverage badges
         run: pnpm run check:coverage-badge
 
+      - name: Check Fallow health badge
+        run: pnpm run check:fallow-badge
+
+  fallow:
+    name: Fallow audit
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Audit introduced findings
+        uses: fallow-rs/fallow@b802ddc49a09ad9df4e9894cdd465f5b51b1b0c8 # v3.45.0
+        with:
+          command: audit
+          gate: new-only
+          fail-on-issues: true
+          fail-on-empty-analysis: true
+          sarif: true
+          annotations: true
+
   # Dependency audits run weekly in audit.yml. Keeping them out of the pull
   # request workflow means an advisory without a published fix cannot block
   # every pull request.

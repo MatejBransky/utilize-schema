@@ -6,6 +6,15 @@
 	"$schema": "./node_modules/fallow/schema.json",
 	"minimumVersion": "3.45.0",
 
+	// A source file Fallow cannot parse must fail the run instead of silently
+	// disappearing from every analysis.
+	"failOnParseError": true,
+
+	// Commit hooks and PR CI judge only findings introduced by the change.
+	"audit": {
+		"gate": "new-only",
+	},
+
 	// No `publicPackages`. fallow already reads each package's `main`, `exports`
 	// and `bin`, so the public API of every published package counts as used
 	// (`fallow list --entry-points`). Listing the packages as public on top of
@@ -61,6 +70,38 @@
 		],
 	},
 
+	// The layering promised in the README: the core knows no generator, each
+	// generator knows only the core, and the playground may use every target.
+	// Tests, scripts, benchmarks and the private test-helper package stay outside
+	// the production zones.
+	"boundaries": {
+		"zones": [
+			{ "name": "core", "patterns": ["packages/json-schema/src/**"] },
+			{ "name": "zod", "patterns": ["packages/zod/src/**"] },
+			{ "name": "effect", "patterns": ["packages/effect/src/**"] },
+			{ "name": "typescript", "patterns": ["packages/typescript/src/**"] },
+			{ "name": "playground", "patterns": ["playground/src/**"] },
+		],
+		"rules": [
+			{ "from": "core", "allow": [] },
+			{ "from": "zod", "allow": ["core"] },
+			{ "from": "effect", "allow": ["core"] },
+			{ "from": "typescript", "allow": ["core"] },
+			{ "from": "playground", "allow": ["core", "zod", "effect", "typescript"] },
+		],
+		"coverage": {
+			"requireAllFiles": true,
+			"allowUnmatched": [
+				"**/test/**",
+				"**/scripts/**",
+				"**/bench/**",
+				"**/*.config.ts",
+				"playground/*.html",
+				"packages/test-utils/**",
+			],
+		},
+	},
+
 	"health": {
 		// The fallow defaults apply (cyclomatic 20, cognitive 15, CRAP 30, unit
 		// size 60) and stay that way.
@@ -75,6 +116,11 @@
 	},
 
 	"rules": {
+		// Dependency hygiene is clean today; keep it from regressing.
+		"unused-dev-dependencies": "error",
+		"type-only-dependencies": "error",
+		"test-only-dependencies": "error",
+
 		// `fallow audit` (the commit hook and the PR gate) only warns about a
 		// clone group that a change introduces by default. As an error, a change
 		// that copies code (for example from one generator into another) fails
