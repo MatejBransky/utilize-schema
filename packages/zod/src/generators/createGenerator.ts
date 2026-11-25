@@ -3,7 +3,7 @@ import type { Dialect, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize
 import type { GeneratorContext } from './types';
 
 /** Picks a generator. Only the node's dialect may change the choice. */
-type Predicate = (input: ParsedJSONSchemaObject, dialect: Dialect) => boolean;
+export type Predicate = (input: ParsedJSONSchemaObject, dialect: Dialect) => boolean;
 
 /**
  * What a keyword generator calls for its subschemas. `generateSchema` passes
@@ -15,7 +15,7 @@ export type Recursion = {
 	selectGenerator: (input: ParsedJSONSchemaObject, dialect: Dialect) => ExpressionGenerator;
 };
 
-type Generate<T> = (schema: T, context: GeneratorContext, recursion: Recursion) => string;
+export type Generate<T> = (schema: T, context: GeneratorContext, recursion: Recursion) => string;
 
 export type ExpressionGenerator<T = ParsedJSONSchemaObject> = {
 	predicate: Predicate;

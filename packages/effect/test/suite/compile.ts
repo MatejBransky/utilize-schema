@@ -4,7 +4,7 @@ import { Schema } from 'effect';
 
 import { type FormatMode, generate } from '../../src/generator';
 
-type GeneratedSchema = Parameters<typeof Schema.decodeUnknownSync>[0];
+export type SuiteGeneratedSchema = Parameters<typeof Schema.decodeUnknownSync>[0];
 
 /**
  * Compiles a schema to an Effect Schema in memory: the generated code is
@@ -18,7 +18,7 @@ export async function compileToEffectSchema(
 	schema: JSONSchema | boolean,
 	externalSchemas?: ExternalSchemas,
 	formatMode?: FormatMode
-): Promise<GeneratedSchema> {
+): Promise<SuiteGeneratedSchema> {
 	const { root } = await parse(schema as JSONSchema, {
 		cwd: `${import.meta.dirname}/`,
 		fileName: 'Root.json',

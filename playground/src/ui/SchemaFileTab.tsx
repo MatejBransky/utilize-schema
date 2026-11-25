@@ -7,7 +7,7 @@ import { CheckIcon, CloseIcon, PencilIcon } from './icons';
 
 import styles from '../App.module.css';
 
-interface SchemaFileTabProps {
+export interface SchemaFileTabProps {
 	file: SchemaFile;
 	index: number;
 	editing: boolean;

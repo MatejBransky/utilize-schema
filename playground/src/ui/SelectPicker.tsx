@@ -10,14 +10,14 @@ import {
 
 import styles from './SelectPicker.module.css';
 
-interface PickerOption {
+export interface PickerOption {
 	value: string;
 	label: string;
 	keywords?: string[];
 	disabled?: boolean;
 }
 
-interface SelectPickerProps {
+export interface SelectPickerProps {
 	label: string;
 	placeholder: string;
 	value: string | null;

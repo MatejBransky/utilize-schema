@@ -136,6 +136,9 @@ newly-reachable`. The existing low candidates in the test-only evaluator are
 reviewed and stay advisory; a change fails only when it makes a candidate newly
 reachable from an entry point.
 
+`private-type-leaks` is an error: every type referenced by an exported
+signature must also be exported, so consumers can name it.
+
 ## Running Tests
 
 - Run all tests:
