@@ -1,6 +1,7 @@
 import type { Dialect, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
-import { createGenerator, type Recursion } from './createGenerator';
+import { createGenerator } from './createGenerator';
+import type { Recursion } from './createGenerator';
 import type { GeneratorContext } from './types';
 
 import { NEWLINE, ts } from '../utils';

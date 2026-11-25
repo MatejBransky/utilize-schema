@@ -255,6 +255,11 @@ only changes the catalog entry. Use `pnpm add --save-catalog` for a new shared d
   ```sh
   pnpm check:lint
   ```
+- Lint configuration lives in `oxlint.config.ts` and extends
+  [`@cloudflare/oxlint-config`](https://github.com/cloudflare/oxlint-config).
+  Rules that the preset enabled but the codebase does not satisfy yet are
+  disabled with a tracking comment. Enable them one at a time as their findings
+  are fixed.
 
 ## Making a Pull Request
 

@@ -1,9 +1,11 @@
 import { describe, expect, test } from 'vitest';
 
-import { dialectOf, Meta, type ParsedJSONSchemaObject, parse } from '@utilize/json-schema';
+import { dialectOf, Meta, parse } from '@utilize/json-schema';
+import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
-import { type CustomSchemaResolver } from '../src/generator';
-import { renderValueTypeDeclaration, type ValueTypeContext } from '../src/valueTypes';
+import type { CustomSchemaResolver } from '../src/generator';
+import { renderValueTypeDeclaration } from '../src/valueTypes';
+import type { ValueTypeContext } from '../src/valueTypes';
 
 import type { TestSchema } from './test-utils';
 

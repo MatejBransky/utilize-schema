@@ -1,4 +1,5 @@
-import { type DialectId, type JSONSchema, Meta, parse } from '@utilize/json-schema';
+import { Meta, parse } from '@utilize/json-schema';
+import type { DialectId, JSONSchema } from '@utilize/json-schema';
 
 import { generate } from '../../src/generator';
 

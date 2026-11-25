@@ -1,13 +1,9 @@
-import {
-	type JSONSchema,
-	Meta,
-	type ParsedJSONSchema,
-	type ParsedJSONSchemaObject,
-	parse,
-} from '@utilize/json-schema';
+import { Meta, parse } from '@utilize/json-schema';
+import type { JSONSchema, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 import { formatSource, ts } from '@utilize/test-utils/code';
 
-import { generate, type GenerateOptions } from '../src/generator';
+import { generate } from '../src/generator';
+import type { GenerateOptions } from '../src/generator';
 
 /** JSON Schema 2020-12 keywords that the draft-07 based `JSONSchema` type lacks. */
 export type TestSchema = JSONSchema & {

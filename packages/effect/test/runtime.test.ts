@@ -62,7 +62,7 @@ describe('objects', () => {
 				{ type: 'object', properties: { ['__proto__']: { type: 'number' } } },
 				{ type: 'object', properties: { b: { type: 'string' } } },
 			],
-		} as JSONSchema);
+		});
 
 		expect(decode(Root, { b: 'x' })).toEqual({ b: 'x' });
 		expect(decode(Root, { b: 1 })).toBeUndefined();

@@ -1,23 +1,22 @@
-import {
-	type CustomNameResolver,
-	isPlainObject,
-	Meta,
-	type ParsedJSONSchema,
-	type ParsedJSONSchemaObject,
+import { isPlainObject, Meta } from '@utilize/json-schema';
+import type {
+	CustomNameResolver,
+	ParsedJSONSchema,
+	ParsedJSONSchemaObject,
 } from '@utilize/json-schema';
 
-import { collectStandaloneSchemas, type BooleanDefinition } from './collectStandaloneSchemas';
+import { collectStandaloneSchemas } from './collectStandaloneSchemas';
+import type { BooleanDefinition } from './collectStandaloneSchemas';
 import { findUnsupportedCycles } from './cycles';
 import { UnresolvedReferenceError, UnsupportedCircularTypeError } from './errors';
 import {
-	type CustomSchemaResolver,
 	isObjectDeclaration,
 	RENDERED_GLOBAL_TYPES,
 	renderJsDoc,
 	renderObjectBody,
 	renderType,
-	type TypeContext,
 } from './renderType';
+import type { CustomSchemaResolver, TypeContext } from './renderType';
 import { resolveName } from './resolveName';
 
 export type { CustomSchemaResolver } from './renderType';

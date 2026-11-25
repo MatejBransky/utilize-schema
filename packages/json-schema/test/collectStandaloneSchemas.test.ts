@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-	childSchemasOf,
-	collectStandaloneSchemas,
-	Meta,
-	type JSONSchema,
-	type ParsedJSONSchemaObject,
-} from '../src';
+import { childSchemasOf, collectStandaloneSchemas, Meta } from '../src';
+import type { JSONSchema, ParsedJSONSchemaObject } from '../src';
 
 function withMeta(schema: JSONSchema, meta: Partial<Meta> = {}) {
 	Object.defineProperty(schema, Meta, {
@@ -138,7 +133,7 @@ describe('collectStandaloneSchemas', () => {
 			definitionsOf: (schema) =>
 				[schema.$defs, schema.definitions].flatMap((definitions) =>
 					Object.values(definitions ?? {})
-				) as ParsedJSONSchemaObject[],
+				),
 		});
 
 		expect(schemas).toEqual([fromDefs, fromDefinitions, root]);
@@ -153,7 +148,7 @@ describe('collectStandaloneSchemas', () => {
 
 		collectStandaloneSchemas(root, {
 			*definitionsOf(schema) {
-				for (const definition of Object.values(schema.$defs ?? {}) as ParsedJSONSchemaObject[]) {
+				for (const definition of Object.values(schema.$defs ?? {})) {
 					read.push(definition);
 					yield definition;
 				}

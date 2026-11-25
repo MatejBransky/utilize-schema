@@ -2,11 +2,14 @@ import { $RefParser } from '@apidevtools/json-schema-ref-parser';
 
 import type { DialectIssue, DialectOptions } from './dialect';
 import { resolveDialect } from './dialect';
-import { type ExternalSchemas, indexExternalSchemas, normalizeUri } from './externalSchemas';
+import { indexExternalSchemas, normalizeUri } from './externalSchemas';
+import type { ExternalSchemas } from './externalSchemas';
 import { createSchemaIndex, schemaChildren } from './identifiers';
 import { link } from './linker';
-import { Meta, type JSONSchema, type ParsedJSONSchema } from './model';
-import { type DialectMap, prepareSchema } from './normalize';
+import { Meta } from './model';
+import type { JSONSchema, ParsedJSONSchema } from './model';
+import { prepareSchema } from './normalize';
+import type { DialectMap } from './normalize';
 
 type SchemaPath = string;
 
@@ -69,7 +72,7 @@ export async function parse(
 			: {}
 	);
 
-	const entries = Object.entries($refs.values()) as Array<[SchemaPath, JSONSchema]>;
+	const entries = Object.entries($refs.values()) as [SchemaPath, JSONSchema][];
 	// `$RefParser` registers a nested `$id` as its own entry whose value is a node
 	// inside another document. Preparing and linking both would normalize that
 	// node twice and report its dialect issues twice, so keep the entry that
@@ -135,7 +138,7 @@ export async function parse(
 
 	const root = rootSchema as unknown as ParsedJSONSchema;
 
-	if (typeof root === 'object' && root !== null && !Object.hasOwnProperty.call(root, Meta)) {
+	if (typeof root === 'object' && root !== null && !Object.hasOwn(root, Meta)) {
 		link({
 			schema: root,
 			parent: null,
@@ -164,7 +167,7 @@ export async function parse(
  * duplicate entries for the same document. A nested `$id` is registered as its
  * own URI, but prepare and link already reach the node through its document.
  */
-function outerEntries(entries: Array<[SchemaPath, JSONSchema]>): Array<[SchemaPath, JSONSchema]> {
+function outerEntries(entries: [SchemaPath, JSONSchema][]): [SchemaPath, JSONSchema][] {
 	const descendants = new Map<JSONSchema, Set<unknown>>();
 
 	for (const [, entrySchema] of entries) {

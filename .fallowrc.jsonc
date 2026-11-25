@@ -225,10 +225,10 @@
 			{
 				// The Effect generator is the one file that renders the whole Effect
 				// target; splitting it would separate the renderer from the case it
-				// renders. The ceiling is the measured 1,779 lines, so the file may
-				// not grow at all.
+				// renders. The ceiling is the measured 1,781 lines after the top-level
+				// type imports require splitting, so the file may not grow at all.
 				"files": ["packages/effect/src/generator.ts"],
-				"maxFileLines": 1779,
+				"maxFileLines": 1781,
 				"reason": "Measured ceiling for the Effect generator; it renders one target and does not split along a readable seam.",
 			},
 		],

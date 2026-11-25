@@ -1,9 +1,5 @@
-import {
-	isPlainObject,
-	Meta,
-	type ParsedJSONSchema,
-	type ParsedJSONSchemaObject,
-} from '@utilize/json-schema';
+import { isPlainObject, Meta } from '@utilize/json-schema';
+import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 /**
  * Schemas that take part in a `$ref` cycle which TypeScript cannot express.

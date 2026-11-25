@@ -1,5 +1,6 @@
 import { ANNOTATION_KEYWORDS } from './keywords';
-import { Meta, type ParsedJSONSchemaObject, type Path } from './model';
+import { Meta } from './model';
+import type { ParsedJSONSchemaObject, Path } from './model';
 import { isPlainObject } from './utils';
 
 export type DialectId = 'draft-04' | 'draft-06' | 'draft-07' | '2019-09' | '2020-12';
@@ -230,10 +231,10 @@ const DRAFT_2020_KEYWORDS = new Set<string>([
 	'$dynamicAnchor',
 ]);
 
-const keywordsThatNeed: Array<{
+const keywordsThatNeed: {
 	keyword: string;
 	applies: (dialect: Dialect) => boolean;
-}> = [
+}[] = [
 	{ keyword: 'const', applies: (dialect) => dialect.keywords.has('const') },
 	{ keyword: 'contains', applies: (dialect) => dialect.keywords.has('contains') },
 	{ keyword: 'propertyNames', applies: (dialect) => dialect.keywords.has('propertyNames') },
@@ -325,7 +326,7 @@ export const dialects: Readonly<Record<DialectId, Dialect>> = Object.freeze({
 	},
 });
 
-const PATTERNS: ReadonlyArray<readonly [RegExp, DialectId]> = [
+const PATTERNS: readonly (readonly [RegExp, DialectId])[] = [
 	[/draft-04/, 'draft-04'],
 	[/draft-06/, 'draft-06'],
 	[/draft-07/, 'draft-07'],

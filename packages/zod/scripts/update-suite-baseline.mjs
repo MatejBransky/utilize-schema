@@ -1,13 +1,13 @@
 import { writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { renderKnownFailureInstances } from '@utilize/test-utils/suite/baseline';
 import { evaluateGeneratedCode, nameRootSchema } from '@utilize/test-utils/suite/evaluate';
 import { loadSuiteFiles, suiteCaseKey, suiteDirectory } from '@utilize/test-utils/suite/loadSuite';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
+const root = resolve(import.meta.dirname, '../../..');
 const zodPackage = join(root, 'packages/zod/package.json');
 const require = createRequire(zodPackage);
 const { z } = require('zod');

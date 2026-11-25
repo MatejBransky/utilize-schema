@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
 
-import { collectDroppedFiles, readDroppedSchemas, relativeNames, type DroppedFile } from './drop';
+import { collectDroppedFiles, readDroppedSchemas, relativeNames } from './drop';
+import type { DroppedFile } from './drop';
 
 function droppedFile(path: string, content = '{}'): DroppedFile {
 	const name = path.split('/').at(-1) ?? path;

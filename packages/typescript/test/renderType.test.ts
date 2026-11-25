@@ -1,7 +1,8 @@
 import type { ParsedJSONSchema } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
-import { renderType, type TypeContext } from '../src/renderType';
+import { renderType } from '../src/renderType';
+import type { TypeContext } from '../src/renderType';
 
 const context: TypeContext = {
 	nameOf: () => 'Reference',

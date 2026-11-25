@@ -45,7 +45,6 @@ export const suiteDirectory = join(
 export function loadSuiteFiles(): SuiteFile[] {
 	const files = readdirSync(suiteDirectory).filter((file) => file.endsWith('.json'));
 
-	// eslint-disable-next-line unicorn/no-array-sort -- `files` is a fresh array
 	files.sort();
 
 	return files.map((name) => {

@@ -4,8 +4,10 @@ import { baseline } from './suite/baseline';
 import { DRAFT_7, isCompatible } from '@utilize/test-utils/suite/compatibility';
 import { renderCaseModule } from './suite/generateCase';
 import { knownGaps } from './suite/knownGaps';
-import { loadSuiteFiles, type SuiteCase, suiteCaseKey } from '@utilize/test-utils/suite/loadSuite';
-import { typecheckCases, type TypecheckModule } from './suite/typecheck';
+import { loadSuiteFiles, suiteCaseKey } from '@utilize/test-utils/suite/loadSuite';
+import type { SuiteCase } from '@utilize/test-utils/suite/loadSuite';
+import { typecheckCases } from './suite/typecheck';
+import type { TypecheckModule } from './suite/typecheck';
 
 /**
  * Runs the official JSON Schema Test Suite against the generated TypeScript
@@ -180,9 +182,7 @@ describe('JSON Schema Test Suite (draft-07, type level)', () => {
 		}
 
 		expect(results.unattributed).toEqual([]);
-		// eslint-disable-next-line unicorn/no-array-sort -- both arrays are fresh
 		const recorded = baseline['draft-07'];
-
 		expect([...failures.keys()].sort()).toEqual(Object.keys(knownGaps).sort());
 		expect(runnable.length).toBe(recorded.cases);
 		expect(stats.conformant).toBe(recorded.passing);
@@ -199,7 +199,7 @@ const OTHER_DIALECTS = {
 } as const;
 
 describe('other dialects', () => {
-	for (const dialect of Object.keys(OTHER_DIALECTS) as Array<keyof typeof OTHER_DIALECTS>) {
+	for (const dialect of Object.keys(OTHER_DIALECTS) as (keyof typeof OTHER_DIALECTS)[]) {
 		const token = OTHER_DIALECTS[dialect];
 
 		test(`${dialect} matches the recorded baseline`, async () => {

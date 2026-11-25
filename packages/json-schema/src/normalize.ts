@@ -1,14 +1,11 @@
-import {
-	type Dialect,
-	type DialectId,
-	DialectError,
-	dialects,
-	type DialectIssue,
-	type DialectOptions,
-	type DialectSource,
-	keywordIssues,
-	resolveDialect,
-	type ResolvedDialect,
+import { DialectError, dialects, keywordIssues, resolveDialect } from './dialect';
+import type {
+	Dialect,
+	DialectId,
+	DialectIssue,
+	DialectOptions,
+	DialectSource,
+	ResolvedDialect,
 } from './dialect';
 import { SCHEMA_ARRAY_KEYWORDS, SCHEMA_MAP_KEYWORDS, SINGLE_SCHEMA_KEYWORDS } from './keywords';
 import type { Path } from './model';

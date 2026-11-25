@@ -8,8 +8,8 @@ import {
 	readFormatModeParam,
 	readKeywordPolicyParam,
 	readUrlState,
-	type UrlState,
 } from './urlState';
+import type { UrlState } from './urlState';
 
 export const PLAYGROUND_STORAGE_KEY = 'utilize-schema-playground';
 const EXAMPLE_PARAM = 'example';
@@ -45,7 +45,7 @@ export function encodeState(state: UrlState): string {
 		binary += String.fromCharCode(byte);
 	}
 
-	return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+	return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
 }
 
 export function resolveExampleId(files: SchemaFile[]): string | null {
@@ -150,7 +150,7 @@ function readHash(): UrlState | null {
 	}
 
 	try {
-		const base64 = location.hash.slice('#data='.length).replace(/-/g, '+').replace(/_/g, '/');
+		const base64 = location.hash.slice('#data='.length).replaceAll('-', '+').replaceAll('_', '/');
 		const binary = atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '='));
 		const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
 		const parsed = JSON.parse(new TextDecoder().decode(bytes));

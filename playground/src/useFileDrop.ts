@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type { DragEvent as ReactDragEvent } from 'react';
 
-import { hasFileDrag, type DropMode } from './drop';
+import { hasFileDrag } from './drop';
+import type { DropMode } from './drop';
 
 export interface FileDropOptions {
-	onDrop(dataTransfer: DataTransfer, mode: DropMode): void;
+	onDrop: (dataTransfer: DataTransfer, mode: DropMode) => void;
 }
 
 export function useFileDrop({ onDrop }: FileDropOptions) {
@@ -12,7 +13,9 @@ export function useFileDrop({ onDrop }: FileDropOptions) {
 	const [activeMode, setActiveMode] = useState<DropMode | null>(null);
 	const dropHandler = useRef(onDrop);
 
-	dropHandler.current = onDrop;
+	useEffect(() => {
+		dropHandler.current = onDrop;
+	}, [onDrop]);
 
 	useEffect(() => {
 		const reset = () => {

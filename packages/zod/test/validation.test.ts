@@ -1,4 +1,4 @@
-import { type JSONSchema } from '@utilize/json-schema';
+import type { JSONSchema } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
 import { compile, compileToZod, ts } from './test-utils';
@@ -72,7 +72,7 @@ describe('validation keywords', () => {
 	});
 
 	test('pattern uses unicode mode', async () => {
-		const Root = await compileToZod({ type: 'string', pattern: '^\\p{Letter}+$' });
+		const Root = await compileToZod({ type: 'string', pattern: String.raw`^\p{Letter}+$` });
 
 		expect(Root.safeParse('π').success).toBe(true);
 		expect(Root.safeParse('123').success).toBe(false);
@@ -141,7 +141,7 @@ describe('validation keywords', () => {
 			'for (const key of Object.keys(value))',
 			'Required dependency is missing.',
 		];
-		const normalized = result.replace(/\s+/g, ' ');
+		const normalized = result.replaceAll(/\s+/g, ' ');
 		const positions = markers.map((marker) => {
 			const position = normalized.indexOf(marker);
 

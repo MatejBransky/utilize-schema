@@ -1,11 +1,13 @@
-import { type DialectOptions, type JSONSchema, type NameMapper, parse } from '@utilize/json-schema';
+import { parse } from '@utilize/json-schema';
+import type { DialectOptions, JSONSchema, NameMapper } from '@utilize/json-schema';
 import { Schema } from 'effect';
 import { formatSource, ts } from '@utilize/test-utils/code';
 
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { generate, type CustomSchemaResolver, type FormatMode } from '../src/generator';
+import { generate } from '../src/generator';
+import type { CustomSchemaResolver, FormatMode } from '../src/generator';
 
 /** JSON Schema 2020-12 keywords that the draft-07 based `JSONSchema` type lacks. */
 export type TestSchema = JSONSchema & {

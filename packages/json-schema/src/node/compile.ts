@@ -5,7 +5,8 @@ import { load as loadYaml } from 'js-yaml';
 
 import { pickDialectOptions, warnDialectIssue } from '../dialect';
 import type { JSONSchema } from '../model';
-import { parse, type ParseOptions } from '../parser';
+import { parse } from '../parser';
+import type { ParseOptions } from '../parser';
 
 /** A synchronous or asynchronous formatter applied to generated code. */
 export type CodeFormatter = (code: string) => string | Promise<string>;

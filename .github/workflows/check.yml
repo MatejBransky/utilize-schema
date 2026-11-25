@@ -177,9 +177,10 @@ jobs:
 
       # The action treats an audit verdict of `warn` as a pass, by design: warn
       # means "warn-tier findings only". This repository fails on those findings
-      # too, so the recorded result is read with `--warn`. The step is skipped
-      # when the action stopped before writing the result; that run has already
-      # failed on its error findings.
+      # too, except the review-only diff-risk rules (`added-dependency` and
+      # `added-suppression`), which `fallow-gate.mjs` lets through. The step is
+      # skipped when the action stopped before writing the result; that run has
+      # already failed on its error findings.
       - name: Fail on warning findings
         if: always() && hashFiles('fallow-results.json') != ''
         run: |

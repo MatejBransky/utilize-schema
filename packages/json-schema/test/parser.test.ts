@@ -2,7 +2,8 @@ import { assert, expect, test } from 'vitest';
 
 import RefProperties from './RefProperties.json';
 
-import { Meta, parse, type JSONSchema, type ParsedJSONSchemaObject } from '../src';
+import { Meta, parse } from '../src';
+import type { JSONSchema, ParsedJSONSchemaObject } from '../src';
 
 test('parser', async () => {
 	const parsed = await parse(RefProperties as JSONSchema, {
@@ -522,10 +523,13 @@ test('get("#") resolves a root pointer and returns the target document for a fil
 
 	expect(localPointer.get('#')).toMatchObject({ type: 'string' });
 
-	const fileReference = await parse({ $ref: './EnumSchema.json', title: 'Doc' } as JSONSchema, {
-		cwd: __dirname + '/',
-		fileName: 'Root.json',
-	});
+	const fileReference = await parse(
+		{ $ref: './EnumSchema.json', title: 'Doc' },
+		{
+			cwd: __dirname + '/',
+			fileName: 'Root.json',
+		}
+	);
 
 	assert(typeof fileReference.root === 'object' && fileReference.root !== null);
 	expect(fileReference.root[Meta].reference).toMatchObject({ enum: ['a', 'b', 'c'] });

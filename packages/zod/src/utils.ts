@@ -1,4 +1,5 @@
-import { isPlainObject, type ParsedJSONSchemaObject } from '@utilize/json-schema';
+import { isPlainObject } from '@utilize/json-schema';
+import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import type { CustomSchemaResolver } from './generators/types';
 

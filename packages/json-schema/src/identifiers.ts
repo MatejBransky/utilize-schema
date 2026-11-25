@@ -1,4 +1,5 @@
-import { type Dialect, dialects } from './dialect';
+import { dialects } from './dialect';
+import type { Dialect } from './dialect';
 import { SCHEMA_ARRAY_KEYWORDS, SCHEMA_MAP_KEYWORDS, SINGLE_SCHEMA_KEYWORDS } from './keywords';
 import type { JSONSchema } from './model';
 import type { DialectMap } from './normalize';
@@ -236,7 +237,7 @@ function resolvePointer(root: JSONSchema | boolean, pointer: string) {
 			token = rawToken;
 		}
 
-		token = token.replace(/~1/g, '/').replace(/~0/g, '~');
+		token = token.replaceAll('~1', '/').replaceAll('~0', '~');
 
 		if (typeof current !== 'object' || current === null || !Object.hasOwn(current, token)) {
 			return undefined;
@@ -285,5 +286,5 @@ function stripHash(uri: string) {
 
 function normalizePath(value: string) {
 	// A Windows drive path would otherwise read `c:` as a URL scheme.
-	return /^[a-zA-Z]:[\\/]/.test(value) ? value.replace(/\\/g, '/') : value.replace(/\\/g, '/');
+	return /^[a-zA-Z]:[\\/]/.test(value) ? value.replaceAll('\\', '/') : value.replaceAll('\\', '/');
 }

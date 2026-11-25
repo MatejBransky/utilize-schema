@@ -1,10 +1,8 @@
-import {
-	isPlainObject,
-	Meta,
-	type JSONSchemaTypeName,
-	type ParsedJSONSchema,
-	type ParsedJSONSchemaObject,
-	toSafeString,
+import { isPlainObject, Meta, toSafeString } from '@utilize/json-schema';
+import type {
+	JSONSchemaTypeName,
+	ParsedJSONSchema,
+	ParsedJSONSchemaObject,
 } from '@utilize/json-schema';
 
 import { UnresolvedReferenceError } from './errors';
@@ -102,7 +100,7 @@ function prepareSchemaInput(
 		return 'never';
 	}
 
-	return isPlainObject(schema) ? (schema as ParsedJSONSchemaObject) : 'unknown';
+	return isPlainObject(schema) ? schema : 'unknown';
 }
 
 function renderSpecialSchema(
@@ -499,8 +497,8 @@ export function renderObjectBody(
 
 		hasOptional ||= optional;
 		propertyTypes.push(type);
-		lines.push(...renderJsDoc(property, memberLevel));
 		lines.push(
+			...renderJsDoc(property, memberLevel),
 			`${indent(memberLevel)}${readonlyModifier(property)}${propertyKey(key)}${optional ? '?' : ''}: ${type};`
 		);
 	}
@@ -530,7 +528,7 @@ function implicitPropertyType(
 
 	for (const [pattern, subschema] of Object.entries(patterns)) {
 		if (matchesPattern(pattern, key)) {
-			matches.push(renderType(subschema as ParsedJSONSchema, context, level));
+			matches.push(renderType(subschema, context, level));
 		}
 	}
 
@@ -728,7 +726,7 @@ function jsDocTags(schema: ParsedJSONSchemaObject): string[] {
 }
 
 function escapeComment(text: string): string {
-	return text.replace(/\*\//g, '*\\/');
+	return text.replaceAll('*/', String.raw`*\/`);
 }
 
 function remainingSchema(
@@ -738,7 +736,7 @@ function remainingSchema(
 	return {
 		...schema,
 		[keyword]: undefined,
-	} as unknown as ParsedJSONSchemaObject;
+	};
 }
 
 function hasRenderableKeywords(schema: ParsedJSONSchemaObject): boolean {
@@ -771,7 +769,10 @@ function propertyKey(key: string): string {
 function stringLiteral(value: string): string {
 	const json = JSON.stringify(value);
 
-	return `'${json.slice(1, -1).replace(/\\"/g, '"').replace(/'/g, "\\'")}'`;
+	return `'${json
+		.slice(1, -1)
+		.replaceAll(String.raw`\"`, '"')
+		.replaceAll("'", String.raw`\'`)}'`;
 }
 
 function union(types: string[]): string {

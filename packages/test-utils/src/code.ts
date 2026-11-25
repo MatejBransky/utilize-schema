@@ -25,5 +25,5 @@ export const ts = (strings: TemplateStringsArray, ...values: unknown[]): Promise
 	formatSource(String.raw(strings, ...values));
 
 export function normalizeCode(code: string): string {
-	return code.replace(/\r\n?/g, '\n').trim();
+	return code.replaceAll(/\r\n?/g, '\n').trim();
 }

@@ -40,7 +40,7 @@ export async function readDroppedSchemas(files: DroppedFile[]): Promise<Imported
 
 	for (const [index, entry] of ordered.entries()) {
 		try {
-			schemas.push({ name: names[index]!, content: await entry.file.text() });
+			schemas.push({ name: names[index], content: await entry.file.text() });
 		} catch {
 			// A file the browser cannot read (for example, one moved during the drop) is skipped.
 		}

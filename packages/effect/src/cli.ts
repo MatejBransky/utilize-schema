@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 import { dialectCliHelp } from '@utilize/json-schema';
 import {
-	type CliIo,
 	formatAndDialectFlags,
 	isEntrypoint,
 	readFormatAndDialectFlags,
 	runGeneratorCli,
 } from '@utilize/json-schema/node';
+import type { CliIo } from '@utilize/json-schema/node';
 
 import { compileFile, compileSchema, withBanner } from './compile';
 
