@@ -148,6 +148,8 @@
 			{ "name": "effect", "patterns": ["packages/effect/src/**"] },
 			{ "name": "typescript", "patterns": ["packages/typescript/src/**"] },
 			{ "name": "playground", "patterns": ["playground/src/**"] },
+			{ "name": "content-mapper", "patterns": ["packages/content-mapper/src/**"] },
+			{ "name": "content-mapper-example", "patterns": ["examples/content-mapper/src/**"] },
 		],
 		"rules": [
 			{ "from": "core", "allow": [] },
@@ -155,6 +157,8 @@
 			{ "from": "effect", "allow": ["core"] },
 			{ "from": "typescript", "allow": ["core"] },
 			{ "from": "playground", "allow": ["core", "zod", "effect", "typescript"] },
+			{ "from": "content-mapper", "allow": ["core", "zod", "effect", "typescript"] },
+			{ "from": "content-mapper-example", "allow": [] },
 		],
 		"coverage": {
 			"requireAllFiles": true,
@@ -211,6 +215,33 @@
 			"packages/json-schema/tsdown.bench.config.ts",
 		],
 		"thresholdOverrides": [
+			{
+				// Content-mapper CLI code runs in a child process the tests spawn, so
+				// V8 coverage in the test process sees none of it and CRAP falls back
+				// to the static estimate. The tests exercise these paths end to end.
+				"files": ["packages/content-mapper/src/mapper-server.ts"],
+				"functions": ["validateOptions"],
+				"maxCrap": 57,
+				"reason": "Runs in the spawned content mapper process, outside V8 coverage; tested end to end through the CLI fixture.",
+			},
+			{
+				"files": ["packages/content-mapper/src/rpc.ts"],
+				"functions": ["dispatch"],
+				"maxCrap": 57,
+				"reason": "JSON-RPC dispatch runs in the spawned content mapper process, outside V8 coverage; tested end to end through the CLI fixture.",
+			},
+			{
+				"files": ["packages/content-mapper/src/rpc.ts"],
+				"functions": ["process.stdin.on(\"data\")"],
+				"maxCrap": 31,
+				"reason": "Framing loop runs in the spawned content mapper process, outside V8 coverage; tested end to end through the CLI fixture.",
+			},
+			{
+				"files": ["packages/content-mapper/src/loader.ts"],
+				"functions": ["load"],
+				"maxCrap": 31,
+				"reason": "Node ESM load hook is only reached in the spawned mapper process, outside V8 coverage; tested through the CLI fixture.",
+			},
 			{
 				// The component has no branch-heavy logic: the score is six Monaco
 				// lifecycle effects plus the imperative handle and ten props. Moving

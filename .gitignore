@@ -18,3 +18,4 @@ coverage/
 .fallow/
 fallow-results.sarif
 fallow-results.json
+packages/content-mapper/test/fixtures/main.mjs

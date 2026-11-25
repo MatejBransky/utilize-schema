@@ -9,6 +9,10 @@ export default defineConfig({
 		'**/dist/**',
 		'.agents/**',
 		'packages/zod/test/snapshots/**',
+		// Fixture programs are compiled or imported by the tests, and the TS 7.1
+		// content-mapper tsconfig needs --runExternalCode, which the parser cannot
+		// see. They are test inputs rather than linted sources.
+		'packages/content-mapper/test/fixtures/**',
 	],
 	overrides: [
 		{

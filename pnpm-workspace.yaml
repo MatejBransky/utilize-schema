@@ -1,5 +1,6 @@
 packages:
   - packages/*
+  - examples/*
   - playground
 
 # Pin every install to an exact version (no ^ / ~ ranges) when adding a dependency.
