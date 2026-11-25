@@ -119,15 +119,7 @@ function findCyclicNodes(edges: SchemaEdge[]): Set<SchemaNode>[] {
 			return;
 		}
 
-		const component = new Set<SchemaNode>();
-		let member: SchemaNode;
-
-		do {
-			member = stack.pop()!;
-			onStack.delete(member);
-			component.add(member);
-		} while (member !== node);
-
+		const component = popComponent(node, stack, onStack);
 		const hasSelfLoop = (adjacency.get(node) ?? []).includes(node);
 
 		if (component.size > 1 || hasSelfLoop) {
@@ -142,4 +134,21 @@ function findCyclicNodes(edges: SchemaEdge[]): Set<SchemaNode>[] {
 	}
 
 	return components;
+}
+
+function popComponent(
+	node: SchemaNode,
+	stack: SchemaNode[],
+	onStack: Set<SchemaNode>
+): Set<SchemaNode> {
+	const component = new Set<SchemaNode>();
+	let member: SchemaNode;
+
+	do {
+		member = stack.pop()!;
+		onStack.delete(member);
+		component.add(member);
+	} while (member !== node);
+
+	return component;
 }
