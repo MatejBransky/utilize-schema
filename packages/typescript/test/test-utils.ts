@@ -62,7 +62,7 @@ export interface CompileOptions extends GenerateOptions {
 	fileName?: string;
 }
 
-export async function parseSchema(
+async function parseSchema(
 	schema: TestSchema,
 	options: { fileName?: string } = {}
 ): Promise<ParsedJSONSchema> {

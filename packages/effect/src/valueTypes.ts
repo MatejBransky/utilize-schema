@@ -102,7 +102,7 @@ function renderRecordInterface(
  * elements, index signatures), where a recursive alias is allowed. A direct
  * self reference would be circular, so it degrades to `Schema.Json`.
  */
-export function renderValueType(
+function renderValueType(
 	schema: ParsedJSONSchema,
 	context: ValueTypeContext,
 	self?: string,

@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, test } from 'vitest';
 
 import { DRAFT_7, isCompatible } from './suite/compatibility';
-import { compileToSchema } from './suite/compile';
+import { compileToEffectSchema } from './suite/compile';
 import { knownFailureInstances } from './suite/knownFailureInstances';
 import { knownFailures } from './suite/knownFailures';
 import { decode } from './test-utils';
@@ -114,7 +114,11 @@ for (const file of files) {
 					if (expected === 'compile') {
 						stats.failedAssertions += testCase.tests.length;
 						await expect(
-							compileToSchema(testCase.schema, testCase.externalSchemas, formatModeFor(testCase))
+							compileToEffectSchema(
+								testCase.schema,
+								testCase.externalSchemas,
+								formatModeFor(testCase)
+							)
 						).rejects.toThrow();
 						return;
 					}
@@ -128,7 +132,7 @@ for (const file of files) {
 						`"${key}" no longer fails; remove the entry`
 					).toBeGreaterThan(0);
 
-					const schema = await compileToSchema(
+					const schema = await compileToEffectSchema(
 						testCase.schema,
 						testCase.externalSchemas,
 						formatModeFor(testCase)
@@ -151,7 +155,7 @@ for (const file of files) {
 				let failures: string[];
 
 				try {
-					const schema = await compileToSchema(
+					const schema = await compileToEffectSchema(
 						testCase.schema,
 						testCase.externalSchemas,
 						formatModeFor(testCase)

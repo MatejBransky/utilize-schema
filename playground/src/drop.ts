@@ -16,7 +16,7 @@ export function hasFileDrag(dataTransfer: DataTransfer | null): boolean {
 	return Boolean(dataTransfer && Array.from(dataTransfer.types).includes('Files'));
 }
 
-export function isJsonPath(path: string): boolean {
+function isJsonPath(path: string): boolean {
 	return /\.json$/i.test(path);
 }
 

@@ -5,7 +5,7 @@ import {
 	type ParsedJSONSchemaObject,
 } from '@utilize/json-schema';
 
-export type SchemaEdge = [ParsedJSONSchemaObject | null, ParsedJSONSchemaObject];
+type SchemaEdge = [ParsedJSONSchemaObject | null, ParsedJSONSchemaObject];
 
 /**
  * A `$defs` or `definitions` entry that is a boolean schema. Booleans carry no

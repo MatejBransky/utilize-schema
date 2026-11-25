@@ -93,7 +93,7 @@ function applyStringConstraints({ expression, schema }: StringConstraints) {
 	return expression;
 }
 
-export const formatToZodMethod: Record<string, string> = {
+const formatToZodMethod: Record<string, string> = {
 	email: '.email()',
 	uuid: '.uuid()',
 	url: '.url()',

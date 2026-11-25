@@ -56,7 +56,7 @@ export const RENDERED_GLOBAL_TYPES = ['Array', 'Record'] as const;
 
 const INDENT = '\t';
 
-export function indent(level: number): string {
+function indent(level: number): string {
 	return INDENT.repeat(level);
 }
 
@@ -566,7 +566,7 @@ function indexSignatureType(
 	return hasOptional ? union([value, 'undefined']) : value;
 }
 
-export function declaredKeys(schema: ParsedJSONSchemaObject): string[] {
+function declaredKeys(schema: ParsedJSONSchemaObject): string[] {
 	const properties = isPlainObject(schema.properties) ? schema.properties : {};
 
 	return [...new Set([...Object.keys(properties), ...requiredKeys(schema)])];
@@ -708,7 +708,7 @@ function withType(
 	return { ...schema, type };
 }
 
-export function propertyKey(key: string): string {
+function propertyKey(key: string): string {
 	return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? key : stringLiteral(key);
 }
 

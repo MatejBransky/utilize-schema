@@ -140,7 +140,7 @@ export function resolveName({
 	return generateName(base, usedNames);
 }
 
-export function generateName(from: string, usedNames: Set<string>) {
+function generateName(from: string, usedNames: Set<string>) {
 	let name: string = toSafeString(justName(from) ?? from);
 	if (!name) name = 'NoName';
 
@@ -214,7 +214,7 @@ function deburr(str: string): string {
 /**
  * Eg. `foo/bar/baz.json` => `baz`
  */
-export function justName(filename = ''): string | undefined {
+function justName(filename = ''): string | undefined {
 	const parts = filename.split(/[\\/]/);
 	const lastPart = parts.at(-1);
 	if (!lastPart) {
@@ -226,7 +226,7 @@ export function justName(filename = ''): string | undefined {
 /**
  * Avoid appending "js" to top-level unnamed schemas
  */
-export function stripExtension(filename: string): string {
+function stripExtension(filename: string): string {
 	const lastDot = filename.lastIndexOf('.');
 	if (lastDot > 0) {
 		return filename.slice(0, lastDot);

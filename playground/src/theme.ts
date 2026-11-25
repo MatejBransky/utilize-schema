@@ -2,7 +2,7 @@ export type ColorMode = 'auto' | 'light' | 'dark';
 
 export const THEME_STORAGE_KEY = 'utilize-schema-theme';
 
-export function isColorMode(value: unknown): value is ColorMode {
+function isColorMode(value: unknown): value is ColorMode {
 	return value === 'auto' || value === 'light' || value === 'dark';
 }
 

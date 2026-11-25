@@ -240,7 +240,7 @@ function resolvePointer(root: JSONSchema | boolean, pointer: string) {
 const PLACEHOLDER_ORIGIN = 'https://utilize.invalid';
 
 /** Resolves `ref` against `base` the way a browser resolves a link. */
-export function resolveUri(base: string, ref: string): string {
+function resolveUri(base: string, ref: string): string {
 	// A URN or another opaque scheme is not a valid URL base for relative
 	// references, but a fragment still resolves against it in JSON Schema.
 	if (ref.startsWith('#') && !/^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(base)) {
