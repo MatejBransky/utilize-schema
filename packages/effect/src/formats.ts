@@ -1,5 +1,3 @@
-import { expectDefined } from '@utilize/json-schema';
-
 /**
  * Checks the Effect generator emits when `formatMode` is `assert`.
  *
