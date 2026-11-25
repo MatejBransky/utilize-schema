@@ -62,7 +62,7 @@ function createMergeState(): MergeState {
 	return {
 		// Without a prototype, `properties.__proto__ = ...` adds a property instead
 		// of replacing the prototype.
-		properties: Object.create(null),
+		properties: Object.create(null) as MergeState['properties'],
 		propertyOwners: new Map(),
 		required: new Set(),
 		additionalProperties: undefined,

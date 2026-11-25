@@ -4,7 +4,7 @@ import {
 	isKeywordApplicable,
 	withSourceMeta,
 } from '@utilize/json-schema';
-import type { Dialect, ParsedJSONSchemaObject } from '@utilize/json-schema';
+import type { Dialect, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { valueHasType } from './jsonValues';
 
@@ -46,7 +46,7 @@ export function composedSchemaParts(
 
 	return {
 		main: {
-			[keyword]: schema[keyword],
+			[keyword]: schema[keyword] as ParsedJSONSchema | undefined,
 			discriminator: schema.discriminator,
 		} as unknown as ParsedJSONSchemaObject,
 		rest,

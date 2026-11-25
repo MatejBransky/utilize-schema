@@ -83,7 +83,7 @@ function shapeOf(
 		types,
 		tags: types?.every((type) => type === 'object')
 			? requiredTags(schema, options, visiting)
-			: new Map(),
+			: new Map<string, unknown[]>(),
 	};
 }
 

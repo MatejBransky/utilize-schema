@@ -415,7 +415,17 @@ function mergeDependency(dependencies: Record<string, unknown>, key: string, nex
 	}
 
 	if (Array.isArray(current) && Array.isArray(next)) {
-		dependencies[key] = [...new Set([...current, ...next])];
+		const merged = new Set<unknown>();
+
+		for (const item of current) {
+			merged.add(item);
+		}
+
+		for (const item of next) {
+			merged.add(item);
+		}
+
+		dependencies[key] = [...merged];
 		return;
 	}
 

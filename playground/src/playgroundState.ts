@@ -159,7 +159,7 @@ function readHash(): UrlState | null {
 		const base64 = location.hash.slice('#data='.length).replaceAll('-', '+').replaceAll('_', '/');
 		const binary = atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '='));
 		const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-		const parsed = JSON.parse(new TextDecoder().decode(bytes));
+		const parsed = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
 
 		return normalizeState(parsed);
 	} catch {
