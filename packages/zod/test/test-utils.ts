@@ -1,6 +1,7 @@
 import { type DialectOptions, type JSONSchema, parse } from '@utilize/json-schema';
-import { format as formatCode } from 'oxfmt';
 import { type z } from 'zod';
+
+import { formatSource, ts } from '@utilize/test-utils/code';
 
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -11,31 +12,7 @@ import type { CustomSchemaResolver, FormatMap, FormatMode } from '../src/generat
 /** Generator options a test can override; the rest keep their test defaults. */
 type TestGenerateOptions = Pick<GenerateOptions, 'schemaName' | 'typeName' | 'runtimeImport'>;
 
-/**
- * A tagged template literal function for expected TypeScript code. Code is
- * compared with whitespace normalized, so the generated output does not need
- * to be formatted.
- */
-export const ts = (strings: TemplateStringsArray, ...values: unknown[]) =>
-	formatSource(String.raw(strings, ...values));
-
-const formatOptions = {
-	bracketSpacing: true,
-	endOfLine: 'lf',
-	semi: true,
-	singleQuote: true,
-	trailingComma: 'es5',
-	useTabs: true,
-	objectWrap: 'collapse',
-} as const;
-
-function formatSource(code: string) {
-	return formatCode('code.ts', code, formatOptions).then((result) => result.code);
-}
-
-export function normalizeCode(code: string): string {
-	return code.replace(/\r\n?/g, '\n').trim();
-}
+export { ts };
 
 export interface CompileOptions extends TestGenerateOptions {
 	importZod?: boolean;

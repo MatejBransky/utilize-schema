@@ -8,7 +8,7 @@
  */
 export type Dialect = 3 | 4 | 6 | 7 | 2019 | 2020 | 9999;
 
-/** The dialect this package targets: JSON Schema draft-07. */
+/** The dialect the generators target: JSON Schema draft-07. */
 export const DRAFT_7: Dialect = 7;
 
 export function isCompatible(compatibility: string | undefined, version: Dialect = DRAFT_7) {
