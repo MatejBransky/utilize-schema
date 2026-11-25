@@ -21,6 +21,7 @@
 		"name": "Matej Bransky",
 		"email": "matej.bransky@gmail.com"
 	},
+	"type": "module",
 	"scripts": {
 		"preinstall": "node scripts/check-package-manager.mjs",
 		"build": "pnpm run --recursive --aggregate-output --reporter-hide-prefix --if-present build",
@@ -48,11 +49,13 @@
 	},
 	"devDependencies": {
 		"@changesets/cli": "3.0.3",
+		"@cloudflare/oxlint-config": "catalog:",
 		"@vitest/coverage-v8": "catalog:",
 		"fallow": "catalog:",
 		"fallow-type-aware": "catalog:",
 		"oxfmt": "catalog:",
 		"oxlint": "catalog:",
+		"tsrs": "catalog:",
 		"typescript": "catalog:"
 	},
 	"engines": {
