@@ -401,16 +401,16 @@
 		// removed.
 		"constant-parameters": "error",
 
-		// CSS: a broken or dead reference is a defect; token drift, a repeated
-		// block and a long selector are taste. `playground/src/App.module.css`
-		// and `global.css` carry three selector-complexity warnings today, and
-		// rewriting idiomatic `:hover:not(...)` chains would make the cascade
-		// harder to read, not safer.
+		// CSS gates in full: a broken or dead reference, a drifted token, a
+		// repeated block and a selector that buries the cascade in `:not()` /
+		// `:has()` chains. The playground reaches zero findings after the tab
+		// state moved to a sibling selector and the root height moved to a
+		// zero-specificity `:where()`.
 		"css-broken-reference": "error",
 		"css-dead-surface": "error",
-		"css-token-drift": "warn",
-		"css-duplicate-block": "warn",
-		"css-selector-complexity": "warn",
+		"css-token-drift": "error",
+		"css-duplicate-block": "error",
+		"css-selector-complexity": "error",
 
 		// A detected feature flag is a live branch in the product, so it gates:
 		// the run lists each one and a new flag is a decision the change makes on

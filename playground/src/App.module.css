@@ -139,7 +139,7 @@
 	font-weight: 600;
 }
 
-.tab:hover:not([data-selected]):not([data-disabled]) {
+.tab:hover:not([data-disabled]) {
 	color: var(--ui-foreground);
 }
 
@@ -188,6 +188,7 @@
 	right: calc(var(--ui-spacing) * 1);
 	display: flex;
 	gap: calc(var(--ui-spacing) * 0.5);
+	color: var(--ui-muted-foreground);
 	transform: translateY(-50%);
 }
 
@@ -202,7 +203,7 @@
 	border: 0;
 	border-radius: 0;
 	background: transparent;
-	color: var(--ui-muted-foreground);
+	color: inherit;
 }
 
 .tabIcon:hover:not(:disabled) {
@@ -215,7 +216,7 @@
 	height: 0.875rem;
 }
 
-.tabItem:has([data-selected]) .tabIcon {
+.tab[data-selected] + .tabActions {
 	color: var(--ui-foreground);
 }
 
