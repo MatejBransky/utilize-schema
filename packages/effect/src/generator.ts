@@ -1,6 +1,5 @@
 import {
 	allocateName,
-	schemaRecord,
 	collectStandaloneSchemas,
 	dialectOf,
 	expectDefined,
@@ -11,6 +10,7 @@ import {
 	Meta,
 	narrowUntypedSchema,
 	resolveName,
+	schemaRecord,
 } from '@utilize/json-schema';
 import type {
 	Dialect,
