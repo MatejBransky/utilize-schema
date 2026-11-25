@@ -75,6 +75,11 @@
 	// (`fallow list --entry-points`). Listing the packages as public on top of
 	// that also stops fallow from reporting unused exports in their internal
 	// modules and tests, which hid 17 real findings.
+	//
+	// `includeEntryExports` stays `false` for the same reason: the entry files
+	// are the API surface, and checking their exports would report every public
+	// name as unused. A stray export in a framework route is still caught through
+	// the plugin `usedExports` rule.
 
 	"ignoreExports": [
 		// Every generator package exposes the same API shape on purpose, so a user
@@ -101,6 +106,13 @@
 		// `fallow dupes`, and any value above 0 would let that command pass with
 		// new copies under it. Duplication is 0 % today with the reviewed groups
 		// left out, so there is no old copy-paste a percentage would need to allow.
+		//
+		// `mode` stays at fallow's default (`mild`) and `near` stays off, which is
+		// the documented starting point: `semantic` also matches blocks that only
+		// look alike (54 groups, 1,177 lines here) and `near` adds functions that
+		// are 80 % similar (10 groups, 284 lines). A new exact copy already fails
+		// the run, so the stricter modes would mostly report shapes that are not
+		// copies.
 		"threshold": 0,
 
 		// Reviewed clone groups. A key holds the group's fingerprint and its
