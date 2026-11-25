@@ -27,8 +27,8 @@ function valid(data: unknown, label = 'Valid'): ExampleCase {
 	return { label, expect: 'valid', data };
 }
 
-function invalid(data: unknown, label = 'Invalid'): ExampleCase {
-	return { label, expect: 'invalid', data };
+function invalid(data: unknown): ExampleCase {
+	return { label: 'Invalid', expect: 'invalid', data };
 }
 
 function single(

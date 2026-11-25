@@ -1,7 +1,10 @@
 import {
 	type CSSProperties,
+	type Dispatch,
 	type KeyboardEvent as ReactKeyboardEvent,
 	type PointerEvent as ReactPointerEvent,
+	type RefObject,
+	type SetStateAction,
 	useEffect,
 	useRef,
 	useState,
@@ -25,6 +28,10 @@ interface SplitterHandlers {
 	onKeyDown(event: ReactKeyboardEvent<HTMLElement>): void;
 }
 
+interface WorkspaceSplitter extends SplitterHandlers {
+	resizing: boolean;
+}
+
 /**
  * The workspace layout: the split between the schema row and the test data
  * row, and the two independently collapsible sections. The test data row only
@@ -32,11 +39,11 @@ interface SplitterHandlers {
  */
 export function useWorkspaceLayout() {
 	const [split, setSplit] = useState(DEFAULT_SPLIT);
-	const [resizing, setResizing] = useState(false);
 	const [problemsCollapsed, setProblemsCollapsed] = useState(false);
 	const [dataCollapsed, setDataCollapsed] = useState(false);
 	const [narrowLayout, setNarrowLayout] = useState(() => window.matchMedia(NARROW_LAYOUT).matches);
 	const workspaceRef = useRef<HTMLElement>(null);
+	const splitter = useWorkspaceSplitter(workspaceRef, setSplit);
 
 	useEffect(() => {
 		const query = window.matchMedia(NARROW_LAYOUT);
@@ -54,6 +61,54 @@ export function useWorkspaceLayout() {
 		return () => query.removeEventListener('change', syncLayout);
 	}, []);
 
+	const style = {
+		'--workspace-top': `${split * 100}%`,
+		'--workspace-bottom': `${(1 - split) * 100}%`,
+	} as CSSProperties;
+
+	return {
+		split,
+		resizing: splitter.resizing,
+		dataCollapsed,
+		problemsCollapsed,
+		narrowLayout,
+		workspaceRef,
+		style,
+		toggleDataCollapsed: () => setDataCollapsed((collapsed) => !collapsed),
+		toggleProblemsCollapsed: () => setProblemsCollapsed((collapsed) => !collapsed),
+		splitter: {
+			onPointerDown: splitter.onPointerDown,
+			onPointerMove: splitter.onPointerMove,
+			onPointerUp: splitter.onPointerUp,
+			onPointerCancel: splitter.onPointerCancel,
+			onLostPointerCapture: splitter.onLostPointerCapture,
+			onKeyDown: splitter.onKeyDown,
+		} satisfies SplitterHandlers,
+	};
+}
+
+/** The pointer and keyboard interaction of the draggable divider. */
+function useWorkspaceSplitter(
+	workspaceRef: RefObject<HTMLElement | null>,
+	setSplit: Dispatch<SetStateAction<number>>
+): WorkspaceSplitter {
+	const [resizing, setResizing] = useState(false);
+
+	return {
+		resizing,
+		...usePointerResize(workspaceRef, setSplit, setResizing),
+		onKeyDown: keyboardResize(setSplit),
+	};
+}
+
+type PointerHandlers = Omit<SplitterHandlers, 'onKeyDown'>;
+
+/** Drags the divider with a pointer and keeps the split within its bounds. */
+function usePointerResize(
+	workspaceRef: RefObject<HTMLElement | null>,
+	setSplit: Dispatch<SetStateAction<number>>,
+	setResizing: Dispatch<SetStateAction<boolean>>
+): PointerHandlers {
 	function resizeWorkspace(clientY: number) {
 		const rect = workspaceRef.current?.getBoundingClientRect();
 
@@ -88,7 +143,18 @@ export function useWorkspaceLayout() {
 		setResizing(false);
 	}
 
-	function resizeWithKeyboard(event: ReactKeyboardEvent<HTMLElement>) {
+	return {
+		onPointerDown: startResizing,
+		onPointerMove: moveSplitter,
+		onPointerUp: stopResizing,
+		onPointerCancel: stopResizing,
+		onLostPointerCapture: () => setResizing(false),
+	};
+}
+
+/** Arrow keys move the split by a step, Shift by a large one; Home and End jump to the bounds. */
+function keyboardResize(setSplit: Dispatch<SetStateAction<number>>) {
+	return function handleKeyDown(event: ReactKeyboardEvent<HTMLElement>) {
 		const step = event.shiftKey ? LARGE_SPLIT_STEP : SPLIT_STEP;
 
 		switch (event.key) {
@@ -109,31 +175,6 @@ export function useWorkspaceLayout() {
 		}
 
 		event.preventDefault();
-	}
-
-	const style = {
-		'--workspace-top': `${split * 100}%`,
-		'--workspace-bottom': `${(1 - split) * 100}%`,
-	} as CSSProperties;
-
-	return {
-		split,
-		resizing,
-		dataCollapsed,
-		problemsCollapsed,
-		narrowLayout,
-		workspaceRef,
-		style,
-		toggleDataCollapsed: () => setDataCollapsed((collapsed) => !collapsed),
-		toggleProblemsCollapsed: () => setProblemsCollapsed((collapsed) => !collapsed),
-		splitter: {
-			onPointerDown: startResizing,
-			onPointerMove: moveSplitter,
-			onPointerUp: stopResizing,
-			onPointerCancel: stopResizing,
-			onLostPointerCapture: () => setResizing(false),
-			onKeyDown: resizeWithKeyboard,
-		} satisfies SplitterHandlers,
 	};
 }
 

@@ -88,43 +88,20 @@ export function usePlayground() {
 		testData.data,
 		editors.codeEditorRef
 	);
-	const activeExample = exampleById(generation.exampleId);
-	const activeCase = activeExample ? exampleCaseForData(activeExample, testData.data) : undefined;
-
-	function applyExample(id: string) {
-		const example = examples.find((candidate) => candidate.id === id);
-
-		if (!example) {
-			return;
-		}
-
-		workspace.applyExample(example.files);
-		testData.setData(exampleData(example));
-		setExampleUrl(example.id, 'push');
-	}
-
-	useEffect(() => {
-		try {
-			localStorage.setItem(
-				PLAYGROUND_STORAGE_KEY,
-				JSON.stringify({
-					files: workspace.files,
-					target: settings.target,
-					keywordPolicy: settings.keywordPolicy,
-					formatMode: settings.formatMode,
-					data: testData.data,
-				})
-			);
-		} catch {
-			// Storage can be full or denied. Keep the workspace in memory.
-		}
-	}, [
-		workspace.files,
-		settings.target,
-		settings.keywordPolicy,
-		settings.formatMode,
+	const { activeExample, activeCase, applyExample } = useExampleSelection(
+		generation.exampleId,
 		testData.data,
-	]);
+		workspace.applyExample,
+		testData.setData
+	);
+
+	useWorkspacePersistence({
+		files: workspace.files,
+		target: settings.target,
+		keywordPolicy: settings.keywordPolicy,
+		formatMode: settings.formatMode,
+		data: testData.data,
+	});
 
 	return {
 		...settings,
@@ -146,6 +123,68 @@ export function usePlayground() {
 }
 
 export type Playground = ReturnType<typeof usePlayground>;
+
+interface PersistedWorkspace {
+	files: SchemaFile[];
+	target: TargetId;
+	keywordPolicy: KeywordPolicy;
+	formatMode: FormatMode;
+	data: string;
+}
+
+/** Keeps the workspace in local storage so a reload restores it. */
+function useWorkspacePersistence({
+	files,
+	target,
+	keywordPolicy,
+	formatMode,
+	data,
+}: PersistedWorkspace) {
+	useEffect(() => {
+		try {
+			localStorage.setItem(
+				PLAYGROUND_STORAGE_KEY,
+				JSON.stringify({ files, target, keywordPolicy, formatMode, data })
+			);
+		} catch {
+			// Storage can be full or denied. Keep the workspace in memory.
+		}
+	}, [files, target, keywordPolicy, formatMode, data]);
+}
+
+interface ExampleSelection {
+	activeExample: ReturnType<typeof exampleById>;
+	activeCase: ReturnType<typeof exampleCaseForData>;
+	applyExample(id: string): void;
+}
+
+/**
+ * The example the workspace came from, the case the current test data matches,
+ * and loading an example into the workspace.
+ */
+function useExampleSelection(
+	exampleId: string | null,
+	data: string,
+	applyFiles: (files: SchemaFile[]) => void,
+	setData: (data: string) => void
+): ExampleSelection {
+	const activeExample = exampleById(exampleId);
+	const activeCase = activeExample ? exampleCaseForData(activeExample, data) : undefined;
+
+	function applyExample(id: string) {
+		const example = examples.find((candidate) => candidate.id === id);
+
+		if (!example) {
+			return;
+		}
+
+		applyFiles(example.files);
+		setData(exampleData(example));
+		setExampleUrl(example.id, 'push');
+	}
+
+	return { activeExample, activeCase, applyExample };
+}
 
 function useGeneratorSettings(initial: UrlState) {
 	const [target, setTarget] = useState<TargetId>(initial.target);
@@ -428,43 +467,12 @@ function useGeneration(
 		setBusy(true);
 
 		const timer = setTimeout(async () => {
-			let nextCode = '';
-			const nextProblems: Problem[] = [];
-			let nextRuntime: RuntimeSource | null = null;
-
-			if (bundle.root !== null) {
-				try {
-					// `parse` resolves the schema in place, so every run gets a copy;
-					// otherwise switching targets reuses names chosen for the previous one.
-					const { root } = await parse(structuredClone(bundle.root) as never, {
-						cwd: '/',
-						fileName: bundle.rootFileName,
-						keywordPolicy,
-						onDialectIssue: () => {},
-					});
-
-					const generatorOptions = exampleId ? exampleGeneratorOptions[exampleId] : undefined;
-					const generated = generateCodeFor(target, root, formatMode, generatorOptions);
-
-					nextRuntime = generated.runtime;
-
-					const formatCode =
-						generatorOptions?.format ??
-						((source: string) => formatTypeScript(source).catch(() => source));
-
-					nextCode = cancelled ? nextCode : await formatCode(generated.code);
-				} catch (error) {
-					nextProblems.push({
-						severity: 'error',
-						message: error instanceof Error ? error.message : String(error),
-					});
-				}
-			}
+			const next = await generateOutput(bundle, target, keywordPolicy, formatMode, exampleId);
 
 			if (!cancelled) {
-				setCode(nextCode);
-				setRuntime(nextRuntime);
-				setGenerationProblems(nextProblems);
+				setCode(next.code);
+				setRuntime(next.runtime);
+				setGenerationProblems(next.problems);
 				setBusy(false);
 			}
 		}, 300);
@@ -476,6 +484,50 @@ function useGeneration(
 	}, [bundle, exampleId, target, keywordPolicy, formatMode]);
 
 	return { exampleId, problems, code, runtime, busy };
+}
+
+/** Generates and formats the selected target's code and runtime validator. */
+async function generateOutput(
+	bundle: ReturnType<typeof buildBundle>,
+	target: TargetId,
+	keywordPolicy: KeywordPolicy,
+	formatMode: FormatMode,
+	exampleId: string | null
+): Promise<{ code: string; runtime: RuntimeSource | null; problems: Problem[] }> {
+	let nextCode = '';
+	const nextProblems: Problem[] = [];
+	let nextRuntime: RuntimeSource | null = null;
+
+	if (bundle.root !== null) {
+		try {
+			// `parse` resolves the schema in place, so every run gets a copy;
+			// otherwise switching targets reuses names chosen for the previous one.
+			const { root } = await parse(structuredClone(bundle.root) as never, {
+				cwd: '/',
+				fileName: bundle.rootFileName,
+				keywordPolicy: keywordPolicy,
+				onDialectIssue: () => {},
+			});
+
+			const generatorOptions = exampleId ? exampleGeneratorOptions[exampleId] : undefined;
+			const generated = generateCodeFor(target, root, formatMode, generatorOptions);
+
+			nextRuntime = generated.runtime;
+
+			const formatCode =
+				generatorOptions?.format ??
+				((source: string) => formatTypeScript(source).catch(() => source));
+
+			nextCode = await formatCode(generated.code);
+		} catch (error) {
+			nextProblems.push({
+				severity: 'error',
+				message: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	return { code: nextCode, runtime: nextRuntime, problems: nextProblems };
 }
 
 function useTheme() {

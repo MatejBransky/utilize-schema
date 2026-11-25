@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 
 import type { RuntimeSource } from '../generateCode';
 import { emitJavaScript } from '../monaco/transpile';
@@ -15,6 +15,19 @@ export type ValidationState =
 	| { status: 'ready'; result: ValidatorReport };
 
 type EmitCache = Map<RuntimeTargetId, { code: string; javascript: Promise<string> }>;
+
+/** The generated validator to run, once the selected target produces one. */
+interface RunnableValidator {
+	target: RuntimeTargetId;
+	code: string;
+	rootName: string;
+}
+
+interface RunContext {
+	clientRef: RefObject<ValidatorClient | null>;
+	cache: EmitCache;
+	setState: (state: ValidationState) => void;
+}
 
 /**
  * Runs the generated runtime validator of the selected target on the test data
@@ -48,32 +61,10 @@ export function useValidatorResults(
 			return;
 		}
 
-		if (!isRuntimeTarget(target)) {
-			setState({
-				status: 'unavailable',
-				reason: `The ${targetLabel(target)} generator emits types only, so there is no runtime validator to run.`,
-			});
-			return;
-		}
+		const runnable = runnableValidator(target, runtime);
 
-		if (!runtime) {
-			setState({
-				status: 'unavailable',
-				reason: 'The schema does not produce a runtime validator for this data.',
-			});
-			return;
-		}
-
-		if (runtime.status === 'failed') {
-			setState({ status: 'unavailable', reason: runtime.error.message });
-			return;
-		}
-
-		if (!runtime.rootName) {
-			setState({
-				status: 'unavailable',
-				reason: 'A boolean root schema has no declaration to run.',
-			});
+		if (!('code' in runnable)) {
+			setState(runnable);
 			return;
 		}
 
@@ -86,43 +77,93 @@ export function useValidatorResults(
 			return;
 		}
 
-		const { code, rootName } = runtime;
-		let cancelled = false;
-
-		const timer = setTimeout(async () => {
-			try {
-				const source = await emitSource(target, code, rootName, emitCacheRef.current);
-				const client = (clientRef.current ??= createValidatorClient());
-				const reports = await client.run(parsed, { [target]: source });
-				const report = reports[target];
-
-				if (!cancelled) {
-					setState(
-						report
-							? { status: 'ready', result: report }
-							: {
-									status: 'error',
-									message: `The validator worker returned no ${targetLabel(target)} result.`,
-								}
-					);
-				}
-			} catch (error) {
-				if (!cancelled) {
-					setState({
-						status: 'error',
-						message: `Could not run the ${targetLabel(target)} validator: ${messageOf(error)}`,
-					});
-				}
-			}
-		}, 200);
-
-		return () => {
-			cancelled = true;
-			clearTimeout(timer);
-		};
+		return scheduleRun(runnable, parsed, {
+			clientRef,
+			cache: emitCacheRef.current,
+			setState,
+		});
 	}, [target, runtime, data, busy]);
 
 	return state;
+}
+
+/** The validator to run, or the state that says why there is none. */
+function runnableValidator(
+	target: TargetId,
+	runtime: RuntimeSource | null
+): RunnableValidator | ValidationState {
+	if (!isRuntimeTarget(target)) {
+		return {
+			status: 'unavailable',
+			reason: `The ${targetLabel(target)} generator emits types only, so there is no runtime validator to run.`,
+		};
+	}
+
+	if (!runtime) {
+		return {
+			status: 'unavailable',
+			reason: 'The schema does not produce a runtime validator for this data.',
+		};
+	}
+
+	if (runtime.status === 'failed') {
+		return { status: 'unavailable', reason: runtime.error.message };
+	}
+
+	if (!runtime.rootName) {
+		return {
+			status: 'unavailable',
+			reason: 'A boolean root schema has no declaration to run.',
+		};
+	}
+
+	return { target, code: runtime.code, rootName: runtime.rootName };
+}
+
+/** Debounces a run and cancels it when the inputs change first. */
+function scheduleRun(runnable: RunnableValidator, parsed: unknown, context: RunContext) {
+	let cancelled = false;
+
+	const timer = setTimeout(async () => {
+		try {
+			const report = await runValidator(runnable, parsed, context);
+
+			if (!cancelled) {
+				context.setState(
+					report
+						? { status: 'ready', result: report }
+						: {
+								status: 'error',
+								message: `The validator worker returned no ${targetLabel(runnable.target)} result.`,
+							}
+				);
+			}
+		} catch (error) {
+			if (!cancelled) {
+				context.setState({
+					status: 'error',
+					message: `Could not run the ${targetLabel(runnable.target)} validator: ${messageOf(error)}`,
+				});
+			}
+		}
+	}, 200);
+
+	return () => {
+		cancelled = true;
+		clearTimeout(timer);
+	};
+}
+
+async function runValidator(
+	runnable: RunnableValidator,
+	parsed: unknown,
+	context: RunContext
+): Promise<ValidatorReport | undefined> {
+	const source = await emitSource(runnable.target, runnable.code, runnable.rootName, context.cache);
+	const client = (context.clientRef.current ??= createValidatorClient());
+	const reports = await client.run(parsed, { [runnable.target]: source });
+
+	return reports[runnable.target];
 }
 
 async function emitSource(

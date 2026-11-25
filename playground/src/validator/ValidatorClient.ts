@@ -32,15 +32,15 @@ export interface ValidatorClient {
  * stops the worker; the next request starts a fresh one.
  */
 export function createValidatorClient(): ValidatorClient {
-	let worker: Worker | null = null;
 	const pending = new Map<number, PendingRequest>();
 	let nextId = 0;
+	const gateway = createWorkerGateway(settle, stop);
 
 	function run(
 		data: unknown,
 		sources: Partial<Record<RuntimeTargetId, ValidatorSource>>
 	): Promise<ValidatorReports> {
-		const current = ensureWorker();
+		const current = gateway.ensure();
 		const id = (nextId += 1);
 
 		return new Promise((resolve, reject) => {
@@ -64,51 +64,76 @@ export function createValidatorClient(): ValidatorClient {
 		stop(new Error('The validator worker was stopped.'));
 	}
 
-	function ensureWorker(): Worker {
-		if (!worker) {
-			const created = new ValidatorWorker();
-
-			created.addEventListener('message', (event: MessageEvent<ValidationResponse>) =>
-				settle(event.data)
-			);
-			created.addEventListener('error', (event) =>
-				stop(new Error(event.message || 'The validator worker failed.'))
-			);
-			worker = created;
-		}
-
-		return worker;
-	}
-
 	function settle(response: ValidationResponse) {
-		const request = pending.get(response.id);
-
-		if (!request) {
-			return;
-		}
-
-		pending.delete(response.id);
-		clearTimeout(request.timer);
-
-		if ('error' in response) {
-			request.reject(new Error(response.error));
-		} else {
-			request.resolve(response.reports);
-		}
+		settleRequest(response, pending);
 	}
 
 	/** Ends the worker and every request still waiting on it. */
 	function stop(error: Error) {
-		worker?.terminate();
-		worker = null;
-
-		for (const request of pending.values()) {
-			clearTimeout(request.timer);
-			request.reject(error);
-		}
-
-		pending.clear();
+		gateway.dispose();
+		rejectPending(pending, error);
 	}
 
 	return { run, dispose };
+}
+
+function settleRequest(response: ValidationResponse, pending: Map<number, PendingRequest>) {
+	const request = pending.get(response.id);
+
+	if (!request) {
+		return;
+	}
+
+	pending.delete(response.id);
+	clearTimeout(request.timer);
+
+	if ('error' in response) {
+		request.reject(new Error(response.error));
+	} else {
+		request.resolve(response.reports);
+	}
+}
+
+function rejectPending(pending: Map<number, PendingRequest>, error: Error) {
+	for (const request of pending.values()) {
+		clearTimeout(request.timer);
+		request.reject(error);
+	}
+
+	pending.clear();
+}
+
+interface WorkerGateway {
+	ensure(): Worker;
+	dispose(): void;
+}
+
+/** Creates the worker lazily and stops it after a failure, so the next run starts fresh. */
+function createWorkerGateway(
+	onResponse: (response: ValidationResponse) => void,
+	onFailure: (error: Error) => void
+): WorkerGateway {
+	let worker: Worker | null = null;
+
+	return {
+		ensure() {
+			if (!worker) {
+				const created = new ValidatorWorker();
+
+				created.addEventListener('message', (event: MessageEvent<ValidationResponse>) =>
+					onResponse(event.data)
+				);
+				created.addEventListener('error', (event) =>
+					onFailure(new Error(event.message || 'The validator worker failed.'))
+				);
+				worker = created;
+			}
+
+			return worker;
+		},
+		dispose() {
+			worker?.terminate();
+			worker = null;
+		},
+	};
 }
