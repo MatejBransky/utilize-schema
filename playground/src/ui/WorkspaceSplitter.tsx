@@ -18,6 +18,7 @@ export function WorkspaceSplitter({ layout }: WorkspaceSplitterProps) {
 			aria-valuemax={MAX_SPLIT * 100}
 			aria-valuenow={Math.round(layout.split * 100)}
 			tabIndex={0}
+			data-resizing={layout.resizing ? 'true' : undefined}
 			{...layout.splitter}
 		/>
 	);

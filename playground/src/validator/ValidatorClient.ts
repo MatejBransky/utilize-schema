@@ -1,6 +1,3 @@
-// oxlint-disable-next-line import/default -- Vite worker imports have a default export.
-import ValidatorWorker from './validator.worker?worker';
-
 import type {
 	ValidationRequest,
 	ValidationResponse,
@@ -55,8 +52,10 @@ export function createValidatorClient(): ValidatorClient {
 			);
 
 			pending.set(id, { resolve, reject, timer });
-			// oxlint-disable-next-line unicorn/require-post-message-target-origin -- Workers have no target origin.
-			current.postMessage({ id, data, sources } satisfies ValidationRequest);
+
+			// Only the window `postMessage` takes a target origin. An empty
+			// transfer list sends nothing to transfer.
+			current.postMessage({ id, data, sources } satisfies ValidationRequest, []);
 		});
 	}
 
@@ -118,7 +117,9 @@ function createWorkerGateway(
 	return {
 		ensure() {
 			if (!worker) {
-				const created = new ValidatorWorker();
+				const created = new Worker(new URL('./validator.worker.ts', import.meta.url), {
+					type: 'module',
+				});
 
 				created.addEventListener('message', (event: MessageEvent<ValidationResponse>) =>
 					onResponse(event.data)

@@ -91,7 +91,7 @@
 
 .splitter:hover::before,
 .splitter:focus-visible::before,
-.workspace[data-resizing='true'] .splitter::before {
+.splitter[data-resizing='true']::before {
 	background: var(--ui-foreground);
 }
 
@@ -122,13 +122,7 @@
 	border-right: 1px solid var(--ui-border);
 }
 
-.tabs {
-	display: flex;
-	flex-direction: column;
-	flex: 1;
-	min-height: 0;
-}
-
+.tabs,
 .tabs [data-slot='tabs-panel'] {
 	padding: 0;
 }
@@ -364,14 +358,15 @@
 	outline-offset: 2px;
 }
 
-.sectionToggle svg {
+.sectionToggle svg,
+.problemsSummary svg {
 	flex: none;
 	width: 0.875rem;
 	height: 0.875rem;
 	transition: transform 120ms ease;
 }
 
-.workspace[data-collapsed='true'] .sectionToggle svg {
+.sectionToggle[aria-expanded='false'] svg {
 	transform: rotate(180deg);
 }
 
@@ -442,7 +437,7 @@
 	border-style: dashed;
 }
 
-.case:hover:not([data-selected]):not(:disabled) {
+.case:hover:not(:disabled) {
 	background: var(--ui-muted);
 	color: var(--ui-foreground);
 }
@@ -530,14 +525,7 @@
 	gap: calc(var(--ui-spacing) * 2);
 }
 
-.problemsSummary svg {
-	flex: none;
-	width: 0.875rem;
-	height: 0.875rem;
-	transition: transform 120ms ease;
-}
-
-.problems[data-collapsed='true'] .problemsSummary svg {
+.problemsHeader[aria-expanded='false'] svg {
 	transform: rotate(-90deg);
 }
 
@@ -549,13 +537,6 @@
 
 .problems[data-collapsed='true'] .problemsHeader {
 	border-bottom: 0;
-}
-
-.problemsBody {
-	display: flex;
-	flex: 1;
-	flex-direction: column;
-	min-height: 0;
 }
 
 .problemsBody[hidden] {
