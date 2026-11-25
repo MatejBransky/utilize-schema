@@ -36,12 +36,19 @@ import { defaultExampleId, exampleById, examples } from './examples';
 import { defaultFormatMode, formatModes, isFormatMode, type FormatMode } from './formatMode';
 import { formatTypeScript } from './monaco/format';
 import { MonacoEditor, type MonacoEditorHandle } from './monaco/MonacoEditor';
-import { defaultTarget, isTargetId, targets, type TargetId } from './targets';
+import { defaultTarget, targets, type TargetId } from './targets';
 import { loadColorMode, THEME_STORAGE_KEY, type ColorMode } from './theme';
 import { Header } from './ui/Header';
 import { CheckIcon, CloseIcon, PencilIcon, PlusIcon } from './ui/icons';
 import { SelectPicker } from './ui/SelectPicker';
 import { useFileDrop } from './useFileDrop';
+import {
+	isAvailableTarget,
+	readFormatModeParam,
+	readKeywordPolicyParam,
+	readUrlState,
+	type UrlState,
+} from './urlState';
 import { validateSchemas } from './validation';
 
 import styles from './App.module.css';
@@ -52,12 +59,7 @@ const GENERATOR_PARAM = 'generator';
 const KEYWORD_POLICY_PARAM = 'keyword-policy';
 const FORMAT_MODE_PARAM = 'format-mode';
 
-interface AppState {
-	files: SchemaFile[];
-	target: TargetId;
-	keywordPolicy: KeywordPolicy;
-	formatMode: FormatMode;
-}
+type AppState = UrlState;
 
 const keywordPolicyOptions: Array<{ value: KeywordPolicy; label: string; hint: string }> = [
 	{ value: 'error', label: 'Error', hint: 'Reject keywords outside the dialect' },
@@ -858,9 +860,18 @@ function defaultState(): AppState {
 }
 
 function loadState(): AppState {
-	const fromHash = readHash() ?? readUrlState() ?? loadSavedState() ?? defaultState();
-	const keywordPolicy = readKeywordPolicyParam();
-	const formatMode = readFormatModeParam();
+	const url = new URL(location.href);
+	const fromHash =
+		readHash() ??
+		readUrlState(
+			url,
+			loadSavedState() ?? defaultState(),
+			exampleById(url.searchParams.get(EXAMPLE_PARAM))
+		) ??
+		loadSavedState() ??
+		defaultState();
+	const keywordPolicy = readKeywordPolicyParam(url);
+	const formatMode = readFormatModeParam(url);
 
 	// The query parameters win over the settings stored in the shared `#data=`
 	// hash so they can be changed without editing the hash.
@@ -869,55 +880,6 @@ function loadState(): AppState {
 		...(keywordPolicy ? { keywordPolicy } : {}),
 		...(formatMode ? { formatMode } : {}),
 	};
-}
-
-function readUrlState(): AppState | null {
-	const url = new URL(location.href);
-	const target = readGeneratorParam();
-	const keywordPolicy = readKeywordPolicyParam();
-	const formatMode = readFormatModeParam();
-	const example = exampleById(url.searchParams.get(EXAMPLE_PARAM));
-	const base = loadSavedState() ?? defaultState();
-	const policy = keywordPolicy ?? base.keywordPolicy;
-	const format = formatMode ?? base.formatMode;
-
-	if (example) {
-		return {
-			files: example.files,
-			target: target ?? defaultTarget,
-			keywordPolicy: policy,
-			formatMode: format,
-		};
-	}
-
-	if (target || keywordPolicy || formatMode) {
-		return {
-			files: base.files,
-			target: target ?? base.target,
-			keywordPolicy: policy,
-			formatMode: format,
-		};
-	}
-
-	return null;
-}
-
-function readGeneratorParam(): TargetId | null {
-	const id = new URL(location.href).searchParams.get(GENERATOR_PARAM);
-
-	return isAvailableTarget(id) ? id : null;
-}
-
-function readKeywordPolicyParam(): KeywordPolicy | null {
-	const value = new URL(location.href).searchParams.get(KEYWORD_POLICY_PARAM);
-
-	return isKeywordPolicy(value) ? value : null;
-}
-
-function readFormatModeParam(): FormatMode | null {
-	const value = new URL(location.href).searchParams.get(FORMAT_MODE_PARAM);
-
-	return isFormatMode(value) ? value : null;
 }
 
 function loadSavedState(): AppState | null {
@@ -939,10 +901,6 @@ function isSchemaFile(value: unknown): value is SchemaFile {
 	return (
 		typeof file.id === 'string' && typeof file.name === 'string' && typeof file.content === 'string'
 	);
-}
-
-function isAvailableTarget(value: unknown): value is TargetId {
-	return isTargetId(value) && targets.some((target) => target.value === value && !target.disabled);
 }
 
 function isKeywordPolicy(value: unknown): value is KeywordPolicy {
