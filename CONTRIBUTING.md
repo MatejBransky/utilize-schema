@@ -163,6 +163,35 @@ pnpm build:dev
 pnpm badge:coverage
 ```
 
+## Refactor benchmarks
+
+Performance-sensitive refactors in `packages/json-schema` must include an A/B
+benchmark in the pull request. Build the same benchmark entry at the baseline
+and candidate commits, then compare the bundled production output in one Node
+process:
+
+```sh
+# In the baseline checkout
+pnpm --filter @utilize/json-schema bench:build
+
+# In the candidate checkout
+pnpm --filter @utilize/json-schema bench:build
+BASELINE=/path/to/baseline/packages/json-schema/node_modules/.cache/utilize-bench/refactor.mjs
+CANDIDATE="$PWD/packages/json-schema/node_modules/.cache/utilize-bench/refactor.mjs"
+pnpm --filter @utilize/json-schema bench:compare "$BASELINE" "$CANDIDATE" prepare
+```
+
+The case is `prepare`, `index`, `external`, `link`, or `all`. The runner
+alternates baseline and candidate samples, performs 2,000 measured iterations
+after 300 warmup iterations, and fails when mean or median latency regresses by
+more than 5%. Run it three times and include the results in the PR description.
+
+When the baseline predates the harness, for example in the pull request that
+introduces it, copy the harness files and `bench:build` / `bench:compare`
+scripts from the candidate into the baseline checkout without changing its
+`src/`. Build the copied entry against the baseline source, then compare it with
+the candidate bundle.
+
 ## Dependency Versions
 
 Shared dependencies are pinned once in the `catalog` section of `pnpm-workspace.yaml`.
@@ -185,7 +214,8 @@ only changes the catalog entry. Use `pnpm add --save-catalog` for a new shared d
 1. Fork the repository and create your branch from `main`.
 2. Add your changes and tests.
 3. Ensure all tests pass and code is formatted.
-4. Open a pull request with a clear description of your changes.
+4. For a refactor, include three A/B benchmark runs and confirm there is no mean or median regression.
+5. Open a pull request with a clear description of your changes.
 
 ## Reporting Issues
 
