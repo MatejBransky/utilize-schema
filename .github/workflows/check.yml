@@ -107,12 +107,17 @@ jobs:
 
       # The combined run consults the TypeScript checker too: the config sets
       # `typeAware.enabled`, so dead code, health and duplication are judged on
-      # the same semantic program and measured coverage. A separate
-      # `dead-code --type-aware` step would analyse the tree twice and could
-      # disagree with the run that produced the step summary.
+      # the same semantic program and measured coverage. A type-aware run accepts
+      # only machine and human formats, so the run writes JSON and the step
+      # summary is rendered from that result instead of a second analysis.
       - name: Full Fallow run with measured coverage
         run: |
-          pnpm fallow:coverage --format github-summary >> "$GITHUB_STEP_SUMMARY"
+          pnpm fallow:coverage --format json --quiet --output-file fallow-full.json
+
+      - name: Render the Fallow step summary
+        if: always()
+        run: |
+          pnpm exec fallow report --from fallow-full.json --format github-summary >> "$GITHUB_STEP_SUMMARY"
 
   fallow:
     name: Fallow audit
