@@ -310,9 +310,9 @@
 		// Every exported signature must be nameable by consumers.
 		"private-type-leaks": "error",
 
-		// A published package keeps a deprecated alias until the next major, so
-		// the two public deprecations in `packages/json-schema/src/dialect.ts`
-		// carry a suppression with the reason instead of demoting the rule.
+		// A `@deprecated` export that the project still reaches is dead API: the
+		// two dialect aliases are gone, and a new one fails the run until its
+		// consumers move off it.
 		"deprecated-exports-in-use": "error",
 
 		// Dependency placement: a package that only types or tests use belongs in
