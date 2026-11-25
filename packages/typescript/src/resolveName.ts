@@ -1,8 +1,5 @@
-import {
-	resolveName as resolveSharedName,
-	type CustomNameResolver,
-	type ResolveNameOptions,
-} from '@utilize/json-schema';
+import { resolveName as resolveSharedName } from '@utilize/json-schema';
+import type { CustomNameResolver, ResolveNameOptions } from '@utilize/json-schema';
 
 /**
  * Names a standalone schema like the shared `resolveName`, but also reserves a

@@ -11,9 +11,8 @@ import {
 	resolveName,
 	stripExtension,
 	toSafeString,
-	type JSONSchema,
-	type ParsedJSONSchemaObject,
 } from '../src';
+import type { JSONSchema, ParsedJSONSchemaObject } from '../src';
 
 function withMeta(schema: JSONSchema, meta: Partial<Meta> = {}) {
 	Object.defineProperty(schema, Meta, {
@@ -126,7 +125,7 @@ describe('toSafeString', () => {
 describe('justName and stripExtension', () => {
 	it('keeps the file name without its extension', () => {
 		expect(justName('foo/bar/baz.json')).toBe('baz');
-		expect(justName('C:\\schemas\\baz.schema.json')).toBe('baz.schema');
+		expect(justName(String.raw`C:\schemas\baz.schema.json`)).toBe('baz.schema');
 		expect(justName('foo/')).toBeUndefined();
 	});
 

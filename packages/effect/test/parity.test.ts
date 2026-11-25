@@ -226,7 +226,7 @@ const cases: ParityCase[] = [
 	},
 	{
 		name: 'unicode property escape in pattern',
-		schema: { type: 'string', pattern: '^\\p{Letter}+$' },
+		schema: { type: 'string', pattern: String.raw`^\p{Letter}+$` },
 		valid: ['abc', 'ěšč'],
 		invalid: ['123', 'a1', ''],
 	},
@@ -286,7 +286,7 @@ const cases: ParityCase[] = [
 				{ type: 'object', properties: { ['__proto__']: { type: 'number' } } },
 				{ type: 'object', properties: { b: { type: 'string' } } },
 			],
-		} as TestSchema,
+		},
 		valid: [{ b: 'x' }, { ['__proto__']: 12 }],
 		invalid: [{ b: 1 }, { ['__proto__']: 'text' }],
 	},
@@ -296,7 +296,7 @@ const cases: ParityCase[] = [
 			type: 'object',
 			properties: { ['__proto__']: { type: 'number' } },
 			required: ['__proto__'],
-		} as TestSchema,
+		},
 		valid: [{ ['__proto__']: 12 }, { ['__proto__']: 12, a: 'x' }],
 		invalid: [{}, { a: 'x' }, { ['__proto__']: 'text' }],
 	},
@@ -305,7 +305,7 @@ const cases: ParityCase[] = [
 		schema: {
 			type: 'object',
 			patternProperties: { '^__': { type: 'number' } },
-		} as TestSchema,
+		},
 		valid: [{ ['__proto__']: 12 }, {}],
 		invalid: [{ ['__proto__']: 'text' }],
 	},
@@ -314,7 +314,7 @@ const cases: ParityCase[] = [
 		schema: {
 			type: 'object',
 			additionalProperties: { type: 'number' },
-		} as TestSchema,
+		},
 		valid: [{ ['__proto__']: 12 }, { a: 1 }],
 		invalid: [{ ['__proto__']: 'text' }, { a: 'text' }],
 	},
@@ -335,13 +335,13 @@ const cases: ParityCase[] = [
 		schema: {
 			type: 'object',
 			required: ['toString', 'constructor'],
-		} as TestSchema,
+		},
 		valid: [{ ['toString']: 1, ['constructor']: 2 }],
 		invalid: [{}, { ['toString']: 1 }, { ['constructor']: 2 }],
 	},
 	{
 		name: 'required __proto__ property without a declaration',
-		schema: { type: 'object', required: ['__proto__'] } as TestSchema,
+		schema: { type: 'object', required: ['__proto__'] },
 		valid: [{ ['__proto__']: 12 }],
 		invalid: [{}],
 	},
@@ -522,7 +522,7 @@ describe('format handling', () => {
  * behaviour against the Zod helper instead of a hand-written expectation.
  */
 describe('format parity in assert mode', () => {
-	const formatCases: Array<{ format: string; valid: string[]; invalid: string[] }> = [
+	const formatCases: { format: string; valid: string[]; invalid: string[] }[] = [
 		{
 			format: 'time',
 			valid: ['12:00', '12:00:00', '23:59:59.5'],
@@ -620,7 +620,7 @@ async function loadRoot(
 	const file = join(directory, `${target}.ts`);
 
 	try {
-		const { root } = await parse(schema as never, {
+		const { root } = await parse(schema, {
 			cwd: __dirname + '/',
 			fileName: 'Root.json',
 		});

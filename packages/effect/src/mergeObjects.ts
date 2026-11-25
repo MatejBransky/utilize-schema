@@ -1,9 +1,5 @@
-import {
-	isPlainObject,
-	Meta,
-	type ParsedJSONSchema,
-	type ParsedJSONSchemaObject,
-} from '@utilize/json-schema';
+import { isPlainObject, Meta } from '@utilize/json-schema';
+import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { UnresolvedReferenceError } from './errors';
 import { ANNOTATION_KEYWORDS } from './keywords';
@@ -133,7 +129,7 @@ function additionalPropertiesConflict(
 
 function mergeProperties(
 	state: MergeState,
-	declaredProperties: Array<[string, ParsedJSONSchema]>,
+	declaredProperties: [string, ParsedJSONSchema][],
 	index: number
 ): string | undefined {
 	for (const [key, property] of declaredProperties) {

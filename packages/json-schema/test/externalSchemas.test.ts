@@ -1,12 +1,7 @@
 import { expect, test } from 'vitest';
 
-import {
-	type JSONSchema,
-	Meta,
-	parse,
-	type ParsedJSONSchemaObject,
-	indexExternalSchemas,
-} from '../src';
+import { Meta, parse, indexExternalSchemas } from '../src';
+import type { JSONSchema, ParsedJSONSchemaObject } from '../src';
 
 test('serves external schemas by retrieval URI', async () => {
 	const externalSchemas = {
@@ -22,7 +17,7 @@ test('serves external schemas by retrieval URI', async () => {
 			type: 'object',
 			properties: { user: { $ref: 'https://example.com/user.json' } },
 			required: ['user'],
-		} as JSONSchema,
+		},
 		{
 			cwd: __dirname + '/',
 			fileName: 'Root.json',
@@ -48,7 +43,7 @@ test('serves identifiers declared inside a provided document', async () => {
 		{
 			type: 'object',
 			properties: { bundle: { $ref: 'https://example.com/bundle.json' } },
-		} as JSONSchema,
+		},
 		{
 			cwd: __dirname + '/',
 			fileName: 'Root.json',
@@ -80,7 +75,7 @@ test('reports a nested identifier once when it is also referenced directly', asy
 				{ $ref: 'https://example.com/bundle.json' },
 				{ $ref: 'https://example.com/name.json' },
 			],
-		} as JSONSchema,
+		},
 		{
 			cwd: __dirname + '/',
 			fileName: 'Root.json',
@@ -185,7 +180,7 @@ test('indexes the draft-04 id keyword', async () => {
 		{
 			type: 'object',
 			properties: { bundle: { $ref: 'https://example.com/bundle.json' } },
-		} as JSONSchema,
+		},
 		{
 			cwd: __dirname + '/',
 			fileName: 'Root.json',

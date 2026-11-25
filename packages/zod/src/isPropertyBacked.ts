@@ -1,4 +1,5 @@
-import { type ParsedJSONSchemaObject, Meta } from '@utilize/json-schema';
+import { Meta } from '@utilize/json-schema';
+import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import type { InlineCopies } from './inlineCopies';
 

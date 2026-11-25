@@ -20,7 +20,9 @@ export default function App() {
 			<Header
 				colorMode={playground.colorMode}
 				onColorModeChange={playground.setColorMode}
-				onShare={playground.share}
+				onShare={() => {
+					void playground.share();
+				}}
 				shared={playground.shared}
 			>
 				<PlaygroundControls playground={playground} />

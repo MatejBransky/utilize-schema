@@ -1,9 +1,11 @@
 import type { KeywordPolicy } from '@utilize/json-schema';
 
 import type { SchemaFile } from './bundle';
-import { isFormatMode, type FormatMode } from './formatMode';
+import { isFormatMode } from './formatMode';
+import type { FormatMode } from './formatMode';
 import type { Example } from './examples';
-import { defaultTarget, isTargetId, targets, type TargetId } from './targets';
+import { defaultTarget, isTargetId, targets } from './targets';
+import type { TargetId } from './targets';
 
 const GENERATOR_PARAM = 'generator';
 const KEYWORD_POLICY_PARAM = 'keyword-policy';

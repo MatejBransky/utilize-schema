@@ -58,7 +58,7 @@ describe('formatMode', () => {
 
 	test('keeps string constraints next to the format check', async () => {
 		const Root = await compileToSchema(
-			{ type: 'string', format: 'email', minLength: 10, pattern: '@example\\.com$' },
+			{ type: 'string', format: 'email', minLength: 10, pattern: String.raw`@example\.com$` },
 			{ formatMode: 'assert' }
 		);
 

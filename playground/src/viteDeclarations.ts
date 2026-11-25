@@ -42,6 +42,6 @@ function readDeclaration(file: string): string | null {
 	}
 
 	return readFileSync(file, 'utf8')
-		.replace(/(from\s+["'])(\.[^"']+)\.ts(["'])/g, '$1$2.d.ts$3')
-		.replace(/(import\(\s*["'])(\.[^"']+)\.ts(["']\s*\))/g, '$1$2.d.ts$3');
+		.replaceAll(/(from\s+["'])(\.[^"']+)\.ts(["'])/g, '$1$2.d.ts$3')
+		.replaceAll(/(import\(\s*["'])(\.[^"']+)\.ts(["']\s*\))/g, '$1$2.d.ts$3');
 }

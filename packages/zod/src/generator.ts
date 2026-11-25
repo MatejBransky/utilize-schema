@@ -1,10 +1,5 @@
-import {
-	collectStandaloneSchemas,
-	dialectOf,
-	Meta,
-	type ParsedJSONSchema,
-	type ParsedJSONSchemaObject,
-} from '@utilize/json-schema';
+import { collectStandaloneSchemas, dialectOf, Meta } from '@utilize/json-schema';
+import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 import toposort from 'toposort';
 
 import { breakReferenceCycles } from './breakReferenceCycles';
@@ -20,17 +15,11 @@ import type {
 } from './generators/types';
 
 export type { CustomSchemaResolver, FormatMap, FormatMode } from './generators/types';
-import {
-	allocateName,
-	mapDeclarationNames,
-	resolveHoistedName,
-	resolveName,
-	type CustomNameResolver,
-	type DeclarationNames,
-	type NameMapper,
-} from './resolveName';
+import { allocateName, mapDeclarationNames, resolveHoistedName, resolveName } from './resolveName';
+import type { CustomNameResolver, DeclarationNames, NameMapper } from './resolveName';
 import { isResolvedByCaller, NEWLINE, ts } from './utils';
-import { renderValueTypeDeclaration, type ValueTypeContext } from './valueTypes';
+import { renderValueTypeDeclaration } from './valueTypes';
+import type { ValueTypeContext } from './valueTypes';
 
 export interface GenerateOptions {
 	/** Emit `import { z } from 'zod';` at the top of the generated code. */
@@ -160,14 +149,15 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		const zodExpression = generateSchema(schema, context);
 
 		if (alias) {
-			code.push(renderValueTypeDeclaration(alias, schema, valueTypeContext));
-			code.push(ts`export const ${schemaName}: z.ZodType<${alias}> = ${zodExpression};`);
+			code.push(
+				renderValueTypeDeclaration(alias, schema, valueTypeContext),
+				ts`export const ${schemaName}: z.ZodType<${alias}> = ${zodExpression};`
+			);
 		} else {
 			code.push(ts`export const ${schemaName} = ${zodExpression};`);
 		}
 
-		code.push(ts`export type ${typeName} = z.infer<typeof ${schemaName}>;`);
-		code.push(NEWLINE);
+		code.push(ts`export type ${typeName} = z.infer<typeof ${schemaName}>;`, NEWLINE);
 	}
 
 	if (context.usesOneOf) {
@@ -223,7 +213,7 @@ function nameDeclarations(
 }
 
 function singleQuoted(text: string): string {
-	return `'${text.replaceAll('\\', '\\\\').replaceAll("'", "\\'")}'`;
+	return `'${text.replaceAll('\\', String.raw`\\`).replaceAll("'", String.raw`\'`)}'`;
 }
 
 /** Declared in every file that needs it, unless `runtimeImport` is set. A test keeps it identical to `runtime.ts`. */

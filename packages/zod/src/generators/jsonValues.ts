@@ -1,4 +1,5 @@
-import { isPlainObject, type JSONSchemaTypeName } from '@utilize/json-schema';
+import { isPlainObject } from '@utilize/json-schema';
+import type { JSONSchemaTypeName } from '@utilize/json-schema';
 
 /** True when the JSON value is an instance of the JSON Schema `type`. */
 export function valueHasType(value: unknown, type: JSONSchemaTypeName): boolean {

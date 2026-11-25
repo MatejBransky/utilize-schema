@@ -1,5 +1,6 @@
 import { generate as generateEffect } from '@utilize/effect';
-import { parse, type ParsedJSONSchema } from '@utilize/json-schema';
+import { parse } from '@utilize/json-schema';
+import type { ParsedJSONSchema } from '@utilize/json-schema';
 import { generate as generateTypeScript } from '@utilize/typescript';
 import { generate as generateZod } from '@utilize/zod';
 import { expect, test } from 'vitest';
@@ -7,14 +8,15 @@ import { expect, test } from 'vitest';
 import './polyfills';
 
 import { buildBundle, parseJsonFile } from './bundle';
-import { exampleGeneratorOptions, type ExampleGeneratorOptions } from './exampleOptions';
+import { exampleGeneratorOptions } from './exampleOptions';
+import type { ExampleGeneratorOptions } from './exampleOptions';
 import { examples } from './examples';
 
-const generators: Array<{
+const generators: {
 	name: string;
 	marker: string;
 	generate: (root: ParsedJSONSchema, options?: ExampleGeneratorOptions) => string;
-}> = [
+}[] = [
 	{
 		name: 'Zod',
 		marker: 'export const',
@@ -39,7 +41,7 @@ for (const example of examples) {
 
 			expect(parsed.flatMap((file) => file.problems)).toEqual([]);
 
-			const bundle = buildBundle(parsed, example.files[0]!.id);
+			const bundle = buildBundle(parsed, example.files[0].id);
 
 			expect(bundle.root).not.toBeNull();
 			expect(bundle.problems).toEqual([]);

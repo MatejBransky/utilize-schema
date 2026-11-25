@@ -1,11 +1,9 @@
-import {
-	type Dialect,
-	dialectOf,
-	isKeywordApplicable,
-	type JSONSchemaTypeName,
-	Meta,
-	type ParsedJSONSchema,
-	type ParsedJSONSchemaObject,
+import { dialectOf, isKeywordApplicable, Meta } from '@utilize/json-schema';
+import type {
+	Dialect,
+	JSONSchemaTypeName,
+	ParsedJSONSchema,
+	ParsedJSONSchemaObject,
 } from '@utilize/json-schema';
 
 import { jsonEquals, valueHasType } from './jsonValues';

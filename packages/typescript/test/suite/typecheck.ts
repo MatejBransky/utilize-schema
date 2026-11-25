@@ -139,10 +139,10 @@ function compile(files: string[]): Diagnostic[] {
 			.map((line) => DIAGNOSTIC.exec(line.trim()))
 			.filter((match): match is RegExpExecArray => match !== null)
 			.map((match) => ({
-				file: match![1]!,
-				line: Number(match![2]),
-				code: match![4]!,
-				message: match![5]!,
+				file: match[1]!,
+				line: Number(match[2]),
+				code: match[4]!,
+				message: match[5]!,
 			}));
 	}
 }

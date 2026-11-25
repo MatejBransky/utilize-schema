@@ -1,16 +1,16 @@
 #!/usr/bin/env node
-import { dialectCliHelp, type DialectOptions } from '@utilize/json-schema';
+import { dialectCliHelp } from '@utilize/json-schema';
+import type { DialectOptions } from '@utilize/json-schema';
 import {
-	type CliFlagValues,
-	type CliIo,
-	type CliOptionsResult,
 	formatAndDialectFlags,
 	isEntrypoint,
 	readFormatAndDialectFlags,
 	runGeneratorCli,
 } from '@utilize/json-schema/node';
+import type { CliFlagValues, CliIo, CliOptionsResult } from '@utilize/json-schema/node';
 
-import { compileFile, type CompileSchemaOptions, compileSchema, withBanner } from './compile';
+import { compileFile, compileSchema, withBanner } from './compile';
+import type { CompileSchemaOptions } from './compile';
 
 export { type CliIo, isEntrypoint };
 

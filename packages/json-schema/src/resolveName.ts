@@ -1,4 +1,5 @@
-import { Meta, type ParsedJSONSchemaObject } from './model';
+import { Meta } from './model';
+import type { ParsedJSONSchemaObject } from './model';
 
 /**
  * Names a standalone schema before the generator does. Returning nothing
@@ -170,7 +171,9 @@ export function resolveExplicitName({
  */
 export function generateName(from: string, usedNames: Set<string>) {
 	let name: string = toSafeString(justName(from) ?? from);
-	if (!name) name = 'NoName';
+	if (!name) {
+		name = 'NoName';
+	}
 
 	// increment counter until we find a free name
 	if (usedNames.has(name)) {
@@ -202,19 +205,19 @@ export function toSafeString(string: string) {
 			// remove leading characters that are not valid as the first character in a TypeScript identifier (i.e., not a letter, $ or _)
 			.replace(/^[^a-zA-Z_$]+/, '')
 			// replace characters that are not valid in TypeScript identifiers (except for digits after the first character) with whitespace
-			.replace(/[^a-zA-Z0-9_$]+/g, ' ')
+			.replaceAll(/[^a-zA-Z0-9_$]+/g, ' ')
 			// uppercase leading underscores followed by lowercase
-			.replace(/^_[a-z]/g, (match) => match.toUpperCase())
+			.replaceAll(/^_[a-z]/g, (match) => match.toUpperCase())
 			// remove non-leading underscores followed by lowercase (convert snake_case)
-			.replace(/_[a-z]/g, (match) => match.substring(1).toUpperCase())
+			.replaceAll(/_[a-z]/g, (match) => match.slice(1).toUpperCase())
 			// uppercase letters after digits, dollars
-			.replace(/([\d$]+[a-zA-Z])/g, (match) => match.toUpperCase())
+			.replaceAll(/([\d$]+[a-zA-Z])/g, (match) => match.toUpperCase())
 			// uppercase first letter after whitespace
-			.replace(/\s+([a-zA-Z])/g, (match) => match.toUpperCase())
+			.replaceAll(/\s+([a-zA-Z])/g, (match) => match.toUpperCase())
 			.trim()
 			// remove remaining whitespace
-			.replace(/\s/g, '')
-	) as string;
+			.replaceAll(/\s/g, '')
+	);
 }
 
 /**
@@ -236,7 +239,7 @@ const upperFirst = (input: string) => {
  * deburr('Český'); // 'Cesky'
  */
 function deburr(str: string): string {
-	return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+	return str.normalize('NFD').replaceAll(/[\u0300-\u036f]/g, '');
 }
 
 /**

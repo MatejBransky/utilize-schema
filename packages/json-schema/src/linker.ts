@@ -1,16 +1,11 @@
 import type { $Refs } from '@apidevtools/json-schema-ref-parser';
 
-import { join as pathJoin, dirname } from 'path';
+import { join as pathJoin, dirname } from 'node:path';
 
 import { resolveDialect } from './dialect';
 import type { SchemaIndex } from './identifiers';
-import {
-	Meta,
-	type JSONSchema,
-	type ParsedJSONSchema,
-	type ParsedJSONSchemaObject,
-	type Path,
-} from './model';
+import { Meta } from './model';
+import type { JSONSchema, ParsedJSONSchema, ParsedJSONSchemaObject, Path } from './model';
 import type { DialectMap } from './normalize';
 import { isPlainObject } from './utils';
 
@@ -64,7 +59,7 @@ function linkNode(
 		return schema as ParsedJSONSchemaObject;
 	}
 
-	if (Object.hasOwnProperty.call(schema, Meta)) {
+	if (Object.hasOwn(schema, Meta)) {
 		return schema as unknown as ParsedJSONSchemaObject;
 	}
 
@@ -180,7 +175,7 @@ function linkReferenceChildren(
 	// playground bundles a remote file). Link them too.
 	context.stack.add(schema);
 
-	for (const [key, value] of Object.entries(schema)) {
+	for (const [key, value] of Object.entries(schema as Record<string, JSONSchema>)) {
 		if (key !== '$ref') {
 			linkChild(value, schema, [...path, key], context);
 		}
@@ -199,10 +194,10 @@ function linkChildren(
 	context.stack.add(schema);
 
 	if (Array.isArray(schema)) {
-		schema.forEach((item, index) => linkChild(item, schema, [...path, index], context));
+		schema.forEach((item: JSONSchema, index) => linkChild(item, schema, [...path, index], context));
 	}
 
-	for (const [key, value] of Object.entries(schema)) {
+	for (const [key, value] of Object.entries(schema as Record<string, JSONSchema>)) {
 		linkChild(value, schema, [...path, key], context);
 	}
 

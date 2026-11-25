@@ -1,9 +1,5 @@
-import {
-	type Dialect,
-	type JSONSchemaTypeName,
-	type ParsedJSONSchemaObject,
-	isKeywordApplicable,
-} from '@utilize/json-schema';
+import { isKeywordApplicable } from '@utilize/json-schema';
+import type { Dialect, JSONSchemaTypeName, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 const objectKeywords = [
 	'properties',

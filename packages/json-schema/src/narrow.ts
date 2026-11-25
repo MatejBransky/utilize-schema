@@ -1,5 +1,7 @@
-import { type Dialect, dialectOf, isKeywordApplicable } from './dialect';
-import { type ParsedJSONSchema, type ParsedJSONSchemaObject, withSourceMeta } from './model';
+import { dialectOf, isKeywordApplicable } from './dialect';
+import type { Dialect } from './dialect';
+import { withSourceMeta } from './model';
+import type { ParsedJSONSchema, ParsedJSONSchemaObject } from './model';
 import { isPlainObject } from './utils';
 
 const TYPE_SPECIFIC_KEYWORDS = [

@@ -15,11 +15,11 @@ export interface SchemaFileTabProps {
 	canClose: boolean;
 	draftName: string;
 	renameError: string | null;
-	onDraftNameChange(value: string): void;
-	onCancelRename(): void;
-	onCommitRename(): void;
-	onStartRename(file: SchemaFile): void;
-	onCloseFile(id: string): void;
+	onDraftNameChange: (value: string) => void;
+	onCancelRename: () => void;
+	onCommitRename: () => void;
+	onStartRename: (file: SchemaFile) => void;
+	onCloseFile: (id: string) => void;
 }
 
 export function SchemaFileTab({
@@ -73,9 +73,9 @@ export function SchemaFileTab({
 interface RenameInputProps {
 	value: string;
 	error: string | null;
-	onValueChange(value: string): void;
-	onCancel(): void;
-	onCommit(): void;
+	onValueChange: (value: string) => void;
+	onCancel: () => void;
+	onCommit: () => void;
 }
 
 function RenameInput({ value, error, onValueChange, onCancel, onCommit }: RenameInputProps) {
@@ -106,9 +106,9 @@ interface TabActionsProps {
 	file: SchemaFile;
 	editing: boolean;
 	canClose: boolean;
-	onCommit(): void;
-	onStart(file: SchemaFile): void;
-	onClose(id: string): void;
+	onCommit: () => void;
+	onStart: (file: SchemaFile) => void;
+	onClose: (id: string) => void;
 }
 
 function TabActions({ file, editing, canClose, onCommit, onStart, onClose }: TabActionsProps) {

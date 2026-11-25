@@ -1,12 +1,5 @@
-import {
-	type Dialect,
-	dialectOf,
-	isKeywordApplicable,
-	isPlainObject,
-	Meta,
-	type ParsedJSONSchema,
-	type ParsedJSONSchemaObject,
-} from '@utilize/json-schema';
+import { dialectOf, isKeywordApplicable, isPlainObject, Meta } from '@utilize/json-schema';
+import type { Dialect, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { typedAlternatives } from './alternatives';
 import type { CustomSchemaResolver } from './generator';

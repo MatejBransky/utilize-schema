@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
-import { compile, compileModule, compileToSchema, decode, type TestSchema, ts } from './test-utils';
+import { compile, compileModule, compileToSchema, decode, ts } from './test-utils';
+import type { TestSchema } from './test-utils';
 
 describe('references', () => {
 	test('emits a definition per referenced schema and suspends every $ref', async () => {

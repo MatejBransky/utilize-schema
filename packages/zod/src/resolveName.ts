@@ -4,8 +4,8 @@ import {
 	Meta,
 	resolveExplicitName,
 	toSafeString,
-	type ResolveNameOptions,
 } from '@utilize/json-schema';
+import type { ResolveNameOptions } from '@utilize/json-schema';
 
 // The naming helpers live in @utilize/json-schema, shared with the other
 // generators. They stay exported from @utilize/zod, as before.

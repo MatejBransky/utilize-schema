@@ -1,9 +1,7 @@
+// oxlint-disable-next-line import/no-namespace -- monaco-editor only exposes a namespace
 import * as monaco from 'monaco-editor';
-// oxlint-disable-next-line import/default -- Vite worker imports have a default export.
 import editorWorker from 'monaco-editor/editor/editor.worker.js?worker';
-// oxlint-disable-next-line import/default -- Vite worker imports have a default export.
 import jsonWorker from 'monaco-editor/languages/features/json/json.worker.js?worker';
-// oxlint-disable-next-line import/default -- Vite worker imports have a default export.
 import tsWorker from 'monaco-editor/languages/features/typescript/ts.worker.js?worker';
 
 import zodTypes from 'virtual:zod-types';

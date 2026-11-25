@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
-import { compile, ts, type TestSchema } from './test-utils';
+import { compile, ts } from './test-utils';
+import type { TestSchema } from './test-utils';
 
 describe('annotations', () => {
 	test('renders a declaration JSDoc from title and description', async () => {
@@ -116,7 +117,7 @@ describe('annotations', () => {
 	test('escapes comment terminators', async () => {
 		const code = await compile({ type: 'string', description: 'Ends with */' });
 
-		expect(code).toContain('* Ends with *\\/');
+		expect(code).toContain(String.raw`* Ends with *\/`);
 	});
 
 	test('does not emit JSDoc without annotations', async () => {

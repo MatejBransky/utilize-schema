@@ -1,10 +1,9 @@
-import { resolveDialect, type ParsedJSONSchemaObject } from '@utilize/json-schema';
+import { resolveDialect } from '@utilize/json-schema';
+import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
-import {
-	areMutuallyExclusive,
-	type ExclusiveBranchesOptions,
-} from '../src/generators/exclusiveBranches';
+import { areMutuallyExclusive } from '../src/generators/exclusiveBranches';
+import type { ExclusiveBranchesOptions } from '../src/generators/exclusiveBranches';
 
 const options: ExclusiveBranchesOptions = {
 	dialect: resolveDialect({}).dialect,

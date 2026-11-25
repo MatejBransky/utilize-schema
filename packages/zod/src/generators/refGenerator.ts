@@ -1,4 +1,5 @@
-import { Meta, type ParsedJSONSchemaObject } from '@utilize/json-schema';
+import { Meta } from '@utilize/json-schema';
+import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
 import type { GeneratorContext } from './types';
@@ -10,6 +11,7 @@ export const generator = createGenerator(isRefNode, (schema, context) => {
 	const reference = metadata.reference;
 
 	if (reference === undefined || reference === null) {
+		// oxlint-disable-next-line no-console -- surface an unusable reference schema to the caller
 		console.warn(
 			`Reference schema at "${metadata.filePath}#/${metadata.path.join('/')}" must have a reference "${schema.$ref}"`
 		);

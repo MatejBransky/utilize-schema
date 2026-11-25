@@ -1,4 +1,4 @@
-import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
+import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
 
@@ -21,7 +21,7 @@ export const generator = createGenerator<
 			context.dialect.tuple === 'prefixItems' && Array.isArray(schema.items)
 				? undefined
 				: schema.items;
-		const itemsPart = generateSchema(items as ParsedJSONSchema | undefined, context);
+		const itemsPart = generateSchema(items, context);
 		let expression = ts`z.array(${itemsPart})`;
 
 		if (schema.minItems !== undefined) {

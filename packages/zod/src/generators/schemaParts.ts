@@ -1,11 +1,10 @@
 import {
 	ANNOTATION_KEYWORDS,
-	type Dialect,
 	dialectOf,
 	isKeywordApplicable,
-	type ParsedJSONSchemaObject,
 	withSourceMeta,
 } from '@utilize/json-schema';
+import type { Dialect, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { valueHasType } from './jsonValues';
 

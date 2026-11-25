@@ -1,10 +1,5 @@
-import {
-	type Dialect,
-	isPlainObject,
-	Meta,
-	type ParsedJSONSchemaObject,
-	withSourceMeta,
-} from '@utilize/json-schema';
+import { isPlainObject, Meta, withSourceMeta } from '@utilize/json-schema';
+import type { Dialect, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { constraintKeywords } from './constraints';
 import { mergeObjectSchemas } from './mergeObjects';
@@ -54,9 +49,9 @@ export function planReferenceSiblings(
 	if (isPlainObject(target) && !isCyclic(target as ParsedJSONSchemaObject)) {
 		const { allOf, ...rest } = constraints;
 		const result = mergeObjectSchemas([
-			target as ParsedJSONSchemaObject,
+			target,
 			...(Array.isArray(allOf) ? allOf : []),
-			withSourceMeta(schema, rest) as ParsedJSONSchemaObject,
+			withSourceMeta(schema, rest),
 		]);
 
 		if (result.merged !== undefined) {

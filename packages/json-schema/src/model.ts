@@ -48,7 +48,7 @@ export interface SchemaKeysType<Schema extends JSONSchema> {
 	contains?: Schema;
 
 	// https://www.learnjsonschema.com/draft7/validation/dependencies/
-	dependencies?: Record<string, Array<string> | Schema>;
+	dependencies?: Record<string, string[] | Schema>;
 
 	// https://www.learnjsonschema.com/draft7/validation/allof/
 	allOf?: Schema[];

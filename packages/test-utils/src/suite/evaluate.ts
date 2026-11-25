@@ -1,4 +1,5 @@
-import { type CustomNameResolver, Meta } from '@utilize/json-schema';
+import { Meta } from '@utilize/json-schema';
+import type { CustomNameResolver } from '@utilize/json-schema';
 
 import { stripTypeScriptTypes } from 'node:module';
 
@@ -23,16 +24,16 @@ export function evaluateGeneratedCode<T>(code: string, scope: Record<string, unk
 	// A boolean root schema is emitted as a bare expression.
 	if (!code.includes('export ')) {
 		// fallow-ignore-next-line security-sink -- the suite evaluates generated code in memory; no input comes from outside the test process
-		return new Function(...names, `return ${code}`)(...values) as T;
+		return new Function(...names, `return ${code}`)(...values) as T; // oxlint-disable-line typescript/no-unsafe-call -- generated code is executed in-memory by this test helper
 	}
 
 	// `stripTypeScriptTypes` removes type-only declarations but keeps the ESM
 	// `export const` syntax, which the function body cannot contain.
-	const javascript = stripTypeScriptTypes(code, { mode: 'strip' }).replace(
+	const javascript = stripTypeScriptTypes(code, { mode: 'strip' }).replaceAll(
 		/^export const /gm,
 		'const '
 	);
 
 	// fallow-ignore-next-line security-sink -- the suite evaluates generated code in memory; no input comes from outside the test process
-	return new Function(...names, `${javascript}\nreturn Root;`)(...values) as T;
+	return new Function(...names, `${javascript}\nreturn Root;`)(...values) as T; // oxlint-disable-line typescript/no-unsafe-call -- generated code is executed in-memory by this test helper
 }
