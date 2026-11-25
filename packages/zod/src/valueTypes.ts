@@ -302,11 +302,10 @@ function renderObjectMembers(
 	schema: ParsedJSONSchemaObject,
 	context: ValueTypeContext
 ): { lines: string[]; index?: string } {
-	const properties = Object.entries(schema.properties ?? {});
 	const lines: string[] = [];
 	const propertyTypes: string[] = [];
 
-	for (const [key, value] of properties) {
+	for (const [key, value] of Object.entries(schema.properties ?? {})) {
 		const type = renderType(value, context);
 		const optional = !schema.required?.includes(key) && value.default === undefined;
 
@@ -314,36 +313,48 @@ function renderObjectMembers(
 		propertyTypes.push(type);
 	}
 
-	const additionalProperties = schema.additionalProperties;
-	let index: string | undefined;
-
-	if (schema.patternProperties && Object.keys(schema.patternProperties).length > 0) {
-		// The generator keeps the object open so that matching keys survive the
-		// parse, so an index signature is the closest representation.
-		index = 'unknown';
-	} else if (additionalProperties === true) {
-		index = 'unknown';
-	} else if (isPlainObject(additionalProperties)) {
-		const type = renderType(additionalProperties as ParsedJSONSchemaObject, context);
-
-		index = propertyTypes.length === 0 ? type : union([...propertyTypes, type, 'undefined']);
-	}
-
+	const index = renderIndexSignature(schema, propertyTypes, context);
+	const requiredType =
+		schema.additionalProperties === false
+			? 'never'
+			: isPlainObject(schema.additionalProperties)
+				? renderType(schema.additionalProperties as ParsedJSONSchemaObject, context)
+				: 'unknown';
 	const requiredWithoutProperties = (schema.required ?? []).filter(
 		(key) => !Object.hasOwn(schema.properties ?? {}, key)
 	);
-	const requiredType =
-		additionalProperties === false
-			? 'never'
-			: isPlainObject(additionalProperties)
-				? renderType(additionalProperties as ParsedJSONSchemaObject, context)
-				: 'unknown';
 
 	for (const key of requiredWithoutProperties) {
 		lines.push(`${propertyKey(key)}: ${requiredType}`);
 	}
 
 	return { lines, index };
+}
+
+function renderIndexSignature(
+	schema: ParsedJSONSchemaObject,
+	propertyTypes: string[],
+	context: ValueTypeContext
+): string | undefined {
+	const additionalProperties = schema.additionalProperties;
+
+	if (schema.patternProperties && Object.keys(schema.patternProperties).length > 0) {
+		// The generator keeps the object open so that matching keys survive the
+		// parse, so an index signature is the closest representation.
+		return 'unknown';
+	}
+
+	if (additionalProperties === true) {
+		return 'unknown';
+	}
+
+	if (isPlainObject(additionalProperties)) {
+		const type = renderType(additionalProperties as ParsedJSONSchemaObject, context);
+
+		return propertyTypes.length === 0 ? type : union([...propertyTypes, type, 'undefined']);
+	}
+
+	return undefined;
 }
 
 function renderTupleRest(
