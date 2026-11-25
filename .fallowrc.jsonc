@@ -61,6 +61,19 @@
 		],
 	},
 
+	"health": {
+		// The fallow defaults apply (cyclomatic 20, cognitive 15, CRAP 30, unit
+		// size 60) and stay that way.
+		//
+		// Test code is left out of the complexity checks and the health score
+		// only. A table-driven test or a `describe` block with many cases is long
+		// on purpose, and splitting it would make it harder to read, not easier.
+		// Dead-code and duplication checks still cover every test file.
+		// `packages/test-utils` is the private package of shared test helpers;
+		// nothing published imports it.
+		"ignore": ["**/test/**", "**/*.test.ts", "**/*.test.tsx", "packages/test-utils/**"],
+	},
+
 	"rules": {
 		// `fallow audit` (the commit hook and the PR gate) only warns about a
 		// clone group that a change introduces by default. As an error, a change
