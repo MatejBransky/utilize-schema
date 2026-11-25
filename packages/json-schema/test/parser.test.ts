@@ -124,6 +124,23 @@ test('links sibling definitions when the root is a $ref', async () => {
 	expect(defs?.Child?.[Meta]).toBeDefined();
 });
 
+test('links tuple items with numeric paths and their array parent', async () => {
+	const schema: JSONSchema = {
+		type: 'array',
+		items: [{ type: 'string' }, { type: 'number' }],
+	};
+	const parsed = await parse(schema, {
+		cwd: __dirname + '/',
+		fileName: 'Unknown',
+	});
+
+	assert(typeof parsed.root === 'object' && parsed.root !== null);
+	const items = parsed.root.items;
+	assert(Array.isArray(items));
+	expect(items[0]?.[Meta]).toMatchObject({ path: ['items', 0], parent: items });
+	expect(items[1]?.[Meta]).toMatchObject({ path: ['items', 1], parent: items });
+});
+
 test('circular references', async () => {
 	const schema: JSONSchema = {
 		type: 'object',
