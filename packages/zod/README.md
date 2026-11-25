@@ -1,5 +1,9 @@
 # @utilize/zod
 
+[![npm version](https://img.shields.io/npm/v/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
+[![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
+[![Unit test coverage](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/coverage-zod.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/CONTRIBUTING.md#coverage-badge)
+
 TypeScript/Zod code generator for JSON Schema. Converts a JSON Schema (with
 references, `$defs` and `definitions`) into standalone Zod schemas and
 TypeScript types.
@@ -24,12 +28,12 @@ TypeScript types.
 import { compile } from '@utilize/zod';
 
 await compile({
-	input: './schema.json',
-	output: './schema.generated.ts',
+  input: './schema.json',
+  output: './schema.generated.ts',
 });
 ```
 
-`@utilize/zod` requires `zod` 4 as a peer dependency:
+`@utilize/zod` requires `zod` 4.5 or newer as a peer dependency:
 
 ```sh
 pnpm add zod
@@ -43,10 +47,14 @@ pnpm add zod
   standalone schema.
 - `readOnlyKeyword` — map `readOnly: true` to `.readonly()`. Off by default,
   because it freezes values and changes the inferred type.
-- `formatMap` — map `format` names to your own Zod string expressions. Each
-  entry overrides the built-in mapping for that format (known formats too);
-  formats you do not list keep the built-in mapping. `minLength`, `maxLength`
-  and `pattern` are still appended:
+- `formatMode` — what `format` becomes in the generated code. `'assert'`
+  (default) turns known formats into validation (`.email()`, `.uuid()`,
+  `.iso.datetime()`, …); `'annotate'` keeps `format` as `.meta({ format })`.
+  Unknown formats stay annotations in both modes.
+- `formatMap` — map `format` names to your own Zod string expressions. An entry
+  applies in both modes, so it can validate a format that `formatMode` would
+  leave as an annotation. Formats you do not list follow `formatMode`.
+  `minLength`, `maxLength` and `pattern` are still appended:
 
   ```ts
   await compile({
@@ -86,6 +94,10 @@ pnpm add zod
   Prettier) applied to the generated code before the banner is prepended. Pass
   `false` or omit it to keep the generator output as-is.
 - `bannerComment` — header prepended to written files; `false` disables it.
+- `externalSchemas` — documents served for absolute `$ref` URIs, keyed by
+  retrieval URI. A URI present here is read from memory instead of disk or the
+  network. Identifiers declared inside a document (`$id`, or the draft-04 `id`)
+  are served too.
 
 For custom pipelines, `compileFile()` and `compileSchema()` return the generated
 code without writing anything, and `withBanner()` applies the default header.
@@ -104,9 +116,9 @@ Recursive schemas are annotated so TypeScript can infer them:
 ```ts
 type TreeValue = { children?: TreeValue[] };
 export const Tree: z.ZodType<TreeValue> = z.object({
-	get children() {
-		return z.array(Tree).optional();
-	},
+  get children() {
+    return z.array(Tree).optional();
+  },
 });
 export type Tree = z.infer<typeof Tree>;
 ```
@@ -126,6 +138,15 @@ standalone schema is declared once and referenced wherever it appears. An
 value, such as `anyOf: [X, {}]`, is left out: it never rejects a value, so
 `.parse()` returns what the rest of the schema keeps.
 
+### `__proto__` properties
+
+A `__proto__` property in your schema is validated as an own property of the
+input: `required` and its value schema are enforced, also for `const` and `enum`
+values and for `additionalProperties`. The parsed output does not contain it,
+because Zod drops `__proto__` from parsed objects and records on purpose. Do
+not read a `__proto__` value from the result of `.parse()`; read it from the
+input you passed in.
+
 ## Naming
 
 Each standalone schema gets the name resolved from `$id`, `title`, the `$defs`
@@ -140,10 +161,10 @@ a suffix only has to describe the difference:
 
 ```ts
 await compile({
-	input: './schema.json',
-	output: './schema.generated.ts',
-	schemaName: (name) => `${name}Schema`,
-	typeName: (name) => `${name}Schema`,
+  input: './schema.json',
+  output: './schema.generated.ts',
+  schemaName: (name) => `${name}Schema`,
+  typeName: (name) => `${name}Schema`,
 });
 ```
 
@@ -206,7 +227,9 @@ The suite is pinned to a commit and installed as a dev dependency. Each test
 case is compiled to a Zod schema in memory and every instance from the suite is
 run through `safeParse`.
 
-Today it passes **248 of 271 draft-07 cases (1,347 of 1,605 assertions)**.
+Today it passes **283 of 304 draft-07 cases (1,399 of 1,655 assertions)**. Format
+cases run in the mode they are tagged for, so both the annotation and the
+assertion cases are measured.
 
 Cases the generator does not handle yet are listed in
 `test/suite/knownFailures.ts`, together with the exact instances that fail in

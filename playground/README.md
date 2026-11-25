@@ -15,6 +15,10 @@ Schema or TypeScript code next to the schemas.
 - Live code generation for every available generator (Zod, Effect Schema and
   TypeScript), selectable from the header and kept in the URL
   (`?generator=effect`)
+- A `Format` switch for the runtime generators: `assert` (the default) turns
+  `format` into validation, `annotate` keeps it as metadata
+  (`?format-mode=annotate`). It is disabled for the TypeScript target, which
+  cannot check a format.
 - Generated code is formatted with Prettier at 80 columns, and the Effect target
   adds the real `effect` type declarations to the editor's TypeScript worker
 - Live JSON and JSON Schema validation with AJV (draft-07, 2019-09 and
@@ -50,8 +54,9 @@ GitHub Pages under `/utilize-schema/`.
 ## Deployment
 
 `.github/workflows/pages.yml` builds and deploys the playground to GitHub
-Pages on every push to `main`. Every pull request also gets a Vercel preview
-deployment; see [CONTRIBUTING.md](../CONTRIBUTING.md#playground-previews).
+Pages on every push to `main`. Pull requests get a Vercel preview deployment
+only when they have the `Preview` label; see
+[CONTRIBUTING.md](../CONTRIBUTING.md#playground-previews).
 
 ## Adding a generator
 

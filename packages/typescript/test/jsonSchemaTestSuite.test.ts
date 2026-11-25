@@ -1,10 +1,10 @@
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 
 import { baseline } from './suite/baseline';
-import { DRAFT_7, isCompatible } from './suite/compatibility';
+import { DRAFT_7, isCompatible } from '@utilize/test-utils/suite/compatibility';
 import { renderCaseModule } from './suite/generateCase';
 import { knownGaps } from './suite/knownGaps';
-import { loadSuiteFiles, type SuiteCase, suiteCaseKey } from './suite/loadSuite';
+import { loadSuiteFiles, type SuiteCase, suiteCaseKey } from '@utilize/test-utils/suite/loadSuite';
 import { typecheckCases, type TypecheckModule } from './suite/typecheck';
 
 /**
@@ -48,7 +48,7 @@ const stats = {
 	validPassed: 0,
 	invalidAssertions: 0,
 	invalidPassed: 0,
-	skippedExternal: 0,
+	skippedFormat: 0,
 	skippedDialect: 0,
 };
 
@@ -81,8 +81,10 @@ describe('JSON Schema Test Suite (draft-07, type level)', () => {
 					continue;
 				}
 
-				if (testCase.externalSchemas) {
-					stats.skippedExternal++;
+				// A type cannot check a format either way, so assertion cases are
+				// measured by the runtime generators instead of here.
+				if (testCase.tags?.includes('format-assertion')) {
+					stats.skippedFormat++;
 					continue;
 				}
 
@@ -165,7 +167,7 @@ describe('JSON Schema Test Suite (draft-07, type level)', () => {
 				`${stats.invalidPassed}/${stats.invalidAssertions} invalid rejected`,
 				`${stats.typeGaps} type gaps`,
 				`${stats.known} known gaps`,
-				`${stats.skippedExternal} skipped (external schemas)`,
+				`${stats.skippedFormat} skipped (format assertion)`,
 				`${stats.skippedDialect} filtered out (other dialects)`,
 			].join(' · '),
 		];

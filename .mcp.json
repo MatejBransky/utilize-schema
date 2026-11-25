@@ -1,0 +1,9 @@
+{
+	"mcpServers": {
+		"fallow": {
+			"type": "stdio",
+			"command": "pnpm",
+			"args": ["exec", "fallow-mcp"]
+		}
+	}
+}

@@ -33,6 +33,51 @@ describe('validation keywords', () => {
 		expect(Root.safeParse(['a', 'b']).success).toBe(false);
 	});
 
+	test('keeps the single-match message for a plain contains', async () => {
+		const Root = await compileToZod({ type: 'array', contains: { const: 'x' } });
+		const result = Root.safeParse(['a']);
+
+		expect(result.success).toBe(false);
+		expect(result.error?.issues[0]?.message).toBe(
+			'Array must contain an item matching the "contains" schema.'
+		);
+	});
+
+	test('minContains and maxContains', async () => {
+		const Root = await compileToZod({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'array',
+			items: { type: 'string' },
+			contains: { const: 'x' },
+			minContains: 2,
+			maxContains: 3,
+		});
+
+		expect(Root.safeParse(['x', 'x']).success).toBe(true);
+		expect(Root.safeParse(['a', 'x', 'x']).success).toBe(true);
+		expect(Root.safeParse(['x']).success).toBe(false);
+		expect(Root.safeParse(['x', 'x', 'x', 'x']).success).toBe(false);
+	});
+
+	test('minContains 0 allows no match', async () => {
+		const Root = await compileToZod({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'array',
+			contains: { const: 'x' },
+			minContains: 0,
+		});
+
+		expect(Root.safeParse([]).success).toBe(true);
+		expect(Root.safeParse(['a']).success).toBe(true);
+	});
+
+	test('pattern uses unicode mode', async () => {
+		const Root = await compileToZod({ type: 'string', pattern: '^\\p{Letter}+$' });
+
+		expect(Root.safeParse('π').success).toBe(true);
+		expect(Root.safeParse('123').success).toBe(false);
+	});
+
 	test('propertyNames', async () => {
 		const Root = await compileToZod(propertyNamesSchema);
 
@@ -67,6 +112,49 @@ describe('validation keywords', () => {
 
 		expect(Root.safeParse({ a: 'x', b: 'y' }).success).toBe(true);
 		expect(Root.safeParse({ a: 'x' }).success).toBe(false);
+	});
+
+	test('emits each refinement once in keyword order', async () => {
+		const result = await compile({
+			$schema: 'http://json-schema.org/draft-07/schema#',
+			properties: { a: { type: 'string' } },
+			required: ['a'],
+			not: { required: ['b'] },
+			if: { required: ['a'] },
+			then: { required: ['b'] },
+			contains: { type: 'number' },
+			uniqueItems: true,
+			minProperties: 1,
+			maxProperties: 2,
+			propertyNames: { pattern: '^[a-z]+$' },
+			dependencies: { a: ['b'] },
+		});
+		const markers = [
+			"if (typeof value === 'object'",
+			'const result = z.array(z.unknown()).safeParse(value);',
+			'Value must not match the "not" schema.',
+			'safeParse(value).success',
+			'Array must contain an item matching the "contains" schema.',
+			'Array items must be unique.',
+			'Object must have at least 1 properties.',
+			'Object must have at most 2 properties.',
+			'for (const key of Object.keys(value))',
+			'Required dependency is missing.',
+		];
+		const normalized = result.replace(/\s+/g, ' ');
+		const positions = markers.map((marker) => {
+			const position = normalized.indexOf(marker);
+
+			expect(position, marker).toBeGreaterThanOrEqual(0);
+			return position;
+		});
+
+		expect(
+			positions.every((position, index) => index === 0 || positions[index - 1]! <= position)
+		).toBe(true);
+		expect(result.split('Array items must be unique.')).toHaveLength(2);
+		expect(result.split('Object must have at least 1 properties.')).toHaveLength(2);
+		expect(result.split('Object must have at most 2 properties.')).toHaveLength(2);
 	});
 
 	test('refs inside validation keywords are collected', async () => {

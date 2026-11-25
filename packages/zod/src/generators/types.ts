@@ -1,12 +1,20 @@
 import type { Dialect, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 /**
- * Maps a JSON Schema `format` name to a Zod string expression. An entry
- * overrides the built-in mapping for that format only; formats that are not
- * listed keep the built-in mapping. String constraints are appended to the
- * expression, so it has to be a string schema.
+ * Maps a JSON Schema `format` name to a Zod string expression. An entry applies
+ * in both `formatMode`s, so it is also a way to validate one format while the
+ * rest stay annotations. Formats that are not listed follow `formatMode`.
+ * String constraints are appended to the expression, so it has to be a string
+ * schema.
  */
 export type FormatMap = Record<string, string>;
+
+/**
+ * What `format` becomes in the generated code. `annotate` keeps it as
+ * `.meta({ format })`, which is the JSON Schema default and the default here.
+ * `assert` turns known formats into validation (`.email()`, `.uuid()`, …).
+ */
+export type FormatMode = 'annotate' | 'assert';
 
 /**
  * Returns a Zod expression for a schema node, or `undefined` to use the
@@ -33,8 +41,10 @@ export type GeneratorContext = {
 	 * without `Meta` read it from here instead of resolving it again.
 	 */
 	dialect: Dialect;
-	/** Overrides the built-in `format` to Zod mapping per format; unlisted formats keep it. */
+	/** Maps a `format` to a Zod expression; it applies in both modes, other formats follow `formatMode`. */
 	formatMap?: FormatMap;
+	/** Whether `format` becomes a validation or only metadata. Defaults to `annotate`. */
+	formatMode?: FormatMode;
 	/** Emits a caller-provided expression before the built-in generator runs. */
 	customSchemaResolver?: CustomSchemaResolver;
 };

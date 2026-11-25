@@ -1,5 +1,7 @@
 import { createGenerator } from './createGenerator';
+import type { FormatMap, FormatMode } from './types';
 
+import { unicodePattern } from '../regex';
 import { ts } from '../utils';
 
 export const generator = createGenerator(
@@ -19,9 +21,7 @@ export const generator = createGenerator(
 		return false;
 	},
 	(schema, context) => {
-		const format =
-			schema.format &&
-			(ownValue(context.formatMap, schema.format) ?? formatExpression(schema.format));
+		const format = schema.format ? resolveFormat(schema.format, context) : undefined;
 		let expression: string;
 
 		if (format) {
@@ -35,6 +35,24 @@ export const generator = createGenerator(
 		return expression;
 	}
 );
+
+/**
+ * Picks the expression for a format. An explicit `formatMap` entry always wins;
+ * otherwise `assert` uses the built-in mapping and `annotate` leaves the
+ * expression as `z.string()` so `format` stays metadata.
+ */
+function resolveFormat(
+	format: string,
+	{ formatMap, formatMode }: { formatMap?: FormatMap; formatMode?: FormatMode }
+) {
+	const mapped = ownValue(formatMap, format);
+
+	if (mapped) {
+		return mapped;
+	}
+
+	return (formatMode ?? 'assert') === 'assert' ? formatExpression(format) : undefined;
+}
 
 function formatExpression(format: string) {
 	const method = ownValue(formatToZodMethod, format);
@@ -69,13 +87,13 @@ function applyStringConstraints({ expression, schema }: StringConstraints) {
 	}
 
 	if (schema.pattern) {
-		expression += `.regex(${new RegExp(schema.pattern)})`;
+		expression += `.regex(${unicodePattern(schema.pattern, 'pattern')})`;
 	}
 
 	return expression;
 }
 
-export const formatToZodMethod: Record<string, string> = {
+const formatToZodMethod: Record<string, string> = {
 	email: '.email()',
 	uuid: '.uuid()',
 	url: '.url()',

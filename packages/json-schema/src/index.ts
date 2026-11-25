@@ -1,4 +1,7 @@
 export * from './cliOptions';
+export * from './collectStandaloneSchemas';
+export * from './contains';
+export * from './externalSchemas';
 export {
 	type DetectedDialect,
 	type Dialect,
@@ -23,6 +26,8 @@ export {
 export * from './keywords';
 export * from './linker';
 export * from './model';
+export * from './narrow';
 export * from './normalize';
 export * from './parser';
+export * from './resolveName';
 export * from './utils';

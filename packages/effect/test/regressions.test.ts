@@ -57,27 +57,6 @@ describe('regressions', () => {
 		`);
 	});
 
-	test('rejects minContains and maxContains instead of ignoring them', async () => {
-		await expect(
-			compile({
-				$schema: 'https://json-schema.org/draft/2020-12/schema',
-				type: 'array',
-				items: { type: 'string' },
-				contains: { const: 'x' },
-				minContains: 1,
-			})
-		).rejects.toThrow(/minContains/);
-		await expect(
-			compile({
-				$schema: 'https://json-schema.org/draft/2020-12/schema',
-				type: 'array',
-				items: { type: 'string' },
-				contains: { const: 'x' },
-				maxContains: 2,
-			})
-		).rejects.toThrow(/maxContains/);
-	});
-
 	test('combines dependentRequired and dependentSchemas for the same key', async () => {
 		const Root = await compileToSchema({
 			$schema: 'https://json-schema.org/draft/2020-12/schema',
@@ -140,6 +119,42 @@ describe('regressions', () => {
 
 		expect(decode(Root, { a: 'x', b: 1 })).toEqual({ a: 'x', b: 1 });
 		expect(decode(Root, { a: 'x' })).toBeUndefined();
+	});
+
+	test('a typed schema dependency rejects an object value', async () => {
+		const Root = await compileToSchema({
+			type: 'object',
+			properties: { a: { type: 'string' } },
+			dependencies: { a: { type: 'string' } },
+		});
+
+		expect(decode(Root, {})).toEqual({});
+		expect(decode(Root, { a: 'x' })).toBeUndefined();
+	});
+
+	test('an untyped schema dependency keeps undeclared keys and ignores non-object keywords', async () => {
+		const Root = await compileToSchema({
+			type: 'object',
+			properties: { card: { type: 'string' } },
+			dependencies: {
+				card: { properties: { card: { minLength: 2 } }, required: ['card'], minItems: 3 },
+			},
+		});
+
+		expect(decode(Root, { card: 'ok', extra: 1 })).toEqual({ card: 'ok', extra: 1 });
+		expect(decode(Root, { card: 'a' })).toBeUndefined();
+	});
+
+	test('a schema dependency that only declares another dependency is enforced', async () => {
+		const Root = await compileToSchema({
+			type: 'object',
+			properties: { a: { type: 'string' }, b: { type: 'string' }, c: { type: 'string' } },
+			dependencies: { a: { dependencies: { b: ['c'] } } },
+		});
+
+		expect(decode(Root, { a: 'x', b: 'y' })).toBeUndefined();
+		expect(decode(Root, { a: 'x', b: 'y', c: 'z' })).toEqual({ a: 'x', b: 'y', c: 'z' });
+		expect(decode(Root, { b: 'y' })).toEqual({ b: 'y' });
 	});
 
 	test('keeps a recursive $ref inside an anyOf', async () => {

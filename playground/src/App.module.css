@@ -5,21 +5,29 @@
 }
 
 .generatorPicker {
-	flex: 0 0 9rem;
+	flex: 0 0 8.875rem;
 	min-width: 7rem;
 }
 
 .examplePicker {
-	flex: 0 0 20rem;
-	min-width: 12rem;
+	flex: 0 0 15.5rem;
+	min-width: 10rem;
 }
 
 .policyPicker {
 	display: flex;
 	flex-direction: column;
-	flex: 0 0 11rem;
 	gap: calc(var(--ui-spacing) * 1);
-	min-width: 9rem;
+}
+
+.keywordPolicyPicker {
+	flex: 0 0 6.5rem;
+	min-width: 5.5rem;
+}
+
+.formatPicker {
+	flex: 0 0 6.75rem;
+	min-width: 5.75rem;
 }
 
 .policyPicker [data-slot='select-label'] {

@@ -1,16 +1,14 @@
 import {
-	ANNOTATION_KEYWORDS,
 	type Dialect,
 	dialectOf,
-	isKeywordApplicable,
 	type ParsedJSONSchema,
 	type ParsedJSONSchemaObject,
-	withSourceMeta,
 } from '@utilize/json-schema';
 
 import { withoutAlwaysValidAnyOf } from './alwaysValidAnyOf';
-import { valueHasType } from './jsonValues';
+import type { Recursion } from './createGenerator';
 import { generator as refGenerator, referenceTo } from './refGenerator';
+import { composedSchemaParts, refSiblingConstraints } from './schemaParts';
 import { selectGenerator } from './selectGenerator';
 import type { GeneratorContext } from './types';
 
@@ -18,14 +16,20 @@ import { applyRefinements } from '../refinements';
 import { isRefNode, NEWLINE, ts } from '../utils';
 
 export const generateSchema = (schema: ParsedJSONSchema | undefined, context: GeneratorContext) => {
-	if (schema === undefined) {
-		return ts`z.unknown()`;
-	}
+	const simple = simpleSchemaExpression(schema);
 
+	return simple ?? generateObjectSchema(schema as ParsedJSONSchemaObject, context);
+};
+
+function simpleSchemaExpression(schema: ParsedJSONSchema | undefined): string | undefined {
 	if (typeof schema !== 'object' || schema === null) {
 		return schema === true ? ts`z.any()` : schema === false ? ts`z.never()` : ts`z.unknown()`;
 	}
 
+	return undefined;
+}
+
+function generateObjectSchema(schema: ParsedJSONSchemaObject, context: GeneratorContext): string {
 	const customExpression = context.customSchemaResolver?.(schema);
 
 	if (customExpression !== undefined) {
@@ -41,33 +45,50 @@ export const generateSchema = (schema: ParsedJSONSchema | undefined, context: Ge
 	const dialect = dialectOf(schema, context.dialect);
 	const nodeContext = dialect === context.dialect ? context : { ...context, dialect };
 	const validated = withoutAlwaysValidAnyOf(schema);
-
 	let expression = generateCore(validated, nodeContext);
 
 	if (!ignoresRefSiblings(validated, dialect)) {
 		expression = applyRefinements(expression, validated, nodeContext, generateSchema);
 	}
 
-	if (
+	return applySchemaDecorators(expression, schema, nodeContext);
+}
+
+function applySchemaDecorators(
+	expression: string,
+	schema: ParsedJSONSchemaObject,
+	context: GeneratorContext
+): string {
+	let decorated = expression;
+
+	if (hasMetadata(schema)) {
+		decorated = withMetadata(decorated, schema);
+	}
+
+	if (schema.default !== undefined) {
+		decorated = withDefault(decorated, schema.default, schema);
+	}
+
+	if (context.readOnlyKeyword && schema.readOnly === true) {
+		decorated = ts`${decorated}.readonly()`;
+	}
+
+	return decorated;
+}
+
+function hasMetadata(schema: ParsedJSONSchemaObject): boolean {
+	return Boolean(
 		schema.$id ||
 		schema.title ||
 		schema.description ||
 		schema.examples !== undefined ||
-		schema.deprecated !== undefined
-	) {
-		expression = withMetadata(expression, schema);
-	}
+		schema.deprecated !== undefined ||
+		schema.format !== undefined
+	);
+}
 
-	if (schema.default !== undefined) {
-		expression = withDefault(expression, schema.default, schema);
-	}
-
-	if (context.readOnlyKeyword && schema.readOnly === true) {
-		expression = ts`${expression}.readonly()`;
-	}
-
-	return expression;
-};
+/** Passed to every keyword generator, so it can generate its subschemas. */
+const recursion: Recursion = { generateSchema, selectGenerator };
 
 /**
  * True for a `$ref` node in a dialect that ignores every keyword next to the
@@ -94,7 +115,7 @@ function generateCore(schema: ParsedJSONSchemaObject, context: GeneratorContext)
 	const { dialect } = context;
 
 	if (isRefNode(schema)) {
-		const reference = refGenerator.generate(schema, context);
+		const reference = refGenerator.generate(schema, context, recursion);
 
 		if (dialect.refSiblings === 'apply') {
 			const rest = refSiblingConstraints(schema);
@@ -116,196 +137,14 @@ function generateCore(schema: ParsedJSONSchemaObject, context: GeneratorContext)
 		)})`;
 	}
 
-	return selectGenerator(schema, context.dialect).generate(schema, context);
+	return selectGenerator(schema, context.dialect).generate(schema, context, recursion);
 }
-
-/**
- * The structural keywords of a `$ref` node, or `undefined` when the dialect
- * should ignore them or only annotations/refinements are present. Refinements
- * are applied by `applyRefinements` on the whole node instead.
- */
-export function refSiblingConstraints(
-	schema: ParsedJSONSchemaObject
-): ParsedJSONSchemaObject | undefined {
-	const rest = withoutKeys(schema, ['$ref', ...ANNOTATION_KEYWORDS, ...refinementKeywords]);
-
-	return hasStructuralKeywords(rest) ? rest : undefined;
-}
-
-/**
- * Splits a schema that combines a combinator with sibling constraints into the
- * combinator alone and the remaining structural keywords. Returns `undefined`
- * when there is nothing to intersect. The value-type renderer mirrors this
- * split, so generated types match runtime validation.
- *
- * Callers handle a `$ref` node first (see `isRefNode`), so it never gets here.
- */
-export function composedSchemaParts(
-	schema: ParsedJSONSchemaObject
-): { main: ParsedJSONSchemaObject; rest: ParsedJSONSchemaObject } | undefined {
-	const keyword = pickCombinatorKeyword(schema);
-
-	if (!keyword) {
-		return undefined;
-	}
-
-	const rest = withoutKeys(schema, [keyword, ...ANNOTATION_KEYWORDS, ...refinementKeywords]);
-
-	if (!hasStructuralKeywords(rest) || isTypedLiteral(schema)) {
-		return undefined;
-	}
-
-	return {
-		main: {
-			[keyword]: schema[keyword],
-			discriminator: schema.discriminator,
-		} as unknown as ParsedJSONSchemaObject,
-		rest,
-	};
-}
-
-/**
- * True when `type` is the only constraint next to a `const` or `enum` and every
- * listed value already has that type, e.g. `{ type: 'string', const: 'a' }`.
- * The literal alone validates the same values, so the type is not generated.
- */
-export function isTypedLiteral(
-	schema: ParsedJSONSchemaObject,
-	dialect: Dialect = dialectOf(schema)
-): boolean {
-	const keyword = pickCombinatorKeyword(schema);
-
-	if (schema.type === undefined || (keyword !== 'const' && keyword !== 'enum')) {
-		return false;
-	}
-
-	if (keyword === 'const' && !isKeywordApplicable(dialect, 'const')) {
-		return false;
-	}
-
-	const rest = withoutKeys(schema, [
-		keyword,
-		'type',
-		...ANNOTATION_KEYWORDS,
-		...refinementKeywords,
-	]);
-
-	if (hasStructuralKeywords(rest)) {
-		return false;
-	}
-
-	const types = [schema.type].flat();
-	const values = keyword === 'const' ? [schema.const] : (schema.enum ?? []);
-
-	return values.every((value) => types.some((type) => valueHasType(value, type)));
-}
-
-type CombinatorKeyword = 'allOf' | 'anyOf' | 'oneOf' | 'const' | 'enum';
-
-/**
- * The keyword whose generator ignores the rest of the schema. `$ref` is handled
- * by `generateCore`, which reads the dialect before deciding whether siblings
- * apply.
- */
-function pickCombinatorKeyword(schema: ParsedJSONSchemaObject): CombinatorKeyword | undefined {
-	if (schema.anyOf) {
-		return 'anyOf';
-	}
-
-	if (schema.allOf) {
-		return 'allOf';
-	}
-
-	if (schema.oneOf) {
-		return 'oneOf';
-	}
-
-	if (schema.const !== undefined) {
-		return 'const';
-	}
-
-	if (schema.enum !== undefined) {
-		return 'enum';
-	}
-
-	return undefined;
-}
-
-const structuralKeywords = new Set<string>([
-	'allOf',
-	'anyOf',
-	'oneOf',
-	'const',
-	'enum',
-	'type',
-	'properties',
-	'required',
-	'additionalProperties',
-	'items',
-	'prefixItems',
-	'additionalItems',
-	'minItems',
-	'maxItems',
-	'minLength',
-	'maxLength',
-	'pattern',
-	'format',
-	'minimum',
-	'maximum',
-	'exclusiveMinimum',
-	'exclusiveMaximum',
-	'multipleOf',
-]);
-
-/**
- * True when the rest of the schema constrains the instance on its own. A rest
- * made of annotations, or of keywords handled by `applyRefinements`, does not
- * need an intersection: the outer schema already applies those.
- */
-function hasStructuralKeywords(schema: ParsedJSONSchemaObject): boolean {
-	const record = schema as unknown as Record<string, unknown>;
-
-	for (const keyword of structuralKeywords) {
-		if (record[keyword] !== undefined) {
-			return true;
-		}
-	}
-
-	return false;
-}
-
-function withoutKeys(
-	schema: ParsedJSONSchemaObject,
-	keys: readonly string[]
-): ParsedJSONSchemaObject {
-	const clone = withSourceMeta(schema, { ...schema }) as unknown as Record<string, unknown>;
-
-	for (const key of keys) {
-		delete clone[key];
-	}
-
-	return clone as unknown as ParsedJSONSchemaObject;
-}
-
-/** Keywords handled by `applyRefinements` on the whole schema. */
-const refinementKeywords = [
-	'not',
-	'if',
-	'then',
-	'else',
-	'contains',
-	'propertyNames',
-	'dependencies',
-	'uniqueItems',
-	'minProperties',
-	'maxProperties',
-] as const;
 
 function withMetadata(
 	expression: string,
-	{ $id, title, description, examples, deprecated }: ParsedJSONSchemaObject
+	{ $id, title, description, examples, deprecated, format }: ParsedJSONSchemaObject
 ) {
-	return ts`${expression}.meta(${JSON.stringify({ id: $id, title, description, examples, deprecated })})`;
+	return ts`${expression}.meta(${JSON.stringify({ id: $id, title, description, examples, deprecated, format })})`;
 }
 
 function withDefault(expression: string, defaultValue: unknown, schema: ParsedJSONSchemaObject) {

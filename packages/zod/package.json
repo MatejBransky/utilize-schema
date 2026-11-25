@@ -1,6 +1,6 @@
 {
 	"name": "@utilize/zod",
-	"version": "0.10.0",
+	"version": "0.11.1",
 	"description": "Zod schema generator for JSON Schema.",
 	"keywords": [
 		"ast",
@@ -62,21 +62,19 @@
 	"dependencies": {
 		"@types/toposort": "2.0.7",
 		"@utilize/json-schema": "workspace:*",
-		"js-yaml": "5.4.2",
 		"toposort": "2.0.2"
 	},
 	"devDependencies": {
 		"@total-typescript/tsconfig": "catalog:",
 		"@types/node": "catalog:",
-		"json-schema-test-suite": "github:json-schema-org/JSON-Schema-Test-Suite#e2a68a15cd490750fd6b95e604e4054d7d978d1f",
-		"oxfmt": "catalog:",
+		"@utilize/test-utils": "workspace:*",
 		"tsdown": "catalog:",
 		"typescript": "catalog:",
 		"vitest": "catalog:",
 		"zod": "catalog:"
 	},
 	"peerDependencies": {
-		"zod": ">=4.0.0 <5"
+		"zod": ">=4.5.0 <5"
 	},
 	"engines": {
 		"node": ">=22.19.0"

@@ -20,7 +20,7 @@ import { generator as numberGenerator } from './generators/numberGenerator';
 import { generator as objectGenerator } from './generators/objectGenerator';
 import { generator as oneOfGenerator } from './generators/oneOfGenerator';
 import { generator as recordGenerator } from './generators/recordGenerator';
-import { composedSchemaParts, refSiblingConstraints } from './generators/generateSchema';
+import { composedSchemaParts, refSiblingConstraints } from './generators/schemaParts';
 import { selectGenerator } from './generators/selectGenerator';
 import type { CustomSchemaResolver } from './generators/types';
 import { generator as stringGenerator } from './generators/stringGenerator';
@@ -89,8 +89,11 @@ function renderType(node: ParsedJSONSchemaObject, context: ValueTypeContext): st
 		return context.aliasFor(declaration) ?? context.typeNameFor(declaration);
 	}
 
-	const schema = withoutAlwaysValidAnyOf(node);
+	return renderNormalizedType(node, context);
+}
 
+function renderNormalizedType(node: ParsedJSONSchemaObject, context: ValueTypeContext): string {
+	const schema = withoutAlwaysValidAnyOf(node);
 	const dialect = dialectOf(schema, context.dialect);
 
 	if (isRefNode(schema)) {
@@ -109,6 +112,14 @@ function renderType(node: ParsedJSONSchemaObject, context: ValueTypeContext): st
 		)}`;
 	}
 
+	return renderGeneratedType(schema, dialect, context);
+}
+
+function renderGeneratedType(
+	schema: ParsedJSONSchemaObject,
+	dialect: Dialect,
+	context: ValueTypeContext
+): string {
 	const generator = selectGenerator(schema, dialect);
 
 	if (generator === multipleTypeGenerator) {
@@ -116,25 +127,67 @@ function renderType(node: ParsedJSONSchemaObject, context: ValueTypeContext): st
 	}
 
 	if (generator === anyOfGenerator || generator === oneOfGenerator) {
-		return union(
-			(schema.anyOf ?? schema.oneOf ?? []).map((subschema) => renderType(subschema, context))
-		);
+		return renderUnionType(schema, context);
 	}
 
 	if (generator === allOfGenerator) {
-		const subschemas = schema.allOf ?? [];
-
-		if (subschemas.length === 0) {
-			return 'never';
-		}
-
-		if (subschemas.length === 1) {
-			return renderType(subschemas[0]!, context);
-		}
-
-		return subschemas.map((subschema) => parenthesize(renderType(subschema, context))).join(' & ');
+		return renderAllOfType(schema, context);
 	}
 
+	const scalar = renderScalarType(generator, schema);
+
+	if (scalar !== undefined) {
+		return scalar;
+	}
+
+	const collection = renderCollectionType(generator, schema, dialect, context);
+
+	if (collection !== undefined) {
+		return collection;
+	}
+
+	return renderFallbackType(generator, schema);
+}
+
+function renderFallbackType(
+	generator: ReturnType<typeof selectGenerator>,
+	schema: ParsedJSONSchemaObject
+): string {
+	if (generator === enumGenerator) {
+		return union((schema.enum ?? []).map(literalType));
+	}
+
+	if (generator === anyGenerator) {
+		return 'unknown';
+	}
+
+	return 'unknown';
+}
+
+function renderUnionType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): string {
+	return union(
+		(schema.anyOf ?? schema.oneOf ?? []).map((subschema) => renderType(subschema, context))
+	);
+}
+
+function renderAllOfType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): string {
+	const subschemas = schema.allOf ?? [];
+
+	if (subschemas.length === 0) {
+		return 'never';
+	}
+
+	if (subschemas.length === 1) {
+		return renderType(subschemas[0]!, context);
+	}
+
+	return subschemas.map((subschema) => parenthesize(renderType(subschema, context))).join(' & ');
+}
+
+function renderScalarType(
+	generator: ReturnType<typeof selectGenerator>,
+	schema: ParsedJSONSchemaObject
+): string | undefined {
 	if (generator === nullGenerator) {
 		return 'null';
 	}
@@ -155,6 +208,15 @@ function renderType(node: ParsedJSONSchemaObject, context: ValueTypeContext): st
 		return 'string';
 	}
 
+	return undefined;
+}
+
+function renderCollectionType(
+	generator: ReturnType<typeof selectGenerator>,
+	schema: ParsedJSONSchemaObject,
+	dialect: Dialect,
+	context: ValueTypeContext
+): string | undefined {
 	if (generator === recordGenerator) {
 		const additionalProperties = schema.additionalProperties as ParsedJSONSchemaObject;
 
@@ -186,15 +248,7 @@ function renderType(node: ParsedJSONSchemaObject, context: ValueTypeContext): st
 		return `${parenthesize(items)}[]`;
 	}
 
-	if (generator === enumGenerator) {
-		return union((schema.enum ?? []).map(literalType));
-	}
-
-	if (generator === anyGenerator) {
-		return 'unknown';
-	}
-
-	return 'unknown';
+	return undefined;
 }
 
 /**
@@ -302,11 +356,10 @@ function renderObjectMembers(
 	schema: ParsedJSONSchemaObject,
 	context: ValueTypeContext
 ): { lines: string[]; index?: string } {
-	const properties = Object.entries(schema.properties ?? {});
 	const lines: string[] = [];
 	const propertyTypes: string[] = [];
 
-	for (const [key, value] of properties) {
+	for (const [key, value] of Object.entries(schema.properties ?? {})) {
 		const type = renderType(value, context);
 		const optional = !schema.required?.includes(key) && value.default === undefined;
 
@@ -314,36 +367,48 @@ function renderObjectMembers(
 		propertyTypes.push(type);
 	}
 
-	const additionalProperties = schema.additionalProperties;
-	let index: string | undefined;
-
-	if (schema.patternProperties && Object.keys(schema.patternProperties).length > 0) {
-		// The generator keeps the object open so that matching keys survive the
-		// parse, so an index signature is the closest representation.
-		index = 'unknown';
-	} else if (additionalProperties === true) {
-		index = 'unknown';
-	} else if (isPlainObject(additionalProperties)) {
-		const type = renderType(additionalProperties as ParsedJSONSchemaObject, context);
-
-		index = propertyTypes.length === 0 ? type : union([...propertyTypes, type, 'undefined']);
-	}
-
+	const index = renderIndexSignature(schema, propertyTypes, context);
+	const requiredType =
+		schema.additionalProperties === false
+			? 'never'
+			: isPlainObject(schema.additionalProperties)
+				? renderType(schema.additionalProperties as ParsedJSONSchemaObject, context)
+				: 'unknown';
 	const requiredWithoutProperties = (schema.required ?? []).filter(
 		(key) => !Object.hasOwn(schema.properties ?? {}, key)
 	);
-	const requiredType =
-		additionalProperties === false
-			? 'never'
-			: isPlainObject(additionalProperties)
-				? renderType(additionalProperties as ParsedJSONSchemaObject, context)
-				: 'unknown';
 
 	for (const key of requiredWithoutProperties) {
 		lines.push(`${propertyKey(key)}: ${requiredType}`);
 	}
 
 	return { lines, index };
+}
+
+function renderIndexSignature(
+	schema: ParsedJSONSchemaObject,
+	propertyTypes: string[],
+	context: ValueTypeContext
+): string | undefined {
+	const additionalProperties = schema.additionalProperties;
+
+	if (schema.patternProperties && Object.keys(schema.patternProperties).length > 0) {
+		// The generator keeps the object open so that matching keys survive the
+		// parse, so an index signature is the closest representation.
+		return 'unknown';
+	}
+
+	if (additionalProperties === true) {
+		return 'unknown';
+	}
+
+	if (isPlainObject(additionalProperties)) {
+		const type = renderType(additionalProperties as ParsedJSONSchemaObject, context);
+
+		return propertyTypes.length === 0 ? type : union([...propertyTypes, type, 'undefined']);
+	}
+
+	return undefined;
 }
 
 function renderTupleRest(

@@ -190,7 +190,7 @@ type SchemaValue =
 export const Schema: z.ZodType<SchemaValue> = z
 	.union([
 		z.object({
-			$id: z.string().optional(),
+			$id: z.string().meta({ format: 'uri-reference' }).optional(),
 			maxLength: NonNegativeInteger.optional(),
 			minLength: NonNegativeIntegerDefault0.optional(),
 			get items() {

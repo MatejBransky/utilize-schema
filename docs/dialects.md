@@ -47,9 +47,9 @@ compilation continues:
 
 ```ts
 await compile({
-	input: './schema.json',
-	// draft-07 declares `prefixItems`, which 2020-12 replaced `items[]` with
-	output: './schema.generated.ts',
+  input: './schema.json',
+  // draft-07 declares `prefixItems`, which 2020-12 replaced `items[]` with
+  output: './schema.generated.ts',
 });
 // warning: "prefixItems" is not part of draft-07. (schema.json/prefixItems)
 ```
@@ -58,9 +58,9 @@ await compile({
 
 ```ts
 await compile({
-	input: './schema.json',
-	output: './schema.generated.ts',
-	keywordPolicy: 'warn', // default
+  input: './schema.json',
+  output: './schema.generated.ts',
+  keywordPolicy: 'warn', // default
 });
 ```
 
@@ -74,8 +74,8 @@ await compile({
 
 The policy only decides how foreign keywords are reported. The parser keeps
 them in the schema, and the generators skip them (see [Generation](#generation)).
-Valid keywords that no generator supports yet (`$dynamicRef`, `$recursiveRef`,
-`minContains`, `maxContains`) always fail, whatever the policy.
+Valid keywords that no generator supports yet (`$dynamicRef`, `$recursiveRef`)
+always fail, whatever the policy.
 
 The other options:
 

@@ -69,6 +69,16 @@ export const examples: Example[] = [
 		[valid(42), invalid(41)]
 	),
 	single(
+		'const-object',
+		'Const object',
+		'Basics',
+		{
+			title: 'Point',
+			const: { x: 1, y: 2 },
+		},
+		[valid({ x: 1, y: 2 }), invalid({ x: 1, y: 3 })]
+	),
+	single(
 		'object',
 		'Object',
 		'Basics',
@@ -179,6 +189,63 @@ export const examples: Example[] = [
 			additionalProperties: { type: 'number' },
 		},
 		[valid({ ada: 10, grace: 9.5 }), invalid({ ada: 'high' })]
+	),
+	single(
+		'all-of-scalar',
+		'Scalar allOf',
+		'Advanced',
+		{
+			title: 'Score',
+			allOf: [{ minimum: 20 }, { maximum: 30 }],
+		},
+		[valid(25), invalid(35)]
+	),
+	single(
+		'all-of-ref-filter',
+		'All of with $ref and if',
+		'Advanced',
+		{
+			title: 'Port',
+			allOf: [{ $ref: '#/definitions/port' }],
+			if: { maximum: 65535 },
+			then: { minimum: 1 },
+			definitions: {
+				port: { type: 'integer' },
+			},
+		},
+		[valid(8080), invalid(0)]
+	),
+	single(
+		'all-of-additional-properties',
+		'All of and additionalProperties',
+		'Advanced',
+		{
+			title: 'Flags',
+			allOf: [{ properties: { label: {} } }],
+			additionalProperties: { type: 'boolean' },
+		},
+		[valid({ label: true, enabled: false }), invalid({ label: 'release', enabled: true })]
+	),
+	single(
+		'any-of-base',
+		'anyOf with base schema',
+		'Advanced',
+		{
+			title: 'Code',
+			type: 'string',
+			anyOf: [{ maxLength: 2 }, { minLength: 4 }],
+		},
+		[valid('ab'), invalid('abc')]
+	),
+	single(
+		'untyped-contains',
+		'Contains without a type',
+		'Advanced',
+		{
+			title: 'Tags',
+			contains: { const: 'featured' },
+		},
+		[valid(['json', 'featured']), invalid(['json'])]
 	),
 	single(
 		'all-of',
@@ -331,6 +398,32 @@ export const examples: Example[] = [
 		[valid({ tags: ['featured', 'json'], note: 'catalog' }), invalid({ tags: ['json'] })]
 	),
 	single(
+		'min-contains',
+		'minContains and maxContains',
+		'Advanced',
+		{
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			title: 'Tags',
+			type: 'array',
+			items: { type: 'string' },
+			contains: { const: 'featured' },
+			minContains: 2,
+			maxContains: 3,
+		},
+		[valid(['featured', 'featured']), invalid(['featured'])]
+	),
+	single(
+		'unicode-pattern',
+		'Unicode pattern',
+		'Advanced',
+		{
+			title: 'Word',
+			type: 'string',
+			pattern: '^\\p{Letter}+$',
+		},
+		[valid('Héllo'), invalid('abc123')]
+	),
+	single(
 		'not',
 		'Not',
 		'Advanced',
@@ -340,6 +433,19 @@ export const examples: Example[] = [
 			not: { enum: ['admin', 'api'] },
 		},
 		[valid('hello-world'), invalid('admin')]
+	),
+	single(
+		'root-ref',
+		'Root $ref',
+		'References',
+		{
+			title: 'Alias',
+			definitions: {
+				name: { title: 'Name', type: 'string' },
+			},
+			$ref: '#/definitions/name',
+		},
+		[valid('Ada'), invalid(42)]
 	),
 	single(
 		'local-ref',
@@ -493,6 +599,31 @@ export const examples: Example[] = [
 		[
 			valid({ name: 'Editor', S_theme: 'dark', I_size: 12 }),
 			invalid({ name: 'Editor', S_theme: 12 }),
+		]
+	),
+	single(
+		'format-modes',
+		'Format modes',
+		'Advanced',
+		{
+			title: 'Contact',
+			type: 'object',
+			properties: {
+				email: { type: 'string', format: 'email' },
+				website: { type: 'string', format: 'uri' },
+				id: { type: 'string', format: 'uuid' },
+				createdAt: { type: 'string', format: 'date-time' },
+			},
+			required: ['email'],
+		},
+		[
+			valid({
+				email: 'ada@example.com',
+				website: 'https://example.com',
+				id: '3f2504e0-4f89-11d3-9a0c-0305e82c3301',
+				createdAt: '2024-01-01T00:00:00Z',
+			}),
+			invalid({ email: 'not-an-email' }),
 		]
 	),
 	single(

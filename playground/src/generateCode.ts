@@ -4,6 +4,7 @@ import { generate as generateTypeScript } from '@utilize/typescript';
 import { generate as generateZod } from '@utilize/zod';
 
 import type { ExampleGeneratorOptions } from './exampleOptions';
+import type { FormatMode } from './formatMode';
 import type { RuntimeTargetId, TargetId } from './targets';
 
 /** Generated code of one runtime target, or why the generator could not produce it. */
@@ -25,26 +26,30 @@ export interface GeneratedCode {
 
 const runtimeGenerators: Record<
 	RuntimeTargetId,
-	(root: ParsedJSONSchema, options?: ExampleGeneratorOptions) => string
+	(root: ParsedJSONSchema, options?: ExampleGeneratorOptions, formatMode?: FormatMode) => string
 > = {
-	zod: (root, options) => generateZod(root, { importZod: true, ...options?.zod }),
-	effect: (root, options) => generateEffect(root, { importEffect: true, ...options?.effect }),
+	zod: (root, options, formatMode) =>
+		generateZod(root, { importZod: true, formatMode, ...options?.zod }),
+	effect: (root, options, formatMode) =>
+		generateEffect(root, { importEffect: true, formatMode, ...options?.effect }),
 };
 
 /** Generates the code and runtime validator of the selected target only. */
 export function generateCodeFor(
 	target: TargetId,
 	root: ParsedJSONSchema,
-	options?: ExampleGeneratorOptions
+	options?: ExampleGeneratorOptions,
+	formatMode?: FormatMode
 ): GeneratedCode {
 	switch (target) {
 		case 'zod':
 		case 'effect': {
-			const runtime = generateRuntimeSource(root, target, options);
+			const runtime = generateRuntimeSource(root, target, options, formatMode);
 
 			return { code: generatedCode(runtime), runtime };
 		}
 		case 'typescript':
+			// A type cannot check a format, so the option does not apply here.
 			return { code: generateTypeScript(root, { ...options?.typescript }), runtime: null };
 		default: {
 			const unknownTarget: never = target;
@@ -57,10 +62,11 @@ export function generateCodeFor(
 function generateRuntimeSource(
 	root: ParsedJSONSchema,
 	target: RuntimeTargetId,
-	options?: ExampleGeneratorOptions
+	options?: ExampleGeneratorOptions,
+	formatMode?: FormatMode
 ): RuntimeSource {
 	try {
-		const code = runtimeGenerators[target](root, options);
+		const code = runtimeGenerators[target](root, options, formatMode);
 
 		return { status: 'generated', code, rootName: rootDeclarationName(root) };
 	} catch (error) {

@@ -64,6 +64,124 @@ jobs:
       - name: Test
         run: pnpm run ci:test
 
+      - name: Check coverage badges
+        run: pnpm run check:coverage-badge
+
+      - name: Check Fallow health badge
+        run: pnpm run check:fallow-badge
+
+  fallow-full:
+    name: Fallow full repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-shell-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-shell-
+
+      - name: Install Playwright browsers
+        run: pnpm --filter playground exec playwright install --only-shell chromium
+
+      - name: Build packages
+        run: pnpm build:dev
+
+      - name: Full Fallow run with measured coverage
+        run: |
+          pnpm fallow:coverage --format github-summary >> "$GITHUB_STEP_SUMMARY"
+
+      # The combined run above applies coverage to complexity; the TypeScript
+      # checker is only consulted by the dead-code analysis, so it runs
+      # separately. `best-effort` keeps an incomplete program advisory.
+      # The type-aware mode rejects presentation-only formats, so this step
+      # reports to the job log instead of the step summary.
+      - name: Confirm dead code with the TypeScript checker
+        run: |
+          pnpm exec fallow dead-code \
+            --type-aware --type-aware-require best-effort \
+            --type-aware-project packages/json-schema/tsconfig.json \
+            --type-aware-project packages/zod/tsconfig.json \
+            --type-aware-project packages/effect/tsconfig.json \
+            --type-aware-project packages/typescript/tsconfig.json \
+            --type-aware-project packages/test-utils/tsconfig.json \
+            --type-aware-project playground/tsconfig.json
+
+  fallow:
+    name: Fallow audit
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+      # The sticky PR comment needs `pull-requests: write`, the Fallow Check Run
+      # needs `checks: write`. Both are scoped to this PR-only job.
+      pull-requests: write
+      checks: write
+
+    steps:
+      - name: Checkout code repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Audit introduced findings
+        uses: fallow-rs/fallow@b802ddc49a09ad9df4e9894cdd465f5b51b1b0c8 # v3.45.0
+        with:
+          command: audit
+          gate: new-only
+          fail-on-issues: true
+          fail-on-empty-analysis: true
+          comment: true
+          sarif: true
+          annotations: true
+
+  security-fallow:
+    name: Fallow security gate
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # Existing low candidates are reviewed in the test-only evaluator. The
+      # gate only fails when a change makes a candidate newly runtime-reachable.
+      - name: Gate newly reachable security candidates
+        uses: fallow-rs/fallow@b802ddc49a09ad9df4e9894cdd465f5b51b1b0c8 # v3.45.0
+        with:
+          command: security
+          security-gate: newly-reachable
+          fail-on-issues: true
+          fail-on-empty-analysis: true
+          sarif: true
+          annotations: true
+
   # Dependency audits run weekly in audit.yml. Keeping them out of the pull
   # request workflow means an advisory without a published fix cannot block
   # every pull request.
@@ -97,7 +215,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Review dependency changes
-        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        uses: actions/dependency-review-action@bbc44d14a204704ccc493733616cd1e93a0321ec # v5.0.1
         with:
           fail-on-severity: high
           comment-summary-in-pr: never

@@ -1,102 +1,39 @@
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { createRequire, stripTypeScriptTypes } from 'node:module';
+import { writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+import { renderKnownFailureInstances } from '@utilize/test-utils/suite/baseline';
+import { isCompatible } from '@utilize/test-utils/suite/compatibility';
+import { evaluateGeneratedCode, nameRootSchema } from '@utilize/test-utils/suite/evaluate';
+import { loadSuiteFiles, suiteCaseKey } from '@utilize/test-utils/suite/loadSuite';
 import { Schema } from 'effect';
 
+import { reasonFor } from './suiteReasons.mjs';
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const require = createRequire(join(root, 'package.json'));
 
-const suiteRoot = join(
-	dirname(require.resolve('json-schema-test-suite/package.json')),
-	'validation',
-	'tests'
-);
-
-const { parse, Meta } = await import(
-	pathToFileURL(join(root, '../json-schema/dist/index.mjs')).href
-);
+const { parse } = await import(pathToFileURL(join(root, '../json-schema/dist/index.mjs')).href);
 const { generate } = await import(pathToFileURL(join(root, 'dist/index.mjs')).href);
 
-async function compileToSchema(schema) {
+function formatModeFor(testCase) {
+	if (testCase.tags?.includes('format-assertion')) return 'assert';
+	if (testCase.tags?.includes('format-annotation')) return 'annotate';
+	return undefined;
+}
+
+async function compileToSchema(schema, externalSchemas, formatMode) {
 	const { root: parsedRoot } = await parse(schema, {
 		cwd: `${join(root, 'test/suite')}/`,
 		fileName: 'Root.json',
+		externalSchemas,
 	});
 	const code = generate(parsedRoot, {
 		importEffect: false,
-		customNameResolver: (candidate) => (candidate[Meta]?.parent === null ? 'Root' : undefined),
+		formatMode,
+		customNameResolver: nameRootSchema,
 	});
 
-	if (!code.includes('export ')) {
-		return new Function('Schema', `return ${code}`)(Schema);
-	}
-
-	const javascript = stripTypeScriptTypes(code, { mode: 'strip' }).replace(
-		/^export const /gm,
-		'const '
-	);
-
-	return new Function('Schema', `${javascript}\nreturn Root;`)(Schema);
-}
-
-const VERSION = 7;
-
-function isCompatible(compatibility, version = VERSION) {
-	if (!compatibility) {
-		return true;
-	}
-
-	let isValid = true;
-
-	for (const constraint of compatibility.split(',')) {
-		const match = /^(<=|=)?(\d+)$/.exec(constraint.trim());
-
-		if (!match) {
-			throw new Error(`Unsupported compatibility constraint: "${compatibility}"`);
-		}
-
-		const [, operator = '', digits] = match;
-		const dialect = Number(digits);
-
-		if (operator === '') {
-			isValid = version >= dialect;
-		} else if (operator === '<=') {
-			isValid = version <= dialect;
-		} else {
-			isValid = version === dialect;
-		}
-
-		if (version <= dialect) {
-			break;
-		}
-	}
-
-	return isValid;
-}
-
-function reasonFor(file) {
-	if (file.startsWith('patternProperties')) {
-		return 'patternProperties is not generated';
-	}
-	if (file.startsWith('format-')) {
-		return 'format is kept as an annotation';
-	}
-	if (/^(ref|anchor|id|recursive|dynamic|vocabulary)/.test(file)) {
-		return 'reference resolution gap';
-	}
-	if (file.startsWith('unevaluated')) {
-		return 'unevaluated keywords are mapped best effort';
-	}
-	if (file.startsWith('allOf')) {
-		return 'allOf is limited to disjoint object subschemas';
-	}
-	if (file.startsWith('oneOf')) {
-		return 'oneOf semantics differ from the Zod generator';
-	}
-
-	return 'keyword is not covered by the Effect Schema generator yet';
+	return evaluateGeneratedCode(code, { Schema });
 }
 
 function isValid(schema, value) {
@@ -108,34 +45,30 @@ function isValid(schema, value) {
 	}
 }
 
-const files = readdirSync(suiteRoot)
-	.filter((file) => file.endsWith('.json'))
-	.sort();
-
 const reasons = {};
 const instances = {};
 let cases = 0;
 let assertions = 0;
 let failingAssertions = 0;
 
-for (const file of files) {
-	const json = JSON.parse(readFileSync(join(suiteRoot, file), 'utf8'));
-
-	for (const testCase of json.tests) {
+for (const file of loadSuiteFiles()) {
+	for (const testCase of file.cases) {
 		if (!isCompatible(testCase.compatibility)) continue;
-		if (testCase.externalSchemas) continue;
-		if (testCase.tags?.includes('format-assertion')) continue;
 
 		cases++;
 		assertions += testCase.tests.length;
 
-		const key = `${file} :: ${testCase.description}`;
+		const key = suiteCaseKey(file, testCase);
 		let schema;
 
 		try {
-			schema = await compileToSchema(testCase.schema);
+			schema = await compileToSchema(
+				testCase.schema,
+				testCase.externalSchemas,
+				formatModeFor(testCase)
+			);
 		} catch {
-			reasons[key] = reasonFor(file);
+			reasons[key] = reasonFor(file.name);
 			instances[key] = 'compile';
 			failingAssertions += testCase.tests.length;
 			continue;
@@ -146,7 +79,7 @@ for (const file of files) {
 			.map((suiteTest) => suiteTest.description);
 
 		if (failures.length > 0) {
-			reasons[key] = reasonFor(file);
+			reasons[key] = reasonFor(file.name);
 			instances[key] = failures;
 			failingAssertions += failures.length;
 		}
@@ -157,17 +90,7 @@ const reasonEntries = Object.entries(reasons)
 	.map(([key, reason]) => `\t${JSON.stringify(key)}: ${JSON.stringify(reason)},`)
 	.join('\n');
 
-const instanceEntries = Object.entries(instances)
-	.map(([key, value]) => {
-		if (value === 'compile') {
-			return `\t${JSON.stringify(key)}: 'compile',`;
-		}
-
-		const items = value.map((description) => `\t\t${JSON.stringify(description)},`).join('\n');
-
-		return `\t${JSON.stringify(key)}: [\n${items}\n\t],`;
-	})
-	.join('\n');
+const instanceEntries = renderKnownFailureInstances(instances);
 
 writeFileSync(
 	join(root, 'test/suite/knownFailures.ts'),

@@ -1,16 +1,35 @@
 import { Button } from '@ui-sdk/react/button';
 import type { ReactNode } from 'react';
-import {
-	SegmentedControl,
-	SegmentedControlIndicator,
-	SegmentedControlItem,
-} from '@ui-sdk/react/segmented-control';
 
-import { isColorMode, type ColorMode } from '../theme';
+import type { ColorMode } from '../theme';
+import { AutoIcon, GitHubIcon, MoonIcon, SunIcon } from './icons';
 
 import styles from './Header.module.css';
 
-interface HeaderProps {
+const NEXT_COLOR_MODE: Record<ColorMode, ColorMode> = {
+	auto: 'light',
+	light: 'dark',
+	dark: 'auto',
+};
+
+const COLOR_MODE_LABELS: Record<ColorMode, string> = {
+	auto: 'Auto',
+	light: 'Light',
+	dark: 'Dark',
+};
+
+function ColorModeIcon({ mode }: { mode: ColorMode }) {
+	switch (mode) {
+		case 'light':
+			return <SunIcon />;
+		case 'dark':
+			return <MoonIcon />;
+		default:
+			return <AutoIcon />;
+	}
+}
+
+export interface HeaderProps {
 	colorMode: ColorMode;
 	onColorModeChange: (mode: ColorMode) => void;
 	onShare: () => void;
@@ -31,26 +50,25 @@ export function Header({ colorMode, onColorModeChange, onShare, shared, children
 				</div>
 			</div>
 
+			{children ? <div className={styles.settings}>{children}</div> : null}
+
 			<div className={styles.actions}>
-				{children}
-				<SegmentedControl
+				<Button
+					className={styles.iconButton}
 					aria-label="Color mode"
-					value={colorMode}
-					onValueChange={(value) => {
-						if (isColorMode(value)) {
-							onColorModeChange(value);
-						}
-					}}
+					title={`Color mode: ${COLOR_MODE_LABELS[colorMode]}`}
+					data-mode={colorMode}
+					onClick={() => onColorModeChange(NEXT_COLOR_MODE[colorMode])}
 				>
-					<SegmentedControlIndicator />
-					<SegmentedControlItem value="auto">Auto</SegmentedControlItem>
-					<SegmentedControlItem value="light">Light</SegmentedControlItem>
-					<SegmentedControlItem value="dark">Dark</SegmentedControlItem>
-				</SegmentedControl>
+					<ColorModeIcon mode={colorMode} />
+				</Button>
 
 				<Button onClick={onShare}>{shared ? 'Link copied' : 'Share'}</Button>
 
 				<Button
+					className={styles.iconButton}
+					aria-label="GitHub"
+					title="GitHub"
 					render={
 						<a
 							href="https://github.com/MatejBransky/utilize-schema"
@@ -59,7 +77,7 @@ export function Header({ colorMode, onColorModeChange, onShare, shared, children
 						/>
 					}
 				>
-					GitHub
+					<GitHubIcon />
 				</Button>
 			</div>
 		</header>

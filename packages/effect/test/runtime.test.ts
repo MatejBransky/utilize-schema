@@ -1,3 +1,5 @@
+import type { JSONSchema } from '@utilize/json-schema';
+
 import { describe, expect, test } from 'vitest';
 
 import { compileModule, compileToSchema, decode } from './test-utils';
@@ -36,6 +38,36 @@ describe('objects', () => {
 
 		expect(decode(Root, { a: 'x', b: 1, c: 2 })).toEqual({ a: 'x', b: 1, c: 2 });
 		expect(decode(Root, { a: 'x', b: 1.5 })).toBeUndefined();
+	});
+
+	test('validates properties whose names exist on Object.prototype', async () => {
+		const Root = await compileToSchema({
+			properties: {
+				['__proto__']: { type: 'number' },
+				toString: { properties: { length: { type: 'string' } } },
+				constructor: { type: 'number' },
+			},
+		} as JSONSchema);
+
+		expect(decode(Root, {})).toEqual({});
+		expect(decode(Root, { ['__proto__']: 12 })).toEqual({ ['__proto__']: 12 });
+		expect(decode(Root, { ['__proto__']: 'text' })).toBeUndefined();
+		expect(decode(Root, { toString: { length: 37 } })).toBeUndefined();
+	});
+
+	test('keeps a __proto__ property when merging allOf subschemas', async () => {
+		const Root = await compileToSchema({
+			type: 'object',
+			allOf: [
+				{ type: 'object', properties: { ['__proto__']: { type: 'number' } } },
+				{ type: 'object', properties: { b: { type: 'string' } } },
+			],
+		} as JSONSchema);
+
+		expect(decode(Root, { b: 'x' })).toEqual({ b: 'x' });
+		expect(decode(Root, { b: 1 })).toBeUndefined();
+		expect(decode(Root, { ['__proto__']: 12 })).toEqual({ ['__proto__']: 12 });
+		expect(decode(Root, { ['__proto__']: 'text' })).toBeUndefined();
 	});
 
 	test('validates patternProperties and lets unmatched keys use additionalProperties', async () => {
@@ -91,6 +123,15 @@ describe('objects', () => {
 		expect(decode(Root, {})).toEqual({});
 		expect(decode(Root, { a: 1 })).toBeUndefined();
 	});
+
+	test('applies dependencies to a schema without a type', async () => {
+		const Root = await compileToSchema({ dependencies: { bar: ['foo'] } });
+
+		expect(decode(Root, { foo: 1 })).toEqual({ foo: 1 });
+		expect(decode(Root, { bar: 2 })).toBeUndefined();
+		// `dependencies` only constrains objects.
+		expect(decode(Root, ['bar'])).toEqual(['bar']);
+	});
 });
 
 describe('arrays', () => {
@@ -134,6 +175,17 @@ describe('arrays', () => {
 		expect(decode(Root, [1])).toBeUndefined();
 		expect(decode(Root, [1, 1])).toBeUndefined();
 		expect(decode(Root, [1, 2, 3, 4])).toBeUndefined();
+	});
+
+	test('applies contains to a schema without a type', async () => {
+		const Root = await compileToSchema({ contains: { const: 5 } });
+
+		expect(decode(Root, [1, 5])).toEqual([1, 5]);
+		expect(decode(Root, [1, 2])).toBeUndefined();
+		expect(decode(Root, [])).toBeUndefined();
+		// `contains` only constrains arrays.
+		expect(decode(Root, {})).toEqual({});
+		expect(decode(Root, 5)).toBe(5);
 	});
 });
 
@@ -200,6 +252,44 @@ describe('composition', () => {
 		expect(decode(module.Enum!, 'b')).toBeUndefined();
 	});
 
+	test('compares structured const values deeply', async () => {
+		const object = await compileToSchema({ const: { foo: 'bar', baz: 'bax' } });
+		const array = await compileToSchema({ const: [{ foo: 'bar' }] });
+
+		expect(decode(object, { baz: 'bax', foo: 'bar' })).toEqual({ foo: 'bar', baz: 'bax' });
+		expect(decode(object, { foo: 'bar' })).toBeUndefined();
+		expect(decode(array, [{ foo: 'bar' }])).toEqual([{ foo: 'bar' }]);
+		expect(decode(array, [2])).toBeUndefined();
+	});
+
+	test('matches structured const values with integer-like keys', async () => {
+		const Root = await compileToSchema({ const: { 2: 'a', 10: 'b', z: 'c' } });
+
+		expect(decode(Root, { 2: 'a', 10: 'b', z: 'c' })).toEqual({ 2: 'a', 10: 'b', z: 'c' });
+		expect(decode(Root, { 10: 'b', 2: 'a', z: 'c' })).toEqual({ 2: 'a', 10: 'b', z: 'c' });
+		expect(decode(Root, { 2: 'a', 10: 'c', z: 'c' })).toBeUndefined();
+	});
+
+	test('sorts structured const keys by code point, not by locale', async () => {
+		const Root = await compileToSchema({ const: { z: 1, ä: 2, A: 3 } });
+
+		expect(decode(Root, { z: 1, ä: 2, A: 3 })).toEqual({ z: 1, ä: 2, A: 3 });
+		expect(decode(Root, { A: 3, ä: 2, z: 1 })).toEqual({ A: 3, ä: 2, z: 1 });
+		expect(decode(Root, { A: 3, ä: 4, z: 1 })).toBeUndefined();
+	});
+
+	test('keeps JSON types distinct in const and enum', async () => {
+		const falseArray = await compileToSchema({ const: [false] });
+		const mixed = await compileToSchema({ enum: [6, 'foo', [], true, { foo: 12 }] });
+
+		expect(decode(falseArray, [false])).toEqual([false]);
+		expect(decode(falseArray, [0])).toBeUndefined();
+		expect(decode(mixed, { foo: 12 })).toEqual({ foo: 12 });
+		expect(decode(mixed, { foo: false })).toBeUndefined();
+		expect(decode(mixed, [])).toEqual([]);
+		expect(decode(mixed, null)).toBeUndefined();
+	});
+
 	test('merges disjoint object subschemas from allOf', async () => {
 		const Root = await compileToSchema({
 			allOf: [
@@ -240,6 +330,47 @@ describe('composition', () => {
 		expect(decode(Root, 'a')).toBeUndefined();
 		expect(decode(Root, 1)).toBe(1);
 		expect(decode(Root, null)).toBeNull();
+	});
+
+	test('applies the keywords next to anyOf', async () => {
+		const Root = await compileToSchema({
+			type: 'string',
+			anyOf: [{ maxLength: 2 }, { minLength: 4 }],
+		});
+
+		expect(decode(Root, 'foobar')).toBe('foobar');
+		expect(decode(Root, 'foo')).toBeUndefined();
+		expect(decode(Root, 3)).toBeUndefined();
+	});
+
+	test('applies format next to anyOf', async () => {
+		const Root = await compileToSchema({
+			type: 'string',
+			format: 'email',
+			anyOf: [{ maxLength: 100 }, { minLength: 200 }],
+		});
+
+		expect(decode(Root, 'a@b.co')).toBe('a@b.co');
+		expect(decode(Root, 'not-an-email')).toBeUndefined();
+	});
+
+	test('applies oneOf next to anyOf', async () => {
+		const Root = await compileToSchema({
+			anyOf: [{ type: 'number' }],
+			oneOf: [{ minimum: 5 }, { maximum: 3 }],
+		});
+
+		expect(decode(Root, 2)).toBe(2);
+		expect(decode(Root, 6)).toBe(6);
+		expect(decode(Root, 4)).toBeUndefined();
+	});
+
+	test('counts identical oneOf branches separately', async () => {
+		const duplicate = await compileToSchema({ oneOf: [true, true, false] });
+		const single = await compileToSchema({ oneOf: [true, false] });
+
+		expect(decode(duplicate, 'value')).toBeUndefined();
+		expect(decode(single, 'value')).toBe('value');
 	});
 });
 
@@ -312,6 +443,34 @@ describe('filters without a schema constructor', () => {
 		expect(decode(Root, ['featured', 'x'])).toEqual(['featured', 'x']);
 		expect(decode(Root, ['x'])).toBeUndefined();
 		expect(decode(Root, [])).toBeUndefined();
+	});
+
+	test('applies minContains and maxContains', async () => {
+		const Root = await compileToSchema({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'array',
+			items: { type: 'string' },
+			contains: { const: 'x' },
+			minContains: 2,
+			maxContains: 3,
+		});
+
+		expect(decode(Root, ['x', 'x'])).toEqual(['x', 'x']);
+		expect(decode(Root, ['a', 'x', 'x'])).toEqual(['a', 'x', 'x']);
+		expect(decode(Root, ['x'])).toBeUndefined();
+		expect(decode(Root, ['x', 'x', 'x', 'x'])).toBeUndefined();
+	});
+
+	test('treats minContains 0 as allowing no match', async () => {
+		const Root = await compileToSchema({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'array',
+			contains: { const: 'x' },
+			minContains: 0,
+		});
+
+		expect(decode(Root, [])).toEqual([]);
+		expect(decode(Root, ['a'])).toEqual(['a']);
 	});
 
 	test('applies array and schema dependencies', async () => {

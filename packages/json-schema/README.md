@@ -1,5 +1,9 @@
 # @utilize/json-schema
 
+[![npm version](https://img.shields.io/npm/v/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
+[![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
+[![Unit test coverage](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/coverage-json-schema.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/CONTRIBUTING.md#coverage-badge)
+
 Generator-agnostic JSON Schema parser and linker. Resolves local and external
 `$ref`s and prepares the schema graph for code generators by annotating each
 node with metadata.
@@ -8,6 +12,8 @@ node with metadata.
 
 - Resolves local, external, `$id` and `$anchor` based `$ref` references, including
   `$ref` to boolean schemas
+- Serves external documents from memory by retrieval URI (`externalSchemas`)
+  instead of reading them from disk or the network
 - Links recursive graphs without expanding them infinitely
 - Annotates every schema node with metadata for downstream generators
 - No code generation – just robust schema preparation
@@ -46,17 +52,49 @@ the generator. Generators derive those cycles from the `reference` links, each i
 `parse` also returns `get($ref)` for looking up a resolved schema and
 `referencedSchemas` for the external files that were loaded.
 
+When the document root is a `$ref`, `root` stays the document node and
+`root[Meta].reference` points at the target, and `referencedSchemas` does not
+include the root document. `get('#')` is unchanged: for a local pointer root
+(`{ "$ref": "#/definitions/name" }`) it returns the referenced schema, while a
+`$ref` to another file resolves to that document.
+
 ## Usage
 
 ```ts
 import { parse, Meta } from '@utilize/json-schema';
 
 const { root } = await parse(schema, {
-	cwd: process.cwd(),
-	fileName: 'schema.json',
+  cwd: process.cwd(),
+  fileName: 'schema.json',
 });
 console.log(root[Meta]);
 ```
+
+## External schemas by URI
+
+External documents are normally read from disk or fetched over HTTP. Pass
+`externalSchemas` to serve them from memory instead, keyed by retrieval URI:
+
+```ts
+import { parse } from '@utilize/json-schema';
+
+const { root } = await parse(schema, {
+  cwd: process.cwd(),
+  fileName: 'schema.json',
+  externalSchemas: {
+    'https://example.com/address.json': {
+      type: 'object',
+      properties: { city: { type: 'string' } },
+      required: ['city'],
+    },
+  },
+});
+```
+
+A URI in the map is never read from disk or the network. Identifiers declared
+inside a provided document (`$id`, or the draft-04 `id`) are served too, so a
+`$ref` can point at a nested identifier before the containing document is
+loaded.
 
 ## Dialects
 
@@ -71,13 +109,13 @@ report them. The library never writes to the console: issues go to
 import { formatIssue, parse } from '@utilize/json-schema';
 
 await parse(schema, {
-	cwd: process.cwd(),
-	fileName: 'schema.json',
-	// dialect: '2020-12',              // force one dialect
-	fallbackDialect: 'draft-07', // used when `$schema` is missing
-	unknownDialect: 'fallback', // or 'error'
-	keywordPolicy: 'warn', // or 'error' / 'ignore'
-	onDialectIssue: (issue) => console.warn(formatIssue(issue)),
+  cwd: process.cwd(),
+  fileName: 'schema.json',
+  // dialect: '2020-12',              // force one dialect
+  fallbackDialect: 'draft-07', // used when `$schema` is missing
+  unknownDialect: 'fallback', // or 'error'
+  keywordPolicy: 'warn', // or 'error' / 'ignore'
+  onDialectIssue: (issue) => console.warn(formatIssue(issue)),
 });
 // parse() also returns the reported issues as `issues`.
 ```

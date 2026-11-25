@@ -11,4 +11,5 @@ export {
 } from './compile';
 export { generate, type CustomSchemaResolver, type GenerateOptions } from './generator';
 export { UnresolvedReferenceError, UnsupportedCircularTypeError } from './errors';
-export { resolveName, toSafeString, type CustomNameResolver } from './resolveName';
+export { resolveName } from './resolveName';
+export { toSafeString, type CustomNameResolver } from '@utilize/json-schema';

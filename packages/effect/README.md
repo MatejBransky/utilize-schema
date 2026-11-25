@@ -1,5 +1,9 @@
 # @utilize/effect
 
+[![npm version](https://img.shields.io/npm/v/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)
+[![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)
+[![Unit test coverage](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/coverage-effect.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/CONTRIBUTING.md#coverage-badge)
+
 TypeScript/Effect Schema code generator for JSON Schema. Converts a JSON Schema
 (with references, `$defs` and `definitions`) into standalone Effect Schema
 codecs and TypeScript types.
@@ -21,8 +25,8 @@ codecs and TypeScript types.
 import { compile } from '@utilize/effect';
 
 await compile({
-	input: './schema.json',
-	output: './schema.generated.ts',
+  input: './schema.json',
+  output: './schema.generated.ts',
 });
 ```
 
@@ -34,6 +38,9 @@ Options:
 
 - `customNameResolver(schema, usedNames)` — override the name allocated for a
   standalone schema.
+- `externalSchemas` — documents served for absolute `$ref` URIs, keyed by
+  retrieval URI. A URI present here is read from memory instead of disk or the
+  network.
 - `customSchemaResolver(schema)` — return an Effect Schema expression for a
   schema node, or `undefined` to let the generator handle it. It is called for
   every object node (including `$ref` nodes and the per-type copies of a `type`
@@ -44,6 +51,12 @@ Options:
   `Schema.optionalKey` for a non-required property is still added. Inside a
   recursive schema the value type types the node as `unknown`, because the
   generator cannot know your expression's type.
+- `formatMode` — what `format` becomes in the generated code. `'assert'`
+  (default) adds a check for the formats the generator knows (email, uuid, url,
+  ipv4/ipv6, date, date-time, duration, …); `'annotate'` keeps `format` as
+  `.annotate({ format })`. Unknown formats stay annotations in both modes. Each
+  format becomes one module-level constant (`const formatEmail = …`) reused by
+  every property that uses it.
 - `format(code)` — optional synchronous or asynchronous formatter (for example
   Prettier) applied to the generated code before the banner is prepended.
 - `importEffect` — emit `import { Schema } from 'effect';`; on by default.
@@ -76,11 +89,11 @@ inferred `typeof X.Type` would reference itself and collapse to `any`:
 type TreeValue = { name: string; children?: ReadonlyArray<TreeValue> };
 
 export const Tree: Schema.Codec<TreeValue> = Schema.StructWithRest(
-	Schema.Struct({
-		name: Schema.String,
-		children: Schema.optionalKey(Schema.Array(Schema.suspend(() => Tree))),
-	}),
-	[Schema.Record(Schema.String, Schema.Json)]
+  Schema.Struct({
+    name: Schema.String,
+    children: Schema.optionalKey(Schema.Array(Schema.suspend(() => Tree))),
+  }),
+  [Schema.Record(Schema.String, Schema.Json)]
 );
 
 export type Tree = typeof Tree.Type;
@@ -92,11 +105,11 @@ schema emits `Schema.Json` or `Schema.Never` directly.
 
 ```ts
 export const Tree = Schema.StructWithRest(
-	Schema.Struct({
-		name: Schema.String,
-		children: Schema.optionalKey(Schema.Array(Schema.suspend(() => Tree))),
-	}),
-	[Schema.Record(Schema.String, Schema.Json)]
+  Schema.Struct({
+    name: Schema.String,
+    children: Schema.optionalKey(Schema.Array(Schema.suspend(() => Tree))),
+  }),
+  [Schema.Record(Schema.String, Schema.Json)]
 );
 
 export type Tree = typeof Tree.Type;
@@ -109,10 +122,10 @@ a suffix only has to describe the difference:
 
 ```ts
 await compile({
-	input: './schema.json',
-	output: './schema.generated.ts',
-	schemaName: (name) => `${name}Schema`,
-	typeName: (name) => `${name}Schema`,
+  input: './schema.json',
+  output: './schema.generated.ts',
+  schemaName: (name) => `${name}Schema`,
+  typeName: (name) => `${name}Schema`,
 });
 ```
 
@@ -146,9 +159,10 @@ pnpm test:suite    # official JSON Schema Test Suite (draft-07)
 
 The generator is checked against the official
 [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
-Today it passes **214 of 269 draft-07 cases (818 of 939 assertions)**. Cases
-tagged `format-assertion` are skipped because `format` is kept as an annotation;
-cases that need external schemas are not wired up yet.
+Today it passes **286 of 304 draft-07 cases (1,400 of 1,655 assertions)**. Format
+cases run in the mode they are tagged for, so both the annotation and the
+assertion cases are measured; cases that need external schemas are served from
+`externalSchemas`.
 
 Known gaps live in `test/suite/knownFailures.ts` and
 `test/suite/knownFailureInstances.ts`. Refresh the baseline after a fix or a
@@ -165,8 +179,8 @@ The script reads the built `dist/`, so build the package first.
 
 Supported keywords:
 
-- `type` (including unions of types), `const`, `enum` (primitives only for `const`/`enum`)
-- `string`: `minLength`, `maxLength`, `pattern`, `format` (annotation)
+- `type` (including unions of types), `const`, `enum` (object and array values are compared as canonical JSON, ignoring key order)
+- `string`: `minLength`, `maxLength`, `pattern`, `format` (checked by default, annotation with `formatMode: 'annotate'`)
 - `number`/`integer`: `minimum`, `maximum`, `exclusiveMinimum`,
   `exclusiveMaximum`, `multipleOf`
 - `array`: `items`, `prefixItems`, `additionalItems`, `minItems`, `maxItems`,
@@ -174,7 +188,7 @@ Supported keywords:
 - `object`: `properties`, `patternProperties`, `required`,
   `additionalProperties`, `propertyNames`, `minProperties`, `maxProperties`
 - `allOf` between disjoint object subschemas, `anyOf`, `oneOf`
-- `not`, `if`/`then`/`else`, `contains`, `dependencies` (applied as filters)
+- `not`, `if`/`then`/`else`, `contains` with `minContains`/`maxContains`, `dependencies` (applied as filters)
 - `$ref`, `$defs`, `definitions`
 - `title`, `description`, `default`, `examples`, `$id`, `readOnly`,
   `writeOnly`, `deprecated` as annotations
@@ -189,8 +203,9 @@ before generation.
 `additionalProperties` and the items rest before generation, as a best effort
 for schemas that do not rely on properties evaluated by applicators.
 
-Unsupported keywords throw `UnsupportedEffectSchemaFeatureError`:
-`minContains`, `maxContains`.
+The generator throws `UnsupportedEffectSchemaFeatureError` only for a schema it
+cannot express: a `pattern` that is not valid in Unicode mode, and an `allOf`
+whose members can be neither merged nor checked as filters.
 
 `$ref` siblings follow the dialect: draft-07 and older ignore them, 2019-09 and
 newer merge disjoint object siblings into one struct. Other siblings (a

@@ -72,17 +72,6 @@ describe('review regressions', () => {
 		await expect(compile(schema)).resolves.toContain('export const Root');
 	});
 
-	test('rejects minContains and maxContains instead of ignoring them', async () => {
-		const schema = {
-			$schema: 'https://json-schema.org/draft/2020-12/schema',
-			type: 'array',
-			contains: { type: 'number' },
-			minContains: 2,
-		} as unknown as JSONSchema;
-
-		await expect(compile(schema)).rejects.toThrow(/"minContains" is not supported/);
-	});
-
 	test('combines dependentRequired and dependentSchemas for the same key', async () => {
 		const Root = await compileToZod({
 			$schema: 'https://json-schema.org/draft/2020-12/schema',
@@ -109,6 +98,53 @@ test('keyword-only schemas do not reject other types', async () => {
 	expect(Root.safeParse('xyz').success).toBe(true);
 	expect(Root.safeParse('abc').success).toBe(false);
 	expect(Root.safeParse(42).success).toBe(true);
+});
+
+test('keyword-only schemas check every type their keywords constrain', async () => {
+	const Root = await compileToZod({ minLength: 2, minimum: 5 });
+
+	expect(Root.safeParse('a').success).toBe(false);
+	expect(Root.safeParse('ab').success).toBe(true);
+	expect(Root.safeParse(1).success).toBe(false);
+	expect(Root.safeParse(5).success).toBe(true);
+	expect(Root.safeParse(null).success).toBe(true);
+	expect(Root.safeParse({}).success).toBe(true);
+});
+
+test('keyword-only schemas keep object and array keywords together', async () => {
+	const Root = await compileToZod({
+		properties: { a: { type: 'string' } },
+		minItems: 1,
+	});
+
+	expect(Root.safeParse({ a: 'x' }).success).toBe(true);
+	expect(Root.safeParse({ a: 1 }).success).toBe(false);
+	expect(Root.safeParse(['x']).success).toBe(true);
+	expect(Root.safeParse([]).success).toBe(false);
+	expect(Root.safeParse('anything').success).toBe(true);
+});
+
+test('keyword-only schemas report each issue once', async () => {
+	const minProperties = await compileToZod({ minProperties: 1 });
+	const missingProperty = minProperties.safeParse({});
+
+	expect(missingProperty.success).toBe(false);
+	expect(missingProperty.success ? [] : missingProperty.error.issues).toHaveLength(1);
+
+	const uniqueItems = await compileToZod({ uniqueItems: true });
+	const duplicateItems = uniqueItems.safeParse([1, 1]);
+
+	expect(duplicateItems.success).toBe(false);
+	expect(duplicateItems.success ? [] : duplicateItems.error.issues).toHaveLength(1);
+
+	const mixed = await compileToZod({ minProperties: 1, minLength: 2 });
+	const shortString = mixed.safeParse('');
+	const emptyObject = mixed.safeParse({});
+
+	expect(shortString.success).toBe(false);
+	expect(shortString.success ? [] : shortString.error.issues).toHaveLength(1);
+	expect(emptyObject.success).toBe(false);
+	expect(emptyObject.success ? [] : emptyObject.error.issues).toHaveLength(1);
 });
 
 test('not narrows a keyword-only subschema to the parent type', async () => {

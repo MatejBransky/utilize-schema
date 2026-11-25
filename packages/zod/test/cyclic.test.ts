@@ -131,10 +131,27 @@ describe('cyclic references', () => {
         [key: string]: string | RootValue | undefined;
       }
       export const Root: z.ZodType<RootValue> = z
-        .object({
-          name: z.string().optional(),
+        .any()
+        .superRefine((value, ctx) => {
+          if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+            const descriptor = Object.getOwnPropertyDescriptor(value, '__proto__');
+
+            if (descriptor !== undefined) {
+              const result = z.lazy(() => Root).safeParse(descriptor.value);
+
+              if (!result.success) {
+                for (const issue of result.error.issues) {
+                  ctx.addIssue({
+                    code: 'custom',
+                    message: issue.message,
+                    path: ['__proto__', ...issue.path],
+                  });
+                }
+              }
+            }
+          }
         })
-        .catchall(z.lazy(() => Root));
+        .pipe(z.object({ name: z.string().optional() }).catchall(z.lazy(() => Root)));
       export type Root = z.infer<typeof Root>;
     `);
 	});
@@ -149,12 +166,172 @@ describe('cyclic references', () => {
       interface RootValue {
         [key: string]: RootValue;
       }
-      export const Root: z.ZodType<RootValue> = z.record(
-        z.string(),
-        z.lazy(() => Root),
-      );
+      export const Root: z.ZodType<RootValue> = z
+        .any()
+        .superRefine((value, ctx) => {
+          if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+            const descriptor = Object.getOwnPropertyDescriptor(value, '__proto__');
+
+            if (descriptor !== undefined) {
+              const result = z.lazy(() => Root).safeParse(descriptor.value);
+
+              if (!result.success) {
+                for (const issue of result.error.issues) {
+                  ctx.addIssue({
+                    code: 'custom',
+                    message: issue.message,
+                    path: ['__proto__', ...issue.path],
+                  });
+                }
+              }
+            }
+          }
+        })
+        .pipe(
+          z.record(
+            z.string(),
+            z.lazy(() => Root)
+          )
+        );
       export type Root = z.infer<typeof Root>;
     `);
+	});
+
+	test('value type object members keep optional, default, quoted and undeclared required keys', async () => {
+		const result = await compile({
+			type: 'object',
+			properties: {
+				plain: { type: 'string' },
+				withDefault: { type: 'number', default: 0 },
+				'order-id': { type: 'boolean' },
+				next: { $ref: '#' },
+			},
+			required: ['order-id', 'extra'],
+			additionalProperties: { type: 'number' },
+		});
+		const valueType = result.match(/interface RootValue \{[\s\S]*?\n\}/)?.[0];
+
+		expect(valueType?.trim()).toBe(
+			(
+				await ts`
+      interface RootValue {
+        plain?: string;
+        withDefault: number;
+        "order-id": boolean;
+        next?: RootValue;
+        extra: number;
+        [key: string]: string | number | boolean | RootValue | undefined;
+      }
+    `
+			).trim()
+		);
+	});
+
+	test('value type object members use an unknown index for pattern properties', async () => {
+		const result = await compile({
+			type: 'object',
+			properties: { name: { type: 'string' } },
+			patternProperties: { '^x-': { $ref: '#' } },
+			additionalProperties: { type: 'integer' },
+		});
+		const valueType = result.match(/interface RootValue \{[\s\S]*?\n\}/)?.[0];
+
+		expect(valueType?.trim()).toBe(
+			(
+				await ts`
+      interface RootValue {
+        name?: string;
+        [key: string]: unknown;
+      }
+    `
+			).trim()
+		);
+	});
+
+	test('value type object members make undeclared required keys never when additional properties are forbidden', async () => {
+		const result = await compile({
+			type: 'object',
+			properties: { next: { $ref: '#' } },
+			required: ['extra'],
+			additionalProperties: false,
+		});
+		const valueType = result.match(/type RootValue = \{[\s\S]*?\};/)?.[0];
+
+		expect(valueType?.trim()).toBe(
+			(
+				await ts`
+      type RootValue = { next?: RootValue; extra: never };
+    `
+			).trim()
+		);
+	});
+
+	test('read-only recursive type lists keep object and array wrappers', async () => {
+		const result = await compile(
+			{
+				$schema: 'https://json-schema.org/draft/2020-12/schema',
+				readOnly: true,
+				type: ['object', 'array', 'null'],
+				properties: {
+					name: { type: 'string' },
+					next: { $ref: '#' },
+				},
+				items: { type: ['string', 'number'] },
+				additionalProperties: { type: 'boolean' },
+			},
+			{ readOnlyKeyword: true }
+		);
+		const valueType = result.match(/type RootValue =[\s\S]*?;\n(?=export const)/)?.[0];
+
+		expect(valueType?.trim()).toBe(
+			(
+				await ts`
+      type RootValue =
+        | Readonly<{
+            name?: string;
+            next?: RootValue;
+            [key: string]: string | RootValue | boolean | undefined;
+          }>
+        | ReadonlyArray<string | number>
+        | null;
+    `
+			).trim()
+		);
+	});
+
+	test('recursive value type unions and intersections preserve branch rendering', async () => {
+		const union = await compile(
+			{
+				readOnly: true,
+				anyOf: [{ type: 'object', properties: { next: { $ref: '#' } } }, { type: 'string' }],
+			},
+			{ readOnlyKeyword: true }
+		);
+		const intersection = await compile(
+			{
+				readOnly: true,
+				allOf: [
+					{ type: 'object', properties: { next: { $ref: '#' } } },
+					{ type: 'object', properties: { flag: { type: 'boolean' } } },
+				],
+			},
+			{ readOnlyKeyword: true }
+		);
+
+		expect(union.match(/type RootValue =\s*[\s\S]*?;/)?.[0]?.trim()).toBe(
+			(
+				await ts`
+      type RootValue = { next?: RootValue } | string;
+    `
+			).trim()
+		);
+		expect(intersection.match(/type RootValue =\s*[\s\S]*?;/)?.[0]?.trim()).toBe(
+			(
+				await ts`
+      type RootValue = { next?: RootValue } & { flag?: boolean };
+    `
+			).trim()
+		);
 	});
 });
 

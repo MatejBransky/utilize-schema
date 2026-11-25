@@ -1,5 +1,26 @@
 # @utilize/typescript
 
+## 0.4.1
+
+### Patch Changes
+
+- f012b77: Bump js-yaml from 5.4.2 to 5.5.0.
+
+## 0.4.0
+
+### Minor Changes
+
+- 19536a4: Add `externalSchemas` so absolute `$ref` URIs can be served from memory instead of disk or the network. The parser indexes identifiers declared inside a provided document (`$id`, or the draft-04 `id`), and the three `compile()` and `compileSchema()` APIs pass the option through.
+- d99505f: Keep the document root when the root is a `$ref`. `parse()` resolved the root pointer with `$refs.get('#')`, so `root` was the referenced value and `root[Meta]` described that value instead of the document. Generated code now emits the root as an alias to the referenced declaration instead of inlining or merging the target, and `referencedSchemas` no longer includes the root document.
+
+### Patch Changes
+
+- Updated dependencies [00cd219]
+- Updated dependencies [19536a4]
+- Updated dependencies [d99505f]
+- Updated dependencies [83be704]
+  - @utilize/json-schema@0.6.0
+
 ## 0.3.1
 
 ### Patch Changes

@@ -1,17 +1,28 @@
 import {
-	type Dialect,
-	dialectOf,
+	containsBounds,
 	isKeywordApplicable,
+	narrowUntypedSchema,
 	type ParsedJSONSchema,
 	type ParsedJSONSchemaObject,
 	withSourceMeta,
 } from '@utilize/json-schema';
 
 import type { GeneratorContext } from './generators/types';
-import { inferTypeKeyword } from './inferTypes';
+import { inferTypeKeywords } from './inferTypes';
 import { ts } from './utils';
 
-type Generate = (schema: ParsedJSONSchema, context: GeneratorContext) => string;
+export type Generate = (schema: ParsedJSONSchema, context: GeneratorContext) => string;
+
+/**
+ * Guards for the types `inferTypeKeywords` can infer. Keywords on an untyped
+ * schema must not reject values of other types.
+ */
+const typeGuards: Record<string, string> = {
+	object: `typeof value === 'object' && value !== null && !Array.isArray(value)`,
+	array: 'Array.isArray(value)',
+	string: `typeof value === 'string'`,
+	number: `typeof value === 'number'`,
+};
 
 /**
  * Appends Zod refinements for keywords that constrain an already generated
@@ -30,9 +41,33 @@ export function applyRefinements(
 ): string {
 	const checks: string[] = [];
 	const contextType = typeof schema.type === 'string' ? schema.type : undefined;
-	const implicitType = inferTypeKeyword(schema, context.dialect);
 
-	if (implicitType) {
+	appendImplicitTypeChecks(checks, schema, context, generate);
+	appendNotAndConditionalChecks(checks, schema, contextType, context, generate);
+	appendContainsCheck(checks, schema, context, generate);
+	appendSizeChecks(checks, schema);
+	appendPropertyNamesCheck(checks, schema, context, generate);
+	appendDependencyChecks(checks, schema, context, generate);
+
+	if (checks.length === 0) {
+		return expression;
+	}
+
+	return ts`z.any().superRefine((value, ctx) => {
+    ${checks.join('\n')}
+  }).pipe(${expression})`;
+}
+
+function appendImplicitTypeChecks(
+	checks: string[],
+	schema: ParsedJSONSchemaObject,
+	context: GeneratorContext,
+	generate: Generate
+): void {
+	// Keywords on a schema without `type` only apply to their own type, so each
+	// constrained type gets a separate guarded check. A schema can constrain
+	// more than one type, e.g. `{ minLength: 2, minimum: 5 }`.
+	for (const implicitType of inferTypeKeywords(schema, context.dialect)) {
 		const typedSchema = withSourceMeta(schema, {
 			...schema,
 			type: implicitType,
@@ -47,25 +82,31 @@ export function applyRefinements(
 			contains: undefined,
 			propertyNames: undefined,
 			dependencies: undefined,
+			// Applied by the node-level blocks below for typed and untyped
+			// schemas alike, so keeping them on the typed copy would duplicate
+			// every issue.
+			minProperties: undefined,
+			maxProperties: undefined,
+			uniqueItems: undefined,
 		} as ParsedJSONSchemaObject);
-		const typeCheck =
-			implicitType === 'object'
-				? `typeof value === 'object' && value !== null && !Array.isArray(value)`
-				: implicitType === 'array'
-					? 'Array.isArray(value)'
-					: implicitType === 'string'
-						? `typeof value === 'string'`
-						: `typeof value === 'number'`;
 
 		checks.push(ts`{
-      if (${typeCheck}) {
+      if (${typeGuards[implicitType]}) {
         ${checkBlock(generate(typedSchema, context))}
       }
     }`);
 	}
+}
 
+function appendNotAndConditionalChecks(
+	checks: string[],
+	schema: ParsedJSONSchemaObject,
+	contextType: Parameters<typeof narrowUntypedSchema>[1],
+	context: GeneratorContext,
+	generate: Generate
+): void {
 	if (schema.not !== undefined) {
-		const not = generate(withContextType(schema.not, contextType, context.dialect), context);
+		const not = generate(narrowUntypedSchema(schema.not, contextType, context.dialect), context);
 
 		checks.push(ts`{
       const notResult = ${not}.safeParse(value);
@@ -82,18 +123,22 @@ export function applyRefinements(
 
 	if (schema.if !== undefined && isKeywordApplicable(context.dialect, 'if')) {
 		const condition = generate(
-			withContextType(schema.if as unknown as ParsedJSONSchema, contextType, context.dialect),
+			narrowUntypedSchema(schema.if as unknown as ParsedJSONSchema, contextType, context.dialect),
 			context
 		);
 		const thenSchema = schema.then as unknown as ParsedJSONSchema | undefined;
 		const elseSchema = schema.else as unknown as ParsedJSONSchema | undefined;
 		const thenBlock =
 			thenSchema !== undefined
-				? checkBlock(generate(withContextType(thenSchema, contextType, context.dialect), context))
+				? checkBlock(
+						generate(narrowUntypedSchema(thenSchema, contextType, context.dialect), context)
+					)
 				: '';
 		const elseBlock =
 			elseSchema !== undefined
-				? checkBlock(generate(withContextType(elseSchema, contextType, context.dialect), context))
+				? checkBlock(
+						generate(narrowUntypedSchema(elseSchema, contextType, context.dialect), context)
+					)
 				: '';
 
 		checks.push(ts`{
@@ -104,11 +149,39 @@ export function applyRefinements(
       }
     }`);
 	}
+}
 
+function appendContainsCheck(
+	checks: string[],
+	schema: ParsedJSONSchemaObject,
+	context: GeneratorContext,
+	generate: Generate
+): void {
 	if (schema.contains !== undefined && isKeywordApplicable(context.dialect, 'contains')) {
 		const contains = generate(schema.contains, context);
+		const bounds = containsBounds(schema, context.dialect);
 
-		checks.push(ts`{
+		if (bounds?.counted === true) {
+			const outOfRange =
+				bounds.max === undefined
+					? `matches < ${bounds.min}`
+					: `matches < ${bounds.min} || matches > ${bounds.max}`;
+
+			checks.push(ts`{
+      if (Array.isArray(value)) {
+        const matches = value.filter((item) => ${contains}.safeParse(item).success).length;
+
+        if (${outOfRange}) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Array does not contain the required number of matching items.',
+            path: [],
+          });
+        }
+      }
+    }`);
+		} else if (bounds !== undefined) {
+			checks.push(ts`{
       if (Array.isArray(value) && !value.some((item) => ${contains}.safeParse(item).success)) {
         ctx.addIssue({
           code: 'custom',
@@ -117,8 +190,11 @@ export function applyRefinements(
         });
       }
     }`);
+		}
 	}
+}
 
+function appendSizeChecks(checks: string[], schema: ParsedJSONSchemaObject): void {
 	if (schema.uniqueItems === true) {
 		checks.push(ts`{
       if (Array.isArray(value)) {
@@ -178,10 +254,17 @@ export function applyRefinements(
       }
     }`);
 	}
+}
 
+function appendPropertyNamesCheck(
+	checks: string[],
+	schema: ParsedJSONSchemaObject,
+	context: GeneratorContext,
+	generate: Generate
+): void {
 	if (schema.propertyNames !== undefined && isKeywordApplicable(context.dialect, 'propertyNames')) {
 		const propertyNames = generate(
-			withContextType(schema.propertyNames, 'string', context.dialect),
+			narrowUntypedSchema(schema.propertyNames, 'string', context.dialect),
 			context
 		);
 
@@ -197,7 +280,14 @@ export function applyRefinements(
       }
     }`);
 	}
+}
 
+function appendDependencyChecks(
+	checks: string[],
+	schema: ParsedJSONSchemaObject,
+	context: GeneratorContext,
+	generate: Generate
+): void {
 	// `dependencies` is either native to the dialect or merged from
 	// `dependentRequired` / `dependentSchemas` by the normalizer. A foreign
 	// `dependencies` keyword was already dropped by the parser.
@@ -221,7 +311,7 @@ export function applyRefinements(
 			}
 
 			const dependencySchema = generate(
-				withContextType(dependency as ParsedJSONSchema, 'object', context.dialect),
+				narrowUntypedSchema(dependency as ParsedJSONSchema, 'object', context.dialect),
 				context
 			);
 
@@ -236,14 +326,6 @@ export function applyRefinements(
       }
     }`);
 	}
-
-	if (checks.length === 0) {
-		return expression;
-	}
-
-	return ts`z.any().superRefine((value, ctx) => {
-    ${checks.join('\n')}
-  }).pipe(${expression})`;
 }
 
 function checkBlock(expression: string, pathPrefix?: string): string {
@@ -268,74 +350,4 @@ function issueBlock(resultName: string, pathPrefix?: string): string {
         path: ${path},
       });
     }`;
-}
-
-/**
- * JSON Schema keywords apply only to instances of the matching type, so a
- * subschema without `type` is permissive. Refinements know the type of the
- * value they run on, so they can safely narrow a keyword-only subschema to that
- * type (`propertyNames` always validates strings, a schema dependency always
- * validates objects, and `not`/`if`/`then`/`else` inherit the parent type).
- */
-function withContextType(
-	schema: ParsedJSONSchema,
-	type: string | undefined,
-	fallback: Dialect
-): ParsedJSONSchema {
-	if (type === undefined || typeof schema !== 'object' || schema === null) {
-		return schema;
-	}
-
-	if (
-		schema.type !== undefined ||
-		'$ref' in schema ||
-		schema.anyOf ||
-		schema.oneOf ||
-		schema.allOf ||
-		schema.const !== undefined ||
-		schema.enum
-	) {
-		return schema;
-	}
-
-	const dialect = dialectOf(schema, fallback);
-
-	if (!hasTypeSpecificKeywords(schema, dialect)) {
-		return schema;
-	}
-
-	return withSourceMeta(schema, { ...schema, type }) as ParsedJSONSchema;
-}
-
-const typeSpecificKeywords = [
-	'properties',
-	'required',
-	'additionalProperties',
-	'patternProperties',
-	'propertyNames',
-	'dependencies',
-	'items',
-	'prefixItems',
-	'additionalItems',
-	'contains',
-	'minItems',
-	'maxItems',
-	'uniqueItems',
-	'minLength',
-	'maxLength',
-	'pattern',
-	'format',
-	'minimum',
-	'maximum',
-	'exclusiveMinimum',
-	'exclusiveMaximum',
-	'multipleOf',
-] as const;
-
-function hasTypeSpecificKeywords(schema: ParsedJSONSchemaObject, dialect: Dialect): boolean {
-	const record = schema as unknown as Record<string, unknown>;
-
-	return typeSpecificKeywords.some(
-		(keyword) => record[keyword] !== undefined && isKeywordApplicable(dialect, keyword)
-	);
 }

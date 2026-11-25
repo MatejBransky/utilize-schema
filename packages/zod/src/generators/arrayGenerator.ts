@@ -1,7 +1,6 @@
 import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
-import { generateSchema } from './generateSchema';
 
 import { ts } from '../utils';
 
@@ -17,7 +16,7 @@ export const generator = createGenerator<
 			? schema.prefixItems === undefined
 			: !Array.isArray(schema.items);
 	},
-	(schema, context) => {
+	(schema, context, { generateSchema }) => {
 		const items =
 			context.dialect.tuple === 'prefixItems' && Array.isArray(schema.items)
 				? undefined

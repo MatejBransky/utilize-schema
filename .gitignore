@@ -13,3 +13,8 @@ __generated__-*/
 packages/zod/test/snapshots/*.generated.ts
 
 .playwright-mcp/
+
+coverage/
+.fallow/
+fallow-results.sarif
+fallow-results.json

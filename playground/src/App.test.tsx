@@ -5,6 +5,7 @@ import { render } from 'vitest-browser-react';
 import App from './App';
 import type { SchemaFile } from './bundle';
 import './polyfills';
+import { THEME_STORAGE_KEY } from './theme';
 
 vi.mock('./monaco/format', () => ({
 	formatTypeScript: async (source: string) => source,
@@ -200,6 +201,7 @@ test('an agent can find and change the playground controls', async () => {
 		'Generator',
 		'Example',
 		'Keyword policy',
+		'Format',
 		'Color mode',
 		'Schema files',
 		'Add file',
@@ -213,7 +215,8 @@ test('an agent can find and change the playground controls', async () => {
 
 	const result = await agent.act({
 		steps: [
-			{ ref: 'Color mode', action: 'setValue', args: ['Dark'] },
+			{ ref: 'Color mode', action: 'press' },
+			{ ref: 'Color mode', action: 'press' },
 			{ ref: 'Schema files', action: 'setValue', args: ['address.json'] },
 			{ ref: 'Rename address.json', action: 'press' },
 			{ ref: 'File name', action: 'setValue', args: ['contact.json'] },
@@ -272,10 +275,23 @@ test('the header pickers are selects rather than text inputs', async () => {
 	const screen = await render(<App />);
 
 	expect(document.querySelector('[data-slot="combobox-input"]')).toBeNull();
-	expect(document.querySelectorAll('[data-slot="select-trigger"]')).toHaveLength(3);
+	expect(document.querySelectorAll('[data-slot="select-trigger"]')).toHaveLength(4);
 	await expect.element(screen.getByRole('combobox', { name: 'Generator' })).toBeVisible();
 	await expect.element(screen.getByRole('combobox', { name: 'Example' })).toBeVisible();
 	await expect.element(screen.getByRole('combobox', { name: 'Keyword policy' })).toBeVisible();
+	await expect.element(screen.getByRole('combobox', { name: 'Format' })).toBeVisible();
+});
+
+test('the color mode button cycles through auto, light and dark', async () => {
+	const screen = await render(<App />);
+	const button = screen.getByRole('button', { name: 'Color mode' });
+
+	await button.click();
+	await vi.waitFor(() => expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light'));
+	await button.click();
+	await vi.waitFor(() => expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark'));
+	await button.click();
+	await vi.waitFor(() => expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('auto'));
 });
 
 test('the generator select offers only implemented generators', async () => {
@@ -301,6 +317,33 @@ test('choosing a generator from the select updates the generated code', async ()
 	await expect
 		.element(screen.getByRole('combobox', { name: 'Generator' }))
 		.toHaveTextContent('Effect Schema');
+});
+
+test('the format select switches between annotation and assertion', async () => {
+	const screen = await render(<App />);
+
+	await vi.waitFor(() =>
+		expect(new URL(location.href).searchParams.get('format-mode')).toBe('assert')
+	);
+
+	await screen.getByRole('combobox', { name: 'Format' }).click();
+	await screen.getByRole('option', { name: /Annotate/ }).click();
+
+	await vi.waitFor(() =>
+		expect(new URL(location.href).searchParams.get('format-mode')).toBe('annotate')
+	);
+	await expect
+		.element(screen.getByRole('combobox', { name: 'Format' }))
+		.toHaveTextContent('Annotate');
+});
+
+test('the format select is disabled for the type generator', async () => {
+	const screen = await render(<App />);
+
+	await screen.getByRole('combobox', { name: 'Generator' }).click();
+	await screen.getByRole('option', { name: /TypeScript/ }).click();
+
+	await expect.element(screen.getByRole('combobox', { name: 'Format' })).toBeDisabled();
 });
 
 test('an example URL loads that example', async () => {

@@ -44,10 +44,19 @@ target needs to show up in the UI.
 
 ## Playground previews
 
-Every pull request gets a preview deployment of the playground on Vercel. The
-project uses the **Root Directory** `playground` and `playground/vercel.json`,
-so Vercel installs the pnpm workspace from the repository root and then builds
-only the playground (`playground/dist`).
+Only pull requests with the `Preview` label get a preview deployment of the
+playground on Vercel. Add the label when a live preview is needed; every new
+commit on that pull request refreshes the preview. Pull requests without the
+label do not create a Vercel deployment. Production is deployed to GitHub Pages
+from `main` by `.github/workflows/pages.yml`.
+
+The project uses the **Root Directory** `playground` and
+`playground/vercel.json`, so Vercel installs the pnpm workspace from the
+repository root and then builds only the playground (`playground/dist`).
+`git.deploymentEnabled: false` disables all automatic Vercel Git deployments,
+including production, so they do not consume the Hobby plan's daily limit.
+`.github/workflows/vercel-preview.yml` deploys labeled pull requests from the
+same repository through the Vercel CLI instead.
 
 Keep `vercel.json` inside the Root Directory: Vercel resolves its paths relative
 to it, so a `vercel.json` at the repository root would point at
@@ -59,8 +68,13 @@ To set this up on a fork or a new repository:
    `playground`.
 2. Keep the framework preset on Vite; `playground/vercel.json` supplies the
    build command and output directory.
-3. Do not add a custom domain to preview deployments, so every PR keeps its own
-   URL.
+3. Create a `Preview` label for pull requests that should get a preview.
+4. Add `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` as GitHub Actions
+   repository secrets. The token needs access to the Vercel project; the IDs
+   are available in `.vercel/project.json` after running `vercel link` or in
+   the Vercel dashboard.
+5. Do not add a custom domain to preview deployments, so every preview keeps its
+   own URL.
 
 ## Development Workflow
 
@@ -68,6 +82,62 @@ To set this up on a fork or a new repository:
 - Make sure all tests pass before submitting a PR.
 - Write or update tests for any new features or bug fixes.
 - Use TypeScript and follow the existing code style (oxlint and oxfmt).
+
+## What Fallow enforces here
+
+Fallow checks unused code, dependency hygiene, duplication, import cycles,
+complexity and package boundaries from one repository graph.
+
+Run the changed-file audit before opening a PR:
+
+```sh
+pnpm fallow:audit
+```
+
+The audit uses `gate: new-only`, so existing complexity findings do not block a
+change; findings introduced by the change do.
+
+Install the optional local pre-commit hook:
+
+```sh
+pnpm hooks:install
+```
+
+It audits staged content against `HEAD`. `git commit --no-verify` is available
+for a WIP commit that will be squashed, but it is not a way around a finding you
+disagree with. Fix the code or update `.fallowrc.jsonc` with a documented reason.
+
+The `Fallow audit` CI job runs on pull requests, posts a sticky comment with the
+findings, publishes a check run and uploads SARIF, and fails on introduced
+findings. The strict full-repository gate runs next to it in the same workflow
+(see below), so a change cannot raise a measured score.
+
+Regenerate and check the health badge with:
+
+```sh
+pnpm fallow:badge
+pnpm check:fallow-badge
+```
+
+In every pull request and on every push to `main`, the `Fallow full repository`
+job runs all unit tests with V8 coverage, merges their Istanbul data, and runs
+`fallow` in combined mode on it: dead code, duplication, maintainability and
+CRAP measured against real coverage, plus rule-pack policy. A separate
+`fallow dead-code --type-aware` pass in `best-effort` mode against every package
+tsconfig confirms dead-code candidates with the TypeScript checker. Both steps
+are gating: the measured backlog is empty, so a new finding fails the run.
+
+`rule-packs/utilize-policy.jsonc` keeps generator source browser-safe: `node:*`
+imports are errors in the generator packages outside `compile.ts` and `cli.ts`.
+Policy violations are errors in both the audit and the full run.
+
+The `Fallow security gate` PR job runs `fallow security --gate
+newly-reachable`. The existing low candidates in the test-only evaluator are
+reviewed and stay advisory; a change fails only when it makes a candidate newly
+reachable from an entry point.
+
+`private-type-leaks` is an error: every type referenced by an exported
+signature must also be exported, so consumers can name it.
 
 ## Running Tests
 
@@ -98,6 +168,51 @@ To set this up on a fork or a new repository:
   pnpm --filter @utilize/typescript test:suite
   ```
 
+## Coverage badge
+
+Each package README shows a badge with the unit test line coverage of that
+package's `src` folder, rounded down to a whole percent. The number includes
+the JSON Schema Test Suite run and the thin `cli.ts` entry points. The badges
+are SVG files in `.github/badges/`, committed to the repository.
+
+CI runs `pnpm check:coverage-badge` and fails when a committed badge no longer
+matches the measured value. To fix it, build the packages, regenerate the
+badges and commit the result:
+
+```sh
+pnpm build:dev
+pnpm badge:coverage
+```
+
+## Refactor benchmarks
+
+Performance-sensitive refactors in `packages/json-schema` must include an A/B
+benchmark in the pull request. Build the same benchmark entry at the baseline
+and candidate commits, then compare the bundled production output in one Node
+process:
+
+```sh
+# In the baseline checkout
+pnpm --filter @utilize/json-schema bench:build
+
+# In the candidate checkout
+pnpm --filter @utilize/json-schema bench:build
+BASELINE=/path/to/baseline/packages/json-schema/node_modules/.cache/utilize-bench/refactor.mjs
+CANDIDATE="$PWD/packages/json-schema/node_modules/.cache/utilize-bench/refactor.mjs"
+pnpm --filter @utilize/json-schema bench:compare "$BASELINE" "$CANDIDATE" prepare
+```
+
+The case is `prepare`, `index`, `external`, `link`, or `all`. The runner
+alternates baseline and candidate samples, performs 2,000 measured iterations
+after 300 warmup iterations, and fails when mean or median latency regresses by
+more than 5%. Run it three times and include the results in the PR description.
+
+When the baseline predates the harness, for example in the pull request that
+introduces it, copy the harness files and `bench:build` / `bench:compare`
+scripts from the candidate into the baseline checkout without changing its
+`src/`. Build the copied entry against the baseline source, then compare it with
+the candidate bundle.
+
 ## Dependency Versions
 
 Shared dependencies are pinned once in the `catalog` section of `pnpm-workspace.yaml`.
@@ -120,7 +235,8 @@ only changes the catalog entry. Use `pnpm add --save-catalog` for a new shared d
 1. Fork the repository and create your branch from `main`.
 2. Add your changes and tests.
 3. Ensure all tests pass and code is formatted.
-4. Open a pull request with a clear description of your changes.
+4. For a refactor, include three A/B benchmark runs and confirm there is no mean or median regression.
+5. Open a pull request with a clear description of your changes.
 
 ## Reporting Issues
 

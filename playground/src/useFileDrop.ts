@@ -3,7 +3,7 @@ import type { DragEvent as ReactDragEvent } from 'react';
 
 import { hasFileDrag, type DropMode } from './drop';
 
-interface FileDropOptions {
+export interface FileDropOptions {
 	onDrop(dataTransfer: DataTransfer, mode: DropMode): void;
 }
 

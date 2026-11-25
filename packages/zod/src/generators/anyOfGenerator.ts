@@ -1,7 +1,6 @@
 import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
-import { generateSchema } from './generateSchema';
 
 import { ts } from '../utils';
 
@@ -11,7 +10,7 @@ export const generator = createGenerator<
 	}
 >(
 	(schema) => Array.isArray(schema.anyOf),
-	(schema, context) => {
+	(schema, context, { generateSchema }) => {
 		const subschemas = schema.anyOf.map((subschema) => generateSchema(subschema, context));
 
 		return ts`z.union([${subschemas.join(', ')}])`;

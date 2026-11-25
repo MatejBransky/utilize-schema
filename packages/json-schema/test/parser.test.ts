@@ -124,6 +124,23 @@ test('links sibling definitions when the root is a $ref', async () => {
 	expect(defs?.Child?.[Meta]).toBeDefined();
 });
 
+test('links tuple items with numeric paths and their array parent', async () => {
+	const schema: JSONSchema = {
+		type: 'array',
+		items: [{ type: 'string' }, { type: 'number' }],
+	};
+	const parsed = await parse(schema, {
+		cwd: __dirname + '/',
+		fileName: 'Unknown',
+	});
+
+	assert(typeof parsed.root === 'object' && parsed.root !== null);
+	const items = parsed.root.items;
+	assert(Array.isArray(items));
+	expect(items[0]?.[Meta]).toMatchObject({ path: ['items', 0], parent: items });
+	expect(items[1]?.[Meta]).toMatchObject({ path: ['items', 1], parent: items });
+});
+
 test('circular references', async () => {
 	const schema: JSONSchema = {
 		type: 'object',
@@ -186,6 +203,25 @@ test('resolves a $ref to a fragment-only $id', async () => {
 		definitions: {
 			A: { $id: '#foo', type: 'integer' },
 		},
+	} as JSONSchema;
+	const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Unknown' });
+
+	assert(typeof parsed.root === 'object' && parsed.root !== null);
+	const reference = parsed.root.allOf?.[0]?.[Meta].reference;
+
+	assert(typeof reference === 'object' && reference !== null);
+	expect(reference.type).toBe('integer');
+});
+
+test('indexes identifiers in schema children but not annotation values', async () => {
+	const schema = {
+		definitions: {
+			A: { $id: '#foo', type: 'integer' },
+		},
+		default: { $id: '#foo', type: 'string' },
+		examples: [{ $id: '#foo', type: 'boolean' }],
+		dependencies: { a: ['b'] },
+		allOf: [{ $ref: '#foo' }],
 	} as JSONSchema;
 	const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Unknown' });
 
@@ -455,4 +491,44 @@ test('a $ref to a boolean schema keeps the boolean as its reference', async () =
 	assert(typeof parsed.root === 'object' && parsed.root !== null);
 	expect(parsed.root.properties?.allowed?.[Meta].reference).toBe(true);
 	expect(parsed.root.properties?.denied?.[Meta].reference).toBe(false);
+});
+
+test('keeps the document root when it is a $ref', async () => {
+	const schema = {
+		$ref: '#/definitions/name',
+		title: 'Root title',
+		definitions: { name: { type: 'string' } },
+	} as unknown as JSONSchema;
+	const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Root.json' });
+
+	assert(typeof parsed.root === 'object' && parsed.root !== null);
+	expect(parsed.root[Meta]).toMatchObject({ parent: null, fileName: 'Root.json', path: [] });
+	expect(parsed.root.$ref).toBe('#/definitions/name');
+	expect(parsed.root[Meta].reference).toMatchObject({ type: 'string' });
+	expect(parsed.get('#')).toMatchObject({ type: 'string' });
+	// The root document is not an external schema.
+	expect(parsed.referencedSchemas).toEqual([]);
+});
+
+test('get("#") resolves a root pointer and returns the target document for a file reference', async () => {
+	const localPointer = await parse(
+		{
+			$ref: '#/definitions/name',
+			title: 'Root title',
+			definitions: { name: { type: 'string' } },
+		} as unknown as JSONSchema,
+		{ cwd: __dirname + '/', fileName: 'Root.json' }
+	);
+
+	expect(localPointer.get('#')).toMatchObject({ type: 'string' });
+
+	const fileReference = await parse({ $ref: './EnumSchema.json', title: 'Doc' } as JSONSchema, {
+		cwd: __dirname + '/',
+		fileName: 'Root.json',
+	});
+
+	assert(typeof fileReference.root === 'object' && fileReference.root !== null);
+	expect(fileReference.root[Meta].reference).toMatchObject({ enum: ['a', 'b', 'c'] });
+	// `#` resolves to the root of the referenced document, not to its `$ref`.
+	expect(fileReference.get('#')).toMatchObject({ title: 'Doc' });
 });

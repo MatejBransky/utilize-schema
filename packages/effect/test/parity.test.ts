@@ -178,6 +178,59 @@ const cases: ParityCase[] = [
 		invalid: [['a'], [], ['x', 1]],
 	},
 	{
+		name: 'minContains and maxContains',
+		schema: {
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'array',
+			contains: { const: 'x' },
+			minContains: 2,
+			maxContains: 3,
+		},
+		valid: [
+			['x', 'x'],
+			['a', 'x', 'x', 'x'],
+		],
+		invalid: [[], ['x'], ['a', 'x'], ['x', 'x', 'x', 'x']],
+	},
+	{
+		name: 'minContains 0 with maxContains',
+		schema: {
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'array',
+			contains: { const: 'x' },
+			minContains: 0,
+			maxContains: 1,
+		},
+		valid: [[], ['a'], ['a', 'x']],
+		invalid: [['x', 'x']],
+	},
+	{
+		name: 'contains without bounds in 2020-12',
+		schema: {
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'array',
+			contains: { const: 'x' },
+		},
+		valid: [['x'], ['a', 'x', 'x']],
+		invalid: [[], ['a']],
+	},
+	{
+		name: 'contains outside the dialect',
+		schema: {
+			$schema: 'http://json-schema.org/draft-04/schema#',
+			type: 'array',
+			contains: { const: 'x' },
+		},
+		valid: [[], ['a']],
+		invalid: ['x'],
+	},
+	{
+		name: 'unicode property escape in pattern',
+		schema: { type: 'string', pattern: '^\\p{Letter}+$' },
+		valid: ['abc', 'ěšč'],
+		invalid: ['123', 'a1', ''],
+	},
+	{
 		name: 'anyOf',
 		schema: { anyOf: [{ type: 'string' }, { type: 'number' }] },
 		valid: ['a', 1],
@@ -188,6 +241,109 @@ const cases: ParityCase[] = [
 		schema: { oneOf: [{ type: 'string' }, { type: 'number' }] },
 		valid: ['a', 1],
 		invalid: [null, {}],
+	},
+	{
+		name: 'anyOf with a type next to it',
+		schema: { type: 'string', anyOf: [{ maxLength: 2 }, { minLength: 4 }] },
+		valid: ['', 'ab', 'abcd'],
+		invalid: ['abc', 3, null],
+	},
+	{
+		name: 'anyOf with constraints next to it',
+		schema: { type: 'string', maxLength: 5, anyOf: [{ pattern: '^a' }, { pattern: 'z$' }] },
+		valid: ['ab', 'xz'],
+		invalid: ['b', 'abcdefz', 1],
+	},
+	{
+		name: 'oneOf with identical branches',
+		schema: { oneOf: [true, true, false] },
+		valid: [],
+		invalid: ['value', 1, null, {}],
+	},
+	{
+		name: 'oneOf with identical typed branches',
+		schema: { oneOf: [{ type: 'string' }, { type: 'string' }, { type: 'number' }] },
+		valid: [1],
+		invalid: ['a', null],
+	},
+	{
+		name: 'contains without a type',
+		schema: { contains: { const: 5 } },
+		valid: [[5], [1, 5], {}, 5, 'x'],
+		invalid: [[], [1]],
+	},
+	{
+		name: 'dependencies without a type',
+		schema: { dependencies: { bar: ['foo'] } },
+		valid: [{ foo: 1 }, { foo: 1, bar: 2 }, ['bar'], 1],
+		invalid: [{ bar: 2 }],
+	},
+	{
+		name: '__proto__ property merged from allOf',
+		schema: {
+			type: 'object',
+			allOf: [
+				{ type: 'object', properties: { ['__proto__']: { type: 'number' } } },
+				{ type: 'object', properties: { b: { type: 'string' } } },
+			],
+		} as TestSchema,
+		valid: [{ b: 'x' }, { ['__proto__']: 12 }],
+		invalid: [{ b: 1 }, { ['__proto__']: 'text' }],
+	},
+	{
+		name: 'required __proto__ property',
+		schema: {
+			type: 'object',
+			properties: { ['__proto__']: { type: 'number' } },
+			required: ['__proto__'],
+		} as TestSchema,
+		valid: [{ ['__proto__']: 12 }, { ['__proto__']: 12, a: 'x' }],
+		invalid: [{}, { a: 'x' }, { ['__proto__']: 'text' }],
+	},
+	{
+		name: '__proto__ property in patternProperties',
+		schema: {
+			type: 'object',
+			patternProperties: { '^__': { type: 'number' } },
+		} as TestSchema,
+		valid: [{ ['__proto__']: 12 }, {}],
+		invalid: [{ ['__proto__']: 'text' }],
+	},
+	{
+		name: '__proto__ property in additionalProperties',
+		schema: {
+			type: 'object',
+			additionalProperties: { type: 'number' },
+		} as TestSchema,
+		valid: [{ ['__proto__']: 12 }, { a: 1 }],
+		invalid: [{ ['__proto__']: 'text' }, { a: 'text' }],
+	},
+	{
+		name: 'prototype-named properties',
+		schema: {
+			type: 'object',
+			properties: {
+				['toString']: { type: 'object', properties: { length: { type: 'string' } } },
+				['constructor']: { type: 'number' },
+			},
+		} as TestSchema,
+		valid: [{}, { ['toString']: { length: 'x' }, ['constructor']: 1 }],
+		invalid: [{ ['toString']: { length: 37 } }, { ['constructor']: 'x' }],
+	},
+	{
+		name: 'required prototype-named properties without declarations',
+		schema: {
+			type: 'object',
+			required: ['toString', 'constructor'],
+		} as TestSchema,
+		valid: [{ ['toString']: 1, ['constructor']: 2 }],
+		invalid: [{}, { ['toString']: 1 }, { ['constructor']: 2 }],
+	},
+	{
+		name: 'required __proto__ property without a declaration',
+		schema: { type: 'object', required: ['__proto__'] } as TestSchema,
+		valid: [{ ['__proto__']: 12 }],
+		invalid: [{}],
 	},
 	{
 		name: 'allOf objects',
@@ -322,22 +478,127 @@ describe('parity with @utilize/zod', () => {
 });
 
 /**
- * JSON Schema defines `format` as an annotation, so Effect keeps it as
- * metadata while the Zod generator validates known formats. That is a design
- * difference, not a gap, so it is pinned here instead of in the parity table.
+ * `format` is switchable in both generators: the default asserts it, and
+ * `formatMode: 'annotate'` keeps it as metadata in both.
  */
-describe('design differences', () => {
-	test('format is validated by Zod and only annotated by Effect', async () => {
+describe('format handling', () => {
+	test('asserts formats by default in both targets', async () => {
 		const schema: TestSchema = { type: 'string', format: 'email' };
 		const [zodRoot, effectRoot] = await Promise.all([
 			loadRoot(schema, 'zod'),
 			loadRoot(schema, 'effect'),
 		]);
 
-		expect(Schema.is(effectRoot)('not-an-email')).toBe(true);
-		expect(zodValid(zodRoot, 'not-an-email')).toBe(false);
+		for (const value of ['not-an-email', '']) {
+			expect(zodValid(zodRoot, value), `zod should reject ${JSON.stringify(value)}`).toBe(false);
+			expect(Schema.is(effectRoot)(value), `effect should reject ${JSON.stringify(value)}`).toBe(
+				false
+			);
+		}
+
+		expect(zodValid(zodRoot, 'user@example.com')).toBe(true);
+		expect(Schema.is(effectRoot)('user@example.com')).toBe(true);
 	});
 
+	test('annotates formats in both targets in annotate mode', async () => {
+		const schema: TestSchema = { type: 'string', format: 'email' };
+		const [zodRoot, effectRoot] = await Promise.all([
+			loadRoot(schema, 'zod', 'annotate'),
+			loadRoot(schema, 'effect', 'annotate'),
+		]);
+
+		for (const value of ['not-an-email', '', 'user@example.com']) {
+			expect(zodValid(zodRoot, value), `zod should accept ${JSON.stringify(value)}`).toBe(true);
+			expect(Schema.is(effectRoot)(value), `effect should accept ${JSON.stringify(value)}`).toBe(
+				true
+			);
+		}
+	});
+});
+
+/**
+ * The two targets must accept and reject the same values for a format, so a
+ * schema can switch targets without changing validation. Each case pins the
+ * behaviour against the Zod helper instead of a hand-written expectation.
+ */
+describe('format parity in assert mode', () => {
+	const formatCases: Array<{ format: string; valid: string[]; invalid: string[] }> = [
+		{
+			format: 'time',
+			valid: ['12:00', '12:00:00', '23:59:59.5'],
+			invalid: ['12:00:00Z', '24:00', '99:99:99'],
+		},
+		{
+			format: 'date-time',
+			valid: ['2024-02-29T12:00:00Z', '2024-02-29T12:00:00.5Z'],
+			invalid: ['2024-02-29T12:00:00+01:00', '2023-02-29T12:00:00Z', '2024-02-29T99:99:99Z'],
+		},
+		{
+			format: 'date',
+			valid: ['0000-02-29', '0001-01-01', '2024-02-29'],
+			invalid: ['0001-02-29', '2023-02-29', '2024-13-01'],
+		},
+		{
+			format: 'emoji',
+			valid: ['😀', '🇨🇿', '1️⃣', '👨‍👩‍👧'],
+			invalid: ['\u200d', 'abc'],
+		},
+		{
+			format: 'base64url',
+			valid: ['', 'ab', 'abc', 'abcd', 'aGVsbG8'],
+			invalid: ['A', 'abcde'],
+		},
+		{
+			format: 'ipv6',
+			valid: ['::1', '2001:db8::1'],
+			invalid: ['::1]/x', '::1]#frag', 'not-ip'],
+		},
+	];
+
+	test('untyped schema', async () => {
+		const schema: TestSchema = { format: 'email' };
+		const [zodRoot, effectRoot] = await Promise.all([
+			loadRoot(schema, 'zod', 'assert'),
+			loadRoot(schema, 'effect', 'assert'),
+		]);
+
+		for (const value of ['user@example.com', 42, null]) {
+			expect(zodValid(zodRoot, value), `zod should accept ${JSON.stringify(value)}`).toBe(true);
+			expect(Schema.is(effectRoot)(value), `effect should accept ${JSON.stringify(value)}`).toBe(
+				true
+			);
+		}
+
+		expect(zodValid(zodRoot, 'not-an-email')).toBe(false);
+		expect(Schema.is(effectRoot)('not-an-email')).toBe(false);
+	});
+
+	for (const { format, valid, invalid } of formatCases) {
+		test(format, async () => {
+			const schema: TestSchema = { type: 'string', format };
+			const [zodRoot, effectRoot] = await Promise.all([
+				loadRoot(schema, 'zod', 'assert'),
+				loadRoot(schema, 'effect', 'assert'),
+			]);
+
+			for (const value of valid) {
+				expect(zodValid(zodRoot, value), `zod should accept ${JSON.stringify(value)}`).toBe(true);
+				expect(Schema.is(effectRoot)(value), `effect should accept ${JSON.stringify(value)}`).toBe(
+					true
+				);
+			}
+
+			for (const value of invalid) {
+				expect(zodValid(zodRoot, value), `zod should reject ${JSON.stringify(value)}`).toBe(false);
+				expect(Schema.is(effectRoot)(value), `effect should reject ${JSON.stringify(value)}`).toBe(
+					false
+				);
+			}
+		});
+	}
+});
+
+describe('design differences', () => {
 	test('an empty allOf is vacuous for Effect and never for Zod', async () => {
 		const schema: TestSchema = { allOf: [] };
 		const [zodRoot, effectRoot] = await Promise.all([
@@ -350,7 +611,11 @@ describe('design differences', () => {
 	});
 });
 
-async function loadRoot(schema: TestSchema, target: 'zod' | 'effect') {
+async function loadRoot(
+	schema: TestSchema,
+	target: 'zod' | 'effect',
+	formatMode?: 'annotate' | 'assert'
+) {
 	const directory = await mkdtemp(join(__dirname, '__generated__-'));
 	const file = join(directory, `${target}.ts`);
 
@@ -361,8 +626,8 @@ async function loadRoot(schema: TestSchema, target: 'zod' | 'effect') {
 		});
 		const code =
 			target === 'zod'
-				? generateZod(root, { importZod: true })
-				: generate(root, { importEffect: true });
+				? generateZod(root, { importZod: true, formatMode })
+				: generate(root, { importEffect: true, formatMode });
 
 		await writeFile(file, code);
 

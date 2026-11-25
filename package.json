@@ -25,6 +25,8 @@
 		"preinstall": "node scripts/check-package-manager.mjs",
 		"build": "pnpm run --recursive --aggregate-output --reporter-hide-prefix --if-present build",
 		"build:dev": "pnpm run --recursive --aggregate-output --reporter-hide-prefix --if-present build:dev",
+		"badge:coverage": "node scripts/coverage-badge.mjs",
+		"check:coverage-badge": "node scripts/coverage-badge.mjs --check",
 		"check:format": "oxfmt --check .",
 		"check:lint": "oxlint packages playground",
 		"check:types": "pnpm run --recursive --aggregate-output --reporter-hide-prefix --if-present check:types",
@@ -36,10 +38,19 @@
 		"ci:publish": "pnpm changeset publish",
 		"verify": "pnpm build:dev && pnpm check:format && pnpm check:lint && pnpm check:types && pnpm ci:test",
 		"security": "pnpm audit --audit-level=high",
+		"fallow": "fallow",
+		"fallow:audit": "fallow audit",
+		"fallow:badge": "node scripts/fallow-badge.mjs",
+		"check:fallow-badge": "node scripts/fallow-badge.mjs --check",
+		"fallow:coverage": "node scripts/fallow-coverage.mjs",
+		"hooks:install": "fallow hooks install --target git",
 		"example": "pnpm --filter playground dev"
 	},
 	"devDependencies": {
 		"@changesets/cli": "3.0.3",
+		"@vitest/coverage-v8": "catalog:",
+		"fallow": "catalog:",
+		"fallow-type-aware": "catalog:",
 		"oxfmt": "catalog:",
 		"oxlint": "catalog:",
 		"typescript": "catalog:"

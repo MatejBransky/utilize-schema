@@ -1,4 +1,5 @@
 import {
+	collectStandaloneSchemas,
 	dialectOf,
 	Meta,
 	type ParsedJSONSchema,
@@ -7,14 +8,18 @@ import {
 import toposort from 'toposort';
 
 import { breakReferenceCycles } from './breakReferenceCycles';
-import { collectStandaloneSchemas } from './collectStandaloneSchemas';
 import { unsupportedUnionCycleError } from './errors';
 import { findCyclicSchemas } from './findCyclicSchemas';
 import { findInlineCopies } from './inlineCopies';
 import { generateSchema } from './generators/generateSchema';
-import type { CustomSchemaResolver, FormatMap, GeneratorContext } from './generators/types';
+import type {
+	CustomSchemaResolver,
+	FormatMap,
+	FormatMode,
+	GeneratorContext,
+} from './generators/types';
 
-export type { CustomSchemaResolver, FormatMap } from './generators/types';
+export type { CustomSchemaResolver, FormatMap, FormatMode } from './generators/types';
 import {
 	allocateName,
 	mapDeclarationNames,
@@ -38,8 +43,14 @@ export interface GenerateOptions {
 	typeName?: NameMapper;
 	/** Map `readOnly: true` to `.readonly()`; off by default because it changes the value type. */
 	readOnlyKeyword?: boolean;
-	/** Overrides the built-in `format` to Zod mapping per format; unlisted formats keep it. */
+	/** Maps a `format` to a Zod expression; it applies in both modes, other formats follow `formatMode`. */
 	formatMap?: FormatMap;
+	/**
+	 * What `format` becomes in the generated code: `assert` (default) validates
+	 * known formats (`.email()`, …), `annotate` keeps `format` as
+	 * `.meta({ format })`.
+	 */
+	formatMode?: FormatMode;
 	/** Emits a caller-provided Zod expression for a matching schema node. */
 	customSchemaResolver?: CustomSchemaResolver;
 	/**
@@ -58,6 +69,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 			lazyRefs: new Set(),
 			readOnlyKeyword: options.readOnlyKeyword,
 			formatMap: options.formatMap,
+			formatMode: options.formatMode,
 			nameOf: () => {
 				throw new Error('A primitive schema cannot reference another schema.');
 			},
@@ -69,7 +81,9 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 	const { copies, hoisted } = findInlineCopies(collectStandaloneSchemas(root).schemas, (schema) =>
 		isResolvedByCaller(options.customSchemaResolver, schema)
 	);
-	const { schemas: standaloneSchemas, edges } = collectStandaloneSchemas(root, copies);
+	const { schemas: standaloneSchemas, edges } = collectStandaloneSchemas(root, {
+		inlineCopies: copies,
+	});
 	const { schemas: cyclicSchemas, unsupported } = findCyclicSchemas(edges, standaloneSchemas);
 
 	if (unsupported.length > 0) {
@@ -106,6 +120,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		lazyRefs: broken.lazyRefs,
 		readOnlyKeyword: options.readOnlyKeyword,
 		formatMap: options.formatMap,
+		formatMode: options.formatMode,
 		nameOf: (schema) => namesOf(schema).schema,
 		declarationOf: (schema) => copies.get(schema),
 		dialect: dialectOf(root),
@@ -215,7 +230,7 @@ function singleQuoted(text: string): string {
 const ONE_OF_HELPER = ts`function oneOfSchema<T extends z.ZodType>(
   options: readonly T[]
 ): z.ZodType<z.output<T>, z.input<T>> {
-  return z.any().transform((value, ctx) => {
+  function matchingResults(value: unknown): z.output<T>[] {
     const matches: z.output<T>[] = [];
 
     for (const option of options) {
@@ -229,6 +244,12 @@ const ONE_OF_HELPER = ts`function oneOfSchema<T extends z.ZodType>(
         }
       }
     }
+
+    return matches;
+  }
+
+  return z.any().transform((value, ctx) => {
+    const matches = matchingResults(value);
 
     if (matches.length !== 1) {
       ctx.addIssue({

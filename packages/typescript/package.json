@@ -1,6 +1,6 @@
 {
 	"name": "@utilize/typescript",
-	"version": "0.3.1",
+	"version": "0.4.1",
 	"description": "TypeScript type generator for JSON Schema.",
 	"keywords": [
 		"codegen",
@@ -46,14 +46,12 @@
 		"dev": "tsdown --watch"
 	},
 	"dependencies": {
-		"@utilize/json-schema": "workspace:*",
-		"js-yaml": "5.4.2"
+		"@utilize/json-schema": "workspace:*"
 	},
 	"devDependencies": {
 		"@total-typescript/tsconfig": "catalog:",
 		"@types/node": "catalog:",
-		"json-schema-test-suite": "github:json-schema-org/JSON-Schema-Test-Suite#e2a68a15cd490750fd6b95e604e4054d7d978d1f",
-		"oxfmt": "catalog:",
+		"@utilize/test-utils": "workspace:*",
 		"tsdown": "catalog:",
 		"typescript": "catalog:",
 		"vitest": "catalog:"

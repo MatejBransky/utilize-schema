@@ -121,6 +121,19 @@ describe('keywords outside the dialect', () => {
 		`);
 	});
 
+	test('draft-04 ignores contains with keywordPolicy ignore', async () => {
+		const schema = {
+			$schema: draft04,
+			type: 'array',
+			contains: { enum: [{ id: 1 }] },
+		} as unknown as TestSchema;
+
+		const Root = await compileToSchema(schema, { keywordPolicy: 'ignore' });
+
+		expect(decode(Root, [])).toEqual([]);
+		expect(decode(Root, ['a'])).toEqual(['a']);
+	});
+
 	test('draft-06 ignores if/then with keywordPolicy ignore', async () => {
 		const schema = {
 			$schema: draft06,

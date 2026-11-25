@@ -13,12 +13,11 @@ import styles from './SelectPicker.module.css';
 export interface PickerOption {
 	value: string;
 	label: string;
-	hint?: string;
 	keywords?: string[];
 	disabled?: boolean;
 }
 
-interface SelectPickerProps {
+export interface SelectPickerProps {
 	label: string;
 	placeholder: string;
 	value: string | null;
@@ -58,7 +57,6 @@ export function SelectPicker({ label, placeholder, value, options, onChange }: S
 							className={styles.item}
 						>
 							<span className={styles.name}>{option.label}</span>
-							{option.hint ? <span className={styles.hint}>{option.hint}</span> : null}
 							<SelectItemIndicator />
 						</SelectItem>
 					))}

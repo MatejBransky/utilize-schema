@@ -2,7 +2,7 @@ import { type JSONSchema, Meta, parse } from '@utilize/json-schema';
 
 import { generate } from '../../src/generator';
 
-import type { SuiteCase } from './loadSuite';
+import type { SuiteCase } from '@utilize/test-utils/suite/loadSuite';
 
 export interface InstanceLine {
 	/** Position of the instance in the suite case. */
@@ -33,10 +33,12 @@ export async function renderCaseModule(testCase: SuiteCase): Promise<CaseModule>
 	const { root } = await parse(testCase.schema as JSONSchema, {
 		cwd: __dirname + '/',
 		fileName: 'Root.json',
+		externalSchemas: testCase.externalSchemas,
 	});
 
 	const code = generate(root, {
-		customNameResolver: (schema) => (schema[Meta]?.parent === null ? 'Root' : undefined),
+		customNameResolver: (schema) =>
+			schema[Meta]?.parent === null && schema[Meta]?.fileName === 'Root.json' ? 'Root' : undefined,
 	});
 
 	const lines = code.trimEnd().split('\n');
