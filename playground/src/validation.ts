@@ -15,51 +15,55 @@ export function validateSchemas(parsedFiles: ParsedFile[]): Problem[] {
 	const problems: Problem[] = [];
 
 	for (const parsed of parsedFiles) {
-		if (parsed.schema === undefined) {
-			continue;
-		}
-
-		const schema = parsed.schema;
-
-		if (!isPlainObject(schema) && typeof schema !== 'boolean') {
-			problems.push({
-				fileId: parsed.file.id,
-				severity: 'error',
-				message: 'A JSON Schema must be an object or a boolean.',
-			});
-			continue;
-		}
-
-		const ajv = getAjv(schema);
-
-		try {
-			const valid = ajv.validateSchema(schema);
-
-			if (!valid) {
-				for (const error of ajv.errors ?? []) {
-					problems.push({
-						fileId: parsed.file.id,
-						severity: 'error',
-						message: `${error.instancePath || '(root)'} ${error.message ?? 'is invalid'}`,
-					});
-				}
-			}
-		} catch (error) {
-			const fallback = validateWithoutSchemaUri(schema);
-
-			if (!fallback) {
-				problems.push({
-					fileId: parsed.file.id,
-					severity: 'error',
-					message: `Could not validate against $schema: ${
-						error instanceof Error ? error.message : String(error)
-					}`,
-				});
-			}
+		if (parsed.schema !== undefined) {
+			validateFile(parsed, problems);
 		}
 	}
 
 	return problems;
+}
+
+function validateFile(parsed: ParsedFile, problems: Problem[]): void {
+	const schema = parsed.schema;
+
+	if (!isPlainObject(schema) && typeof schema !== 'boolean') {
+		problems.push({
+			fileId: parsed.file.id,
+			severity: 'error',
+			message: 'A JSON Schema must be an object or a boolean.',
+		});
+		return;
+	}
+
+	const ajv = getAjv(schema);
+
+	try {
+		if (ajv.validateSchema(schema)) {
+			return;
+		}
+
+		appendValidationErrors(parsed, ajv, problems);
+	} catch (error) {
+		if (!validateWithoutSchemaUri(schema)) {
+			problems.push({
+				fileId: parsed.file.id,
+				severity: 'error',
+				message: `Could not validate against $schema: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			});
+		}
+	}
+}
+
+function appendValidationErrors(parsed: ParsedFile, ajv: Ajv, problems: Problem[]): void {
+	for (const error of ajv.errors ?? []) {
+		problems.push({
+			fileId: parsed.file.id,
+			severity: 'error',
+			message: `${error.instancePath || '(root)'} ${error.message ?? 'is invalid'}`,
+		});
+	}
 }
 
 function validateWithoutSchemaUri(schema: unknown): boolean {

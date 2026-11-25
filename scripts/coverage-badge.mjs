@@ -97,29 +97,46 @@ function readCommittedBadge(path) {
 	return existsSync(path) ? readFileSync(path, 'utf8') : null;
 }
 
+function badgeUpdate(packageName, percent) {
+	return {
+		packageName,
+		percent,
+		badge: renderBadge(percent),
+		path: badgePathFor(packageName),
+	};
+}
+
+function recordBadge({ packageName, percent, badge, path }, staleBadges) {
+	console.log(`${packageName}: ${percent}%`);
+
+	if (!IS_CHECK) {
+		writeFileSync(path, badge);
+	} else if (readCommittedBadge(path) !== badge) {
+		staleBadges.push(packageName);
+	}
+}
+
+function reportStaleBadges(staleBadges) {
+	if (staleBadges.length === 0) {
+		return;
+	}
+
+	console.error(
+		`Coverage badge is stale for: ${staleBadges.join(', ')}. Run "pnpm badge:coverage" and commit the result.`
+	);
+	process.exit(1);
+}
+
 function run() {
 	const staleBadges = [];
 	mkdirSync(BADGE_DIRECTORY, { recursive: true });
 
 	for (const packageName of PACKAGES) {
-		const percent = measureLineCoveragePercent(packageName);
-		const badge = renderBadge(percent);
-		const path = badgePathFor(packageName);
-		console.log(`${packageName}: ${percent}%`);
-
-		if (!IS_CHECK) {
-			writeFileSync(path, badge);
-		} else if (readCommittedBadge(path) !== badge) {
-			staleBadges.push(packageName);
-		}
+		const update = badgeUpdate(packageName, measureLineCoveragePercent(packageName));
+		recordBadge(update, staleBadges);
 	}
 
-	if (staleBadges.length > 0) {
-		console.error(
-			`Coverage badge is stale for: ${staleBadges.join(', ')}. Run "pnpm badge:coverage" and commit the result.`
-		);
-		process.exit(1);
-	}
+	reportStaleBadges(staleBadges);
 }
 
 run();

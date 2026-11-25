@@ -129,6 +129,19 @@
 			"packages/json-schema/bench/**",
 			"packages/json-schema/tsdown.bench.config.ts",
 		],
+		"thresholdOverrides": [
+			{
+				// The component has no branch-heavy logic: the score is six Monaco
+				// lifecycle effects plus the imperative handle and ten props. Moving
+				// those effects into hooks would need thousands of real editor
+				// mount/update/unmount cycles with workers to benchmark honestly, so
+				// record the measured ceiling instead of inventing a microbenchmark.
+				"files": ["playground/src/monaco/MonacoEditor.tsx"],
+				"functions": ["MonacoEditor"],
+				"maxCognitive": 16,
+				"reason": "Monaco lifecycle hook density, measured at cognitive 16; refactoring requires a browser lifecycle benchmark.",
+			},
+		],
 	},
 
 	"rules": {
