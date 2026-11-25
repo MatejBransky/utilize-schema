@@ -47,13 +47,13 @@ export function composedSchemaParts(
 
 	const value: unknown = schema[keyword];
 
-	return {
-		main: {
-			[keyword]: value,
-			discriminator: schema.discriminator,
-		} as ParsedJSONSchemaObject,
-		rest,
-	};
+	// oxlint-disable-next-line quality/no-chained-type-assertions -- synthetic node; it has no source Meta to copy
+	const main = {
+		[keyword]: value,
+		discriminator: schema.discriminator,
+	} as unknown as ParsedJSONSchemaObject;
+
+	return { main, rest };
 }
 
 /**
