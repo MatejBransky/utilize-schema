@@ -1,6 +1,7 @@
 import {
 	isPlainObject,
 	Meta,
+	type JSONSchemaTypeName,
 	type ParsedJSONSchema,
 	type ParsedJSONSchemaObject,
 	toSafeString,
@@ -61,6 +62,36 @@ function indent(level: number): string {
 }
 
 export function renderType(schema: ParsedJSONSchema, context: TypeContext, level = 0): string {
+	const prepared = prepareSchema(schema);
+
+	if (typeof prepared === 'string') {
+		return prepared;
+	}
+
+	const special = renderSpecialSchema(prepared, context, level);
+
+	if (special !== undefined) {
+		return special;
+	}
+
+	if (Array.isArray(prepared.allOf) && prepared.allOf.length > 0) {
+		return renderAllOf(prepared.allOf, prepared, context, level);
+	}
+
+	const unionKeyword = unionKeywordOf(prepared);
+
+	if (unionKeyword !== undefined) {
+		return renderUnionApplicator(prepared, unionKeyword, context, level);
+	}
+
+	if (Array.isArray(prepared.type)) {
+		return renderTypeArray(prepared.type, prepared, context, level);
+	}
+
+	return renderTyped(prepared, context, level);
+}
+
+function prepareSchema(schema: ParsedJSONSchema): ParsedJSONSchemaObject | 'unknown' | 'never' {
 	if (schema === undefined || schema === null || schema === true) {
 		return 'unknown';
 	}
@@ -69,10 +100,14 @@ export function renderType(schema: ParsedJSONSchema, context: TypeContext, level
 		return 'never';
 	}
 
-	if (!isPlainObject(schema)) {
-		return 'unknown';
-	}
+	return isPlainObject(schema) ? (schema as ParsedJSONSchemaObject) : 'unknown';
+}
 
+function renderSpecialSchema(
+	schema: ParsedJSONSchemaObject,
+	context: TypeContext,
+	level: number
+): string | undefined {
 	const customType = context.customSchemaResolver?.(schema);
 
 	if (customType !== undefined) {
@@ -91,38 +126,44 @@ export function renderType(schema: ParsedJSONSchema, context: TypeContext, level
 		return renderLiteralConstraint(schema.enum, 'enum', schema, context, level);
 	}
 
-	if (Array.isArray(schema.allOf) && schema.allOf.length > 0) {
-		const parts = schema.allOf.map((subschema) => renderType(subschema, context, level));
-		const parent = remainingSchema(schema, 'allOf');
+	return undefined;
+}
 
-		if (hasRenderableKeywords(parent)) {
-			parts.unshift(renderType(parent, context, level));
-		}
+function renderAllOf(
+	allOf: ParsedJSONSchema[],
+	schema: ParsedJSONSchemaObject,
+	context: TypeContext,
+	level: number
+): string {
+	const parts = allOf.map((subschema) => renderType(subschema, context, level));
+	const parent = remainingSchema(schema, 'allOf');
 
-		return intersection(parts);
+	if (hasRenderableKeywords(parent)) {
+		parts.unshift(renderType(parent, context, level));
 	}
 
+	return intersection(parts);
+}
+
+function unionKeywordOf(schema: ParsedJSONSchemaObject): 'anyOf' | 'oneOf' | undefined {
 	if (Array.isArray(schema.anyOf)) {
-		return renderUnionApplicator(schema, 'anyOf', context, level);
+		return 'anyOf';
 	}
 
-	if (Array.isArray(schema.oneOf)) {
-		return renderUnionApplicator(schema, 'oneOf', context, level);
+	return Array.isArray(schema.oneOf) ? 'oneOf' : undefined;
+}
+
+function renderTypeArray(
+	types: JSONSchemaTypeName[],
+	schema: ParsedJSONSchemaObject,
+	context: TypeContext,
+	level: number
+): string {
+	if (types.length === 0) {
+		return 'never';
 	}
 
-	if (Array.isArray(schema.type)) {
-		if (schema.type.length === 0) {
-			return 'never';
-		}
-
-		return union(
-			schema.type.map((type) =>
-				renderType(withType(schema, type as ParsedJSONSchemaObject['type']), context, level)
-			)
-		);
-	}
-
-	return renderTyped(schema, context, level);
+	return union(types.map((type) => renderType(withType(schema, type), context, level)));
 }
 
 /**
