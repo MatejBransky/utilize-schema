@@ -122,7 +122,7 @@ export function buildBundle(
 		}
 	}
 
-	const root = attachDefinitions({
+	const rootValue = attachDefinitions({
 		root: rewritten.get(rootParsed.file.id),
 		parsedFiles,
 		rewritten,
@@ -132,8 +132,13 @@ export function buildBundle(
 		problems,
 	});
 
+	const root =
+		typeof rootValue === 'boolean' || isPlainObject(rootValue)
+			? (rootValue as JSONSchema | boolean)
+			: null;
+
 	return {
-		root: root as JSONSchema | boolean,
+		root,
 		rootFileName: rootParsed.file.name,
 		problems,
 		keyByFile,

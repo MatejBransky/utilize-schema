@@ -75,20 +75,65 @@ export default defineConfig({
 			rules: { 'quality/no-unsafe-dictionary-type': 'off' },
 		},
 		{
-			// The parser and linker validate the document shape once, and the
-			// generators then bridge the dialect-specific `JSONSchema` fields into
-			// the parsed model. Tests and benchmarks build fixtures on purpose, so a
-			// narrowing assertion in those places is the boundary, not missing
-			// evidence.
+			// Tests and benchmarks build deliberately malformed inputs.
+			files: ['**/*.{test,spec}.{ts,tsx}', '**/test/**', '**/bench/**'],
+			rules: { 'typescript/no-unsafe-type-assertion': 'off' },
+		},
+		{
+			// The parser and linker are where untrusted JSON becomes the parsed
+			// model; their narrowing is the parse step.
+			files: ['packages/json-schema/src/parser.ts', 'packages/json-schema/src/linker.ts'],
+			rules: { 'typescript/no-unsafe-type-assertion': 'off' },
+		},
+		{
+			// These core helpers narrow JSON and CLI values after runtime checks;
+			// the parser and linker own document validation.
 			files: [
-				'**/*.{test,spec}.{ts,tsx}',
-				'**/test/**',
-				'**/bench/**',
-				'packages/json-schema/src/**',
-				'packages/test-utils/src/**',
-				'packages/zod/src/**',
-				'packages/effect/src/**',
-				'packages/typescript/src/**',
+				'packages/json-schema/src/cliOptions.ts',
+				'packages/json-schema/src/collectStandaloneSchemas.ts',
+				'packages/json-schema/src/dialect.ts',
+				'packages/json-schema/src/externalSchemas.ts',
+				'packages/json-schema/src/identifiers.ts',
+				'packages/json-schema/src/model.ts',
+				'packages/json-schema/src/narrow.ts',
+				'packages/json-schema/src/node/cli.ts',
+				'packages/json-schema/src/node/compile.ts',
+				'packages/json-schema/src/resolveName.ts',
+			],
+			rules: { 'typescript/no-unsafe-type-assertion': 'off' },
+		},
+		{
+			// The generators bridge dialect-specific `JSONSchema` keyword fields,
+			// already validated by the linker, into the parsed model.
+			files: [
+				'packages/zod/src/findCyclicSchemas.ts',
+				'packages/zod/src/generator.ts',
+				'packages/zod/src/generators/createGenerator.ts',
+				'packages/zod/src/generators/generateSchema.ts',
+				'packages/zod/src/generators/schemaParts.ts',
+				'packages/zod/src/inferTypes.ts',
+				'packages/zod/src/refinements.ts',
+				'packages/zod/src/valueTypes.ts',
+				'packages/effect/src/findCyclicSchemas.ts',
+				'packages/effect/src/generator.ts',
+				'packages/effect/src/mergeObjects.ts',
+				'packages/effect/src/refSiblings.ts',
+				'packages/effect/src/schemaParts.ts',
+				'packages/effect/src/valueTypes.ts',
+				'packages/typescript/src/collectStandaloneSchemas.ts',
+				'packages/typescript/src/cycles.ts',
+				'packages/typescript/src/generator.ts',
+				'packages/typescript/src/renderType.ts',
+			],
+			rules: { 'typescript/no-unsafe-type-assertion': 'off' },
+		},
+		{
+			// The test helper evaluates generated code, and the bundler rewrites
+			// unparsed JSON before it reaches the parser.
+			files: [
+				'packages/test-utils/src/suite/compatibility.ts',
+				'packages/test-utils/src/suite/evaluate.ts',
+				'packages/test-utils/src/suite/loadSuite.ts',
 				'playground/src/bundle.ts',
 			],
 			rules: { 'typescript/no-unsafe-type-assertion': 'off' },
