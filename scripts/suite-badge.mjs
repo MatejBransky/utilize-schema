@@ -29,6 +29,36 @@ function readCommittedBadge(path) {
 	return existsSync(path) ? readFileSync(path, 'utf8') : null;
 }
 
+function describeBadge(dialect, entry) {
+	const percent = Math.floor((entry.passing / entry.cases) * 100);
+
+	return {
+		percent,
+		badge: renderBadge({
+			label: dialect,
+			message: `${percent}% passed`,
+			color: pickColor(percent),
+			description: `${dialect}: ${entry.passing}/${entry.cases} cases (${percent}%)`,
+		}),
+	};
+}
+
+function recordBadge(packageName, dialect, entry, staleBadges) {
+	const { percent, badge } = describeBadge(dialect, entry);
+	const path = badgePathFor(packageName, dialect);
+
+	console.log(`${packageName} ${dialect}: ${entry.passing}/${entry.cases} (${percent}%)`);
+
+	if (!IS_CHECK) {
+		writeFileSync(path, badge);
+		return;
+	}
+
+	if (readCommittedBadge(path) !== badge) {
+		staleBadges.push(`${packageName} ${dialect}`);
+	}
+}
+
 async function run() {
 	const staleBadges = [];
 	mkdirSync(BADGE_DIRECTORY, { recursive: true });
@@ -37,23 +67,7 @@ async function run() {
 		const baseline = await loadBaseline(packageName);
 
 		for (const [dialect, entry] of Object.entries(baseline)) {
-			const percent = Math.floor((entry.passing / entry.cases) * 100);
-			const message = `${percent}% passed`;
-			const badge = renderBadge({
-				label: dialect,
-				message,
-				color: pickColor(percent),
-				description: `${dialect}: ${entry.passing}/${entry.cases} cases (${percent}%)`,
-			});
-			const path = badgePathFor(packageName, dialect);
-
-			console.log(`${packageName} ${dialect}: ${entry.passing}/${entry.cases} (${percent}%)`);
-
-			if (!IS_CHECK) {
-				writeFileSync(path, badge);
-			} else if (readCommittedBadge(path) !== badge) {
-				staleBadges.push(`${packageName} ${dialect}`);
-			}
+			recordBadge(packageName, dialect, entry, staleBadges);
 		}
 	}
 

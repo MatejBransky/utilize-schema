@@ -5,6 +5,7 @@ external and cyclic `$ref` links resolve into standalone schemas, and draft-04
 through 2020-12 are supported.
 
 [![Check](https://img.shields.io/github/actions/workflow/status/MatejBransky/utilize-schema/check.yml?branch=main&label=check)](https://github.com/MatejBransky/utilize-schema/actions/workflows/check.yml)
+[![Codebase health](.github/badges/fallow-health.svg)](CONTRIBUTING.md#what-fallow-enforces-here)
 [![npm version](https://img.shields.io/npm/v/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
 [![License](https://img.shields.io/github/license/MatejBransky/utilize-schema)](./LICENSE)
 

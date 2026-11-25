@@ -12,7 +12,7 @@ export interface MonacoEditorHandle {
 	getValue(): string;
 }
 
-interface MonacoEditorProps {
+export interface MonacoEditorProps {
 	value: string;
 	language: string;
 	theme: string;

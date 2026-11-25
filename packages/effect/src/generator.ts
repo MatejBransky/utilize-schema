@@ -1,18 +1,26 @@
 // oxlint-disable unicorn/no-array-sort -- the emitted helper sorts keys by code point; the source function is stringified into generated code
 import {
+	allocateName,
+	collectStandaloneSchemas,
 	type Dialect,
 	dialectOf,
 	containsBounds,
+	type ContainsBounds,
 	isKeywordApplicable,
 	isPlainObject,
+	mapDeclarationNames,
 	Meta,
 	narrowUntypedSchema,
 	type ParsedJSONSchema,
 	type ParsedJSONSchemaObject,
+	resolveName,
+	type SchemaEdge,
+	type CustomNameResolver,
+	type DeclarationNames,
+	type NameMapper,
 } from '@utilize/json-schema';
 
 import { typedAlternatives } from './alternatives';
-import { collectStandaloneSchemas, type SchemaEdge } from './collectStandaloneSchemas';
 import { constraintKeywords } from './constraints';
 import { UnresolvedReferenceError, UnsupportedEffectSchemaFeatureError } from './errors';
 import { findCyclicSchemas } from './findCyclicSchemas';
@@ -20,14 +28,7 @@ import { formatCheck } from './formats';
 import { ANNOTATION_KEYWORDS } from './keywords';
 import { mergeObjectSchemas } from './mergeObjects';
 import { planReferenceSiblings } from './refSiblings';
-import {
-	allocateName,
-	mapDeclarationNames,
-	resolveName,
-	type CustomNameResolver,
-	type DeclarationNames,
-	type NameMapper,
-} from './resolveName';
+import { arrayRest, objectKeys, parentSchema, prefixItemsOf } from './schemaParts';
 import { literalType, renderValueTypeDeclaration, type ValueTypeContext } from './valueTypes';
 
 export interface GenerateOptions {
@@ -97,6 +98,19 @@ const FALLBACK_ROOT_NAME = 'Root';
 
 const JSON_VALUE_TYPES = ['string', 'number', 'object', 'array'] as const;
 type JSONValueType = (typeof JSON_VALUE_TYPES)[number];
+
+const TYPE_GENERATORS: Record<
+	string,
+	(schema: ParsedJSONSchemaObject, context: Context) => string
+> = {
+	string: generateString,
+	number: (schema) => generateNumber(schema, false),
+	integer: (schema) => generateNumber(schema, true),
+	boolean: () => 'Schema.Boolean',
+	null: () => 'Schema.Null',
+	array: generateArray,
+	object: generateObject,
+};
 
 /**
  * Generates Effect Schema (v4) code from a linked JSON Schema.
@@ -283,6 +297,31 @@ function nameDeclarations(
 }
 
 function generateSchema(schema: ParsedJSONSchema, context: Context): string {
+	const simple = generateSimpleSchema(schema);
+
+	if (simple !== undefined) {
+		return simple;
+	}
+
+	const object = schema as ParsedJSONSchemaObject;
+	const customExpression = context.customSchemaResolver?.(object);
+
+	if (customExpression !== undefined) {
+		return customExpression;
+	}
+
+	const dialect = dialectOf(object, context.dialect);
+	const nodeContext = dialect === context.dialect ? context : { ...context, dialect };
+	const filters = filterChecks(object, nodeContext);
+	const expression =
+		typeof object.$ref === 'string'
+			? generateReference(object, filters, nodeContext)
+			: applyChecks(generateExpression(object, nodeContext), filters);
+
+	return applyAnnotations(expression, object);
+}
+
+function generateSimpleSchema(schema: ParsedJSONSchema): string | undefined {
 	if (schema === undefined || schema === null || schema === true) {
 		return 'Schema.Json';
 	}
@@ -291,73 +330,85 @@ function generateSchema(schema: ParsedJSONSchema, context: Context): string {
 		return 'Schema.Never';
 	}
 
-	if (!isPlainObject(schema)) {
-		return 'Schema.Json';
-	}
-
-	const customExpression = context.customSchemaResolver?.(schema);
-
-	if (customExpression !== undefined) {
-		return customExpression;
-	}
-
-	const dialect = dialectOf(schema, context.dialect);
-	const nodeContext = dialect === context.dialect ? context : { ...context, dialect };
-
-	const filters = filterChecks(schema, nodeContext);
-	const expression =
-		typeof schema.$ref === 'string'
-			? generateReference(schema, filters, nodeContext)
-			: applyChecks(generateExpression(schema, nodeContext), filters);
-
-	return applyAnnotations(expression, schema);
+	return isPlainObject(schema) ? undefined : 'Schema.Json';
 }
 
 function generateExpression(schema: ParsedJSONSchemaObject, context: Context): string {
-	const dialect = context.dialect;
+	const literalExpression = generateLiteralExpression(schema, context);
 
-	if (Object.hasOwn(schema, 'const') && isKeywordApplicable(dialect, 'const')) {
+	if (literalExpression !== undefined) {
+		return literalExpression;
+	}
+
+	const intersection = generateAllOfExpression(schema, context);
+
+	if (intersection !== undefined) {
+		return intersection;
+	}
+
+	return generateAlternativeExpression(schema, context) ?? generateType(schema, context);
+}
+
+function generateLiteralExpression(
+	schema: ParsedJSONSchemaObject,
+	context: Context
+): string | undefined {
+	if (Object.hasOwn(schema, 'const') && isKeywordApplicable(context.dialect, 'const')) {
 		return literal(schema.const, context);
 	}
 
-	if (Array.isArray(schema.enum)) {
-		return literals(schema.enum, context);
-	}
+	return Array.isArray(schema.enum) ? literals(schema.enum, context) : undefined;
+}
 
+function generateAllOfExpression(
+	schema: ParsedJSONSchemaObject,
+	context: Context
+): string | undefined {
 	if (Array.isArray(schema.allOf) && schema.allOf.length > 0) {
 		return generateIntersection([parentSchema(schema), ...schema.allOf], context);
 	}
 
-	const alternatives = Array.isArray(schema.anyOf)
-		? schema.anyOf
-		: Array.isArray(schema.oneOf)
-			? schema.oneOf
-			: undefined;
+	return undefined;
+}
 
-	if (alternatives) {
-		// When both are present, each is applied on its own: `anyOf` becomes the
-		// union and `oneOf` stays in the base, which counts its own matches.
-		const keyword = Array.isArray(schema.anyOf) ? 'anyOf' : 'oneOf';
-		const { members, allTyped } = typedAlternatives(schema, alternatives);
-		const union = generateUnion(members, keyword === 'oneOf', context);
-		const base = alternativesBase(schema, keyword, allTyped);
+function generateAlternativeExpression(
+	schema: ParsedJSONSchemaObject,
+	context: Context
+): string | undefined {
+	const keyword = alternativeKeyword(schema);
 
-		if (base === undefined) {
-			return union;
-		}
-
-		const constraints = generateSchema(base, context);
-
-		// Unknown keywords (`x-*`) generate `Schema.Json`, so a filter over them
-		// would accept everything and only make the output noisier.
-		if (constraints === 'Schema.Json') {
-			return union;
-		}
-
-		return applyChecks(union, [siblingKeywordsCheck(constraints, keyword)]);
+	if (keyword === undefined) {
+		return undefined;
 	}
 
-	return generateType(schema, context);
+	const alternatives = schema[keyword]!;
+	// When both are present, each is applied on its own: `anyOf` becomes the
+	// union and `oneOf` stays in the base, which counts its own matches.
+	const { members, allTyped } = typedAlternatives(schema, alternatives);
+	const union = generateUnion(members, keyword === 'oneOf', context);
+	const base = alternativesBase(schema, keyword, allTyped);
+
+	if (base === undefined) {
+		return union;
+	}
+
+	const constraints = generateSchema(base, context);
+
+	// Unknown keywords (`x-*`) generate `Schema.Json`, so a filter over them
+	// would accept everything and only make the output noisier.
+	if (constraints === 'Schema.Json') {
+		return union;
+	}
+
+	return applyChecks(union, [siblingKeywordsCheck(constraints, keyword)]);
+}
+
+function alternativeKeyword(schema: ParsedJSONSchemaObject): 'anyOf' | 'oneOf' | undefined {
+	if (Array.isArray(schema.anyOf)) {
+		return 'anyOf';
+	}
+
+	return Array.isArray(schema.oneOf) ? 'oneOf' : undefined;
 }
 
 /**
@@ -456,57 +507,37 @@ function generateUnion(
 }
 
 function generateType(schema: ParsedJSONSchemaObject, context: Context): string {
-	if (Array.isArray(schema.type)) {
-		const members = [
-			...new Set(
-				schema.type.map((type) => {
-					const branch = schemaWithType(schema, type as ParsedJSONSchemaObject['type']);
+	const union = generateTypeUnion(schema, context);
 
-					return context.customSchemaResolver?.(branch) ?? generateType(branch, context);
-				})
-			),
-		];
-
-		if (members.length === 0) {
-			return 'Schema.Never';
-		}
-
-		return members.length === 1 ? members[0]! : `Schema.Union([${members.join(', ')}])`;
+	if (union !== undefined) {
+		return union;
 	}
 
-	switch (schema.type) {
-		case 'string':
-			return generateString(schema, context);
-		case 'number':
-			return generateNumber(schema, false);
-		case 'integer':
-			return generateNumber(schema, true);
-		case 'boolean':
-			return 'Schema.Boolean';
-		case 'null':
-			return 'Schema.Null';
-		case 'array':
-			return generateArray(schema, context);
-		case 'object':
-			return generateObject(schema, context);
-		default:
-			return generateUntyped(schema, context);
-	}
+	const type = schema.type as string | undefined;
+
+	return TYPE_GENERATORS[type ?? '']?.(schema, context) ?? generateUntyped(schema, context);
 }
 
-/**
- * The declaring schema without the `allOf` that is being merged and without the
- * filter keywords, which are applied on top of the merged object.
- */
-function parentSchema(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject {
-	return {
-		...schema,
-		allOf: undefined,
-		not: undefined,
-		if: undefined,
-		then: undefined,
-		else: undefined,
-	};
+function generateTypeUnion(schema: ParsedJSONSchemaObject, context: Context): string | undefined {
+	if (!Array.isArray(schema.type)) {
+		return undefined;
+	}
+
+	const members = [
+		...new Set(
+			schema.type.map((type) => generateTypeMember(schemaWithType(schema, type), context))
+		),
+	];
+
+	if (members.length === 0) {
+		return 'Schema.Never';
+	}
+
+	return members.length === 1 ? members[0]! : `Schema.Union([${members.join(', ')}])`;
+}
+
+function generateTypeMember(schema: ParsedJSONSchemaObject, context: Context): string {
+	return context.customSchemaResolver?.(schema) ?? generateType(schema, context);
 }
 
 /** Drops metadata so that only the keyword applicability of each union member remains. */
@@ -526,6 +557,17 @@ function schemaWithType(
 }
 
 function generateString(schema: ParsedJSONSchemaObject, context: Context): string {
+	const checks = stringChecks(schema);
+	const format = stringFormat(schema, context);
+
+	if (format !== undefined) {
+		checks.push(format);
+	}
+
+	return checks.length > 0 ? `Schema.String.check(${checks.join(', ')})` : 'Schema.String';
+}
+
+function stringChecks(schema: ParsedJSONSchemaObject): string[] {
 	const checks: string[] = [];
 
 	if (typeof schema.minLength === 'number') {
@@ -538,18 +580,15 @@ function generateString(schema: ParsedJSONSchemaObject, context: Context): strin
 		checks.push(`Schema.isPattern(${patternExpression(schema.pattern)})`);
 	}
 
-	const format =
-		(context.formatMode ?? 'assert') === 'assert' &&
-		typeof schema.format === 'string' &&
-		formatCheck(schema.format) !== undefined
-			? context.formatOf(schema.format)
-			: undefined;
+	return checks;
+}
 
-	if (format !== undefined) {
-		checks.push(format);
+function stringFormat(schema: ParsedJSONSchemaObject, context: Context): string | undefined {
+	if ((context.formatMode ?? 'assert') !== 'assert' || typeof schema.format !== 'string') {
+		return undefined;
 	}
 
-	return checks.length > 0 ? `Schema.String.check(${checks.join(', ')})` : 'Schema.String';
+	return formatCheck(schema.format) === undefined ? undefined : context.formatOf(schema.format);
 }
 
 /** `date-time` becomes `formatDateTime`, so one constant covers a format. */
@@ -601,13 +640,7 @@ function generateNumber(schema: ParsedJSONSchemaObject, integer: boolean): strin
 function generateArray(schema: ParsedJSONSchemaObject, context: Context): string {
 	const dialect = context.dialect;
 	const items = schema.items as unknown as ParsedJSONSchema | ParsedJSONSchema[] | undefined;
-	const tupleItems = Array.isArray(items) ? items : undefined;
-	const prefixItems =
-		dialect.tuple === 'prefixItems'
-			? Array.isArray(schema.prefixItems)
-				? (schema.prefixItems as ParsedJSONSchema[])
-				: undefined
-			: tupleItems;
+	const prefixItems = prefixItemsOf(schema, dialect);
 	const checks = arrayChecks(schema, context);
 	const singleItem = Array.isArray(items) ? undefined : items;
 
@@ -642,37 +675,10 @@ function generateArray(schema: ParsedJSONSchemaObject, context: Context): string
 	);
 }
 
-function arrayRest(
-	schema: ParsedJSONSchemaObject,
-	items: ParsedJSONSchema | ParsedJSONSchema[] | undefined,
-	dialect: Dialect
-): ParsedJSONSchema | false {
-	if (dialect.tuple === 'prefixItems') {
-		if (items === false) {
-			return false;
-		}
-
-		return Array.isArray(items) ? true : (items ?? true);
-	}
-
-	if (schema.additionalItems === false) {
-		return false;
-	}
-
-	return (schema.additionalItems as unknown as ParsedJSONSchema | undefined) ?? true;
-}
-
 function arrayChecks(schema: ParsedJSONSchemaObject, context: Context): string[] {
 	const checks: string[] = [];
 	const dialect = context.dialect;
-	const prefixLength =
-		dialect.tuple === 'prefixItems'
-			? Array.isArray(schema.prefixItems)
-				? schema.prefixItems.length
-				: 0
-			: Array.isArray(schema.items)
-				? schema.items.length
-				: 0;
+	const prefixLength = prefixItemsOf(schema, dialect)?.length ?? 0;
 	const minItems = typeof schema.minItems === 'number' ? schema.minItems : 0;
 
 	if (minItems > prefixLength) {
@@ -684,37 +690,48 @@ function arrayChecks(schema: ParsedJSONSchemaObject, context: Context): string[]
 	if (schema.uniqueItems === true) {
 		checks.push('Schema.isUnique()');
 	}
-	if (schema.contains !== undefined && isKeywordApplicable(dialect, 'contains')) {
-		const contains = generateSchema(schema.contains, context);
-		const bounds = containsBounds(schema, dialect);
 
-		if (bounds?.counted === true) {
-			const outOfRange =
-				bounds.max === undefined
-					? `matches < ${bounds.min}`
-					: `matches < ${bounds.min} || matches > ${bounds.max}`;
+	const contains = containsCheck(schema, context);
 
-			checks.push(
-				`Schema.makeFilter((value) => { const matches = value.filter((item) => Schema.is(${contains})(item)).length; return ${outOfRange} ? 'Array does not contain the required number of matching items' : undefined; })`
-			);
-		} else if (bounds !== undefined) {
-			checks.push(
-				`Schema.makeFilter((value) => value.some((item) => Schema.is(${contains})(item)) ? undefined : 'Array does not contain a matching item')`
-			);
-		}
+	if (contains !== undefined) {
+		checks.push(contains);
 	}
 
 	return checks;
 }
 
+function containsCheck(schema: ParsedJSONSchemaObject, context: Context): string | undefined {
+	if (schema.contains === undefined) {
+		return undefined;
+	}
+
+	if (!isKeywordApplicable(context.dialect, 'contains')) {
+		return undefined;
+	}
+
+	const contains = generateSchema(schema.contains, context);
+	const bounds = containsBounds(schema, context.dialect);
+
+	if (bounds === undefined) {
+		return undefined;
+	}
+
+	return bounds.counted
+		? countedContainsCheck(contains, bounds)
+		: `Schema.makeFilter((value) => value.some((item) => Schema.is(${contains})(item)) ? undefined : 'Array does not contain a matching item')`;
+}
+
+function countedContainsCheck(contains: string, bounds: ContainsBounds): string {
+	const outOfRange =
+		bounds.max === undefined
+			? `matches < ${bounds.min}`
+			: `matches < ${bounds.min} || matches > ${bounds.max}`;
+
+	return `Schema.makeFilter((value) => { const matches = value.filter((item) => Schema.is(${contains})(item)).length; return ${outOfRange} ? 'Array does not contain the required number of matching items' : undefined; })`;
+}
+
 function generateObject(schema: ParsedJSONSchemaObject, context: Context): string {
-	const properties = isPlainObject(schema.properties) ? schema.properties : {};
-	const required = new Set(
-		Array.isArray(schema.required)
-			? schema.required.filter((key): key is string => typeof key === 'string')
-			: []
-	);
-	const keys = [...new Set([...Object.keys(properties), ...required])];
+	const { properties, required, keys } = objectKeys(schema);
 	const additional = schema.additionalProperties;
 	const patterns = patternEntries(schema, context);
 	const checks = objectChecks(schema, context);
@@ -1168,11 +1185,56 @@ function generateConjunction(
 }
 
 /** Keywords a typed subschema may use and still be merged. */
+const MERGEABLE_TYPES = ['number', 'integer', 'string', 'array'] as const;
+type MergeableType = (typeof MERGEABLE_TYPES)[number];
+
 const MERGEABLE_KEYWORDS: Record<'number' | 'string' | 'array', ReadonlySet<string>> = {
 	number: new Set(['minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf']),
 	string: new Set(['minLength', 'maxLength', 'pattern']),
 	array: new Set(['minItems', 'maxItems', 'uniqueItems']),
 };
+
+const MERGE_TYPE_RESULTS: Record<string, MergeableType | undefined> = {
+	'number:number': 'number',
+	'number:integer': 'integer',
+	'integer:number': 'integer',
+	'integer:integer': 'integer',
+	'string:string': 'string',
+	'array:array': 'array',
+};
+
+const TYPED_CONSTRAINT_KEYWORDS = [
+	'minimum',
+	'maximum',
+	'exclusiveMinimum',
+	'exclusiveMaximum',
+	'multipleOf',
+	'minLength',
+	'maxLength',
+	'pattern',
+	'minItems',
+	'maxItems',
+	'uniqueItems',
+] as const;
+
+interface TypedConstraints {
+	minimum?: number;
+	maximum?: number;
+	exclusiveMinimum?: number;
+	exclusiveMaximum?: number;
+	multipleOf?: number;
+	minLength?: number;
+	maxLength?: number;
+	pattern?: string;
+	minItems?: number;
+	maxItems?: number;
+	uniqueItems?: boolean;
+}
+
+interface MergeTypePlan {
+	type: MergeableType;
+	declaredType: boolean;
+}
 
 /** Removes the `allOf` that is being flattened and keeps every other keyword. */
 function withoutAllOf(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject {
@@ -1225,153 +1287,280 @@ function isEmptySchema(schema: ParsedJSONSchemaObject): boolean {
  * `multipleOf`, array items) keeps the intersection a filter.
  */
 function mergeTypedSchemas(members: ParsedJSONSchemaObject[]): ParsedJSONSchemaObject | undefined {
-	let type: 'number' | 'integer' | 'string' | 'array' | undefined;
-	let declaredType = false;
+	const plan = planTypedMerge(members);
 
-	for (const member of members) {
-		if (member.$ref !== undefined) {
-			return undefined;
-		}
-
-		const memberType = mergeableType(member);
-
-		if (memberType === undefined) {
-			return undefined;
-		}
-
-		if (
-			member.type === 'number' ||
-			member.type === 'integer' ||
-			member.type === 'string' ||
-			member.type === 'array'
-		) {
-			declaredType = true;
-		}
-
-		if (type === undefined) {
-			type = memberType;
-		} else if (type === 'number' && memberType === 'integer') {
-			type = 'integer';
-		} else if (type !== memberType && !(type === 'integer' && memberType === 'number')) {
-			return undefined;
-		}
-
-		const allowed = MERGEABLE_KEYWORDS[memberType === 'integer' ? 'number' : memberType];
-
-		for (const [keyword, value] of Object.entries(member)) {
-			if (value === undefined || ANNOTATION_KEYWORDS.has(keyword) || keyword === 'type') {
-				continue;
-			}
-
-			if (!allowed.has(keyword)) {
-				return undefined;
-			}
-		}
-	}
-
-	if (type === undefined) {
+	if (plan === undefined) {
 		return undefined;
 	}
 
-	// Keywords like `minimum` or `minItems` only constrain their own JSON type, so
-	// the type stays inferred unless a member declared it.
-	const merged: Record<string, unknown> = declaredType ? { type } : {};
-	let minimum: number | undefined;
-	let maximum: number | undefined;
-	let exclusiveMinimum: number | undefined;
-	let exclusiveMaximum: number | undefined;
-	let multipleOf: number | undefined;
-	let minLength: number | undefined;
-	let maxLength: number | undefined;
-	let pattern: string | undefined;
-	let minItems: number | undefined;
-	let maxItems: number | undefined;
-	let uniqueItems: boolean | undefined;
+	const constraints: TypedConstraints = {};
 
 	for (const member of members) {
-		if (typeof member.minimum === 'number') {
-			minimum = minimum === undefined ? member.minimum : Math.max(minimum, member.minimum);
-		}
-
-		if (typeof member.maximum === 'number') {
-			maximum = maximum === undefined ? member.maximum : Math.min(maximum, member.maximum);
-		}
-
-		// The draft-04 boolean form cannot be combined with numbers.
-		if (member.exclusiveMinimum !== undefined) {
-			if (typeof member.exclusiveMinimum !== 'number') {
-				return undefined;
-			}
-
-			exclusiveMinimum =
-				exclusiveMinimum === undefined
-					? member.exclusiveMinimum
-					: Math.max(exclusiveMinimum, member.exclusiveMinimum);
-		}
-
-		if (member.exclusiveMaximum !== undefined) {
-			if (typeof member.exclusiveMaximum !== 'number') {
-				return undefined;
-			}
-
-			exclusiveMaximum =
-				exclusiveMaximum === undefined
-					? member.exclusiveMaximum
-					: Math.min(exclusiveMaximum, member.exclusiveMaximum);
-		}
-
-		if (typeof member.multipleOf === 'number') {
-			if (multipleOf !== undefined && multipleOf !== member.multipleOf) {
-				return undefined;
-			}
-
-			multipleOf = member.multipleOf;
-		}
-
-		if (typeof member.minLength === 'number') {
-			minLength =
-				minLength === undefined ? member.minLength : Math.max(minLength, member.minLength);
-		}
-
-		if (typeof member.maxLength === 'number') {
-			maxLength =
-				maxLength === undefined ? member.maxLength : Math.min(maxLength, member.maxLength);
-		}
-
-		if (typeof member.pattern === 'string') {
-			if (pattern !== undefined && pattern !== member.pattern) {
-				return undefined;
-			}
-
-			pattern = member.pattern;
-		}
-
-		if (typeof member.minItems === 'number') {
-			minItems = minItems === undefined ? member.minItems : Math.max(minItems, member.minItems);
-		}
-
-		if (typeof member.maxItems === 'number') {
-			maxItems = maxItems === undefined ? member.maxItems : Math.min(maxItems, member.maxItems);
-		}
-
-		if (member.uniqueItems === true) {
-			uniqueItems = true;
+		if (!mergeTypedMember(constraints, member)) {
+			return undefined;
 		}
 	}
 
-	for (const [keyword, value] of Object.entries({
-		minimum,
-		maximum,
-		exclusiveMinimum,
-		exclusiveMaximum,
-		multipleOf,
-		minLength,
-		maxLength,
-		pattern,
-		minItems,
-		maxItems,
-		uniqueItems,
-	})) {
+	return renderTypedSchema(plan, constraints);
+}
+
+interface MergeTypeState {
+	type?: MergeableType;
+	declaredType: boolean;
+}
+
+function planTypedMerge(members: ParsedJSONSchemaObject[]): MergeTypePlan | undefined {
+	const state: MergeTypeState = { declaredType: false };
+
+	for (const member of members) {
+		if (!mergeMemberType(state, member)) {
+			return undefined;
+		}
+	}
+
+	return state.type === undefined
+		? undefined
+		: { type: state.type, declaredType: state.declaredType };
+}
+
+function mergeMemberType(state: MergeTypeState, member: ParsedJSONSchemaObject): boolean {
+	if (member.$ref !== undefined) {
+		return false;
+	}
+
+	const memberType = mergeableType(member);
+
+	if (memberType === undefined) {
+		return false;
+	}
+
+	if (isDeclaredMergeType(member.type)) {
+		state.declaredType = true;
+	}
+
+	state.type = combineMergeTypes(state.type, memberType);
+	return state.type !== undefined && hasOnlyMergeableKeywords(member, memberType);
+}
+
+function isDeclaredMergeType(type: ParsedJSONSchemaObject['type']): type is MergeableType {
+	return MERGEABLE_TYPES.some((candidate) => candidate === type);
+}
+
+function combineMergeTypes(
+	previous: MergeableType | undefined,
+	next: MergeableType
+): MergeableType | undefined {
+	return previous === undefined ? next : MERGE_TYPE_RESULTS[`${previous}:${next}`];
+}
+
+function hasOnlyMergeableKeywords(
+	member: ParsedJSONSchemaObject,
+	memberType: MergeableType
+): boolean {
+	const allowed = MERGEABLE_KEYWORDS[memberType === 'integer' ? 'number' : memberType];
+
+	for (const [keyword, value] of Object.entries(member)) {
+		if (!isMergeableKeyword(keyword, value, allowed)) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+function isMergeableKeyword(
+	keyword: string,
+	value: unknown,
+	allowed: ReadonlySet<string>
+): boolean {
+	return (
+		value === undefined ||
+		ANNOTATION_KEYWORDS.has(keyword) ||
+		keyword === 'type' ||
+		allowed.has(keyword)
+	);
+}
+
+function mergeTypedMember(constraints: TypedConstraints, member: ParsedJSONSchemaObject): boolean {
+	return (
+		mergeNumericConstraints(constraints, member) &&
+		mergeStringConstraints(constraints, member) &&
+		mergeArrayConstraints(constraints, member)
+	);
+}
+
+function mergeNumericConstraints(
+	constraints: TypedConstraints,
+	member: ParsedJSONSchemaObject
+): boolean {
+	return (
+		mergeMinimum(constraints, member.minimum) &&
+		mergeExclusiveMinimum(constraints, member.exclusiveMinimum) &&
+		mergeMaximum(constraints, member.maximum) &&
+		mergeExclusiveMaximum(constraints, member.exclusiveMaximum) &&
+		mergeMultipleOf(constraints, member.multipleOf)
+	);
+}
+
+function mergeStringConstraints(
+	constraints: TypedConstraints,
+	member: ParsedJSONSchemaObject
+): boolean {
+	return (
+		mergeMinLength(constraints, member.minLength) &&
+		mergeMaxLength(constraints, member.maxLength) &&
+		mergePattern(constraints, member.pattern)
+	);
+}
+
+function mergeArrayConstraints(
+	constraints: TypedConstraints,
+	member: ParsedJSONSchemaObject
+): boolean {
+	return (
+		mergeMinItems(constraints, member.minItems) &&
+		mergeMaxItems(constraints, member.maxItems) &&
+		mergeUniqueItems(constraints, member.uniqueItems)
+	);
+}
+
+function mergeMinimum(constraints: TypedConstraints, value: unknown): boolean {
+	if (typeof value !== 'number') {
+		return true;
+	}
+
+	constraints.minimum =
+		constraints.minimum === undefined ? value : Math.max(constraints.minimum, value);
+	return true;
+}
+
+function mergeMaximum(constraints: TypedConstraints, value: unknown): boolean {
+	if (typeof value !== 'number') {
+		return true;
+	}
+
+	constraints.maximum =
+		constraints.maximum === undefined ? value : Math.min(constraints.maximum, value);
+	return true;
+}
+
+function mergeExclusiveMinimum(constraints: TypedConstraints, value: unknown): boolean {
+	if (value === undefined) {
+		return true;
+	}
+
+	if (typeof value !== 'number') {
+		return false;
+	}
+
+	constraints.exclusiveMinimum =
+		constraints.exclusiveMinimum === undefined
+			? value
+			: Math.max(constraints.exclusiveMinimum, value);
+	return true;
+}
+
+function mergeExclusiveMaximum(constraints: TypedConstraints, value: unknown): boolean {
+	if (value === undefined) {
+		return true;
+	}
+
+	if (typeof value !== 'number') {
+		return false;
+	}
+
+	constraints.exclusiveMaximum =
+		constraints.exclusiveMaximum === undefined
+			? value
+			: Math.min(constraints.exclusiveMaximum, value);
+	return true;
+}
+
+function mergeMultipleOf(constraints: TypedConstraints, value: unknown): boolean {
+	if (typeof value !== 'number') {
+		return true;
+	}
+
+	if (constraints.multipleOf !== undefined && constraints.multipleOf !== value) {
+		return false;
+	}
+
+	constraints.multipleOf = value;
+	return true;
+}
+
+function mergeMinLength(constraints: TypedConstraints, value: unknown): boolean {
+	if (typeof value !== 'number') {
+		return true;
+	}
+
+	constraints.minLength =
+		constraints.minLength === undefined ? value : Math.max(constraints.minLength, value);
+	return true;
+}
+
+function mergeMaxLength(constraints: TypedConstraints, value: unknown): boolean {
+	if (typeof value !== 'number') {
+		return true;
+	}
+
+	constraints.maxLength =
+		constraints.maxLength === undefined ? value : Math.min(constraints.maxLength, value);
+	return true;
+}
+
+function mergePattern(constraints: TypedConstraints, value: unknown): boolean {
+	if (typeof value !== 'string') {
+		return true;
+	}
+
+	if (constraints.pattern !== undefined && constraints.pattern !== value) {
+		return false;
+	}
+
+	constraints.pattern = value;
+	return true;
+}
+
+function mergeMinItems(constraints: TypedConstraints, value: unknown): boolean {
+	if (typeof value !== 'number') {
+		return true;
+	}
+
+	constraints.minItems =
+		constraints.minItems === undefined ? value : Math.max(constraints.minItems, value);
+	return true;
+}
+
+function mergeMaxItems(constraints: TypedConstraints, value: unknown): boolean {
+	if (typeof value !== 'number') {
+		return true;
+	}
+
+	constraints.maxItems =
+		constraints.maxItems === undefined ? value : Math.min(constraints.maxItems, value);
+	return true;
+}
+
+function mergeUniqueItems(constraints: TypedConstraints, value: unknown): boolean {
+	if (value === true) {
+		constraints.uniqueItems = true;
+	}
+
+	return true;
+}
+
+function renderTypedSchema(
+	plan: MergeTypePlan,
+	constraints: TypedConstraints
+): ParsedJSONSchemaObject {
+	// Keywords like `minimum` or `minItems` only constrain their own JSON type, so
+	// the type stays inferred unless a member declared it.
+	const merged: Record<string, unknown> = plan.declaredType ? { type: plan.type } : {};
+
+	for (const keyword of TYPED_CONSTRAINT_KEYWORDS) {
+		const value = constraints[keyword];
+
 		if (value !== undefined) {
 			merged[keyword] = value;
 		}
@@ -1381,25 +1570,26 @@ function mergeTypedSchemas(members: ParsedJSONSchemaObject[]): ParsedJSONSchemaO
 }
 
 /** The type a subschema constrains, from `type` or its keyword family. */
-function mergeableType(
-	schema: ParsedJSONSchemaObject
-): 'number' | 'integer' | 'string' | 'array' | undefined {
-	if (
-		schema.type === 'number' ||
-		schema.type === 'integer' ||
-		schema.type === 'string' ||
-		schema.type === 'array'
-	) {
-		return schema.type;
+function mergeableType(schema: ParsedJSONSchemaObject): MergeableType | undefined {
+	const declared = MERGEABLE_TYPES.find((type) => type === schema.type);
+
+	if (declared !== undefined) {
+		return declared;
 	}
 
 	if (schema.type !== undefined) {
 		return undefined;
 	}
 
+	const candidates = mergeTypeCandidates(schema);
+
+	return candidates.length === 1 ? candidates[0] : undefined;
+}
+
+function mergeTypeCandidates(schema: ParsedJSONSchemaObject): MergeableType[] {
 	const record = schema as unknown as Record<string, unknown>;
 	const has = (keywords: string[]) => keywords.some((keyword) => record[keyword] !== undefined);
-	const candidates: Array<'number' | 'string' | 'array'> = [];
+	const candidates: MergeableType[] = [];
 
 	if (has(['minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf'])) {
 		candidates.push('number');
@@ -1413,7 +1603,7 @@ function mergeableType(
 		candidates.push('array');
 	}
 
-	return candidates.length === 1 ? candidates[0] : undefined;
+	return candidates;
 }
 
 function reference(schema: ParsedJSONSchemaObject, context: Context): string {
@@ -1539,24 +1729,44 @@ function applyChecks(expression: string, checks: string[]): string {
 function applyAnnotations(expression: string, schema: ParsedJSONSchemaObject): string {
 	const annotations: string[] = [];
 
+	appendStringAnnotations(annotations, schema);
+	appendValueAnnotations(annotations, schema);
+	appendIdentifierAnnotations(annotations, schema);
+	appendBooleanAnnotations(annotations, schema);
+
+	return annotations.length > 0
+		? `${expression}.annotate({ ${annotations.join(', ')} })`
+		: expression;
+}
+
+function appendStringAnnotations(annotations: string[], schema: ParsedJSONSchemaObject): void {
 	if (typeof schema.title === 'string') {
 		annotations.push(`title: ${JSON.stringify(schema.title)}`);
 	}
 	if (typeof schema.description === 'string') {
 		annotations.push(`description: ${JSON.stringify(schema.description)}`);
 	}
+}
+
+function appendValueAnnotations(annotations: string[], schema: ParsedJSONSchemaObject): void {
 	if (schema.default !== undefined) {
 		annotations.push(`default: ${JSON.stringify(schema.default)}`);
 	}
 	if (Array.isArray(schema.examples)) {
 		annotations.push(`examples: ${JSON.stringify(schema.examples)}`);
 	}
+}
+
+function appendIdentifierAnnotations(annotations: string[], schema: ParsedJSONSchemaObject): void {
 	if (typeof schema.$id === 'string') {
 		annotations.push(`identifier: ${JSON.stringify(schema.$id)}`);
 	}
 	if (typeof schema.format === 'string') {
 		annotations.push(`format: ${JSON.stringify(schema.format)}`);
 	}
+}
+
+function appendBooleanAnnotations(annotations: string[], schema: ParsedJSONSchemaObject): void {
 	if (typeof schema.readOnly === 'boolean') {
 		annotations.push(`readOnly: ${schema.readOnly}`);
 	}
@@ -1566,8 +1776,4 @@ function applyAnnotations(expression: string, schema: ParsedJSONSchemaObject): s
 	if (typeof schema.deprecated === 'boolean') {
 		annotations.push(`deprecated: ${schema.deprecated}`);
 	}
-
-	return annotations.length > 0
-		? `${expression}.annotate({ ${annotations.join(', ')} })`
-		: expression;
 }

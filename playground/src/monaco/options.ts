@@ -3,7 +3,7 @@ import type * as monaco from 'monaco-editor';
 const FONT_FAMILY =
 	"ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', monospace";
 
-interface EditorOptionsInput {
+export interface EditorOptionsInput {
 	readOnly: boolean;
 	theme: string;
 	ariaLabel?: string;

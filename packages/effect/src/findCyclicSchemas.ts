@@ -1,6 +1,4 @@
-import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
-
-import type { SchemaEdge } from './collectStandaloneSchemas';
+import type { ParsedJSONSchemaObject, SchemaEdge } from '@utilize/json-schema';
 
 /**
  * Returns the standalone schemas that take part in a reference cycle. Their

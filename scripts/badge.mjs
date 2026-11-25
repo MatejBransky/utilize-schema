@@ -4,7 +4,7 @@ const LABEL_WIDTH = 62;
 const CHARACTER_WIDTH = 7;
 const VALUE_PADDING = 10;
 
-export const COLOR_THRESHOLDS = [
+const COLOR_THRESHOLDS = [
 	{ minimum: 95, color: '#4c1' },
 	{ minimum: 90, color: '#97ca00' },
 	{ minimum: 75, color: '#a4a61d' },

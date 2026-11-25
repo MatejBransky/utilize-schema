@@ -1,12 +1,13 @@
 import { afterAll, describe, expect, test } from 'vitest';
 
+import { DRAFT_7, isCompatible } from '@utilize/test-utils/suite/compatibility';
+
 import { baseline } from './suite/baseline';
-import { DRAFT_7, isCompatible } from './suite/compatibility';
-import { compileToSchema } from './suite/compile';
+import { compileToEffectSchema } from './suite/compile';
 import { knownFailureInstances } from './suite/knownFailureInstances';
 import { knownFailures } from './suite/knownFailures';
 import { decode } from './test-utils';
-import { loadSuiteFiles, type SuiteCase, suiteCaseKey } from './suite/loadSuite';
+import { loadSuiteFiles, type SuiteCase, suiteCaseKey } from '@utilize/test-utils/suite/loadSuite';
 
 /**
  * Runs the official JSON Schema Test Suite against the generated Zod schemas.
@@ -115,7 +116,11 @@ for (const file of files) {
 					if (expected === 'compile') {
 						stats.failedAssertions += testCase.tests.length;
 						await expect(
-							compileToSchema(testCase.schema, testCase.externalSchemas, formatModeFor(testCase))
+							compileToEffectSchema(
+								testCase.schema,
+								testCase.externalSchemas,
+								formatModeFor(testCase)
+							)
 						).rejects.toThrow();
 						return;
 					}
@@ -129,7 +134,7 @@ for (const file of files) {
 						`"${key}" no longer fails; remove the entry`
 					).toBeGreaterThan(0);
 
-					const schema = await compileToSchema(
+					const schema = await compileToEffectSchema(
 						testCase.schema,
 						testCase.externalSchemas,
 						formatModeFor(testCase)
@@ -152,7 +157,7 @@ for (const file of files) {
 				let failures: string[];
 
 				try {
-					const schema = await compileToSchema(
+					const schema = await compileToEffectSchema(
 						testCase.schema,
 						testCase.externalSchemas,
 						formatModeFor(testCase)
@@ -263,7 +268,7 @@ describe('other dialects', () => {
 					let failed: number;
 
 					try {
-						const schema = await compileToSchema(
+						const schema = await compileToEffectSchema(
 							testCase.schema,
 							testCase.externalSchemas,
 							formatModeFor(testCase),

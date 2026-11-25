@@ -2,7 +2,7 @@ import { type DialectId, type JSONSchema, Meta, parse } from '@utilize/json-sche
 
 import { generate } from '../../src/generator';
 
-import type { SuiteCase } from './loadSuite';
+import type { SuiteCase } from '@utilize/test-utils/suite/loadSuite';
 
 export interface InstanceLine {
 	/** Position of the instance in the suite case. */

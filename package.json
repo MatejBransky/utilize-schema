@@ -40,11 +40,19 @@
 		"ci:publish": "pnpm changeset publish",
 		"verify": "pnpm build:dev && pnpm check:format && pnpm check:lint && pnpm check:types && pnpm ci:test",
 		"security": "pnpm audit --audit-level=high",
+		"fallow": "fallow",
+		"fallow:audit": "fallow audit",
+		"fallow:badge": "node scripts/fallow-badge.mjs",
+		"check:fallow-badge": "node scripts/fallow-badge.mjs --check",
+		"fallow:coverage": "node scripts/fallow-coverage.mjs",
+		"hooks:install": "fallow hooks install --target git",
 		"example": "pnpm --filter playground dev"
 	},
 	"devDependencies": {
 		"@changesets/cli": "3.0.3",
 		"@vitest/coverage-v8": "catalog:",
+		"fallow": "catalog:",
+		"fallow-type-aware": "catalog:",
 		"oxfmt": "catalog:",
 		"oxlint": "catalog:",
 		"typescript": "catalog:"

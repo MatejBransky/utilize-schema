@@ -104,6 +104,49 @@ describe('prepareSchema', () => {
 		});
 	});
 
+	test('visits a shared schema node only once', () => {
+		const shared = { type: 'array', prefixItems: [{ type: 'string' }] };
+		const schema = {
+			$schema: draft07,
+			properties: { first: shared, second: shared },
+		};
+		const issues: DialectIssue[] = [];
+
+		prepareSchema(schema, { onDialectIssue: (issue) => issues.push(issue) });
+
+		expect(issues).toHaveLength(1);
+		expect(issues[0]).toMatchObject({ keyword: 'prefixItems', path: ['properties', 'first'] });
+	});
+
+	test('visits tuple items and ignores annotation values', () => {
+		const item = { type: 'string' };
+		const schema = {
+			$schema: twentyTwentyTwelve,
+			prefixItems: [item],
+			default: { nested: { type: 'number' } },
+			examples: [{ type: 'boolean' }],
+		};
+		const map = prepareSchema(schema);
+
+		expect(map.get(item)).toEqual({
+			dialect: dialects['2020-12'],
+			source: 'declared',
+		});
+		expect(map.has(schema.default)).toBe(false);
+		expect(map.has(schema.examples)).toBe(false);
+	});
+
+	test('visits schema dependencies but not property dependency arrays', () => {
+		const dependency = { type: 'object', properties: { b: { type: 'string' } } };
+		const schema = {
+			$schema: draft07,
+			dependencies: { a: dependency, b: ['c'] },
+		};
+		const map = prepareSchema(schema);
+
+		expect(map.get(dependency)?.dialect.id).toBe('draft-07');
+	});
+
 	test('switches the dialect at an embedded resource', () => {
 		const nested = {
 			$id: 'https://example.com/nested',
@@ -305,6 +348,46 @@ describe('prepareSchema', () => {
 		);
 
 		expect(issues.map((issue) => issue.keyword)).toEqual(['prefixItems', 'dependentRequired']);
+	});
+
+	test('preserves keyword issue ordering across validators', () => {
+		const issues: DialectIssue[] = [];
+
+		prepareSchema(
+			{
+				$schema: twentyTwentyTwelve,
+				additionalItems: false,
+				dependencies: { a: ['b'] },
+				items: [{ type: 'string' }],
+				exclusiveMinimum: true,
+				exclusiveMaximum: false,
+			},
+			{ onDialectIssue: (issue) => issues.push(issue) }
+		);
+
+		expect(issues.map((issue) => issue.keyword)).toEqual([
+			'additionalItems',
+			'dependencies',
+			'items',
+			'exclusiveMinimum',
+			'exclusiveMaximum',
+		]);
+	});
+
+	test('reports ignored $ref siblings after the other keyword issues', () => {
+		const issues: DialectIssue[] = [];
+
+		prepareSchema(
+			{
+				$schema: draft07,
+				$ref: '#/$defs/target',
+				minimum: 0,
+				prefixItems: [{ type: 'string' }],
+			},
+			{ onDialectIssue: (issue) => issues.push(issue) }
+		);
+
+		expect(issues.map((issue) => issue.keyword)).toEqual(['prefixItems', 'minimum']);
 	});
 
 	test('keeps reporting other issues next to a best-effort unevaluated keyword', () => {

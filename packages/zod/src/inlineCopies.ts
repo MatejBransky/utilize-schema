@@ -1,6 +1,11 @@
-import { dialectOf, isPlainObject, Meta, type ParsedJSONSchemaObject } from '@utilize/json-schema';
+import {
+	childSchemasOf,
+	dialectOf,
+	isPlainObject,
+	Meta,
+	type ParsedJSONSchemaObject,
+} from '@utilize/json-schema';
 
-import { childSchemasOf } from './collectStandaloneSchemas';
 import { withoutAlwaysValidAnyOf } from './generators/alwaysValidAnyOf';
 import { ignoresRefSiblings } from './generators/generateSchema';
 

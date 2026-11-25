@@ -80,18 +80,28 @@ function indexIdentifiers(
 	// `$id` does not declare a resource there. The linker makes the same check.
 	const ignoresSiblings = typeof record.$ref === 'string' && nodeDialect.refSiblings === 'ignore';
 	const identifier = ignoresSiblings ? undefined : identifierOf(schema);
-	let nextBase = baseUri;
-
-	if (identifier) {
-		const resolved = normalizeUri(identifier, baseUri);
-		nextBase = resolved;
-
-		if (!index.has(resolved)) {
-			index.set(resolved, schema);
-		}
-	}
+	const nextBase = registerIdentifier(identifier, baseUri, schema, index);
 
 	for (const value of schemaChildren(record)) {
 		indexIdentifiers(nextBase, value as JSONSchema, index, seen, nodeDialect);
 	}
+}
+
+function registerIdentifier(
+	identifier: string | undefined,
+	baseUri: string,
+	schema: JSONSchema,
+	index: Map<string, JSONSchema | boolean>
+): string {
+	if (!identifier) {
+		return baseUri;
+	}
+
+	const resolved = normalizeUri(identifier, baseUri);
+
+	if (!index.has(resolved)) {
+		index.set(resolved, schema);
+	}
+
+	return resolved;
 }

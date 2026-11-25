@@ -1,4 +1,5 @@
 import {
+	collectStandaloneSchemas,
 	dialectOf,
 	Meta,
 	type ParsedJSONSchema,
@@ -7,7 +8,6 @@ import {
 import toposort from 'toposort';
 
 import { breakReferenceCycles } from './breakReferenceCycles';
-import { collectStandaloneSchemas } from './collectStandaloneSchemas';
 import { unsupportedUnionCycleError } from './errors';
 import { findCyclicSchemas } from './findCyclicSchemas';
 import { findInlineCopies } from './inlineCopies';
@@ -81,7 +81,9 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 	const { copies, hoisted } = findInlineCopies(collectStandaloneSchemas(root).schemas, (schema) =>
 		isResolvedByCaller(options.customSchemaResolver, schema)
 	);
-	const { schemas: standaloneSchemas, edges } = collectStandaloneSchemas(root, copies);
+	const { schemas: standaloneSchemas, edges } = collectStandaloneSchemas(root, {
+		inlineCopies: copies,
+	});
 	const { schemas: cyclicSchemas, unsupported } = findCyclicSchemas(edges, standaloneSchemas);
 
 	if (unsupported.length > 0) {
@@ -228,7 +230,7 @@ function singleQuoted(text: string): string {
 const ONE_OF_HELPER = ts`function oneOfSchema<T extends z.ZodType>(
   options: readonly T[]
 ): z.ZodType<z.output<T>, z.input<T>> {
-  return z.any().transform((value, ctx) => {
+  function matchingResults(value: unknown): z.output<T>[] {
     const matches: z.output<T>[] = [];
 
     for (const option of options) {
@@ -242,6 +244,12 @@ const ONE_OF_HELPER = ts`function oneOfSchema<T extends z.ZodType>(
         }
       }
     }
+
+    return matches;
+  }
+
+  return z.any().transform((value, ctx) => {
+    const matches = matchingResults(value);
 
     if (matches.length !== 1) {
       ctx.addIssue({

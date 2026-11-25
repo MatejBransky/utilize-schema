@@ -128,6 +128,31 @@ test('indexes identifiers declared in schema positions', () => {
 	expect(index.get('https://example.com/name.json')).toMatchObject({ type: 'string' });
 });
 
+test('resolves nested identifiers against the current base URI', () => {
+	const index = indexExternalSchemas({
+		'https://example.com/root/bundle.json': {
+			definitions: {
+				name: { $id: 'name.json', type: 'string' },
+			},
+		} as unknown as JSONSchema,
+	});
+
+	expect(index.get('https://example.com/root/name.json')).toMatchObject({ type: 'string' });
+});
+
+test('keeps explicit retrieval keys when a nested identifier resolves to the same URI', () => {
+	const index = indexExternalSchemas({
+		'https://example.com/bundle.json': {
+			definitions: {
+				name: { $id: 'https://example.com/shared.json', type: 'string' },
+			},
+		} as unknown as JSONSchema,
+		'https://example.com/shared.json': { type: 'number' },
+	});
+
+	expect(index.get('https://example.com/shared.json')).toMatchObject({ type: 'number' });
+});
+
 test('ignores identifiers next to a $ref in draft-07 and older', () => {
 	const legacy = indexExternalSchemas({
 		'https://example.com/bundle.json': {

@@ -26,6 +26,18 @@
 	"main": "./dist/index.mjs",
 	"module": "./dist/index.mjs",
 	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.mjs"
+		},
+		"./node": {
+			"types": "./dist/node.d.ts",
+			"default": "./dist/node.mjs"
+		},
+		"./dist/*": "./dist/*",
+		"./package.json": "./package.json"
+	},
 	"publishConfig": {
 		"access": "public"
 	},
@@ -37,13 +49,14 @@
 		"test": "vitest",
 		"prebench": "tsdown",
 		"bench": "node bench/largeSchemas.ts",
+		"bench:build": "tsdown --config tsdown.bench.config.ts",
+		"bench:compare": "node --expose-gc bench/compareRefactor.mjs",
 		"ci:test": "vitest run",
 		"dev": "tsdown --watch"
 	},
 	"dependencies": {
 		"@apidevtools/json-schema-ref-parser": "catalog:",
-		"dequal": "2.0.3",
-		"moize": "6.1.7"
+		"js-yaml": "5.5.0"
 	},
 	"devDependencies": {
 		"@total-typescript/tsconfig": "catalog:",

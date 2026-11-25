@@ -1,0 +1,31 @@
+{
+	"name": "@utilize/test-utils",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Test helpers shared by the generator packages. Not published.",
+	"type": "module",
+	"exports": {
+		"./code": "./src/code.ts",
+		"./setup": "./src/setup.ts",
+		"./suite/*": "./src/suite/*.ts"
+	},
+	"scripts": {
+		"check:types": "tsc --noEmit",
+		"test": "vitest",
+		"ci:test": "vitest run"
+	},
+	"dependencies": {
+		"@utilize/json-schema": "workspace:*",
+		"json-schema-test-suite": "github:json-schema-org/JSON-Schema-Test-Suite#e2a68a15cd490750fd6b95e604e4054d7d978d1f",
+		"oxfmt": "catalog:"
+	},
+	"devDependencies": {
+		"@total-typescript/tsconfig": "catalog:",
+		"@types/node": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	},
+	"peerDependencies": {
+		"vitest": "catalog:"
+	}
+}

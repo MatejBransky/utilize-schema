@@ -1,10 +1,10 @@
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 
 import { baseline } from './suite/baseline';
-import { DRAFT_7, isCompatible } from './suite/compatibility';
+import { DRAFT_7, isCompatible } from '@utilize/test-utils/suite/compatibility';
 import { renderCaseModule } from './suite/generateCase';
 import { knownGaps } from './suite/knownGaps';
-import { loadSuiteFiles, type SuiteCase, suiteCaseKey } from './suite/loadSuite';
+import { loadSuiteFiles, type SuiteCase, suiteCaseKey } from '@utilize/test-utils/suite/loadSuite';
 import { typecheckCases, type TypecheckModule } from './suite/typecheck';
 
 /**

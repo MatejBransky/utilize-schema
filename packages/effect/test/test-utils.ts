@@ -1,18 +1,11 @@
-import {
-	type DialectOptions,
-	type JSONSchema,
-	Meta,
-	parse,
-	type ParsedJSONSchemaObject,
-} from '@utilize/json-schema';
+import { type DialectOptions, type JSONSchema, type NameMapper, parse } from '@utilize/json-schema';
 import { Schema } from 'effect';
-import { format as formatCode } from 'oxfmt';
+import { formatSource, ts } from '@utilize/test-utils/code';
 
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { generate, type CustomSchemaResolver, type FormatMode } from '../src/generator';
-import type { NameMapper } from '../src/resolveName';
 
 /** JSON Schema 2020-12 keywords that the draft-07 based `JSONSchema` type lacks. */
 export type TestSchema = JSONSchema & {
@@ -27,42 +20,7 @@ export type TestSchema = JSONSchema & {
 
 export type GeneratedSchema = Parameters<typeof Schema.decodeUnknownSync>[0];
 
-/**
- * A tagged template literal function for expected TypeScript code. Code is
- * compared with whitespace normalized, so the generated output does not need
- * to be formatted.
- */
-export const ts = (strings: TemplateStringsArray, ...values: unknown[]) =>
-	formatSource(String.raw(strings, ...values));
-
-const formatOptions = {
-	bracketSpacing: true,
-	endOfLine: 'lf',
-	semi: true,
-	singleQuote: true,
-	trailingComma: 'es5',
-	useTabs: true,
-	objectWrap: 'collapse',
-} as const;
-
-function formatSource(code: string) {
-	return formatCode('code.ts', code, formatOptions).then((result) => result.code);
-}
-
-export function withMeta(obj: JSONSchema, meta: Partial<Meta> = {}) {
-	Object.defineProperty(obj, Meta, {
-		enumerable: false,
-		value: { ...meta },
-		writable: true,
-		configurable: true,
-	});
-
-	return obj as ParsedJSONSchemaObject;
-}
-
-export function normalizeCode(code: string): string {
-	return code.replace(/\r\n?/g, '\n').trim();
-}
+export { ts };
 
 export interface CompileOptions extends DialectOptions {
 	importEffect?: boolean;
