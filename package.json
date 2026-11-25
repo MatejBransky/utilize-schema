@@ -38,11 +38,14 @@
 		"ci:publish": "pnpm changeset publish",
 		"verify": "pnpm build:dev && pnpm check:format && pnpm check:lint && pnpm check:types && pnpm ci:test",
 		"security": "pnpm audit --audit-level=high",
+		"fallow": "fallow",
+		"fallow:audit": "fallow audit",
 		"example": "pnpm --filter playground dev"
 	},
 	"devDependencies": {
 		"@changesets/cli": "3.0.3",
 		"@vitest/coverage-v8": "catalog:",
+		"fallow": "catalog:",
 		"oxfmt": "catalog:",
 		"oxlint": "catalog:",
 		"typescript": "catalog:"
