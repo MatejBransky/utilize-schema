@@ -1194,6 +1194,48 @@ const MERGEABLE_KEYWORDS: Record<'number' | 'string' | 'array', ReadonlySet<stri
 	array: new Set(['minItems', 'maxItems', 'uniqueItems']),
 };
 
+const MERGE_TYPE_RESULTS: Record<string, MergeableType | undefined> = {
+	'number:number': 'number',
+	'number:integer': 'integer',
+	'integer:number': 'integer',
+	'integer:integer': 'integer',
+	'string:string': 'string',
+	'array:array': 'array',
+};
+
+const TYPED_CONSTRAINT_KEYWORDS = [
+	'minimum',
+	'maximum',
+	'exclusiveMinimum',
+	'exclusiveMaximum',
+	'multipleOf',
+	'minLength',
+	'maxLength',
+	'pattern',
+	'minItems',
+	'maxItems',
+	'uniqueItems',
+] as const;
+
+interface TypedConstraints {
+	minimum?: number;
+	maximum?: number;
+	exclusiveMinimum?: number;
+	exclusiveMaximum?: number;
+	multipleOf?: number;
+	minLength?: number;
+	maxLength?: number;
+	pattern?: string;
+	minItems?: number;
+	maxItems?: number;
+	uniqueItems?: boolean;
+}
+
+interface MergeTypePlan {
+	type: MergeableType;
+	declaredType: boolean;
+}
+
 /** Removes the `allOf` that is being flattened and keeps every other keyword. */
 function withoutAllOf(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject {
 	return { ...schema, allOf: undefined };
@@ -1245,153 +1287,280 @@ function isEmptySchema(schema: ParsedJSONSchemaObject): boolean {
  * `multipleOf`, array items) keeps the intersection a filter.
  */
 function mergeTypedSchemas(members: ParsedJSONSchemaObject[]): ParsedJSONSchemaObject | undefined {
-	let type: 'number' | 'integer' | 'string' | 'array' | undefined;
-	let declaredType = false;
+	const plan = planTypedMerge(members);
 
-	for (const member of members) {
-		if (member.$ref !== undefined) {
-			return undefined;
-		}
-
-		const memberType = mergeableType(member);
-
-		if (memberType === undefined) {
-			return undefined;
-		}
-
-		if (
-			member.type === 'number' ||
-			member.type === 'integer' ||
-			member.type === 'string' ||
-			member.type === 'array'
-		) {
-			declaredType = true;
-		}
-
-		if (type === undefined) {
-			type = memberType;
-		} else if (type === 'number' && memberType === 'integer') {
-			type = 'integer';
-		} else if (type !== memberType && !(type === 'integer' && memberType === 'number')) {
-			return undefined;
-		}
-
-		const allowed = MERGEABLE_KEYWORDS[memberType === 'integer' ? 'number' : memberType];
-
-		for (const [keyword, value] of Object.entries(member)) {
-			if (value === undefined || ANNOTATION_KEYWORDS.has(keyword) || keyword === 'type') {
-				continue;
-			}
-
-			if (!allowed.has(keyword)) {
-				return undefined;
-			}
-		}
-	}
-
-	if (type === undefined) {
+	if (plan === undefined) {
 		return undefined;
 	}
 
-	// Keywords like `minimum` or `minItems` only constrain their own JSON type, so
-	// the type stays inferred unless a member declared it.
-	const merged: Record<string, unknown> = declaredType ? { type } : {};
-	let minimum: number | undefined;
-	let maximum: number | undefined;
-	let exclusiveMinimum: number | undefined;
-	let exclusiveMaximum: number | undefined;
-	let multipleOf: number | undefined;
-	let minLength: number | undefined;
-	let maxLength: number | undefined;
-	let pattern: string | undefined;
-	let minItems: number | undefined;
-	let maxItems: number | undefined;
-	let uniqueItems: boolean | undefined;
+	const constraints: TypedConstraints = {};
 
 	for (const member of members) {
-		if (typeof member.minimum === 'number') {
-			minimum = minimum === undefined ? member.minimum : Math.max(minimum, member.minimum);
-		}
-
-		if (typeof member.maximum === 'number') {
-			maximum = maximum === undefined ? member.maximum : Math.min(maximum, member.maximum);
-		}
-
-		// The draft-04 boolean form cannot be combined with numbers.
-		if (member.exclusiveMinimum !== undefined) {
-			if (typeof member.exclusiveMinimum !== 'number') {
-				return undefined;
-			}
-
-			exclusiveMinimum =
-				exclusiveMinimum === undefined
-					? member.exclusiveMinimum
-					: Math.max(exclusiveMinimum, member.exclusiveMinimum);
-		}
-
-		if (member.exclusiveMaximum !== undefined) {
-			if (typeof member.exclusiveMaximum !== 'number') {
-				return undefined;
-			}
-
-			exclusiveMaximum =
-				exclusiveMaximum === undefined
-					? member.exclusiveMaximum
-					: Math.min(exclusiveMaximum, member.exclusiveMaximum);
-		}
-
-		if (typeof member.multipleOf === 'number') {
-			if (multipleOf !== undefined && multipleOf !== member.multipleOf) {
-				return undefined;
-			}
-
-			multipleOf = member.multipleOf;
-		}
-
-		if (typeof member.minLength === 'number') {
-			minLength =
-				minLength === undefined ? member.minLength : Math.max(minLength, member.minLength);
-		}
-
-		if (typeof member.maxLength === 'number') {
-			maxLength =
-				maxLength === undefined ? member.maxLength : Math.min(maxLength, member.maxLength);
-		}
-
-		if (typeof member.pattern === 'string') {
-			if (pattern !== undefined && pattern !== member.pattern) {
-				return undefined;
-			}
-
-			pattern = member.pattern;
-		}
-
-		if (typeof member.minItems === 'number') {
-			minItems = minItems === undefined ? member.minItems : Math.max(minItems, member.minItems);
-		}
-
-		if (typeof member.maxItems === 'number') {
-			maxItems = maxItems === undefined ? member.maxItems : Math.min(maxItems, member.maxItems);
-		}
-
-		if (member.uniqueItems === true) {
-			uniqueItems = true;
+		if (!mergeTypedMember(constraints, member)) {
+			return undefined;
 		}
 	}
 
-	for (const [keyword, value] of Object.entries({
-		minimum,
-		maximum,
-		exclusiveMinimum,
-		exclusiveMaximum,
-		multipleOf,
-		minLength,
-		maxLength,
-		pattern,
-		minItems,
-		maxItems,
-		uniqueItems,
-	})) {
+	return renderTypedSchema(plan, constraints);
+}
+
+interface MergeTypeState {
+	type?: MergeableType;
+	declaredType: boolean;
+}
+
+function planTypedMerge(members: ParsedJSONSchemaObject[]): MergeTypePlan | undefined {
+	const state: MergeTypeState = { declaredType: false };
+
+	for (const member of members) {
+		if (!mergeMemberType(state, member)) {
+			return undefined;
+		}
+	}
+
+	return state.type === undefined
+		? undefined
+		: { type: state.type, declaredType: state.declaredType };
+}
+
+function mergeMemberType(state: MergeTypeState, member: ParsedJSONSchemaObject): boolean {
+	if (member.$ref !== undefined) {
+		return false;
+	}
+
+	const memberType = mergeableType(member);
+
+	if (memberType === undefined) {
+		return false;
+	}
+
+	if (isDeclaredMergeType(member.type)) {
+		state.declaredType = true;
+	}
+
+	state.type = combineMergeTypes(state.type, memberType);
+	return state.type !== undefined && hasOnlyMergeableKeywords(member, memberType);
+}
+
+function isDeclaredMergeType(type: ParsedJSONSchemaObject['type']): type is MergeableType {
+	return MERGEABLE_TYPES.some((candidate) => candidate === type);
+}
+
+function combineMergeTypes(
+	previous: MergeableType | undefined,
+	next: MergeableType
+): MergeableType | undefined {
+	return previous === undefined ? next : MERGE_TYPE_RESULTS[`${previous}:${next}`];
+}
+
+function hasOnlyMergeableKeywords(
+	member: ParsedJSONSchemaObject,
+	memberType: MergeableType
+): boolean {
+	const allowed = MERGEABLE_KEYWORDS[memberType === 'integer' ? 'number' : memberType];
+
+	for (const [keyword, value] of Object.entries(member)) {
+		if (!isMergeableKeyword(keyword, value, allowed)) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+function isMergeableKeyword(
+	keyword: string,
+	value: unknown,
+	allowed: ReadonlySet<string>
+): boolean {
+	return (
+		value === undefined ||
+		ANNOTATION_KEYWORDS.has(keyword) ||
+		keyword === 'type' ||
+		allowed.has(keyword)
+	);
+}
+
+function mergeTypedMember(constraints: TypedConstraints, member: ParsedJSONSchemaObject): boolean {
+	return (
+		mergeNumericConstraints(constraints, member) &&
+		mergeStringConstraints(constraints, member) &&
+		mergeArrayConstraints(constraints, member)
+	);
+}
+
+function mergeNumericConstraints(
+	constraints: TypedConstraints,
+	member: ParsedJSONSchemaObject
+): boolean {
+	return (
+		mergeMinimum(constraints, member.minimum) &&
+		mergeExclusiveMinimum(constraints, member.exclusiveMinimum) &&
+		mergeMaximum(constraints, member.maximum) &&
+		mergeExclusiveMaximum(constraints, member.exclusiveMaximum) &&
+		mergeMultipleOf(constraints, member.multipleOf)
+	);
+}
+
+function mergeStringConstraints(
+	constraints: TypedConstraints,
+	member: ParsedJSONSchemaObject
+): boolean {
+	return (
+		mergeMinLength(constraints, member.minLength) &&
+		mergeMaxLength(constraints, member.maxLength) &&
+		mergePattern(constraints, member.pattern)
+	);
+}
+
+function mergeArrayConstraints(
+	constraints: TypedConstraints,
+	member: ParsedJSONSchemaObject
+): boolean {
+	return (
+		mergeMinItems(constraints, member.minItems) &&
+		mergeMaxItems(constraints, member.maxItems) &&
+		mergeUniqueItems(constraints, member.uniqueItems)
+	);
+}
+
+function mergeMinimum(constraints: TypedConstraints, value: unknown): boolean {
+	if (typeof value !== 'number') {
+		return true;
+	}
+
+	constraints.minimum =
+		constraints.minimum === undefined ? value : Math.max(constraints.minimum, value);
+	return true;
+}
+
+function mergeMaximum(constraints: TypedConstraints, value: unknown): boolean {
+	if (typeof value !== 'number') {
+		return true;
+	}
+
+	constraints.maximum =
+		constraints.maximum === undefined ? value : Math.min(constraints.maximum, value);
+	return true;
+}
+
+function mergeExclusiveMinimum(constraints: TypedConstraints, value: unknown): boolean {
+	if (value === undefined) {
+		return true;
+	}
+
+	if (typeof value !== 'number') {
+		return false;
+	}
+
+	constraints.exclusiveMinimum =
+		constraints.exclusiveMinimum === undefined
+			? value
+			: Math.max(constraints.exclusiveMinimum, value);
+	return true;
+}
+
+function mergeExclusiveMaximum(constraints: TypedConstraints, value: unknown): boolean {
+	if (value === undefined) {
+		return true;
+	}
+
+	if (typeof value !== 'number') {
+		return false;
+	}
+
+	constraints.exclusiveMaximum =
+		constraints.exclusiveMaximum === undefined
+			? value
+			: Math.min(constraints.exclusiveMaximum, value);
+	return true;
+}
+
+function mergeMultipleOf(constraints: TypedConstraints, value: unknown): boolean {
+	if (typeof value !== 'number') {
+		return true;
+	}
+
+	if (constraints.multipleOf !== undefined && constraints.multipleOf !== value) {
+		return false;
+	}
+
+	constraints.multipleOf = value;
+	return true;
+}
+
+function mergeMinLength(constraints: TypedConstraints, value: unknown): boolean {
+	if (typeof value !== 'number') {
+		return true;
+	}
+
+	constraints.minLength =
+		constraints.minLength === undefined ? value : Math.max(constraints.minLength, value);
+	return true;
+}
+
+function mergeMaxLength(constraints: TypedConstraints, value: unknown): boolean {
+	if (typeof value !== 'number') {
+		return true;
+	}
+
+	constraints.maxLength =
+		constraints.maxLength === undefined ? value : Math.min(constraints.maxLength, value);
+	return true;
+}
+
+function mergePattern(constraints: TypedConstraints, value: unknown): boolean {
+	if (typeof value !== 'string') {
+		return true;
+	}
+
+	if (constraints.pattern !== undefined && constraints.pattern !== value) {
+		return false;
+	}
+
+	constraints.pattern = value;
+	return true;
+}
+
+function mergeMinItems(constraints: TypedConstraints, value: unknown): boolean {
+	if (typeof value !== 'number') {
+		return true;
+	}
+
+	constraints.minItems =
+		constraints.minItems === undefined ? value : Math.max(constraints.minItems, value);
+	return true;
+}
+
+function mergeMaxItems(constraints: TypedConstraints, value: unknown): boolean {
+	if (typeof value !== 'number') {
+		return true;
+	}
+
+	constraints.maxItems =
+		constraints.maxItems === undefined ? value : Math.min(constraints.maxItems, value);
+	return true;
+}
+
+function mergeUniqueItems(constraints: TypedConstraints, value: unknown): boolean {
+	if (value === true) {
+		constraints.uniqueItems = true;
+	}
+
+	return true;
+}
+
+function renderTypedSchema(
+	plan: MergeTypePlan,
+	constraints: TypedConstraints
+): ParsedJSONSchemaObject {
+	// Keywords like `minimum` or `minItems` only constrain their own JSON type, so
+	// the type stays inferred unless a member declared it.
+	const merged: Record<string, unknown> = plan.declaredType ? { type: plan.type } : {};
+
+	for (const keyword of TYPED_CONSTRAINT_KEYWORDS) {
+		const value = constraints[keyword];
+
 		if (value !== undefined) {
 			merged[keyword] = value;
 		}

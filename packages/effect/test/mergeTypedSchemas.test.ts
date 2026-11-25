@@ -45,9 +45,8 @@ describe('typed allOf merging characterization', () => {
 	});
 
 	test('keeps inferred scalar constraints open to other JSON types', async () => {
-		await expect(
-			await generateRaw({ allOf: [{ minLength: 2 }, { maxLength: 4 }] })
-		).toMatchInlineSnapshot(`
+		await expect(await generateRaw({ allOf: [{ minLength: 2 }, { maxLength: 4 }] }))
+			.toMatchInlineSnapshot(`
 			"export const Root = Schema.Union([Schema.Null, Schema.Boolean, Schema.String.check(Schema.isMinCodePoints(2), Schema.isMaxCodePoints(4)), Schema.Finite, Schema.JsonObject, Schema.Array(Schema.Json)]);
 
 			export type Root = typeof Root.Type;
@@ -141,9 +140,8 @@ describe('typed allOf merging characterization', () => {
 	});
 
 	test('keeps inferred array constraints open to other JSON types', async () => {
-		await expect(
-			await generateRaw({ allOf: [{ minItems: 1 }, { maxItems: 3 }] })
-		).toMatchInlineSnapshot(`
+		await expect(await generateRaw({ allOf: [{ minItems: 1 }, { maxItems: 3 }] }))
+			.toMatchInlineSnapshot(`
 			"export const Root = Schema.Union([Schema.Null, Schema.Boolean, Schema.String, Schema.Finite, Schema.JsonObject, Schema.Array(Schema.Json).check(Schema.isMinLength(1), Schema.isMaxLength(3))]);
 
 			export type Root = typeof Root.Type;
@@ -187,6 +185,62 @@ describe('typed allOf merging characterization', () => {
 			})
 		).toMatchInlineSnapshot(`
 			"export const Root = Schema.Union([Schema.Null, Schema.Boolean, Schema.String.check(Schema.isMinCodePoints(2)), Schema.Finite.check(Schema.isGreaterThanOrEqualTo(1)), Schema.JsonObject, Schema.Array(Schema.Json)]).check(Schema.makeFilter((value) => Schema.is(Schema.Union([Schema.Null, Schema.Boolean, Schema.String, Schema.Finite.check(Schema.isLessThanOrEqualTo(5)), Schema.JsonObject, Schema.Array(Schema.Json)]))(value) ? undefined : 'Value does not match every schema in "allOf"'));
+
+			export type Root = typeof Root.Type;
+			"
+		`);
+	});
+
+	test('keeps integer when an integer member precedes a number member', async () => {
+		await expect(
+			await generateRaw({
+				allOf: [
+					{ type: 'integer', minimum: 1 },
+					{ type: 'number', maximum: 5 },
+				],
+			})
+		).toMatchInlineSnapshot(`
+			"export const Root = Schema.Int.check(Schema.isGreaterThanOrEqualTo(1), Schema.isLessThanOrEqualTo(5));
+
+			export type Root = typeof Root.Type;
+			"
+		`);
+	});
+
+	test('keeps identical patterns in the merged schema', async () => {
+		await expect(
+			await generateRaw({
+				allOf: [{ pattern: '^a' }, { type: 'string', pattern: '^a' }],
+			})
+		).toMatchInlineSnapshot(`
+			"export const Root = Schema.String.check(Schema.isPattern(new RegExp("^a", 'u')));
+
+			export type Root = typeof Root.Type;
+			"
+		`);
+	});
+
+	test('omits uniqueItems when no member enables it', async () => {
+		await expect(
+			await generateRaw({ allOf: [{ type: 'array', uniqueItems: false }, { minItems: 1 }] })
+		).toMatchInlineSnapshot(`
+			"export const Root = Schema.Array(Schema.Json).check(Schema.isMinLength(1));
+
+			export type Root = typeof Root.Type;
+			"
+		`);
+	});
+
+	test('keeps contradictory bounds instead of rejecting the schema', async () => {
+		await expect(
+			await generateRaw({
+				allOf: [
+					{ type: 'number', minimum: 10 },
+					{ type: 'number', maximum: 0 },
+				],
+			})
+		).toMatchInlineSnapshot(`
+			"export const Root = Schema.Finite.check(Schema.isGreaterThanOrEqualTo(10), Schema.isLessThanOrEqualTo(0));
 
 			export type Root = typeof Root.Type;
 			"
