@@ -114,6 +114,8 @@ export function usePlayground() {
 	};
 }
 
+export type Playground = ReturnType<typeof usePlayground>;
+
 function useGeneratorSettings(initial: UrlState) {
 	const [target, setTarget] = useState<TargetId>(initial.target);
 	const [keywordPolicy, setKeywordPolicy] = useState<KeywordPolicy>(initial.keywordPolicy);
