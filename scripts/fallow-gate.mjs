@@ -37,58 +37,25 @@ try {
 	process.exit(2);
 }
 
-/**
- * Collects the rule of every introduced warn-tier finding in the saved result.
- * The sections differ (`severity` on diff-risk findings, `effective_severity`
- * elsewhere), so both are read.
- */
-function introducedWarnings(value) {
-	const rules = [];
+const diffRiskWarnings = (result.diff_risk?.findings ?? []).filter(
+	(finding) => finding.introduced === true && finding.severity === 'warn'
+);
+const onlyReviewWarnings =
+	diffRiskWarnings.length > 0 &&
+	diffRiskWarnings.every((finding) => REVIEW_ONLY_RULES.has(finding.rule));
 
-	const visit = (node) => {
-		if (Array.isArray(node)) {
-			for (const item of node) {
-				visit(item);
-			}
+// A verdict whose only warnings are the review-only diff-risk rules reads as a
+// pass. Other sections keep their own gates, so this only relaxes the aggregate.
+const gateOutcomes = { ...result.gate_outcomes };
 
-			return;
-		}
-
-		if (node === null || typeof node !== 'object') {
-			return;
-		}
-
-		const severity = node.effective_severity ?? node.severity;
-
-		if (node.introduced === true && severity === 'warn' && typeof node.rule === 'string') {
-			rules.push(node.rule);
-		}
-
-		for (const child of Object.values(node)) {
-			visit(child);
-		}
-	};
-
-	visit(value);
-
-	return rules;
+if (onlyReviewWarnings && gateOutcomes['audit-verdict']?.status === 'warn') {
+	gateOutcomes['audit-verdict'] = { ...gateOutcomes['audit-verdict'], status: 'pass' };
 }
 
-const outcomes = Object.entries(result.gate_outcomes ?? {});
-const warnings = introducedWarnings(result);
-const onlyReviewWarnings =
-	warnings.length > 0 && warnings.every((rule) => REVIEW_ONLY_RULES.has(rule));
-const failed = outcomes.filter(([gate, outcome]) => {
-	if (outcome.status === 'fail') {
-		return true;
-	}
-
-	if (!includeWarnings || outcome.status !== 'warn') {
-		return false;
-	}
-
-	return !(gate === 'audit-verdict' && onlyReviewWarnings);
-});
+const outcomes = Object.entries(gateOutcomes);
+const failed = outcomes.filter(
+	([, outcome]) => outcome.status === 'fail' || (includeWarnings && outcome.status === 'warn')
+);
 
 if (failed.length > 0) {
 	for (const [gate, outcome] of failed) {
