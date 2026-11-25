@@ -67,13 +67,7 @@ function shapeOf(
 
 	// `default` lets Zod accept a missing value, which could then match
 	// several branches.
-	if (
-		typeof schema !== 'object' ||
-		schema === null ||
-		visiting.has(schema) ||
-		schema.default !== undefined ||
-		options.isOpaque(schema)
-	) {
+	if (!canDescribeShape(schema, options, visiting)) {
 		return undefined;
 	}
 
@@ -84,19 +78,35 @@ function shapeOf(
 	}
 
 	const dialect = dialectOf(schema, options.dialect);
-	const values =
-		schema.const !== undefined && isKeywordApplicable(dialect, 'const')
-			? [schema.const]
-			: schema.enum;
 	const types = typesOf(schema);
 
 	return {
-		values,
+		values: valuesOf(schema, dialect),
 		types,
 		tags: types?.every((type) => type === 'object')
 			? requiredTags(schema, options, visiting)
 			: new Map(),
 	};
+}
+
+function canDescribeShape(
+	schema: ParsedJSONSchema | undefined,
+	options: ExclusiveBranchesOptions,
+	visiting: Set<ParsedJSONSchemaObject>
+): schema is ParsedJSONSchemaObject {
+	return (
+		typeof schema === 'object' &&
+		schema !== null &&
+		!visiting.has(schema) &&
+		schema.default === undefined &&
+		!options.isOpaque(schema)
+	);
+}
+
+function valuesOf(schema: ParsedJSONSchemaObject, dialect: Dialect): unknown[] | undefined {
+	return schema.const !== undefined && isKeywordApplicable(dialect, 'const')
+		? [schema.const]
+		: schema.enum;
 }
 
 function typesOf(schema: ParsedJSONSchemaObject): JSONSchemaTypeName[] | undefined {
