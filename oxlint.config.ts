@@ -60,7 +60,6 @@ export default defineConfig({
 
 		// The rules below were newly enabled by the preset and still have findings.
 		// Burn them down one rule at a time, then delete the corresponding line.
-		'quality/no-array-filter-map': 'off',
 		'quality/no-chained-type-assertions': 'off',
 		'quality/no-conditional-empty-object-spread': 'off',
 		'quality/no-known-value-widening': 'off',

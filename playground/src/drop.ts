@@ -50,7 +50,11 @@ export async function readDroppedSchemas(files: DroppedFile[]): Promise<Imported
 }
 
 export function relativeNames(paths: string[]): string[] {
-	const normalized = paths.map(normalizeName).filter((path) => path.length > 0);
+	const normalized = paths.flatMap((path) => {
+		const name = normalizeName(path);
+
+		return name.length > 0 ? [name] : [];
+	});
 	const directories = normalized.map((path) => path.split('/').slice(0, -1));
 	const common = directories.reduce<string[]>((prefix, directory) => {
 		let length = 0;

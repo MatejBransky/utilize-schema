@@ -57,11 +57,11 @@ export function inferTypeKeywords(
 		['number', numberKeywords],
 	] as const;
 
-	return categories
-		.filter(([, keywords]) =>
-			keywords.some(
-				(keyword) => record[keyword] !== undefined && isKeywordApplicable(dialect, keyword)
-			)
+	return categories.flatMap(([type, keywords]) =>
+		keywords.some(
+			(keyword) => record[keyword] !== undefined && isKeywordApplicable(dialect, keyword)
 		)
-		.map(([type]) => type as JSONSchemaTypeName);
+			? [type as JSONSchemaTypeName]
+			: []
+	);
 }

@@ -12,7 +12,7 @@ import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-sch
 export function findUnsupportedCycles(
 	schemas: ParsedJSONSchemaObject[]
 ): ParsedJSONSchemaObject[][] {
-	return schemas.filter((schema) => reachesTransparently(schema, schema)).map((schema) => [schema]);
+	return schemas.flatMap((schema) => (reachesTransparently(schema, schema) ? [[schema]] : []));
 }
 
 /**
