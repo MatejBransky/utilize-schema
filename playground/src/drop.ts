@@ -74,11 +74,11 @@ export function relativeNames(paths: string[]): string[] {
 }
 
 function isFileEntry(entry: FileSystemEntry): entry is FileSystemFileEntry {
-	return 'file' in entry;
+	return entry.isFile && 'file' in entry;
 }
 
 function isDirectoryEntry(entry: FileSystemEntry): entry is FileSystemDirectoryEntry {
-	return 'createReader' in entry;
+	return entry.isDirectory && 'createReader' in entry;
 }
 
 async function readEntry(entry: FileSystemEntry): Promise<DroppedFile[]> {
