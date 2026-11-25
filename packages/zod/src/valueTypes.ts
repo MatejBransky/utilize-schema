@@ -89,8 +89,11 @@ function renderType(node: ParsedJSONSchemaObject, context: ValueTypeContext): st
 		return context.aliasFor(declaration) ?? context.typeNameFor(declaration);
 	}
 
-	const schema = withoutAlwaysValidAnyOf(node);
+	return renderNormalizedType(node, context);
+}
 
+function renderNormalizedType(node: ParsedJSONSchemaObject, context: ValueTypeContext): string {
+	const schema = withoutAlwaysValidAnyOf(node);
 	const dialect = dialectOf(schema, context.dialect);
 
 	if (isRefNode(schema)) {
@@ -109,6 +112,14 @@ function renderType(node: ParsedJSONSchemaObject, context: ValueTypeContext): st
 		)}`;
 	}
 
+	return renderGeneratedType(schema, dialect, context);
+}
+
+function renderGeneratedType(
+	schema: ParsedJSONSchemaObject,
+	dialect: Dialect,
+	context: ValueTypeContext
+): string {
 	const generator = selectGenerator(schema, dialect);
 
 	if (generator === multipleTypeGenerator) {
@@ -116,25 +127,67 @@ function renderType(node: ParsedJSONSchemaObject, context: ValueTypeContext): st
 	}
 
 	if (generator === anyOfGenerator || generator === oneOfGenerator) {
-		return union(
-			(schema.anyOf ?? schema.oneOf ?? []).map((subschema) => renderType(subschema, context))
-		);
+		return renderUnionType(schema, context);
 	}
 
 	if (generator === allOfGenerator) {
-		const subschemas = schema.allOf ?? [];
-
-		if (subschemas.length === 0) {
-			return 'never';
-		}
-
-		if (subschemas.length === 1) {
-			return renderType(subschemas[0]!, context);
-		}
-
-		return subschemas.map((subschema) => parenthesize(renderType(subschema, context))).join(' & ');
+		return renderAllOfType(schema, context);
 	}
 
+	const scalar = renderScalarType(generator, schema);
+
+	if (scalar !== undefined) {
+		return scalar;
+	}
+
+	const collection = renderCollectionType(generator, schema, dialect, context);
+
+	if (collection !== undefined) {
+		return collection;
+	}
+
+	return renderFallbackType(generator, schema);
+}
+
+function renderFallbackType(
+	generator: ReturnType<typeof selectGenerator>,
+	schema: ParsedJSONSchemaObject
+): string {
+	if (generator === enumGenerator) {
+		return union((schema.enum ?? []).map(literalType));
+	}
+
+	if (generator === anyGenerator) {
+		return 'unknown';
+	}
+
+	return 'unknown';
+}
+
+function renderUnionType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): string {
+	return union(
+		(schema.anyOf ?? schema.oneOf ?? []).map((subschema) => renderType(subschema, context))
+	);
+}
+
+function renderAllOfType(schema: ParsedJSONSchemaObject, context: ValueTypeContext): string {
+	const subschemas = schema.allOf ?? [];
+
+	if (subschemas.length === 0) {
+		return 'never';
+	}
+
+	if (subschemas.length === 1) {
+		return renderType(subschemas[0]!, context);
+	}
+
+	return subschemas.map((subschema) => parenthesize(renderType(subschema, context))).join(' & ');
+}
+
+function renderScalarType(
+	generator: ReturnType<typeof selectGenerator>,
+	schema: ParsedJSONSchemaObject
+): string | undefined {
 	if (generator === nullGenerator) {
 		return 'null';
 	}
@@ -155,6 +208,15 @@ function renderType(node: ParsedJSONSchemaObject, context: ValueTypeContext): st
 		return 'string';
 	}
 
+	return undefined;
+}
+
+function renderCollectionType(
+	generator: ReturnType<typeof selectGenerator>,
+	schema: ParsedJSONSchemaObject,
+	dialect: Dialect,
+	context: ValueTypeContext
+): string | undefined {
 	if (generator === recordGenerator) {
 		const additionalProperties = schema.additionalProperties as ParsedJSONSchemaObject;
 
@@ -186,15 +248,7 @@ function renderType(node: ParsedJSONSchemaObject, context: ValueTypeContext): st
 		return `${parenthesize(items)}[]`;
 	}
 
-	if (generator === enumGenerator) {
-		return union((schema.enum ?? []).map(literalType));
-	}
-
-	if (generator === anyGenerator) {
-		return 'unknown';
-	}
-
-	return 'unknown';
+	return undefined;
 }
 
 /**
