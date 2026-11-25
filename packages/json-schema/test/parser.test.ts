@@ -536,3 +536,10 @@ test('get("#") resolves a root pointer and returns the target document for a fil
 	// `#` resolves to the root of the referenced document, not to its `$ref`.
 	expect(fileReference.get('#')).toMatchObject({ title: 'Doc' });
 });
+
+test('parses a boolean root schema', async () => {
+	const parsed = await parse(true, { cwd: __dirname + '/', fileName: 'Root.json' });
+
+	expect(parsed.root).toBe(true);
+	expect(parsed.referencedSchemas).toEqual([]);
+});

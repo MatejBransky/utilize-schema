@@ -1,5 +1,4 @@
 import { Meta, parse } from '@utilize/json-schema';
-import type { JSONSchema } from '@utilize/json-schema';
 
 import { generate } from '../../src/generator';
 
@@ -31,7 +30,7 @@ export interface CaseModule {
  * `$id` that would otherwise become the declaration name.
  */
 export async function renderCaseModule(testCase: SuiteCase): Promise<CaseModule> {
-	const { root } = await parse(testCase.schema as JSONSchema, {
+	const { root } = await parse(testCase.schema, {
 		cwd: __dirname + '/',
 		fileName: 'Root.json',
 		externalSchemas: testCase.externalSchemas,

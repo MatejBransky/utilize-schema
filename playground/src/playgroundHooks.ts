@@ -387,7 +387,7 @@ function useGeneration(
 
 			if (bundle.root !== null) {
 				try {
-					const { root } = await parse(bundle.root as never, {
+					const { root } = await parse(bundle.root, {
 						cwd: '/',
 						fileName: bundle.rootFileName,
 						keywordPolicy,

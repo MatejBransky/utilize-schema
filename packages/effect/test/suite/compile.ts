@@ -21,7 +21,7 @@ export async function compileToEffectSchema(
 	externalSchemas?: ExternalSchemas,
 	formatMode?: FormatMode
 ): Promise<SuiteGeneratedSchema> {
-	const { root } = await parse(schema as JSONSchema, {
+	const { root } = await parse(schema, {
 		cwd: `${import.meta.dirname}/`,
 		fileName: 'Root.json',
 		externalSchemas,

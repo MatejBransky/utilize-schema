@@ -9,7 +9,7 @@ interface MonacoEnvironment {
 	getWorker(moduleId: string, label: string): Worker;
 }
 
-(self as { MonacoEnvironment?: MonacoEnvironment }).MonacoEnvironment = {
+self.MonacoEnvironment = {
 	getWorker(_moduleId, label) {
 		if (label === 'json') {
 			return new jsonWorker();
@@ -102,6 +102,7 @@ export { monaco };
 
 declare global {
 	interface Window {
+		MonacoEnvironment?: MonacoEnvironment;
 		monaco: typeof monaco;
 	}
 }

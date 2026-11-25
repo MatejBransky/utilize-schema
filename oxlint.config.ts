@@ -74,6 +74,72 @@ export default defineConfig({
 			],
 			rules: { 'quality/no-unsafe-dictionary-type': 'off' },
 		},
+		{
+			// Tests and benchmarks build deliberately malformed inputs.
+			files: ['**/*.{test,spec}.{ts,tsx}', '**/test/**', '**/bench/**'],
+			rules: { 'typescript/no-unsafe-type-assertion': 'off' },
+		},
+		{
+			// The parser and linker are where untrusted JSON becomes the parsed
+			// model; their narrowing is the parse step.
+			files: ['packages/json-schema/src/parser.ts', 'packages/json-schema/src/linker.ts'],
+			rules: { 'typescript/no-unsafe-type-assertion': 'off' },
+		},
+		{
+			// These core helpers narrow JSON and CLI values after runtime checks;
+			// the parser and linker own document validation.
+			files: [
+				'packages/json-schema/src/cliOptions.ts',
+				'packages/json-schema/src/collectStandaloneSchemas.ts',
+				'packages/json-schema/src/dialect.ts',
+				'packages/json-schema/src/externalSchemas.ts',
+				'packages/json-schema/src/identifiers.ts',
+				'packages/json-schema/src/model.ts',
+				'packages/json-schema/src/narrow.ts',
+				'packages/json-schema/src/node/cli.ts',
+				'packages/json-schema/src/node/compile.ts',
+				'packages/json-schema/src/resolveName.ts',
+				'packages/json-schema/src/utils.ts',
+			],
+			rules: { 'typescript/no-unsafe-type-assertion': 'off' },
+		},
+		{
+			// The generators bridge dialect-specific `JSONSchema` keyword fields,
+			// already validated by the linker, into the parsed model.
+			files: [
+				'packages/zod/src/findCyclicSchemas.ts',
+				'packages/zod/src/generator.ts',
+				'packages/zod/src/generators/createGenerator.ts',
+				'packages/zod/src/generators/generateSchema.ts',
+				'packages/zod/src/generators/schemaParts.ts',
+				'packages/zod/src/inlineCopies.ts',
+				'packages/zod/src/inferTypes.ts',
+				'packages/zod/src/refinements.ts',
+				'packages/zod/src/valueTypes.ts',
+				'packages/effect/src/findCyclicSchemas.ts',
+				'packages/effect/src/generator.ts',
+				'packages/effect/src/mergeObjects.ts',
+				'packages/effect/src/refSiblings.ts',
+				'packages/effect/src/schemaParts.ts',
+				'packages/effect/src/valueTypes.ts',
+				'packages/typescript/src/collectStandaloneSchemas.ts',
+				'packages/typescript/src/cycles.ts',
+				'packages/typescript/src/generator.ts',
+				'packages/typescript/src/renderType.ts',
+			],
+			rules: { 'typescript/no-unsafe-type-assertion': 'off' },
+		},
+		{
+			// The test helper evaluates generated code, and the bundler rewrites
+			// unparsed JSON before it reaches the parser.
+			files: [
+				'packages/test-utils/src/suite/compatibility.ts',
+				'packages/test-utils/src/suite/evaluate.ts',
+				'packages/test-utils/src/suite/loadSuite.ts',
+				'playground/src/bundle.ts',
+			],
+			rules: { 'typescript/no-unsafe-type-assertion': 'off' },
+		},
 	],
 	rules: {
 		// Project-specific tuning carried over from the previous configuration.
@@ -87,9 +153,5 @@ export default defineConfig({
 		// `instanceof` is idiomatic for DOM nodes and for the constructor-identity
 		// check in `isPlainObject`; the rule rejects both.
 		'@nkzw/no-instanceof': 'off',
-
-		// The rules below were newly enabled by the preset and still have findings.
-		// Burn them down one rule at a time, then delete the corresponding line.
-		'typescript/no-unsafe-type-assertion': 'off',
 	},
 });
