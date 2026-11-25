@@ -1,5 +1,6 @@
 import {
 	allocateName,
+	expectDefined,
 	collectStandaloneSchemas,
 	dialectOf,
 	containsBounds,
@@ -142,7 +143,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 			return cyclic.has(schema) || hasStructuredLiteral(schema) ? aliasOf(schema) : undefined;
 		},
 		typeNameFor(schema) {
-			return namesOf(schema)!.type;
+			return expectDefined(namesOf(schema)).type;
 		},
 	};
 
@@ -194,7 +195,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 	const declarations: string[] = [];
 
 	for (const schema of standalone) {
-		declarations.push(renderDeclaration(definitionNames.get(schema)!, schema));
+		declarations.push(renderDeclaration(expectDefined(definitionNames.get(schema)), schema));
 	}
 
 	declarations.push(renderDeclaration(rootNames, root));
@@ -208,7 +209,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 	// Declarations rendered above registered the formats they use, so the
 	// constants can be emitted once, before any schema that references them.
 	for (const [format, name] of formatNames) {
-		parts.push(`const ${name} = ${formatCheck(format)!};`);
+		parts.push(`const ${name} = ${expectDefined(formatCheck(format))};`);
 	}
 
 	if (jsonLiteralName !== undefined) {
@@ -249,7 +250,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 			return existing;
 		}
 
-		const alias = allocateName(`${namesOf(schema)!.schema}Value`, typeNames);
+		const alias = allocateName(`${expectDefined(namesOf(schema)).schema}Value`, typeNames);
 
 		valueAliases.set(schema, alias);
 		return alias;
@@ -292,8 +293,10 @@ function nameDeclarations(
 	const [rootNames, ...standaloneNames] = mapped.names;
 
 	return {
-		rootNames: rootNames!,
-		definitionNames: new Map(standalone.map((schema, index) => [schema, standaloneNames[index]!])),
+		rootNames: expectDefined(rootNames),
+		definitionNames: new Map(
+			standalone.map((schema, index) => [schema, expectDefined(standaloneNames[index])])
+		),
 		typeNames: mapped.typeNames,
 	};
 }
@@ -383,7 +386,7 @@ function generateAlternativeExpression(
 		return undefined;
 	}
 
-	const alternatives = schema[keyword]!;
+	const alternatives = expectDefined(schema[keyword]);
 	// When both are present, each is applied on its own: `anyOf` becomes the
 	// union and `oneOf` stays in the base, which counts its own matches.
 	const { members, allTyped } = typedAlternatives(schema, alternatives);
@@ -500,7 +503,7 @@ function generateUnion(
 	}
 
 	if (members.length === 1) {
-		return members[0]!;
+		return expectDefined(members[0]);
 	}
 
 	const options = exclusive ? ", { mode: 'oneOf' }" : '';
@@ -535,7 +538,7 @@ function generateTypeUnion(schema: ParsedJSONSchemaObject, context: Context): st
 		return 'Schema.Never';
 	}
 
-	return members.length === 1 ? members[0]! : `Schema.Union([${members.join(', ')}])`;
+	return members.length === 1 ? expectDefined(members[0]) : `Schema.Union([${members.join(', ')}])`;
 }
 
 function generateTypeMember(schema: ParsedJSONSchemaObject, context: Context): string {
@@ -918,7 +921,9 @@ function dependencyChecks(schema: ParsedJSONSchemaObject, context: Context): str
 			const required = dependency.filter((item): item is string => typeof item === 'string');
 
 			if (required.length === 1) {
-				conditions.push(`(!${present} || Object.hasOwn(value, ${JSON.stringify(required[0]!)}))`);
+				conditions.push(
+					`(!${present} || Object.hasOwn(value, ${JSON.stringify(expectDefined(required[0]))}))`
+				);
 			} else if (required.length > 1) {
 				conditions.push(
 					`(!${present} || ${JSON.stringify(required)}.every((key) => Object.hasOwn(value, key)))`
@@ -1108,7 +1113,7 @@ function generateIntersection(schemas: ParsedJSONSchema[], context: Context): st
 	}
 
 	if (members.length === 1) {
-		return generateSchema(members[0]!, context);
+		return generateSchema(expectDefined(members[0]), context);
 	}
 
 	const result = mergeObjectSchemas(members);
@@ -1178,7 +1183,7 @@ function generateConjunction(
 	const [base, ...constraints] = parts;
 
 	return applyChecks(
-		generateSchema(base!, context),
+		generateSchema(expectDefined(base), context),
 		constraints.map(
 			(part) =>
 				`Schema.makeFilter((value) => Schema.is(${generateSchema(part, context)})(value) ? undefined : 'Value does not match every schema in "allOf"')`
@@ -1648,7 +1653,7 @@ function literals(values: unknown[], context: Context): string {
 
 	const members = [...new Set(values.map((value) => literal(value, context)))];
 
-	return members.length === 1 ? members[0]! : `Schema.Union([${members.join(', ')}])`;
+	return members.length === 1 ? expectDefined(members[0]) : `Schema.Union([${members.join(', ')}])`;
 }
 
 function literalValue(value: unknown): string {

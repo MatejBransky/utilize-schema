@@ -31,8 +31,13 @@ async function measure(label: string, run: () => Promise<object>) {
 
 	const median = times[Math.floor(times.length / 2)];
 	const p95 = times[Math.min(times.length - 1, Math.floor(times.length * 0.95))];
+	const max = times.at(-1);
 
-	return { label, median, p95, min: times[0], max: times.at(-1)! };
+	if (max === undefined) {
+		throw new Error('Expected at least one measurement');
+	}
+
+	return { label, median, p95, min: times[0], max };
 }
 
 const directory = await mkdtemp(join(tmpdir(), 'utilize-schema-bench-'));

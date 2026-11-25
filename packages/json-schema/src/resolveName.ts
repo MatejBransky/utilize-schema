@@ -1,4 +1,5 @@
 import { Meta } from './model';
+import { expectDefined } from './utils';
 import type { ParsedJSONSchemaObject } from './model';
 
 /**
@@ -155,7 +156,7 @@ export function resolveExplicitName({
 
 	// 1. Prefer $id or title if present
 	if (schema.$id) {
-		const id = schema.$id.split(/[/#]/).filter(Boolean).pop()!;
+		const id = expectDefined(schema.$id.split(/[/#]/).filter(Boolean).pop());
 		return generateName(id, usedNames);
 	}
 	if (schema.title) {

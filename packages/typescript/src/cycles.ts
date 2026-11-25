@@ -1,4 +1,4 @@
-import { isPlainObject, Meta } from '@utilize/json-schema';
+import { expectDefined, isPlainObject, Meta } from '@utilize/json-schema';
 import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 /**
@@ -36,7 +36,7 @@ function reachesTransparently(
 	const stack = transparentChildren(start);
 
 	while (stack.length > 0) {
-		const node = stack.pop()!;
+		const node = expectDefined(stack.pop());
 
 		if (node === target) {
 			return true;

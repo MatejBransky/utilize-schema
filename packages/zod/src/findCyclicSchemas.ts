@@ -1,4 +1,4 @@
-import { dialectOf } from '@utilize/json-schema';
+import { dialectOf, expectDefined } from '@utilize/json-schema';
 import type { ParsedJSONSchemaObject, SchemaEdge } from '@utilize/json-schema';
 
 import { withoutAlwaysValidAnyOf } from './generators/alwaysValidAnyOf';
@@ -110,9 +110,15 @@ function findCyclicNodes(edges: SchemaEdge[]): Set<SchemaNode>[] {
 		for (const target of adjacency.get(node) ?? []) {
 			if (!indices.has(target)) {
 				connect(target);
-				lowLinks.set(node, Math.min(lowLinks.get(node)!, lowLinks.get(target)!));
+				lowLinks.set(
+					node,
+					Math.min(expectDefined(lowLinks.get(node)), expectDefined(lowLinks.get(target)))
+				);
 			} else if (onStack.has(target)) {
-				lowLinks.set(node, Math.min(lowLinks.get(node)!, indices.get(target)!));
+				lowLinks.set(
+					node,
+					Math.min(expectDefined(lowLinks.get(node)), expectDefined(indices.get(target)))
+				);
 			}
 		}
 
@@ -146,7 +152,11 @@ function popComponent(
 	let member: SchemaNode;
 
 	do {
-		member = stack.pop()!;
+		const popped = stack.pop();
+		if (popped === undefined) {
+			throw new Error(`DEBUG undefined pop, length ${stack.length}`);
+		}
+		member = popped;
 		onStack.delete(member);
 		component.add(member);
 	} while (member !== node);
