@@ -29,7 +29,12 @@ export interface SchemaModule {
 	dependencies?: string[];
 }
 
-const targets = new Set<Target>(['zod', 'effect', 'typescript']);
+const targets: ReadonlySet<string> = new Set<Target>(['zod', 'effect', 'typescript']);
+
+/** Whether `value` names one of the generation targets. */
+export function isTarget(value: unknown): value is Target {
+	return typeof value === 'string' && targets.has(value);
+}
 
 /**
  * Generates the virtual TypeScript module for one `.jsonschema` file. The
@@ -43,7 +48,7 @@ export async function schemaModule(
 ): Promise<SchemaModule> {
 	const target = options.target ?? 'zod';
 
-	if (!targets.has(target)) {
+	if (!isTarget(target)) {
 		return {
 			text: 'export {};\n',
 			diagnostics: [diagnostic(`Unknown target "${String(target)}".`, content, 0, 0)],
@@ -123,6 +128,8 @@ function generate(root: ParsedJSONSchema, target: Target): SchemaModule {
 		}
 		case 'effect': {
 			const code = generateEffect(root, { importEffect: true });
+			// Unlike the Zod generator, the Effect generator declares
+			// `export const Root` itself for a boolean root.
 			const rootName = rootDeclarationName(root) ?? 'Root';
 
 			return { text: `${code}\nexport default ${rootName};\n` };

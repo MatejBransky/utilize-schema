@@ -1,6 +1,6 @@
 // fallow-ignore-file coverage-gaps -- the handlers run in the spawned mapper process; the integration tests exercise them end to end
 
-import { schemaModule } from './module';
+import { isTarget, schemaModule } from './module';
 import type { MapperDiagnostic, MapperOptions } from './module';
 
 interface OpenProjectParams {
@@ -85,12 +85,7 @@ function validateOptions(options: Record<string, unknown>): OptionDiagnostic[] {
 		}
 	}
 
-	if (
-		options.target !== undefined &&
-		options.target !== 'zod' &&
-		options.target !== 'effect' &&
-		options.target !== 'typescript'
-	) {
+	if (options.target !== undefined && !isTarget(options.target)) {
 		diagnostics.push({
 			path: ['target'],
 			messageText: 'target must be "zod", "effect" or "typescript".',

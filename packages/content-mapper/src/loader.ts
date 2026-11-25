@@ -3,8 +3,7 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
-import { schemaModule } from './module';
-import type { Target } from './module';
+import { isTarget, schemaModule } from './module';
 
 const extension = '.jsonschema';
 
@@ -21,9 +20,16 @@ export async function load(
 		return nextLoad(url, context);
 	}
 
+	const target = process.env.UTILIZE_SCHEMA_TARGET ?? 'zod';
+
+	if (!isTarget(target)) {
+		throw new Error(
+			`UTILIZE_SCHEMA_TARGET is "${target}"; expected "zod", "effect" or "typescript".`
+		);
+	}
+
 	const fileName = fileURLToPath(url);
 	const content = await readFile(fileName, 'utf8');
-	const target = (process.env.UTILIZE_SCHEMA_TARGET ?? 'zod') as Target;
 	const result = await schemaModule(fileName, content, { target });
 
 	if (result.diagnostics?.length) {

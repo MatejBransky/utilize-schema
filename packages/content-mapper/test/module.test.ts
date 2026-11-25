@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { expect, test } from 'vitest';
 
-import { schemaModule } from '../src/module';
+import { isTarget, schemaModule } from '../src/module';
 
 const fixture = join(__dirname, 'fixtures', 'person.jsonschema');
 
@@ -70,4 +70,22 @@ test('reports an unknown target as a diagnostic', async () => {
 	});
 
 	expect(result.diagnostics?.[0]?.messageText).toContain('Unknown target');
+});
+
+test('declares the default export for a boolean root on every runtime target', async () => {
+	for (const target of ['zod', 'effect'] as const) {
+		for (const content of ['true', 'false']) {
+			const result = await schemaModule(fixture, content, { target });
+
+			expect(result.diagnostics).toBeUndefined();
+			expect(result.text).toContain('export const Root =');
+			expect(result.text).toContain('export default Root;');
+		}
+	}
+});
+
+test('recognises only the generation targets', () => {
+	expect(['zod', 'effect', 'typescript'].every((target) => isTarget(target))).toBe(true);
+	expect(isTarget('valibot')).toBe(false);
+	expect(isTarget(undefined)).toBe(false);
 });
