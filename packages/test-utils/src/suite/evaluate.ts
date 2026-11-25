@@ -22,6 +22,7 @@ export function evaluateGeneratedCode<T>(code: string, scope: Record<string, unk
 
 	// A boolean root schema is emitted as a bare expression.
 	if (!code.includes('export ')) {
+		// fallow-ignore-next-line security-sink -- the suite evaluates generated code in memory; no input comes from outside the test process
 		return new Function(...names, `return ${code}`)(...values) as T;
 	}
 
@@ -32,5 +33,6 @@ export function evaluateGeneratedCode<T>(code: string, scope: Record<string, unk
 		'const '
 	);
 
+	// fallow-ignore-next-line security-sink -- the suite evaluates generated code in memory; no input comes from outside the test process
 	return new Function(...names, `${javascript}\nreturn Root;`)(...values) as T;
 }

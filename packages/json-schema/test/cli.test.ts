@@ -42,7 +42,7 @@ function generator(
 ): GeneratorCli<TestFlags, TestOptions> {
 	return {
 		help: 'usage: example',
-		flags: { 'custom-flag': { type: 'boolean', default: false } },
+		parseOptions: { 'custom-flag': { type: 'boolean', default: false } },
 		readOptions,
 		compileSchema,
 		compileFile,
