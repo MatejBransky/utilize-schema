@@ -391,8 +391,14 @@
 		"prop-drilling": "warn",
 		"thin-wrapper": "warn",
 		"duplicate-prop-shape": "warn",
-		"constant-parameters": "warn",
 		"absent-component-props": "warn",
+
+		// A parameter that every visible call passes the same way, or an optional
+		// parameter that no call passes, is dead flexibility: the value belongs in
+		// the function or the parameter goes. The gate is free today after the
+		// three unused defaults and the narrow-only `issueBlock` argument were
+		// removed.
+		"constant-parameters": "error",
 
 		// CSS: a broken or dead reference is a defect; token drift, a repeated
 		// block and a long selector are taste. `playground/src/App.module.css`
