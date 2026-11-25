@@ -50,7 +50,7 @@ export async function writeAzureTemplate(directory: string) {
 		const name = `resource-${index}.json`;
 		resourceRefs[`resource${index}`] = { $ref: `./resources/${name}` };
 
-		const properties: Record<string, unknown> = {
+		const baseProperties = {
 			id: { type: 'string' },
 			name: { type: 'string' },
 			kind: {
@@ -68,12 +68,16 @@ export async function writeAzureTemplate(directory: string) {
 			},
 		};
 
-		if (index !== 0) {
-			properties.dependsOn = {
-				type: 'array',
-				items: { $ref: './resource-0.json' },
-			};
-		}
+		const resourceProperties =
+			index === 0
+				? baseProperties
+				: {
+						...baseProperties,
+						dependsOn: {
+							type: 'array',
+							items: { $ref: './resource-0.json' },
+						},
+					};
 
 		await writeFile(
 			join(directory, 'resources', name),
@@ -83,7 +87,7 @@ export async function writeAzureTemplate(directory: string) {
 					$id: name,
 					title: `Resource${index}`,
 					type: 'object',
-					properties,
+					properties: resourceProperties,
 					required: ['id', 'name', 'kind', 'location'],
 				},
 				null,
