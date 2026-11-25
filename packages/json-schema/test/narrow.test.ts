@@ -1,13 +1,13 @@
 import { describe, expect, test } from 'vitest';
 
 import { dialects } from '../src/dialect';
-import type { ParsedJSONSchemaObject } from '../src/model';
+import type { JSONSchema, ParsedJSONSchemaObject } from '../src/model';
 import { narrowUntypedSchema } from '../src/narrow';
 
 const draft07 = dialects['draft-07'];
 const twentyTwentyTwelve = dialects['2020-12'];
 
-function schema(value: object): ParsedJSONSchemaObject {
+function schema(value: JSONSchema): ParsedJSONSchemaObject {
 	return value as ParsedJSONSchemaObject;
 }
 
@@ -19,7 +19,7 @@ describe('narrowUntypedSchema', () => {
 		expect(narrowUntypedSchema(true, 'string', draft07)).toBe(true);
 	});
 
-	test.each([
+	const nodeCases: [string, JSONSchema][] = [
 		['type', { type: 'string', minLength: 1 }],
 		['$ref', { $ref: '#/x' }],
 		['anyOf', { anyOf: [{ type: 'string' }] }],
@@ -27,7 +27,9 @@ describe('narrowUntypedSchema', () => {
 		['allOf', { allOf: [{ type: 'string' }] }],
 		['const', { const: 'x' }],
 		['enum', { enum: ['x'] }],
-	])('does not narrow a node with %s', (_name, value) => {
+	];
+
+	test.each(nodeCases)('does not narrow a node with %s', (_name, value) => {
 		const node = schema(value);
 
 		expect(narrowUntypedSchema(node, 'string', draft07)).toBe(node);
