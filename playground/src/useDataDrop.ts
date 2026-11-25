@@ -1,18 +1,19 @@
-import { useState, type DragEvent as ReactDragEvent } from 'react';
+import { useState } from 'react';
+import type { DragEvent as ReactDragEvent } from 'react';
 
 import { collectDroppedFiles, hasFileDrag, readDroppedSchemas } from './drop';
 
 export interface DataDropOptions {
 	/** The collapsed row does not accept drops; its header stays a header. */
 	collapsed: boolean;
-	onData(content: string): void;
+	onData: (content: string) => void;
 }
 
 interface DataDropHandlers {
-	onDragEnter(event: ReactDragEvent<HTMLElement>): void;
-	onDragOver(event: ReactDragEvent<HTMLElement>): void;
-	onDragLeave(event: ReactDragEvent<HTMLElement>): void;
-	onDrop(event: ReactDragEvent<HTMLElement>): void;
+	onDragEnter: (event: ReactDragEvent<HTMLElement>) => void;
+	onDragOver: (event: ReactDragEvent<HTMLElement>) => void;
+	onDragLeave: (event: ReactDragEvent<HTMLElement>) => void;
+	onDrop: (event: ReactDragEvent<HTMLElement>) => void;
 }
 
 /**
@@ -42,15 +43,18 @@ export function useDataDrop({ collapsed, onData }: DataDropOptions) {
 		setDragging(false);
 	}
 
-	async function drop(event: ReactDragEvent<HTMLElement>) {
+	function drop(event: ReactDragEvent<HTMLElement>) {
 		if (collapsed || !hasFileDrag(event.dataTransfer)) {
 			return;
 		}
 
 		event.preventDefault();
 		setDragging(false);
+		void readData(event.dataTransfer);
+	}
 
-		const documents = await readDroppedSchemas(await collectDroppedFiles(event.dataTransfer)).catch(
+	async function readData(dataTransfer: DataTransfer) {
+		const documents = await readDroppedSchemas(await collectDroppedFiles(dataTransfer)).catch(
 			() => null
 		);
 		const document = documents?.[0];

@@ -124,7 +124,7 @@ function safely(run: () => RuntimeResult): RuntimeResult {
 	}
 }
 
-function formatPath(path: ReadonlyArray<PathSegment> | undefined): string {
+function formatPath(path: readonly PathSegment[] | undefined): string {
 	if (!path || path.length === 0) {
 		return '$';
 	}

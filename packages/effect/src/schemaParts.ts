@@ -3,12 +3,8 @@
  * value type are built from, so the two always agree on the shape.
  */
 
-import {
-	type Dialect,
-	isPlainObject,
-	type ParsedJSONSchema,
-	type ParsedJSONSchemaObject,
-} from '@utilize/json-schema';
+import { isPlainObject } from '@utilize/json-schema';
+import type { Dialect, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 /**
  * The declaring schema without the `allOf` that is being merged and without the
@@ -31,9 +27,7 @@ export function prefixItemsOf(
 	dialect: Dialect
 ): ParsedJSONSchema[] | undefined {
 	if (dialect.tuple === 'prefixItems') {
-		return Array.isArray(schema.prefixItems)
-			? (schema.prefixItems as ParsedJSONSchema[])
-			: undefined;
+		return Array.isArray(schema.prefixItems) ? schema.prefixItems : undefined;
 	}
 
 	const items = schema.items as unknown;

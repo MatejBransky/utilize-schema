@@ -90,7 +90,7 @@ function getAjv(schema: unknown): Ajv {
 			allErrors: true,
 			validateFormats: false,
 		});
-		return draft04 as unknown as Ajv;
+		return draft04;
 	}
 
 	if (/2020-12/.test(uri)) {

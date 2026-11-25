@@ -1,9 +1,11 @@
-import { type ExternalSchemas, type JSONSchema, parse } from '@utilize/json-schema';
+import { parse } from '@utilize/json-schema';
+import type { ExternalSchemas, JSONSchema } from '@utilize/json-schema';
 import { evaluateGeneratedCode, nameRootSchema } from '@utilize/test-utils/suite/evaluate';
 
 import { z } from 'zod';
 
-import { type FormatMode, generate } from '../../src/generator';
+import { generate } from '../../src/generator';
+import type { FormatMode } from '../../src/generator';
 
 /**
  * Compiles a schema to a Zod schema in memory: the generated code is evaluated

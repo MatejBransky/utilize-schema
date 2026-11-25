@@ -1,9 +1,5 @@
-import {
-	ANNOTATION_KEYWORDS,
-	type ParsedJSONSchema,
-	type ParsedJSONSchemaObject,
-	withSourceMeta,
-} from '@utilize/json-schema';
+import { ANNOTATION_KEYWORDS, withSourceMeta } from '@utilize/json-schema';
+import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 /**
  * Removes an `anyOf` that every value satisfies because one of its branches

@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { renderKnownFailureInstances } from '@utilize/test-utils/suite/baseline';
 import { isCompatible } from '@utilize/test-utils/suite/compatibility';
@@ -10,14 +10,18 @@ import { Schema } from 'effect';
 
 import { reasonFor } from './suiteReasons.mjs';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const root = resolve(import.meta.dirname, '..');
 
 const { parse } = await import(pathToFileURL(join(root, '../json-schema/dist/index.mjs')).href);
 const { generate } = await import(pathToFileURL(join(root, 'dist/index.mjs')).href);
 
 function formatModeFor(testCase) {
-	if (testCase.tags?.includes('format-assertion')) return 'assert';
-	if (testCase.tags?.includes('format-annotation')) return 'annotate';
+	if (testCase.tags?.includes('format-assertion')) {
+		return 'assert';
+	}
+	if (testCase.tags?.includes('format-annotation')) {
+		return 'annotate';
+	}
 	return undefined;
 }
 
@@ -53,7 +57,9 @@ let failingAssertions = 0;
 
 for (const file of loadSuiteFiles()) {
 	for (const testCase of file.cases) {
-		if (!isCompatible(testCase.compatibility)) continue;
+		if (!isCompatible(testCase.compatibility)) {
+			continue;
+		}
 
 		cases++;
 		assertions += testCase.tests.length;

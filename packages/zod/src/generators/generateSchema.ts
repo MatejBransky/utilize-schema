@@ -1,9 +1,5 @@
-import {
-	type Dialect,
-	dialectOf,
-	type ParsedJSONSchema,
-	type ParsedJSONSchemaObject,
-} from '@utilize/json-schema';
+import { dialectOf } from '@utilize/json-schema';
+import type { Dialect, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { withoutAlwaysValidAnyOf } from './alwaysValidAnyOf';
 import type { Recursion } from './createGenerator';

@@ -52,7 +52,9 @@ async function getWorker(): Promise<
 				throw error;
 			}
 
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			await new Promise<void>((resolve) => {
+				setTimeout(resolve, 50);
+			});
 		}
 	}
 }

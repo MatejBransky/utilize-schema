@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
-import { compile, compileToSchema, decode, type TestSchema } from './test-utils';
+import { compile, compileToSchema, decode } from './test-utils';
+import type { TestSchema } from './test-utils';
 
 const prefixItemsSchema: TestSchema = {
 	$schema: 'https://json-schema.org/draft/2020-12/schema',

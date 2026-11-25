@@ -1,5 +1,6 @@
 import { generate as generateEffect } from '@utilize/effect';
-import { Meta, type ParsedJSONSchema } from '@utilize/json-schema';
+import { Meta } from '@utilize/json-schema';
+import type { ParsedJSONSchema } from '@utilize/json-schema';
 import { generate as generateTypeScript } from '@utilize/typescript';
 import { generate as generateZod } from '@utilize/zod';
 

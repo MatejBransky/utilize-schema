@@ -1,8 +1,5 @@
-import {
-	type JSONSchemaTypeName,
-	type ParsedJSONSchemaObject,
-	withSourceMeta,
-} from '@utilize/json-schema';
+import { withSourceMeta } from '@utilize/json-schema';
+import type { JSONSchemaTypeName, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
 

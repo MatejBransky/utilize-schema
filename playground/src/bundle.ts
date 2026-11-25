@@ -1,14 +1,13 @@
 import {
-	type DialectId,
 	formatIssue,
 	isPlainObject,
-	type KeywordPolicy,
 	prepareSchema,
 	resolveDialect,
 	SCHEMA_ARRAY_KEYWORDS,
 	SCHEMA_MAP_KEYWORDS,
 	SINGLE_SCHEMA_KEYWORDS,
 } from '@utilize/json-schema';
+import type { DialectId, KeywordPolicy } from '@utilize/json-schema';
 
 export interface SchemaFile {
 	id: string;
@@ -330,7 +329,7 @@ export function detectRootId(files: SchemaFile[]): string | null {
 
 	return candidates
 		.map((file) => ({ file, score: rootScore(file, schemas, outgoing) }))
-		.toSorted((a, b) => b.score - a.score)[0]!.file.id;
+		.toSorted((a, b) => b.score - a.score)[0].file.id;
 }
 
 function rootScore(
@@ -590,7 +589,7 @@ function pointerTargetExists(root: unknown, pointer: string): boolean {
 	let current: unknown = root;
 
 	for (const segment of pointer.slice(1).split('/')) {
-		const key = segment.replace(/~1/g, '/').replace(/~0/g, '~');
+		const key = segment.replaceAll('~1', '/').replaceAll('~0', '~');
 
 		if (Array.isArray(current)) {
 			const index = pointerArrayIndex(current, key);
@@ -626,9 +625,9 @@ function resolveRefPath(currentName: string, path: string): string {
 
 export function normalizeName(name: string): string {
 	return name
-		.replace(/\\/g, '/')
+		.replaceAll('\\', '/')
 		.replace(/^(\.\/)+/, '')
-		.replace(/\/+/g, '/')
+		.replaceAll(/\/+/g, '/')
 		.replace(/^\/+/, '')
 		.trim();
 }
@@ -639,11 +638,11 @@ function schemaKey(name: string): string {
 			.split('/')
 			.at(-1)
 			?.replace(/\.json$/i, '')
-			.replace(/[^A-Za-z0-9_$-]+/g, '_') || 'file';
+			.replaceAll(/[^A-Za-z0-9_$-]+/g, '_') || 'file';
 
 	return /^[A-Za-z_$]/.test(base) ? base : `f_${base}`;
 }
 
 function escapePointer(key: string): string {
-	return key.replace(/~/g, '~0').replace(/\//g, '~1');
+	return key.replaceAll('~', '~0').replaceAll('/', '~1');
 }

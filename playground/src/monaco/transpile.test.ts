@@ -12,7 +12,7 @@ import { emitJavaScript } from './transpile';
 
 test('the TypeScript worker emits runnable JavaScript for generated code', async () => {
 	const example = exampleById('object')!;
-	const bundle = buildBundle(example.files.map(parseJsonFile), example.files[0]!.id);
+	const bundle = buildBundle(example.files.map(parseJsonFile), example.files[0].id);
 
 	expect(bundle.problems).toEqual([]);
 
@@ -29,7 +29,7 @@ test('the TypeScript worker emits runnable JavaScript for generated code', async
 	const module = await loadModule(javascript);
 	const result = validateWithZod(
 		rootValidator(module, rootDeclarationName(root)!),
-		example.cases[0]!.data
+		example.cases[0].data
 	);
 
 	expect(result).toMatchObject({ ok: true, issues: [] });

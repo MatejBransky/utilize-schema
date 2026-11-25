@@ -1,4 +1,5 @@
-import { targets, type TargetId } from '../targets';
+import { targets } from '../targets';
+import type { TargetId } from '../targets';
 import type { ValidatorReport } from '../validator/protocol';
 import type { ValidationState } from '../validator/useValidatorResults';
 

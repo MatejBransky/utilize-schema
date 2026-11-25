@@ -1,4 +1,5 @@
-import { type JSONSchema, Meta, parse } from '@utilize/json-schema';
+import { Meta, parse } from '@utilize/json-schema';
+import type { JSONSchema } from '@utilize/json-schema';
 
 import { generate } from '../../src/generator';
 

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
-import { compile, compileToSchema, decode, ts, type TestSchema } from './test-utils';
+import { compile, compileToSchema, decode, ts } from './test-utils';
+import type { TestSchema } from './test-utils';
 
 const draft04 = 'http://json-schema.org/draft-04/schema#';
 const draft06 = 'http://json-schema.org/draft-06/schema#';

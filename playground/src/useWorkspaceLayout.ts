@@ -1,13 +1,11 @@
-import {
-	type CSSProperties,
-	type Dispatch,
-	type KeyboardEvent as ReactKeyboardEvent,
-	type PointerEvent as ReactPointerEvent,
-	type RefObject,
-	type SetStateAction,
-	useEffect,
-	useRef,
-	useState,
+import { useEffect, useRef, useState } from 'react';
+import type {
+	CSSProperties,
+	Dispatch,
+	KeyboardEvent as ReactKeyboardEvent,
+	PointerEvent as ReactPointerEvent,
+	RefObject,
+	SetStateAction,
 } from 'react';
 
 /** The top row starts at 60 % of the workspace and can move between 20 % and 80 %. */
@@ -20,16 +18,17 @@ const LARGE_SPLIT_STEP = 0.1;
 const NARROW_LAYOUT = '(max-width: 900px)';
 
 interface SplitterHandlers {
-	onPointerDown(event: ReactPointerEvent<HTMLElement>): void;
-	onPointerMove(event: ReactPointerEvent<HTMLElement>): void;
-	onPointerUp(event: ReactPointerEvent<HTMLElement>): void;
-	onPointerCancel(event: ReactPointerEvent<HTMLElement>): void;
-	onLostPointerCapture(): void;
-	onKeyDown(event: ReactKeyboardEvent<HTMLElement>): void;
+	onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void;
+	onPointerMove: (event: ReactPointerEvent<HTMLElement>) => void;
+	onPointerUp: (event: ReactPointerEvent<HTMLElement>) => void;
+	onPointerCancel: (event: ReactPointerEvent<HTMLElement>) => void;
+	onLostPointerCapture: () => void;
+	onKeyDown: (event: ReactKeyboardEvent<HTMLElement>) => void;
 }
 
-interface WorkspaceSplitter extends SplitterHandlers {
+interface WorkspaceSplitter {
 	resizing: boolean;
+	handlers: SplitterHandlers;
 }
 
 /**
@@ -76,14 +75,7 @@ export function useWorkspaceLayout() {
 		style,
 		toggleDataCollapsed: () => setDataCollapsed((collapsed) => !collapsed),
 		toggleProblemsCollapsed: () => setProblemsCollapsed((collapsed) => !collapsed),
-		splitter: {
-			onPointerDown: splitter.onPointerDown,
-			onPointerMove: splitter.onPointerMove,
-			onPointerUp: splitter.onPointerUp,
-			onPointerCancel: splitter.onPointerCancel,
-			onLostPointerCapture: splitter.onLostPointerCapture,
-			onKeyDown: splitter.onKeyDown,
-		} satisfies SplitterHandlers,
+		splitter: splitter.handlers,
 	};
 }
 
@@ -96,8 +88,10 @@ function useWorkspaceSplitter(
 
 	return {
 		resizing,
-		...usePointerResize(workspaceRef, setSplit, setResizing),
-		onKeyDown: keyboardResize(setSplit),
+		handlers: {
+			...usePointerResize(workspaceRef, setSplit, setResizing),
+			onKeyDown: keyboardResize(setSplit),
+		} satisfies SplitterHandlers,
 	};
 }
 

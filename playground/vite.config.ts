@@ -4,7 +4,8 @@ import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 
 import react from '@vitejs/plugin-react-swc';
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig } from 'vite';
+import type { Plugin } from 'vite';
 
 import { collectDeclarations } from './src/viteDeclarations.ts';
 

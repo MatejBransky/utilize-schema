@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
-import { type ParsedJSONSchemaObject, parse } from '@utilize/json-schema';
+import { parse } from '@utilize/json-schema';
+import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { generate } from '../src';
 
@@ -61,7 +62,7 @@ describe('typed allOf merging characterization', () => {
 					{ type: 'string', minLength: 2, title: 'First', description: 'Ignored' },
 					{ type: 'string', maxLength: 4, examples: ['ab'] },
 				],
-			} as TestSchema,
+			},
 			{ cwd: __dirname, fileName: 'Root.json' }
 		);
 		Object.assign(parsed.root as ParsedJSONSchemaObject, { default: undefined });

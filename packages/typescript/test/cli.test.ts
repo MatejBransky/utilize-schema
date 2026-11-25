@@ -5,7 +5,8 @@ import { pathToFileURL } from 'node:url';
 
 import { afterEach, describe, expect, test } from 'vitest';
 
-import { type CliIo, isEntrypoint, run } from '../src/cli';
+import { isEntrypoint, run } from '../src/cli';
+import type { CliIo } from '../src/cli';
 
 const temporaryDirectories: string[] = [];
 

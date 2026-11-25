@@ -2,7 +2,8 @@ import { createRef } from 'react';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 
-import { MonacoEditor, type MonacoEditorHandle } from './MonacoEditor';
+import { MonacoEditor } from './MonacoEditor';
+import type { MonacoEditorHandle } from './MonacoEditor';
 
 const fake = vi.hoisted(() => {
 	type Position = { lineNumber: number; column: number };

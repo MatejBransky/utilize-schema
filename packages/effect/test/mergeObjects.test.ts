@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
-import { type ParsedJSONSchema, type ParsedJSONSchemaObject, parse } from '@utilize/json-schema';
+import { parse } from '@utilize/json-schema';
+import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { UnresolvedReferenceError } from '../src/errors';
 import { mergeObjectSchemas } from '../src/mergeObjects';

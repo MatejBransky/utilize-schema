@@ -1,10 +1,13 @@
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { RefObject } from 'react';
 
 import type { RuntimeSource } from '../generateCode';
 import { emitJavaScript } from '../monaco/transpile';
-import { isRuntimeTarget, targets, type RuntimeTargetId, type TargetId } from '../targets';
+import { isRuntimeTarget, targets } from '../targets';
+import type { RuntimeTargetId, TargetId } from '../targets';
 import type { ValidatorReport, ValidatorSource } from './protocol';
-import { createValidatorClient, type ValidatorClient } from './ValidatorClient';
+import { createValidatorClient } from './ValidatorClient';
+import type { ValidatorClient } from './ValidatorClient';
 
 /** What happened to the validator of the selected generator. */
 export type ValidationState =
@@ -124,7 +127,7 @@ function runnableValidator(
 function scheduleRun(runnable: RunnableValidator, parsed: unknown, context: RunContext) {
 	let cancelled = false;
 
-	const timer = setTimeout(async () => {
+	async function run() {
 		try {
 			const report = await runValidator(runnable, parsed, context);
 
@@ -146,6 +149,10 @@ function scheduleRun(runnable: RunnableValidator, parsed: unknown, context: RunC
 				});
 			}
 		}
+	}
+
+	const timer = setTimeout(() => {
+		void run();
 	}, 200);
 
 	return () => {

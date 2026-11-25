@@ -1,13 +1,8 @@
 import { writeFileSync } from 'node:fs';
 
+import { pickDialectOptions } from '@utilize/json-schema';
+import type { DialectOptions, ExternalSchemas, JSONSchema } from '@utilize/json-schema';
 import {
-	type DialectOptions,
-	type ExternalSchemas,
-	type JSONSchema,
-	pickDialectOptions,
-} from '@utilize/json-schema';
-import {
-	type CodeFormatter,
 	compilePaths,
 	generatedFileBanner,
 	parseForCompile,
@@ -15,8 +10,10 @@ import {
 	readSchema,
 	schemaFileLocation,
 } from '@utilize/json-schema/node';
+import type { CodeFormatter } from '@utilize/json-schema/node';
 
-import { type FormatMode, generate, type GenerateOptions } from './generator';
+import { generate } from './generator';
+import type { FormatMode, GenerateOptions } from './generator';
 
 export interface CompileOptions
 	extends

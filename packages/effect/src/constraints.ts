@@ -1,8 +1,5 @@
-import {
-	ANNOTATION_KEYWORDS,
-	type ParsedJSONSchemaObject,
-	withSourceMeta,
-} from '@utilize/json-schema';
+import { ANNOTATION_KEYWORDS, withSourceMeta } from '@utilize/json-schema';
+import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { FILTER_KEYWORDS } from './keywords';
 

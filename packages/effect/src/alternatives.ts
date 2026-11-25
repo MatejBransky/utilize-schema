@@ -1,9 +1,5 @@
-import {
-	isPlainObject,
-	type ParsedJSONSchema,
-	type ParsedJSONSchemaObject,
-	withSourceMeta,
-} from '@utilize/json-schema';
+import { isPlainObject, withSourceMeta } from '@utilize/json-schema';
+import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 /** Keywords that keep a member from taking the `type` declared next to it. */
 const SHAPE_KEYWORDS = ['type', '$ref', 'const', 'enum', 'allOf', 'anyOf', 'oneOf'];

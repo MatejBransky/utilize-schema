@@ -12,6 +12,7 @@ import styles from './App.module.css';
 export default function App() {
 	const playground = usePlayground();
 	const { files, activeId, layout } = playground;
+	const { workspaceRef, style, resizing, dataCollapsed } = layout;
 	const active = files.find((file) => file.id === activeId) ?? files[0];
 
 	if (!active) {
@@ -23,18 +24,20 @@ export default function App() {
 			<Header
 				colorMode={playground.colorMode}
 				onColorModeChange={playground.setColorMode}
-				onShare={playground.share}
+				onShare={() => {
+					void playground.share();
+				}}
 				shared={playground.shared}
 			>
 				<PlaygroundControls playground={playground} />
 			</Header>
 
 			<main
-				ref={layout.workspaceRef}
+				ref={workspaceRef}
 				className={styles.workspace}
-				style={layout.style}
-				data-resizing={layout.resizing ? 'true' : undefined}
-				data-collapsed={layout.dataCollapsed ? 'true' : undefined}
+				style={style}
+				data-resizing={resizing ? 'true' : undefined}
+				data-collapsed={dataCollapsed ? 'true' : undefined}
 			>
 				<SchemaPane playground={playground} active={active} />
 				<OutputPane playground={playground} />

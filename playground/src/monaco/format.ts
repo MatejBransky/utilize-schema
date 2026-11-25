@@ -17,7 +17,7 @@ const PRINT_OPTIONS: Options = {
 };
 
 interface Formatter {
-	format(source: string, options: Options): Promise<string>;
+	format: (source: string, options: Options) => Promise<string>;
 	plugins: Plugin[];
 }
 
@@ -33,7 +33,7 @@ function loadFormatter(): Promise<Formatter> {
 		plugins: [typescript, estree],
 	}));
 
-	return formatterPromise as Promise<Formatter>;
+	return formatterPromise;
 }
 
 export async function formatTypeScript(source: string): Promise<string> {

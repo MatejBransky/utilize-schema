@@ -4,7 +4,8 @@
  * cannot reach the page, its storage or the editors, and a validator that never
  * finishes can be stopped without freezing the page.
  */
-import { loadModule, validateModule, type RuntimeResult } from '../runtime';
+import { loadModule, validateModule } from '../runtime';
+import type { RuntimeResult } from '../runtime';
 import type { RuntimeTargetId } from '../targets';
 import type {
 	ValidationRequest,
@@ -19,8 +20,11 @@ const loaded = new Map<
 	{ javascript: string; module: Promise<Record<string, unknown>> }
 >();
 
-addEventListener('message', async (event: MessageEvent<ValidationRequest>) => {
-	const { id, data, sources } = event.data;
+addEventListener('message', (event: MessageEvent<ValidationRequest>) => {
+	void handleMessage(event.data);
+});
+
+async function handleMessage({ id, data, sources }: ValidationRequest) {
 	let response: ValidationResponse;
 
 	try {
@@ -35,7 +39,7 @@ addEventListener('message', async (event: MessageEvent<ValidationRequest>) => {
 	}
 
 	postMessage(response);
-});
+}
 
 async function check(
 	target: RuntimeTargetId,

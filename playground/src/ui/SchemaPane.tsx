@@ -4,7 +4,8 @@ import type { DragEvent as ReactDragEvent, RefObject } from 'react';
 
 import type { Problem, SchemaFile } from '../bundle';
 import type { DropMode } from '../drop';
-import { MonacoEditor, type MonacoEditorHandle } from '../monaco/MonacoEditor';
+import { MonacoEditor } from '../monaco/MonacoEditor';
+import type { MonacoEditorHandle } from '../monaco/MonacoEditor';
 import type { Playground } from '../playgroundHooks';
 import { fileHasError } from '../problems';
 import { PlusIcon } from './icons';
@@ -121,12 +122,12 @@ interface SchemaFileTabsProps {
 	editingId: string | null;
 	draftName: string;
 	renameError: string | null;
-	onDraftNameChange(value: string): void;
-	onCancelRename(): void;
-	onCommitRename(): void;
-	onStartRename(file: SchemaFile): void;
-	onCloseFile(id: string): void;
-	onAddFile(): void;
+	onDraftNameChange: (value: string) => void;
+	onCancelRename: () => void;
+	onCommitRename: () => void;
+	onStartRename: (file: SchemaFile) => void;
+	onCloseFile: (id: string) => void;
+	onAddFile: () => void;
 }
 
 function SchemaFileTabs({
@@ -180,8 +181,8 @@ interface SchemaEditorsProps {
 	active: SchemaFile;
 	monacoTheme: string;
 	schemaEditorRef: RefObject<MonacoEditorHandle | null>;
-	onUpdateFile(id: string, patch: Partial<SchemaFile>): void;
-	onCursorChange(position: Position): void;
+	onUpdateFile: (id: string, patch: Partial<SchemaFile>) => void;
+	onCursorChange: (position: Position) => void;
 }
 
 function SchemaEditors({
@@ -239,7 +240,7 @@ function SchemaStatusBar({ active, cursor, schemaEditorRef }: SchemaStatusBarPro
 
 interface DropOverlayProps {
 	activeMode: DropMode | null;
-	onDrop(event: ReactDragEvent<HTMLElement>, mode: DropMode): void;
+	onDrop: (event: ReactDragEvent<HTMLElement>, mode: DropMode) => void;
 }
 
 function DropOverlay({ activeMode, onDrop }: DropOverlayProps) {

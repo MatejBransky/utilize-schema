@@ -173,18 +173,15 @@ jobs:
           annotations: true
 
       # The action treats an audit verdict of `warn` as a pass, by design: warn
-      # means "warn-tier findings only". The only warn-tier audit rules are the
-      # diff-risk advisories (`added-dependency`, `added-suppression`), which
-      # record a decision a reviewer verifies rather than a defect, so this
-      # repository does not fail on them either: errors still fail through the
-      # recorded gate below. The full-repository run keeps failing on warnings,
-      # because it has no diff-risk rules and every warning there is a real
-      # finding. The step is skipped when the action stopped before writing the
-      # result; that run has already failed on its error findings.
-      - name: Fail on error findings
+      # means "warn-tier findings only". This repository fails on those findings
+      # too, except the review-only diff-risk rules (`added-dependency` and
+      # `added-suppression`), which `fallow-gate.mjs` lets through. The step is
+      # skipped when the action stopped before writing the result; that run has
+      # already failed on its error findings.
+      - name: Fail on warning findings
         if: always() && hashFiles('fallow-results.json') != ''
         run: |
-          node scripts/fallow-gate.mjs fallow-results.json
+          node scripts/fallow-gate.mjs --warn fallow-results.json
 
   security-fallow:
     name: Fallow security gate

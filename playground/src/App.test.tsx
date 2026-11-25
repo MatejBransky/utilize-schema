@@ -1,3 +1,5 @@
+import type { Ref } from 'react';
+
 import { createAgent } from '@ui-sdk/react/agent';
 import { page } from 'vitest/browser';
 import { beforeEach, expect, test, vi } from 'vitest';
@@ -17,7 +19,7 @@ vi.mock('./monaco/MonacoEditor', async () => {
 
 	const MonacoEditor = forwardRef(function MonacoEditorMock(
 		{ testId, value }: { testId?: string; value?: string },
-		ref: import('react').Ref<unknown>
+		ref: Ref<unknown>
 	) {
 		useImperativeHandle(ref, () => ({
 			format() {},
@@ -91,11 +93,19 @@ async function dropFiles(mode: 'add' | 'replace', files: DropFile[]) {
 }
 
 function savedFiles(): SchemaFile[] {
-	return JSON.parse(localStorage.getItem('utilize-schema-playground') ?? '{"files":[]}').files;
+	const state = JSON.parse(localStorage.getItem('utilize-schema-playground') ?? '{"files":[]}') as {
+		files: SchemaFile[];
+	};
+
+	return state.files;
 }
 
 function savedData(): string {
-	return JSON.parse(localStorage.getItem('utilize-schema-playground') ?? '{"data":""}').data;
+	const state = JSON.parse(localStorage.getItem('utilize-schema-playground') ?? '{"data":""}') as {
+		data: string;
+	};
+
+	return state.data;
 }
 
 function resultStatus(target: 'zod' | 'effect'): string | null {
@@ -143,7 +153,7 @@ test('dropping files on the replace target opens them as tabs', async () => {
 	await vi.waitFor(() =>
 		expect(savedFiles().map((file) => file.name)).toEqual(['person.json', 'address.json'])
 	);
-	expect(savedFiles()[0]!.content).toContain('./address.json');
+	expect(savedFiles()[0].content).toContain('./address.json');
 	expect(tabNames()).toHaveLength(2);
 	expect(tabNames()[0]).toContain('person.json');
 	expect(tabNames()[1]).toContain('address.json');
@@ -480,7 +490,9 @@ test('dropping a JSON file on a collapsed test data header is ignored', async ()
 			fileDrag('dragenter', [{ name: 'payload.json', content: '{"changed":true}' }])
 		);
 		pane.dispatchEvent(fileDrag('drop', [{ name: 'payload.json', content: '{"changed":true}' }]));
-		await new Promise((resolve) => setTimeout(resolve, 250));
+		await new Promise<void>((resolve) => {
+			setTimeout(resolve, 250);
+		});
 
 		expect(editor.getAttribute('data-value')).toBe(before);
 	} finally {
@@ -604,8 +616,8 @@ test('the keyword-policy query parameter overrides the hash state', async () => 
 		keywordPolicy: 'warn',
 	};
 	const encoded = btoa(JSON.stringify(state))
-		.replace(/\+/g, '-')
-		.replace(/\//g, '_')
+		.replaceAll('+', '-')
+		.replaceAll('/', '_')
 		.replace(/=+$/, '');
 	history.replaceState(null, '', `/?keyword-policy=error#data=${encoded}`);
 	await render(<App />);

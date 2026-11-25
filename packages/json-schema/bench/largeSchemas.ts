@@ -29,10 +29,10 @@ async function measure(label: string, run: () => Promise<unknown>) {
 
 	times.sort((left, right) => left - right);
 
-	const median = times[Math.floor(times.length / 2)]!;
-	const p95 = times[Math.min(times.length - 1, Math.floor(times.length * 0.95))]!;
+	const median = times[Math.floor(times.length / 2)];
+	const p95 = times[Math.min(times.length - 1, Math.floor(times.length * 0.95))];
 
-	return { label, median, p95, min: times[0]!, max: times.at(-1)! };
+	return { label, median, p95, min: times[0], max: times.at(-1)! };
 }
 
 const directory = await mkdtemp(join(tmpdir(), 'utilize-schema-bench-'));

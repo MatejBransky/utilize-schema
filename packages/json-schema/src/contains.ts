@@ -1,4 +1,5 @@
-import { type Dialect, isKeywordApplicable } from './dialect';
+import { isKeywordApplicable } from './dialect';
+import type { Dialect } from './dialect';
 import type { ParsedJSONSchemaObject } from './model';
 
 export interface ContainsBounds {

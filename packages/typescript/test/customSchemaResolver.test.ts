@@ -4,7 +4,8 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { compile as compileToFile, type CustomSchemaResolver } from '../src';
+import { compile as compileToFile } from '../src';
+import type { CustomSchemaResolver } from '../src';
 import { compile, ts } from './test-utils';
 
 describe('customSchemaResolver', () => {

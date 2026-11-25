@@ -1,6 +1,7 @@
 import { Button } from '@ui-sdk/react/button';
 
-import { type Example, type ExampleCase, exampleById, exampleCaseForData } from '../examples';
+import { exampleById, exampleCaseForData } from '../examples';
+import type { Example, ExampleCase } from '../examples';
 import { MonacoEditor } from '../monaco/MonacoEditor';
 import type { Playground } from '../playgroundHooks';
 import { ChevronDownIcon } from './icons';
@@ -65,9 +66,9 @@ interface DataPaneHeaderProps {
 	narrowLayout: boolean;
 	example: Example | undefined;
 	activeCase: ExampleCase | undefined;
-	onToggle(): void;
-	onSelectCase(item: ExampleCase): void;
-	onFormat(): void;
+	onToggle: () => void;
+	onSelectCase: (item: ExampleCase) => void;
+	onFormat: () => void;
 }
 
 function DataPaneHeader({

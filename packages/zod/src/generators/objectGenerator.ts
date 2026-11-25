@@ -1,6 +1,8 @@
-import { Meta, type ParsedJSONSchema, type ParsedJSONSchemaObject } from '@utilize/json-schema';
+import { Meta } from '@utilize/json-schema';
+import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
-import { createGenerator, type Recursion } from './createGenerator';
+import { createGenerator } from './createGenerator';
+import type { Recursion } from './createGenerator';
 import { protoInputCheck } from './protoProperty';
 import type { GeneratorContext } from './types';
 
@@ -114,7 +116,7 @@ function renderProperties(
 }
 
 function requiredValueFor(
-	patterns: Array<[string, ParsedJSONSchemaObject]>,
+	patterns: [string, ParsedJSONSchemaObject][],
 	additionalProperties: ParsedJSONSchemaObject['additionalProperties'],
 	context: GeneratorContext,
 	generateSchema: Recursion['generateSchema']
@@ -135,7 +137,7 @@ function requiredValueFor(
 function renderObjectExpression(
 	schema: ParsedJSONSchemaObject,
 	allProperties: string,
-	patterns: Array<[string, ParsedJSONSchemaObject]>,
+	patterns: [string, ParsedJSONSchemaObject][],
 	additionalProperties: ParsedJSONSchemaObject['additionalProperties'],
 	requiredCheck: string,
 	context: GeneratorContext,
@@ -231,7 +233,7 @@ function protoPropertyCheck(
 
 function protoAdditionalSchema(
 	declared: boolean,
-	matchingPatterns: Array<[string, ParsedJSONSchemaObject]>,
+	matchingPatterns: [string, ParsedJSONSchemaObject][],
 	additionalProperties: ParsedJSONSchemaObject['additionalProperties'],
 	context: GeneratorContext,
 	generateSchema: Recursion['generateSchema']
@@ -246,8 +248,8 @@ function protoAdditionalSchema(
 
 function protoAdditionalRejection(
 	declared: boolean,
-	matchingPatterns: Array<[string, ParsedJSONSchemaObject]>,
-	patterns: Array<[string, ParsedJSONSchemaObject]>,
+	matchingPatterns: [string, ParsedJSONSchemaObject][],
+	patterns: [string, ParsedJSONSchemaObject][],
 	additionalProperties: ParsedJSONSchemaObject['additionalProperties']
 ): boolean {
 	// Without patterns, `z.strictObject` reports the key itself.
@@ -290,7 +292,7 @@ function needsPrototypeNamesClone(schema: ParsedJSONSchemaObject): boolean {
  */
 function patternRefinement(
 	schema: ParsedJSONSchemaObject,
-	patterns: Array<[string, ParsedJSONSchemaObject]>,
+	patterns: [string, ParsedJSONSchemaObject][],
 	context: GeneratorContext,
 	generateSchema: Recursion['generateSchema']
 ): string {

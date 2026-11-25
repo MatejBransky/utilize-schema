@@ -1,10 +1,12 @@
 import { existsSync, globSync, mkdirSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseArgs, type ParseArgsOptionsConfig } from 'node:util';
+import { parseArgs } from 'node:util';
+import type { ParseArgsOptionsConfig } from 'node:util';
 
 import { dialectCliOptions, readDialectCliOptions } from '../cliOptions';
-import { type DialectIssue, type DialectOptions, formatIssue } from '../dialect';
+import { formatIssue } from '../dialect';
+import type { DialectIssue, DialectOptions } from '../dialect';
 import type { JSONSchema } from '../model';
 import { parseSchemaSource } from './compile';
 
@@ -256,14 +258,12 @@ function discover(input: string, cwd: string): InputFile[] {
 	const resolved = path.resolve(cwd, input);
 
 	if (existsSync(resolved) && statSync(resolved).isDirectory()) {
-		// eslint-disable-next-line unicorn/no-array-sort -- globSync returns a fresh array
 		const matches = globSync('**/*.{json,yaml,yml}', { cwd: resolved }).sort();
 
 		return matches.map((file) => ({ path: path.join(resolved, file), relative: file }));
 	}
 
 	if (/[*?[\]{}]/.test(input)) {
-		// eslint-disable-next-line unicorn/no-array-sort -- globSync returns a fresh array
 		const matches = globSync(input, { cwd }).sort();
 		const base = path.resolve(cwd, globRoot(input));
 

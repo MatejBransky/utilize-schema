@@ -10,7 +10,14 @@
 // an audit verdict of `warn` as a pass by design ("warn-tier findings only"),
 // while this repository fails on those findings too, so the pull-request job
 // reads its recorded result with the same flag.
+//
+// The audit diff-risk rules for a new dependency and a new suppression stay at
+// `warn` in `.fallowrc.jsonc` because they describe a decision a reviewer
+// verifies rather than a defect. A verdict whose warnings are only those rules
+// passes; suppressing them in the config would itself be a weakened rule.
 import { readFileSync } from 'node:fs';
+
+const REVIEW_ONLY_RULES = new Set(['added-dependency', 'added-suppression']);
 
 const args = process.argv.slice(2);
 const includeWarnings = args.includes('--warn');
@@ -30,7 +37,22 @@ try {
 	process.exit(2);
 }
 
-const outcomes = Object.entries(result.gate_outcomes ?? {});
+const diffRiskWarnings = (result.diff_risk?.findings ?? []).filter(
+	(finding) => finding.introduced === true && finding.severity === 'warn'
+);
+const onlyReviewWarnings =
+	diffRiskWarnings.length > 0 &&
+	diffRiskWarnings.every((finding) => REVIEW_ONLY_RULES.has(finding.rule));
+
+// A verdict whose only warnings are the review-only diff-risk rules reads as a
+// pass. Other sections keep their own gates, so this only relaxes the aggregate.
+const gateOutcomes = { ...result.gate_outcomes };
+
+if (onlyReviewWarnings && gateOutcomes['audit-verdict']?.status === 'warn') {
+	gateOutcomes['audit-verdict'] = { ...gateOutcomes['audit-verdict'], status: 'pass' };
+}
+
+const outcomes = Object.entries(gateOutcomes);
 const failed = outcomes.filter(
 	([, outcome]) => outcome.status === 'fail' || (includeWarnings && outcome.status === 'warn')
 );

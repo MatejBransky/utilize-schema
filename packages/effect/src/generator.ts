@@ -1,23 +1,24 @@
-// oxlint-disable unicorn/no-array-sort -- the emitted helper sorts keys by code point; the source function is stringified into generated code
 import {
 	allocateName,
 	collectStandaloneSchemas,
-	type Dialect,
 	dialectOf,
 	containsBounds,
-	type ContainsBounds,
 	isKeywordApplicable,
 	isPlainObject,
 	mapDeclarationNames,
 	Meta,
 	narrowUntypedSchema,
-	type ParsedJSONSchema,
-	type ParsedJSONSchemaObject,
 	resolveName,
-	type SchemaEdge,
-	type CustomNameResolver,
-	type DeclarationNames,
-	type NameMapper,
+} from '@utilize/json-schema';
+import type {
+	Dialect,
+	ContainsBounds,
+	ParsedJSONSchema,
+	ParsedJSONSchemaObject,
+	SchemaEdge,
+	CustomNameResolver,
+	DeclarationNames,
+	NameMapper,
 } from '@utilize/json-schema';
 
 import { typedAlternatives } from './alternatives';
@@ -29,7 +30,8 @@ import { ANNOTATION_KEYWORDS } from './keywords';
 import { mergeObjectSchemas } from './mergeObjects';
 import { planReferenceSiblings } from './refSiblings';
 import { arrayRest, objectKeys, parentSchema, prefixItemsOf } from './schemaParts';
-import { literalType, renderValueTypeDeclaration, type ValueTypeContext } from './valueTypes';
+import { literalType, renderValueTypeDeclaration } from './valueTypes';
+import type { ValueTypeContext } from './valueTypes';
 
 export interface GenerateOptions {
 	/** Emit `import { Schema } from 'effect';` at the top of the generated code. */
@@ -65,9 +67,9 @@ export type CustomSchemaResolver = (schema: ParsedJSONSchemaObject) => string | 
 
 type Context = {
 	/** Name of an already declared standalone schema. */
-	nameOf(schema: ParsedJSONSchemaObject, ref: string): string;
+	nameOf: (schema: ParsedJSONSchemaObject, ref: string) => string;
 	/** Whether a standalone schema is part of a reference cycle. */
-	isCyclic(schema: ParsedJSONSchemaObject): boolean;
+	isCyclic: (schema: ParsedJSONSchemaObject) => boolean;
 	/**
 	 * Dialect of the node being generated. Starts as the document root's dialect;
 	 * `generateSchema` sets it to each node's dialect, so helpers and copies
@@ -80,13 +82,13 @@ type Context = {
 	 * Name of the module-level constant that holds the check for a format.
 	 * Registered on first use, so one format yields one constant per file.
 	 */
-	formatOf(format: string): string;
+	formatOf: (format: string) => string;
 	/**
 	 * The call expression for a canonical JSON literal. The first call also
 	 * reserves the name of the module-level helper, which makes `generate` emit
 	 * it.
 	 */
-	jsonLiteralCall(value: unknown): string;
+	jsonLiteralCall: (value: unknown) => string;
 	customSchemaResolver?: CustomSchemaResolver;
 };
 
@@ -593,7 +595,7 @@ function stringFormat(schema: ParsedJSONSchemaObject, context: Context): string 
 
 /** `date-time` becomes `formatDateTime`, so one constant covers a format. */
 function formatConstantBase(format: string) {
-	const pascal = format.replace(/[^a-zA-Z0-9]+(.)?/g, (_, next: string | undefined) =>
+	const pascal = format.replaceAll(/[^a-zA-Z0-9]+(.)?/g, (_, next: string | undefined) =>
 		next === undefined ? '' : next.toUpperCase()
 	);
 
@@ -1150,8 +1152,8 @@ function generateConjunction(
 
 			// Keywords next to the union constrain the value as well, so they stay
 			// a separate member instead of being dropped with the union.
-			if (!isEmptySchema(rest as ParsedJSONSchemaObject)) {
-				parts.push(rest as ParsedJSONSchemaObject);
+			if (!isEmptySchema(rest)) {
+				parts.push(rest);
 			}
 
 			// `anyOf` and `oneOf` both constrain the value, so they stay separate.
@@ -1268,7 +1270,7 @@ function flattenAllOf(schemas: ParsedJSONSchema[]): ParsedJSONSchema[] {
 			flattened.push(parent);
 		}
 
-		flattened.push(...flattenAllOf(node.allOf as unknown as ParsedJSONSchema[]));
+		flattened.push(...flattenAllOf(node.allOf));
 	}
 
 	return flattened;
