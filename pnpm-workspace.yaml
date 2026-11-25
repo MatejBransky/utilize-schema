@@ -1,5 +1,9 @@
 packages:
   - packages/*
+  # Examples join the recursive scripts on purpose, so CI type-checks the demo.
+  # Like every package, they need `pnpm build:dev` first: the content-mapper
+  # demo's `check:types` runs the built `@utilize/content-mapper` mapper and
+  # passes `--runExternalCode` itself.
   - examples/*
   - playground
 
