@@ -119,13 +119,12 @@ pnpm check:fallow-badge
 ```
 
 In every pull request and on every push to `main`, the `Fallow full repository`
-job runs all unit tests with V8 coverage, merges their Istanbul data, and
-publishes `fallow health --coverage --format github-summary` to the job summary.
-It also runs the type-aware pass in `best-effort` mode against every package
-tsconfig. This gives CRAP scores measured against real coverage and confirms
-dead-code candidates with the TypeScript checker. The step is gating: the
-measured backlog is empty, so a function above the cyclomatic, cognitive or CRAP
-threshold fails the run.
+job runs all unit tests with V8 coverage, merges their Istanbul data, and runs
+`fallow` in combined mode on it: dead code, duplication, maintainability and
+CRAP measured against real coverage, plus rule-pack policy. A separate
+`fallow dead-code --type-aware` pass in `best-effort` mode against every package
+tsconfig confirms dead-code candidates with the TypeScript checker. Both steps
+are gating: the measured backlog is empty, so a new finding fails the run.
 
 `rule-packs/utilize-policy.jsonc` keeps generator source browser-safe: `node:*`
 imports are errors in the generator packages outside `compile.ts` and `cli.ts`.

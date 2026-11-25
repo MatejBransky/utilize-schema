@@ -253,7 +253,7 @@ test('formats through the built-in action and restores read-only', async () => {
 
 	ref.current?.focus();
 	ref.current?.focusAt(0, -1);
-	expect(fake.state.focuses).toBeGreaterThan(0);
+	expect(fake.state.focuses).toBe(2);
 	expect(fake.state.positions.at(-1)).toEqual({ lineNumber: 1, column: 1 });
 
 	await screen.unmount();

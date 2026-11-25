@@ -177,7 +177,10 @@ describe('runGeneratorCli', () => {
 		expect(
 			readFileSync(path.join(directory, 'generated', 'nested', 'b.generated.ts'), 'utf8')
 		).toBe('// banner\ncode:b.yaml');
-		expect(cli.errors).toHaveLength(2);
+		expect(cli.errors).toEqual([
+			`${path.join(directory, 'schemas', 'a.json')} -> ${path.join(directory, 'generated', 'a.generated.ts')}\n`,
+			`${path.join(directory, 'schemas', 'nested', 'b.yaml')} -> ${path.join(directory, 'generated', 'nested', 'b.generated.ts')}\n`,
+		]);
 	});
 
 	test('keeps the directory structure of a glob from its root', async () => {

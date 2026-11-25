@@ -105,16 +105,25 @@ jobs:
       - name: Build packages
         run: pnpm build:dev
 
-      - name: Full Fallow health with measured coverage and type-aware pass
+      - name: Full Fallow run with measured coverage
         run: |
-          pnpm fallow:coverage --format github-summary \
+          pnpm fallow:coverage --format github-summary >> "$GITHUB_STEP_SUMMARY"
+
+      # The combined run above applies coverage to complexity; the TypeScript
+      # checker is only consulted by the dead-code analysis, so it runs
+      # separately. `best-effort` keeps an incomplete program advisory.
+      # The type-aware mode rejects presentation-only formats, so this step
+      # reports to the job log instead of the step summary.
+      - name: Confirm dead code with the TypeScript checker
+        run: |
+          pnpm exec fallow dead-code \
             --type-aware --type-aware-require best-effort \
             --type-aware-project packages/json-schema/tsconfig.json \
             --type-aware-project packages/zod/tsconfig.json \
             --type-aware-project packages/effect/tsconfig.json \
             --type-aware-project packages/typescript/tsconfig.json \
             --type-aware-project packages/test-utils/tsconfig.json \
-            --type-aware-project playground/tsconfig.json >> "$GITHUB_STEP_SUMMARY"
+            --type-aware-project playground/tsconfig.json
 
   fallow:
     name: Fallow audit
