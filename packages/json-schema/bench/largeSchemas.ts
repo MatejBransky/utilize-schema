@@ -14,7 +14,7 @@ import { parse } from '../dist/index.mjs';
 
 const iterations = Number(process.env.BENCH_ITERATIONS ?? 20);
 
-async function measure(label: string, run: () => Promise<void>) {
+async function measure(label: string, run: () => Promise<object>) {
 	for (let index = 0; index < 2; index += 1) {
 		await run();
 	}
@@ -43,18 +43,18 @@ try {
 	const fhirSchema = createFhirSchema();
 
 	const results = [
-		await measure(`Azure-like template (${AZURE_RESOURCE_COUNT} linked files)`, async () => {
-			await parse(structuredClone(azureRoot) as never, {
+		await measure(`Azure-like template (${AZURE_RESOURCE_COUNT} linked files)`, () =>
+			parse(structuredClone(azureRoot) as never, {
 				cwd: directory + '/',
 				fileName: 'azure.json',
-			});
-		}),
-		await measure(`FHIR-like bundle (${FHIR_RESOURCE_COUNT} resources)`, async () => {
-			await parse(structuredClone(fhirSchema) as never, {
+			})
+		),
+		await measure(`FHIR-like bundle (${FHIR_RESOURCE_COUNT} resources)`, () =>
+			parse(structuredClone(fhirSchema) as never, {
 				cwd: '/',
 				fileName: 'fhir.json',
-			});
-		}),
+			})
+		),
 	];
 
 	console.log(`\n${iterations} iterations, milliseconds\n`);
