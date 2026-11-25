@@ -66,7 +66,7 @@
 	"peerDependencies": {
 		"effect": ">=4.0.0 <5",
 		"typescript": ">=7.1.0-beta",
-		"zod": ">=4.0.0 <5"
+		"zod": ">=4.5.0 <5"
 	},
 	"peerDependenciesMeta": {
 		"effect": {
