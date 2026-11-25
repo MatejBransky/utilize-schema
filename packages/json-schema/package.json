@@ -26,6 +26,18 @@
 	"main": "./dist/index.mjs",
 	"module": "./dist/index.mjs",
 	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.mjs"
+		},
+		"./node": {
+			"types": "./dist/node.d.ts",
+			"default": "./dist/node.mjs"
+		},
+		"./dist/*": "./dist/*",
+		"./package.json": "./package.json"
+	},
 	"publishConfig": {
 		"access": "public"
 	},
@@ -41,7 +53,8 @@
 		"dev": "tsdown --watch"
 	},
 	"dependencies": {
-		"@apidevtools/json-schema-ref-parser": "catalog:"
+		"@apidevtools/json-schema-ref-parser": "catalog:",
+		"js-yaml": "5.5.0"
 	},
 	"devDependencies": {
 		"@total-typescript/tsconfig": "catalog:",
