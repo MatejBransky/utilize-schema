@@ -1,4 +1,5 @@
 export * from './cliOptions';
+export * from './collectStandaloneSchemas';
 export * from './contains';
 export * from './externalSchemas';
 export {

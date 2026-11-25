@@ -1,6 +1,5 @@
-import { type ParsedJSONSchemaObject, Meta } from '@utilize/json-schema';
+import { type ParsedJSONSchemaObject, type SchemaEdge, Meta } from '@utilize/json-schema';
 
-import { type SchemaEdge } from './collectStandaloneSchemas';
 import type { InlineCopies } from './inlineCopies';
 import { isPropertyBacked } from './isPropertyBacked';
 
