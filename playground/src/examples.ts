@@ -17,7 +17,7 @@ function draft07(schema: JSONSchema): JSONSchema {
 	return { $schema: 'http://json-schema.org/draft-07/schema#', ...schema };
 }
 
-function single(id: string, name: string, group: string, schema: Record<string, unknown>): Example {
+function single(id: string, name: string, group: string, schema: JSONSchema): Example {
 	return {
 		id,
 		name,

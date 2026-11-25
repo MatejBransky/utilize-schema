@@ -370,10 +370,10 @@ function referenceSiblings(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObje
 		return undefined;
 	}
 
-	const sibling: Record<string, unknown> = {};
+	const sibling: Record<string, ParsedJSONSchema> = {};
 
 	for (const key of keys) {
-		sibling[key] = record[key];
+		sibling[key] = record[key] as ParsedJSONSchema;
 	}
 
 	// oxlint-disable-next-line quality/no-chained-type-assertions -- synthetic sibling; it has no Meta of its own

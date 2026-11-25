@@ -4,6 +4,7 @@ import {
 	isKeywordApplicable,
 	isPlainObject,
 	Meta,
+	schemaRecord,
 } from '@utilize/json-schema';
 import type { Dialect, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
@@ -408,7 +409,7 @@ export function literalType(value: unknown): string {
 		return `readonly [${value.map((entry) => parenthesize(literalType(entry))).join(', ')}]`;
 	}
 	if (typeof value === 'object') {
-		const members = Object.entries(value as Record<string, unknown>).map(
+		const members = Object.entries(schemaRecord(value)).map(
 			([key, entry]) => `${propertyKey(key)}: ${literalType(entry)}`
 		);
 

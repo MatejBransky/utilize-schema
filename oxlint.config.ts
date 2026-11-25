@@ -50,6 +50,30 @@ export default defineConfig({
 			files: ['**/*.{test,spec}.{ts,tsx}', '**/test/**'],
 			rules: { 'quality/no-chained-type-assertions': 'off' },
 		},
+		{
+			// The core traverses unparsed JSON, so `Record<string, unknown>` is the
+			// honest boundary type there; the playground bundler rewrites the same
+			// values before they reach the parser, and tests build fixtures.
+			files: [
+				'packages/json-schema/src/dialect.ts',
+				'packages/json-schema/src/externalSchemas.ts',
+				'packages/json-schema/src/identifiers.ts',
+				'packages/json-schema/src/narrow.ts',
+				'packages/json-schema/src/normalize.ts',
+				'packages/json-schema/src/parser.ts',
+				'packages/json-schema/src/utils.ts',
+				'packages/test-utils/src/suite/evaluate.ts',
+				'packages/effect/src/generator.ts',
+				'packages/effect/src/mergeObjects.ts',
+				'packages/effect/src/constraints.ts',
+				'packages/zod/src/inlineCopies.ts',
+				'playground/src/bundle.ts',
+				'**/*.{test,spec}.{ts,tsx}',
+				'**/test/**',
+				'**/bench/**',
+			],
+			rules: { 'quality/no-unsafe-dictionary-type': 'off' },
+		},
 	],
 	rules: {
 		// Project-specific tuning carried over from the previous configuration.
@@ -66,7 +90,6 @@ export default defineConfig({
 
 		// The rules below were newly enabled by the preset and still have findings.
 		// Burn them down one rule at a time, then delete the corresponding line.
-		'quality/no-unsafe-dictionary-type': 'off',
 		'typescript/no-unsafe-type-assertion': 'off',
 	},
 });
