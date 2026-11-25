@@ -70,6 +70,46 @@ jobs:
       - name: Check Fallow health badge
         run: pnpm run check:fallow-badge
 
+  fallow-full:
+    name: Fallow full repository
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-shell-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-shell-
+
+      - name: Install Playwright browsers
+        run: pnpm --filter playground exec playwright install --only-shell chromium
+
+      - name: Build packages
+        run: pnpm build:dev
+
+      - name: Full Fallow health with measured coverage
+        run: |
+          pnpm fallow:coverage --report-only --format github-summary >> "$GITHUB_STEP_SUMMARY"
+
   fallow:
     name: Fallow audit
     if: github.event_name == 'pull_request'
