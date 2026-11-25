@@ -49,6 +49,8 @@
 		"test": "vitest",
 		"prebench": "tsdown",
 		"bench": "node bench/largeSchemas.ts",
+		"bench:build": "tsdown --config tsdown.bench.config.ts",
+		"bench:compare": "node --expose-gc bench/compareRefactor.mjs",
 		"ci:test": "vitest run",
 		"dev": "tsdown --watch"
 	},

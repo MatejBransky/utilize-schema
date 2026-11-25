@@ -10,6 +10,13 @@
 	// disappearing from every analysis.
 	"failOnParseError": true,
 
+	// Benchmark harnesses are developer tools, not production entry points.
+	"supportEntry": [
+		"packages/json-schema/bench/compareRefactor.mjs",
+		"packages/json-schema/bench/refactorEntry.ts",
+		"packages/json-schema/tsdown.bench.config.ts",
+	],
+
 	// Commit hooks and PR CI judge only findings introduced by the change.
 	"audit": {
 		"gate": "new-only",
@@ -112,7 +119,16 @@
 		// Dead-code and duplication checks still cover every test file.
 		// `packages/test-utils` is the private package of shared test helpers;
 		// nothing published imports it.
-		"ignore": ["**/test/**", "**/*.test.ts", "**/*.test.tsx", "packages/test-utils/**"],
+		"ignore": [
+			"**/test/**",
+			"**/*.test.ts",
+			"**/*.test.tsx",
+			"packages/test-utils/**",
+			// Measurement plumbing is tooling; its branches implement reporting and
+			// fixture setup rather than production behavior.
+			"packages/json-schema/bench/**",
+			"packages/json-schema/tsdown.bench.config.ts",
+		],
 	},
 
 	"rules": {
