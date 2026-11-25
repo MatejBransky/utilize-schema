@@ -151,26 +151,28 @@ function protoPropertyCheck(
 		unicodePattern(pattern, 'patternProperties').test(PROTO)
 	);
 	const additionalProperties = schema.additionalProperties;
-	// A matching pattern covers the key, so `additionalProperties` does not.
-	const additionalSchema =
-		!declared &&
-		matchingPatterns.length === 0 &&
-		isSchemaObject<ParsedJSONSchemaObject>(additionalProperties)
-			? generateSchema(additionalProperties, context)
-			: '';
-	// Without patterns, `z.strictObject` reports the key itself.
-	const additionalRejection =
-		!declared &&
-		matchingPatterns.length === 0 &&
-		patterns.length > 0 &&
-		additionalProperties === false;
+	const additionalSchema = protoAdditionalSchema(
+		declared,
+		matchingPatterns,
+		additionalProperties,
+		context,
+		generateSchema
+	);
+	const additionalRejection = protoAdditionalRejection(
+		declared,
+		matchingPatterns,
+		patterns,
+		additionalProperties
+	);
 
 	if (
-		!declared &&
-		!required &&
-		matchingPatterns.length === 0 &&
-		additionalSchema === '' &&
-		!additionalRejection
+		!needsProtoCheck(
+			declared,
+			required,
+			matchingPatterns.length,
+			additionalSchema,
+			additionalRejection
+		)
 	) {
 		return '';
 	}
@@ -184,6 +186,52 @@ function protoPropertyCheck(
 			additionalSchema,
 		].filter(Boolean),
 	});
+}
+
+function protoAdditionalSchema(
+	declared: boolean,
+	matchingPatterns: Array<[string, ParsedJSONSchemaObject]>,
+	additionalProperties: ParsedJSONSchemaObject['additionalProperties'],
+	context: GeneratorContext,
+	generateSchema: Recursion['generateSchema']
+): string {
+	// A matching pattern covers the key, so `additionalProperties` does not.
+	return !declared &&
+		matchingPatterns.length === 0 &&
+		isSchemaObject<ParsedJSONSchemaObject>(additionalProperties)
+		? generateSchema(additionalProperties, context)
+		: '';
+}
+
+function protoAdditionalRejection(
+	declared: boolean,
+	matchingPatterns: Array<[string, ParsedJSONSchemaObject]>,
+	patterns: Array<[string, ParsedJSONSchemaObject]>,
+	additionalProperties: ParsedJSONSchemaObject['additionalProperties']
+): boolean {
+	// Without patterns, `z.strictObject` reports the key itself.
+	return (
+		!declared &&
+		matchingPatterns.length === 0 &&
+		patterns.length > 0 &&
+		additionalProperties === false
+	);
+}
+
+function needsProtoCheck(
+	declared: boolean,
+	required: boolean,
+	matchingPatternCount: number,
+	additionalSchema: string,
+	additionalRejection: boolean
+): boolean {
+	return (
+		declared ||
+		required ||
+		matchingPatternCount > 0 ||
+		additionalSchema !== '' ||
+		additionalRejection
+	);
 }
 
 /** True when Zod could find a declared key on `Object.prototype`. */
