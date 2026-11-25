@@ -1,4 +1,5 @@
 import { type Dialect, dialects } from './dialect';
+import { SCHEMA_ARRAY_KEYWORDS, SCHEMA_MAP_KEYWORDS, SINGLE_SCHEMA_KEYWORDS } from './keywords';
 import type { JSONSchema } from './model';
 import type { DialectMap } from './normalize';
 import { isPlainObject } from './utils';
@@ -145,30 +146,6 @@ function idKeyword(dialect: Dialect): 'id' | '$id' {
 	return dialect.keywords.has('$id') ? '$id' : 'id';
 }
 
-const MAP_KEYWORDS = new Set([
-	'$defs',
-	'definitions',
-	'properties',
-	'patternProperties',
-	'dependentSchemas',
-]);
-
-const SINGLE_SCHEMA_KEYWORDS = new Set([
-	'additionalProperties',
-	'additionalItems',
-	'contains',
-	'propertyNames',
-	'if',
-	'then',
-	'else',
-	'not',
-	'unevaluatedProperties',
-	'unevaluatedItems',
-	'contentSchema',
-]);
-
-const ARRAY_SCHEMA_KEYWORDS = new Set(['allOf', 'anyOf', 'oneOf', 'prefixItems']);
-
 /**
  * Yields only schema-bearing children, so `$id` in `default` or `examples` is
  * ignored. Exported so every indexer walks the same keywords.
@@ -184,7 +161,7 @@ export function* schemaChildren(node: Record<string, unknown>): Generator<unknow
 			continue;
 		}
 
-		if (MAP_KEYWORDS.has(keyword) && isPlainObject(value)) {
+		if (SCHEMA_MAP_KEYWORDS.has(keyword) && isPlainObject(value)) {
 			yield* Object.values(value);
 			continue;
 		}
@@ -194,7 +171,7 @@ export function* schemaChildren(node: Record<string, unknown>): Generator<unknow
 			continue;
 		}
 
-		if (ARRAY_SCHEMA_KEYWORDS.has(keyword) && Array.isArray(value)) {
+		if (SCHEMA_ARRAY_KEYWORDS.has(keyword) && Array.isArray(value)) {
 			yield* value;
 			continue;
 		}

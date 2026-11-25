@@ -4,6 +4,9 @@ import {
 	type KeywordPolicy,
 	prepareSchema,
 	resolveDialect,
+	SCHEMA_ARRAY_KEYWORDS,
+	SCHEMA_MAP_KEYWORDS,
+	SINGLE_SCHEMA_KEYWORDS,
 } from '@utilize/json-schema';
 
 export interface SchemaFile {
@@ -329,28 +332,6 @@ interface RewriteContext {
 	problems: Problem[];
 }
 
-const MAP_KEYWORDS = new Set([
-	'properties',
-	'patternProperties',
-	'$defs',
-	'definitions',
-	'dependentSchemas',
-]);
-const SINGLE_SCHEMA_KEYWORDS = new Set([
-	'additionalProperties',
-	'additionalItems',
-	'unevaluatedProperties',
-	'unevaluatedItems',
-	'contentSchema',
-	'contains',
-	'propertyNames',
-	'if',
-	'then',
-	'else',
-	'not',
-]);
-const ARRAY_SCHEMA_KEYWORDS = new Set(['allOf', 'anyOf', 'oneOf', 'prefixItems']);
-
 function rewrite(value: unknown, file: SchemaFile, context: RewriteContext): unknown {
 	if (!isPlainObject(value)) {
 		return value;
@@ -361,7 +342,7 @@ function rewrite(value: unknown, file: SchemaFile, context: RewriteContext): unk
 	for (const [key, child] of Object.entries(value)) {
 		if (key === '$ref' && typeof child === 'string') {
 			copy[key] = rewriteRef(child, file, context);
-		} else if (MAP_KEYWORDS.has(key) && isPlainObject(child)) {
+		} else if (SCHEMA_MAP_KEYWORDS.has(key) && isPlainObject(child)) {
 			const map: Record<string, unknown> = {};
 
 			for (const [name, subschema] of Object.entries(child)) {
@@ -372,7 +353,7 @@ function rewrite(value: unknown, file: SchemaFile, context: RewriteContext): unk
 			copy[key] = child.map((item) => rewrite(item, file, context));
 		} else if (SINGLE_SCHEMA_KEYWORDS.has(key) || key === 'items') {
 			copy[key] = rewrite(child, file, context);
-		} else if (ARRAY_SCHEMA_KEYWORDS.has(key) && Array.isArray(child)) {
+		} else if (SCHEMA_ARRAY_KEYWORDS.has(key) && Array.isArray(child)) {
 			copy[key] = child.map((item) => rewrite(item, file, context));
 		} else if (key === 'dependencies' && isPlainObject(child)) {
 			const dependencies: Record<string, unknown> = {};
