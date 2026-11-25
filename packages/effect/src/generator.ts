@@ -1686,7 +1686,7 @@ function jsonLiteralHelper(): string {
  * same way. Integer-like keys keep their JSON.stringify order, which both sides
  * share.
  */
-function canonicalReplacer(_key: string, entry: unknown): unknown {
+function canonicalReplacer(_key: string, entry: unknown) {
 	if (entry !== null && typeof entry === 'object' && !Array.isArray(entry)) {
 		return Object.fromEntries(
 			Object.entries(entry).sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))

@@ -14,7 +14,7 @@ import { parse } from '../dist/index.mjs';
 
 const iterations = Number(process.env.BENCH_ITERATIONS ?? 20);
 
-async function measure(label: string, run: () => Promise<unknown>) {
+async function measure(label: string, run: () => Promise<object>) {
 	for (let index = 0; index < 2; index += 1) {
 		await run();
 	}

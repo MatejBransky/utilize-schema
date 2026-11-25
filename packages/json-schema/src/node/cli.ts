@@ -11,7 +11,7 @@ import type { JSONSchema } from '../model';
 import { parseSchemaSource } from './compile';
 
 export interface Writable {
-	write(chunk: string): unknown;
+	write(chunk: string): void;
 }
 
 export interface CliIo {
