@@ -42,6 +42,28 @@ export function applyRefinements(
 	const checks: string[] = [];
 	const contextType = typeof schema.type === 'string' ? schema.type : undefined;
 
+	appendImplicitTypeChecks(checks, schema, context, generate);
+	appendNotAndConditionalChecks(checks, schema, contextType, context, generate);
+	appendContainsCheck(checks, schema, context, generate);
+	appendSizeChecks(checks, schema);
+	appendPropertyNamesCheck(checks, schema, context, generate);
+	appendDependencyChecks(checks, schema, context, generate);
+
+	if (checks.length === 0) {
+		return expression;
+	}
+
+	return ts`z.any().superRefine((value, ctx) => {
+    ${checks.join('\n')}
+  }).pipe(${expression})`;
+}
+
+function appendImplicitTypeChecks(
+	checks: string[],
+	schema: ParsedJSONSchemaObject,
+	context: GeneratorContext,
+	generate: Generate
+): void {
 	// Keywords on a schema without `type` only apply to their own type, so each
 	// constrained type gets a separate guarded check. A schema can constrain
 	// more than one type, e.g. `{ minLength: 2, minimum: 5 }`.
@@ -74,7 +96,15 @@ export function applyRefinements(
       }
     }`);
 	}
+}
 
+function appendNotAndConditionalChecks(
+	checks: string[],
+	schema: ParsedJSONSchemaObject,
+	contextType: Parameters<typeof narrowUntypedSchema>[1],
+	context: GeneratorContext,
+	generate: Generate
+): void {
 	if (schema.not !== undefined) {
 		const not = generate(narrowUntypedSchema(schema.not, contextType, context.dialect), context);
 
@@ -119,7 +149,14 @@ export function applyRefinements(
       }
     }`);
 	}
+}
 
+function appendContainsCheck(
+	checks: string[],
+	schema: ParsedJSONSchemaObject,
+	context: GeneratorContext,
+	generate: Generate
+): void {
 	if (schema.contains !== undefined && isKeywordApplicable(context.dialect, 'contains')) {
 		const contains = generate(schema.contains, context);
 		const bounds = containsBounds(schema, context.dialect);
@@ -155,7 +192,9 @@ export function applyRefinements(
     }`);
 		}
 	}
+}
 
+function appendSizeChecks(checks: string[], schema: ParsedJSONSchemaObject): void {
 	if (schema.uniqueItems === true) {
 		checks.push(ts`{
       if (Array.isArray(value)) {
@@ -215,7 +254,14 @@ export function applyRefinements(
       }
     }`);
 	}
+}
 
+function appendPropertyNamesCheck(
+	checks: string[],
+	schema: ParsedJSONSchemaObject,
+	context: GeneratorContext,
+	generate: Generate
+): void {
 	if (schema.propertyNames !== undefined && isKeywordApplicable(context.dialect, 'propertyNames')) {
 		const propertyNames = generate(
 			narrowUntypedSchema(schema.propertyNames, 'string', context.dialect),
@@ -234,7 +280,14 @@ export function applyRefinements(
       }
     }`);
 	}
+}
 
+function appendDependencyChecks(
+	checks: string[],
+	schema: ParsedJSONSchemaObject,
+	context: GeneratorContext,
+	generate: Generate
+): void {
 	// `dependencies` is either native to the dialect or merged from
 	// `dependentRequired` / `dependentSchemas` by the normalizer. A foreign
 	// `dependencies` keyword was already dropped by the parser.
@@ -273,14 +326,6 @@ export function applyRefinements(
       }
     }`);
 	}
-
-	if (checks.length === 0) {
-		return expression;
-	}
-
-	return ts`z.any().superRefine((value, ctx) => {
-    ${checks.join('\n')}
-  }).pipe(${expression})`;
 }
 
 function checkBlock(expression: string, pathPrefix?: string): string {
