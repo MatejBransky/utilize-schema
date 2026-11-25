@@ -1,7 +1,6 @@
 import { Meta, type ParsedJSONSchemaObject } from '@utilize/json-schema';
 
-import { createGenerator } from './createGenerator';
-import { generateSchema } from './generateSchema';
+import { createGenerator, type Recursion } from './createGenerator';
 import { protoInputCheck } from './protoProperty';
 import type { GeneratorContext } from './types';
 
@@ -12,7 +11,7 @@ const PROTO = '__proto__';
 
 export const generator = createGenerator(
 	(schema) => schema.type === 'object',
-	(schema, context) => {
+	(schema, context, { generateSchema }) => {
 		const declaredProperties = schema.properties ?? {};
 		const properties = Object.entries(declaredProperties).map(([key, value]) => {
 			const keyExpression = shapeKey(key);
@@ -77,7 +76,7 @@ export const generator = createGenerator(
         }
       })`
 				: '';
-		const protoCheck = protoPropertyCheck(schema, context);
+		const protoCheck = protoPropertyCheck(schema, context, generateSchema);
 		const withProtoCheck = (expression: string) => {
 			const checked =
 				protoCheck === ''
@@ -103,7 +102,7 @@ export const generator = createGenerator(
 		if (patterns.length > 0) {
 			return withProtoCheck(ts`z.looseObject({
         ${allProperties}
-      })${patternRefinement(schema, patterns, context)}${requiredCheck}`);
+      })${patternRefinement(schema, patterns, context, generateSchema)}${requiredCheck}`);
 		}
 
 		const catchAllPart = isSchemaObject<ParsedJSONSchemaObject>(additionalProperties)
@@ -139,7 +138,11 @@ export const generator = createGenerator(
  * too. The key is constant, so a pattern that matches it is known at
  * generation time.
  */
-function protoPropertyCheck(schema: ParsedJSONSchemaObject, context: GeneratorContext): string {
+function protoPropertyCheck(
+	schema: ParsedJSONSchemaObject,
+	context: GeneratorContext,
+	generateSchema: Recursion['generateSchema']
+): string {
 	const properties = schema.properties ?? {};
 	const declared = Object.hasOwn(properties, PROTO);
 	const required = schema.required?.includes(PROTO) ?? false;
@@ -199,7 +202,8 @@ function needsPrototypeNamesClone(schema: ParsedJSONSchemaObject): boolean {
 function patternRefinement(
 	schema: ParsedJSONSchemaObject,
 	patterns: Array<[string, ParsedJSONSchemaObject]>,
-	context: GeneratorContext
+	context: GeneratorContext,
+	generateSchema: Recursion['generateSchema']
 ): string {
 	const declared = Object.keys(schema.properties ?? {});
 	// An empty array literal is typed `never[]`, so `[].includes(key)` would not

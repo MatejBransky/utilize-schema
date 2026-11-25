@@ -1,7 +1,6 @@
 import { isPlainObject, type ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
-import { generateSchema } from './generateSchema';
 import { protoInputCheck } from './protoProperty';
 
 import { ts } from '../utils';
@@ -20,7 +19,7 @@ export const generator = createGenerator<{
 
 		return false;
 	},
-	(schema, context) => {
+	(schema, context, { generateSchema }) => {
 		// TODO: handle patternProperties
 
 		const additionalProperties = generateSchema(schema.additionalProperties, context);

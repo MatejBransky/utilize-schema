@@ -1,7 +1,6 @@
 import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
-import { generateSchema } from './generateSchema';
 
 import { NEWLINE, ts } from '../utils';
 
@@ -11,7 +10,7 @@ export const generator = createGenerator<
 	}
 >(
 	(schema) => Array.isArray(schema.allOf),
-	(schema, context) => {
+	(schema, context, { generateSchema }) => {
 		if (schema.allOf.length === 0) {
 			return ts`z.never()`;
 		}

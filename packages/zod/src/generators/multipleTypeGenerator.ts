@@ -5,7 +5,6 @@ import {
 } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
-import { generateSchema } from './generateSchema';
 
 import { NEWLINE, ts } from '../utils';
 
@@ -29,7 +28,7 @@ export const generator = createGenerator<
 	}
 >(
 	(schema) => Array.isArray(schema.type),
-	(schema, context) => {
+	(schema, context, { generateSchema }) => {
 		const subschemas = schema.type.map((type) =>
 			generateSchema(
 				withSourceMeta(schema, { ...schema, type, ...withoutUnionAnnotations }),
