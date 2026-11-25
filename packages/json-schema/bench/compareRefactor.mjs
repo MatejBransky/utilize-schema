@@ -5,7 +5,7 @@ const [baselinePath, candidatePath, selectedCase = 'all'] = process.argv.slice(2
 
 if (!baselinePath || !candidatePath) {
 	throw new Error(
-		'Usage: node --expose-gc bench/compareRefactor.mjs <baseline.mjs> <candidate.mjs> [prepare|index|link|all]'
+		'Usage: node --expose-gc bench/compareRefactor.mjs <baseline.mjs> <candidate.mjs> [external|prepare|index|link|all]'
 	);
 }
 
@@ -70,6 +70,41 @@ function createIdentifierSchema() {
 		type: 'object',
 		properties,
 		definitions,
+	};
+}
+
+function createExternalSchemas() {
+	const schemas = {};
+
+	for (let documentIndex = 0; documentIndex < 20; documentIndex += 1) {
+		const definitions = {};
+
+		for (let index = 0; index < 50; index += 1) {
+			definitions[`item${index}`] = {
+				$id: `https://example.com/doc${documentIndex}/item${index}.json`,
+				type: 'object',
+				properties: {
+					value: { type: 'string' },
+					nested: { type: 'object', properties: { enabled: { type: 'boolean' } } },
+				},
+			};
+		}
+
+		schemas[`https://example.com/doc${documentIndex}.json`] = {
+			$id: `https://example.com/doc${documentIndex}.json`,
+			definitions,
+		};
+	}
+
+	return schemas;
+}
+
+function createExternalTask(modules, schemas) {
+	return {
+		setup() {},
+		run() {
+			modules.indexExternalSchemas(schemas);
+		},
 	};
 }
 
@@ -213,7 +248,14 @@ async function compare(name, createTask) {
 
 const normalizationSchema = createNormalizationSchema();
 const identifierSchema = createIdentifierSchema();
+const externalSchemas = createExternalSchemas();
 const results = [];
+
+if (selectedCase === 'all' || selectedCase === 'external') {
+	results.push(
+		await compare('indexExternalSchemas', (modules) => createExternalTask(modules, externalSchemas))
+	);
+}
 
 if (selectedCase === 'all' || selectedCase === 'prepare') {
 	results.push(
