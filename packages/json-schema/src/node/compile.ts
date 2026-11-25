@@ -67,11 +67,16 @@ export interface CompileLocation {
 	cwd?: string;
 }
 
+export interface CompilePaths {
+	inputPath: string;
+	outputPath: string;
+}
+
 /** The absolute input and output paths of `compile`; the output defaults to `schema.generated.ts`. */
 export function compilePaths(
 	location: CompileLocation,
 	defaultCwd: string = process.cwd()
-): { inputPath: string; outputPath: string } {
+): CompilePaths {
 	const cwd = location.cwd ?? defaultCwd;
 
 	return {
@@ -80,8 +85,13 @@ export function compilePaths(
 	};
 }
 
+export interface SchemaFileLocation {
+	cwd: string;
+	fileName: string;
+}
+
 /** The `cwd` and `fileName` a schema file is parsed with, so its relative `$ref`s resolve. */
-export function schemaFileLocation(filePath: string): { cwd: string; fileName: string } {
+export function schemaFileLocation(filePath: string): SchemaFileLocation {
 	return { cwd: path.dirname(filePath), fileName: path.basename(filePath) };
 }
 

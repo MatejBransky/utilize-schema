@@ -190,10 +190,12 @@ function definitionsKeyFor(schema: unknown): '$defs' | 'definitions' {
 	return isPlainObject(schema.definitions) ? 'definitions' : '$defs';
 }
 
-function allocateDefinitionKeys(
-	rootParsed: ParsedFile,
-	parsedFiles: ParsedFile[]
-): { keyByFile: Map<string, string>; definitionsKey: '$defs' | 'definitions' } {
+interface DefinitionKeys {
+	keyByFile: Map<string, string>;
+	definitionsKey: '$defs' | 'definitions';
+}
+
+function allocateDefinitionKeys(rootParsed: ParsedFile, parsedFiles: ParsedFile[]): DefinitionKeys {
 	const keyByFile = new Map<string, string>();
 	const usedKeys = new Set<string>();
 	const definitionsKey = definitionsKeyFor(rootParsed.schema);
@@ -284,9 +286,14 @@ function attachDefinitions({
 		return root as UnparsedJson;
 	}
 
-	const definitions: Record<string, UnparsedJson> = {
-		...(root[definitionsKey] as Record<string, UnparsedJson> | undefined),
-	};
+	const definitions = new Map<string, UnparsedJson>();
+	const existing = root[definitionsKey];
+
+	if (isPlainObject(existing)) {
+		for (const [name, value] of Object.entries(existing)) {
+			definitions.set(name, value as UnparsedJson);
+		}
+	}
 
 	for (const parsed of parsedFiles) {
 		const key = keyByFile.get(parsed.file.id);
@@ -294,11 +301,11 @@ function attachDefinitions({
 		const value = key ? rewritten.get(parsed.file.id) : undefined;
 
 		if (key && value !== undefined) {
-			definitions[key] = value;
+			definitions.set(key, value);
 		}
 	}
 
-	return { ...root, [definitionsKey]: definitions } as UnparsedJson;
+	return { ...root, [definitionsKey]: Object.fromEntries(definitions) } as UnparsedJson;
 }
 
 const ROOT_FILE_NAMES = new Set(['index.json', 'schema.json', 'root.json']);

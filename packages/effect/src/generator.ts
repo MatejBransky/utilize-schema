@@ -101,18 +101,18 @@ const FALLBACK_ROOT_NAME = 'Root';
 const JSON_VALUE_TYPES = ['string', 'number', 'object', 'array'] as const;
 type JSONValueType = (typeof JSON_VALUE_TYPES)[number];
 
-const TYPE_GENERATORS: Record<
+const TYPE_GENERATORS = new Map<
 	string,
 	(schema: ParsedJSONSchemaObject, context: Context) => string
-> = {
-	string: generateString,
-	number: (schema) => generateNumber(schema, false),
-	integer: (schema) => generateNumber(schema, true),
-	boolean: () => 'Schema.Boolean',
-	null: () => 'Schema.Null',
-	array: generateArray,
-	object: generateObject,
-};
+>([
+	['string', generateString],
+	['number', (schema) => generateNumber(schema, false)],
+	['integer', (schema) => generateNumber(schema, true)],
+	['boolean', () => 'Schema.Boolean'],
+	['null', () => 'Schema.Null'],
+	['array', generateArray],
+	['object', generateObject],
+]);
 
 /**
  * Generates Effect Schema (v4) code from a linked JSON Schema.
@@ -517,7 +517,7 @@ function generateType(schema: ParsedJSONSchemaObject, context: Context): string 
 
 	const type = schema.type as string | undefined;
 
-	return TYPE_GENERATORS[type ?? '']?.(schema, context) ?? generateUntyped(schema, context);
+	return TYPE_GENERATORS.get(type ?? '')?.(schema, context) ?? generateUntyped(schema, context);
 }
 
 function generateTypeUnion(schema: ParsedJSONSchemaObject, context: Context): string | undefined {
@@ -1196,14 +1196,14 @@ const MERGEABLE_KEYWORDS: Record<'number' | 'string' | 'array', ReadonlySet<stri
 	array: new Set(['minItems', 'maxItems', 'uniqueItems']),
 };
 
-const MERGE_TYPE_RESULTS: Record<string, MergeableType | undefined> = {
-	'number:number': 'number',
-	'number:integer': 'integer',
-	'integer:number': 'integer',
-	'integer:integer': 'integer',
-	'string:string': 'string',
-	'array:array': 'array',
-};
+const MERGE_TYPE_RESULTS = new Map<string, MergeableType>([
+	['number:number', 'number'],
+	['number:integer', 'integer'],
+	['integer:number', 'integer'],
+	['integer:integer', 'integer'],
+	['string:string', 'string'],
+	['array:array', 'array'],
+]);
 
 const TYPED_CONSTRAINT_KEYWORDS = [
 	'minimum',
@@ -1352,7 +1352,7 @@ function combineMergeTypes(
 	previous: MergeableType | undefined,
 	next: MergeableType
 ): MergeableType | undefined {
-	return previous === undefined ? next : MERGE_TYPE_RESULTS[`${previous}:${next}`];
+	return previous === undefined ? next : MERGE_TYPE_RESULTS.get(`${previous}:${next}`);
 }
 
 function hasOnlyMergeableKeywords(

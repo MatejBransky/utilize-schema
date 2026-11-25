@@ -1,3 +1,5 @@
+import type { JSONSchema } from '@utilize/json-schema';
+
 import type { SchemaFile } from './bundle';
 
 export interface Example {
@@ -11,7 +13,7 @@ function jsonFile(id: string, name: string, schema: unknown): SchemaFile {
 	return { id, name, content: JSON.stringify(schema, null, 2) };
 }
 
-function draft07(schema: Record<string, unknown>): Record<string, unknown> {
+function draft07(schema: JSONSchema): JSONSchema {
 	return { $schema: 'http://json-schema.org/draft-07/schema#', ...schema };
 }
 

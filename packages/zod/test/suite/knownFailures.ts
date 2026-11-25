@@ -18,7 +18,7 @@ const idCycle = 'a self-referencing $id or URN schema is reported as an unsuppor
 
 const typelessCycle = 'a typeless recursive root cannot be represented as a type-safe Zod schema';
 
-export const knownFailures: Record<string, string> = {
+export const knownFailures = {
 	// format
 	'format-date-time.json :: validation of date-time strings': format,
 	'format-email.json :: validation of e-mail addresses': format,
@@ -45,4 +45,4 @@ export const knownFailures: Record<string, string> = {
 
 	// recursion
 	'ref.json :: root pointer ref': typelessCycle,
-};
+} satisfies Record<string, string>;

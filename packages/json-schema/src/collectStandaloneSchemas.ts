@@ -135,6 +135,6 @@ export function childSchemasOf(schema: ParsedJSONSchemaObject): ParsedJSONSchema
 	return children.filter(isSchemaObject);
 }
 
-function isSchemaObject(schema: unknown): schema is ParsedJSONSchemaObject {
+function isSchemaObject(schema: ParsedJSONSchema | undefined): schema is ParsedJSONSchemaObject {
 	return typeof schema === 'object' && schema !== null;
 }

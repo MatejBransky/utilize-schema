@@ -16,12 +16,12 @@ export type Generate = (schema: ParsedJSONSchema, context: GeneratorContext) => 
  * Guards for the types `inferTypeKeywords` can infer. Keywords on an untyped
  * schema must not reject values of other types.
  */
-const typeGuards: Record<string, string> = {
-	object: `typeof value === 'object' && value !== null && !Array.isArray(value)`,
-	array: 'Array.isArray(value)',
-	string: `typeof value === 'string'`,
-	number: `typeof value === 'number'`,
-};
+const typeGuards = new Map<string, string>([
+	['object', `typeof value === 'object' && value !== null && !Array.isArray(value)`],
+	['array', 'Array.isArray(value)'],
+	['string', `typeof value === 'string'`],
+	['number', `typeof value === 'number'`],
+]);
 
 /**
  * Appends Zod refinements for keywords that constrain an already generated
@@ -90,7 +90,7 @@ function appendImplicitTypeChecks(
 		});
 
 		checks.push(ts`{
-      if (${typeGuards[implicitType]}) {
+      if (${typeGuards.get(implicitType) ?? 'false'}) {
         ${checkBlock(generate(typedSchema, context))}
       }
     }`);
