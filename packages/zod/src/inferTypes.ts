@@ -61,7 +61,7 @@ export function inferTypeKeywords(
 		keywords.some(
 			(keyword) => record[keyword] !== undefined && isKeywordApplicable(dialect, keyword)
 		)
-			? [type as JSONSchemaTypeName]
+			? [type]
 			: []
 	);
 }
