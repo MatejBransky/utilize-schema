@@ -349,12 +349,11 @@
 		"weakened-tests": "error",
 		"test-only-branch": "error",
 
-		// Static test coverage gaps stay advisory: the detector has no test path
-		// for the playground's Vite entry (`index.html`, `main.tsx`) and reports
-		// public barrel exports that the suite exercises indirectly through a
-		// generator. They are listed on every run, and `fallow mutation` is the
-		// gate that measures whether a test actually catches a change.
-		"coverage-gaps": "warn",
+		// Every runtime file and export has a test dependency path: each package
+		// has a public-API surface test for the helpers only its CLI uses, the
+		// playground entry exports `mount` for its browser test, and a node test
+		// reads `index.html` through Vite's `?raw` import.
+		"coverage-gaps": "error",
 
 		// Suppressions must carry a reason, and a suppression that matches
 		// nothing is removed instead of accumulating.
