@@ -11,7 +11,7 @@ export function isPlainObject(value: unknown): value is Record<string, unknown> 
 		return false;
 	}
 
-	const proto: object | null = Object.getPrototypeOf(value);
+	const proto = Reflect.getPrototypeOf(value);
 	if (proto === null) {
 		return true;
 	}

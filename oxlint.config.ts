@@ -66,7 +66,6 @@ export default defineConfig({
 		'quality/no-unsafe-dictionary-type': 'off',
 		'typescript/await-thenable': 'off',
 		'typescript/no-non-null-assertion': 'off',
-		'typescript/no-unsafe-assignment': 'off',
 		'typescript/no-unsafe-type-assertion': 'off',
 	},
 });

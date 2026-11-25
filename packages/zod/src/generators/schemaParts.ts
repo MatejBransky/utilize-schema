@@ -44,9 +44,11 @@ export function composedSchemaParts(
 		return undefined;
 	}
 
+	const value: unknown = schema[keyword];
+
 	return {
 		main: {
-			[keyword]: schema[keyword],
+			[keyword]: value,
 			discriminator: schema.discriminator,
 		} as unknown as ParsedJSONSchemaObject,
 		rest,
