@@ -135,6 +135,33 @@ jobs:
           sarif: true
           annotations: true
 
+  security-fallow:
+    name: Fallow security gate
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # Existing low candidates are reviewed in the test-only evaluator. The
+      # gate only fails when a change makes a candidate newly runtime-reachable.
+      - name: Gate newly reachable security candidates
+        uses: fallow-rs/fallow@b802ddc49a09ad9df4e9894cdd465f5b51b1b0c8 # v3.45.0
+        with:
+          command: security
+          security-gate: newly-reachable
+          fail-on-issues: true
+          fail-on-empty-analysis: true
+          sarif: true
+          annotations: true
+
   # Dependency audits run weekly in audit.yml. Keeping them out of the pull
   # request workflow means an advisory without a published fix cannot block
   # every pull request.
