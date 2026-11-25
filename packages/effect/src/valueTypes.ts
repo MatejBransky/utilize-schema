@@ -11,6 +11,7 @@ import {
 import { typedAlternatives } from './alternatives';
 import type { CustomSchemaResolver } from './generator';
 import { planReferenceSiblings } from './refSiblings';
+import { arrayRest, objectKeys, parentSchema, prefixItemsOf } from './schemaParts';
 
 export interface ValueTypeContext {
 	/**
@@ -217,15 +218,7 @@ function renderArray(
 ): string {
 	const dialect = dialectOf(schema, context.dialect);
 	const items = schema.items as unknown as ParsedJSONSchema | ParsedJSONSchema[] | undefined;
-	const prefixItems =
-		dialect.tuple === 'prefixItems'
-			? Array.isArray(schema.prefixItems)
-				? (schema.prefixItems as ParsedJSONSchema[])
-				: undefined
-			: Array.isArray(items)
-				? items
-				: undefined;
-
+	const prefixItems = prefixItemsOf(schema, dialect);
 	const singleItem = Array.isArray(items) ? undefined : items;
 
 	if (prefixItems === undefined) {
@@ -252,38 +245,12 @@ function renderArray(
 	return `readonly [${[...elements, `...${parenthesize(renderValueType(rest, context, self, true))}[]`].join(', ')}]`;
 }
 
-function arrayRest(
-	schema: ParsedJSONSchemaObject,
-	items: ParsedJSONSchema | ParsedJSONSchema[] | undefined,
-	dialect: Dialect
-): ParsedJSONSchema {
-	if (dialect.tuple === 'prefixItems') {
-		if (items === false) {
-			return false;
-		}
-
-		return Array.isArray(items) ? true : (items ?? true);
-	}
-
-	if (schema.additionalItems === false) {
-		return false;
-	}
-
-	return (schema.additionalItems as unknown as ParsedJSONSchema | undefined) ?? true;
-}
-
 function renderObject(
 	schema: ParsedJSONSchemaObject,
 	context: ValueTypeContext,
 	self: string | undefined
 ): string {
-	const properties = isPlainObject(schema.properties) ? schema.properties : {};
-	const required = new Set(
-		Array.isArray(schema.required)
-			? schema.required.filter((key): key is string => typeof key === 'string')
-			: []
-	);
-	const keys = [...new Set([...Object.keys(properties), ...required])];
+	const { properties, required, keys } = objectKeys(schema);
 	const additional = schema.additionalProperties;
 	const hasPatterns = hasPatternProperties(schema);
 
@@ -326,18 +293,6 @@ function hasPatternProperties(schema: ParsedJSONSchemaObject): boolean {
 	return (
 		isPlainObject(schema.patternProperties) && Object.keys(schema.patternProperties).length > 0
 	);
-}
-
-/** Mirrors the generator, which merges `allOf` into one object schema. */
-function parentSchema(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject {
-	return {
-		...schema,
-		allOf: undefined,
-		not: undefined,
-		if: undefined,
-		then: undefined,
-		else: undefined,
-	};
 }
 
 function schemaWithType(
