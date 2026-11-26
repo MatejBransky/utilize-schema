@@ -109,6 +109,19 @@ jobs:
         run: |
           pnpm exec fallow report --from .fallow/full.json --format github-summary >> "$GITHUB_STEP_SUMMARY"
 
+      # The rendered summary shows the score but not the measurement behind it.
+      # This step reads the same JSON and appends the penalty breakdown, the
+      # long functions and the most-imported files, so a score change is
+      # explained in the run itself.
+      - name: Explain the Fallow health score
+        if: always() && hashFiles('.fallow/full.json') != ''
+        run: |
+          node scripts/fallow-health-report.mjs \
+            --from .fallow/full.json \
+            --format github-summary \
+            --repository "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --commit "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+
       # upload-pages-artifact@v5 uses upload-artifact@v7 internally. Mixing a
       # v4 artifact action into the same run hides the github-pages artifact
       # from deploy-pages, so both sides stay on the v7/v8 artifact API.
