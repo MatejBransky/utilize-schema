@@ -107,6 +107,7 @@ describe('JSON Schema Test Suite (draft-07, type level)', () => {
 
 		const results = await typecheckCases(modules);
 		const failures = new Map<string, string[]>();
+		const typeGapKeys: string[] = [];
 
 		for (const { key } of runnable) {
 			const reasons: string[] = [];
@@ -131,13 +132,14 @@ describe('JSON Schema Test Suite (draft-07, type level)', () => {
 
 			if ((results.invalidAccepted.get(key) ?? []).length > 0) {
 				stats.typeGaps++;
+				typeGapKeys.push(key);
 				continue;
 			}
 
 			stats.conformant++;
 		}
 
-		stats.assertions = modules.reduce((total, entry) => total + entry.module.instances.length, 0);
+		stats.assertions = runnable.reduce((total, entry) => total + entry.testCase.tests.length, 0);
 		stats.known = failures.size;
 
 		for (const entry of modules) {
@@ -184,10 +186,22 @@ describe('JSON Schema Test Suite (draft-07, type level)', () => {
 		expect(results.unattributed).toEqual([]);
 		const recorded = baseline['draft-07'];
 		expect([...failures.keys()].sort()).toEqual(Object.keys(knownGaps).sort());
-		expect(runnable.length).toBe(recorded.cases);
-		expect(stats.conformant).toBe(recorded.passing);
-		expect(stats.typeGaps).toBe(recorded.typeGaps);
-		expect(stats.known).toBe(recorded.gaps);
+		expect(
+			{
+				cases: runnable.length,
+				passing: stats.conformant,
+				typeGaps: stats.typeGaps,
+				gaps: stats.known,
+				instances: stats.assertions,
+				passingInstances: stats.passedAssertions,
+			},
+			[
+				`Known gap cases (${failures.size}):`,
+				...[...failures.keys()].sort(),
+				`Type gap cases (${typeGapKeys.length}):`,
+				...typeGapKeys.sort(),
+			].join('\n')
+		).toEqual(recorded);
 	}, 120_000);
 });
 
@@ -233,7 +247,10 @@ describe('other dialects', () => {
 			const results = await typecheckCases(modules);
 			let passing = 0;
 			let typeGaps = 0;
+			let passingInstances = 0;
+			const instances = runnable.reduce((total, entry) => total + entry.testCase.tests.length, 0);
 			const gaps: string[] = [];
+			const typeGapKeys: string[] = [];
 
 			for (const { key } of runnable) {
 				const reasons: string[] = [];
@@ -258,16 +275,44 @@ describe('other dialects', () => {
 
 				if ((results.invalidAccepted.get(key) ?? []).length > 0) {
 					typeGaps++;
+					typeGapKeys.push(key);
 					continue;
 				}
 
 				passing++;
 			}
 
+			for (const entry of modules) {
+				const rejectedValid = new Set(results.validRejected.get(entry.key) ?? []);
+				const acceptedInvalid = new Set(results.invalidAccepted.get(entry.key) ?? []);
+
+				for (const instance of entry.module.instances) {
+					const failed = instance.valid
+						? rejectedValid.has(instance.index)
+						: acceptedInvalid.has(instance.index);
+
+					if (!failed) {
+						passingInstances++;
+					}
+				}
+			}
+
 			expect(results.unattributed).toEqual([]);
 			expect(
-				{ cases: runnable.length, passing, typeGaps, gaps: gaps.length },
-				`Failing ${dialect} cases (${gaps.length}):\n${gaps.join('\n')}`
+				{
+					cases: runnable.length,
+					passing,
+					typeGaps,
+					gaps: gaps.length,
+					instances,
+					passingInstances,
+				},
+				[
+					`Failing ${dialect} cases (${gaps.length}):`,
+					...gaps,
+					`Type gap cases (${typeGapKeys.length}):`,
+					...typeGapKeys.sort(),
+				].join('\n')
 			).toEqual(baseline[dialect]);
 		}, 120_000);
 	}

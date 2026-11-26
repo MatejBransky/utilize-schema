@@ -358,7 +358,8 @@ Suite for draft-07:
   [Known gaps](./packages/zod/test/suite/knownFailures.ts)
 - **Effect Schema:** 286 of 304 cases (1,400 of 1,655 assertions) pass.
   [Known gaps](./packages/effect/test/suite/knownFailures.ts)
-- **TypeScript:** 191 of 285 cases pass at the type level, with 81 type gaps.
+- **TypeScript:** 191 of 285 cases pass at the type level (793 of 972 instances),
+  with 81 type gaps.
   [Baseline](./packages/typescript/test/suite/baseline.ts) ·
   [Known gaps](./packages/typescript/test/suite/knownGaps.ts)
 
