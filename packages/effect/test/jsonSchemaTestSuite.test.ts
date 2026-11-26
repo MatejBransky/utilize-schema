@@ -1,21 +1,22 @@
 import { describe, expect, test } from 'vitest';
 
-import { DRAFT_7, isCompatible } from '@utilize/test-utils/suite/compatibility';
+import { DRAFT_7, isCompatible, OTHER_DIALECTS } from '@utilize/test-utils/suite/compatibility';
+import { loadSuiteFiles, suiteCaseKey } from '@utilize/test-utils/suite/loadSuite';
+import type { SuiteCase } from '@utilize/test-utils/suite/loadSuite';
+import { measureDialect } from '@utilize/test-utils/suite/measureDialect';
 
 import { baseline } from './suite/baseline';
 import { compileToEffectSchema } from './suite/compile';
 import { knownFailureInstances } from './suite/knownFailureInstances';
 import { knownFailures } from './suite/knownFailures';
 import { decode } from './test-utils';
-import { loadSuiteFiles, suiteCaseKey } from '@utilize/test-utils/suite/loadSuite';
-import type { SuiteCase } from '@utilize/test-utils/suite/loadSuite';
-import { measureDialect } from '@utilize/test-utils/suite/measureDialect';
 
 const knownFailureByKey = new Map(Object.entries(knownFailures));
 const knownFailureInstanceByKey = new Map(Object.entries(knownFailureInstances));
 
 /**
- * Runs the official JSON Schema Test Suite against the generated Zod schemas.
+ * Runs the official JSON Schema Test Suite against the generated Effect Schema
+ * codecs.
  *
  * Scope: every released dialect. The per-case expected failures below are
  * pinned for draft-07; cases outside draft-07 are measured against the
@@ -215,13 +216,6 @@ describe('baseline', () => {
 		);
 	}, 120_000);
 });
-
-const OTHER_DIALECTS = {
-	'draft-04': 4,
-	'draft-06': 6,
-	'2019-09': 2019,
-	'2020-12': 2020,
-} as const;
 
 describe('other dialects', () => {
 	for (const dialect of Object.keys(OTHER_DIALECTS) as (keyof typeof OTHER_DIALECTS)[]) {

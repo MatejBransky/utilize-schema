@@ -1,11 +1,12 @@
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 
-import { baseline } from './suite/baseline';
-import { DRAFT_7, isCompatible } from '@utilize/test-utils/suite/compatibility';
-import { renderCaseModule } from './suite/generateCase';
-import { knownGaps } from './suite/knownGaps';
+import { DRAFT_7, isCompatible, OTHER_DIALECTS } from '@utilize/test-utils/suite/compatibility';
 import { loadSuiteFiles, suiteCaseKey } from '@utilize/test-utils/suite/loadSuite';
 import type { SuiteCase } from '@utilize/test-utils/suite/loadSuite';
+
+import { baseline } from './suite/baseline';
+import { renderCaseModule } from './suite/generateCase';
+import { knownGaps } from './suite/knownGaps';
 import { typecheckCases } from './suite/typecheck';
 import type { TypecheckModule } from './suite/typecheck';
 
@@ -204,13 +205,6 @@ describe('JSON Schema Test Suite (draft-07, type level)', () => {
 		).toEqual(recorded);
 	}, 120_000);
 });
-
-const OTHER_DIALECTS = {
-	'draft-04': 4,
-	'draft-06': 6,
-	'2019-09': 2019,
-	'2020-12': 2020,
-} as const;
 
 describe('other dialects', () => {
 	for (const dialect of Object.keys(OTHER_DIALECTS) as (keyof typeof OTHER_DIALECTS)[]) {

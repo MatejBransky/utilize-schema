@@ -11,6 +11,18 @@ export type Dialect = 3 | 4 | 6 | 7 | 2019 | 2020 | 9999;
 /** The dialect the generators target: JSON Schema draft-07. */
 export const DRAFT_7: Dialect = 7;
 
+/**
+ * Every other dialect the conformance baselines measure, keyed by the name the
+ * suite badges and baselines use. Draft-07 is measured case by case and keeps
+ * its own token above.
+ */
+export const OTHER_DIALECTS = {
+	'draft-04': 4,
+	'draft-06': 6,
+	'2019-09': 2019,
+	'2020-12': 2020,
+} as const satisfies Record<string, Dialect>;
+
 export function isCompatible(compatibility: string | undefined, version: Dialect = DRAFT_7) {
 	if (!compatibility) {
 		return true;
