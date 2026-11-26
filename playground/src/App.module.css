@@ -445,7 +445,7 @@
 	border-style: dashed;
 }
 
-.case[data-unchecked]:hover:not(:disabled) {
+.case[data-unchecked]:hover {
 	color: var(--ui-foreground);
 }
 
