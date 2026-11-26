@@ -19,7 +19,7 @@ runtime generators. It never emits a target schema.
   validators and the `@utilize/json-schema/node` entry — CLI runner, flags,
   JSON/YAML and file/glob input, `compilePaths` — are what the three generator
   packages build on.
-- **89% line coverage.**
+- **88% line coverage.**
 
 ```sh
 pnpm add -D @utilize/json-schema

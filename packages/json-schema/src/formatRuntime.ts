@@ -401,28 +401,22 @@ try {
 	return false;
 }`;
 
+/** One structural validator per format; a format it omits is a plain pattern. */
+const formatBodies = new Map<string, string>([
+	['date-time', dateTimeBody],
+	['time', timeBody],
+	['email', `${emailRuntime}\n${ipRuntime}\n${hostnameRuntime}\nreturn isEmail(value, false);`],
+	['idn-email', `${emailRuntime}\n${ipRuntime}\n${hostnameRuntime}\nreturn isEmail(value, true);`],
+	['hostname', `${hostnameRuntime}\nreturn isHost(value, false);`],
+	['idn-hostname', `${hostnameRuntime}\nreturn isHost(value, true);`],
+	['uri', `${ipRuntime}\n${uriRuntime}\nreturn isUri(value, false, false);`],
+	['uri-reference', `${ipRuntime}\n${uriRuntime}\nreturn isUri(value, true, false);`],
+	['iri', `${ipRuntime}\n${uriRuntime}\nreturn isUri(value, false, true);`],
+	['iri-reference', `${ipRuntime}\n${uriRuntime}\nreturn isUri(value, true, true);`],
+	['uri-template', `${uriTemplateRuntime}\nreturn isUriTemplate(value);`],
+	['regex', regexBody],
+]);
+
 export function formatBody(format: string): string | undefined {
-	switch (format) {
-		case 'date-time':
-			return dateTimeBody;
-		case 'time':
-			return timeBody;
-		case 'email':
-		case 'idn-email':
-			return `${emailRuntime}\n${ipRuntime}\n${hostnameRuntime}\nreturn isEmail(value, ${format === 'idn-email'});`;
-		case 'hostname':
-		case 'idn-hostname':
-			return `${hostnameRuntime}\nreturn isHost(value, ${format === 'idn-hostname'});`;
-		case 'iri':
-		case 'iri-reference':
-		case 'uri':
-		case 'uri-reference':
-			return `${ipRuntime}\n${uriRuntime}\nreturn isUri(value, ${format.endsWith('reference')}, ${format.startsWith('iri')});`;
-		case 'uri-template':
-			return `${uriTemplateRuntime}\nreturn isUriTemplate(value);`;
-		case 'regex':
-			return regexBody;
-		default:
-			return undefined;
-	}
+	return formatBodies.get(format);
 }
