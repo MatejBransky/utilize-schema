@@ -1,4 +1,4 @@
-import { parse } from '@utilize/json-schema';
+import { assert, isJSONSchema, parse } from '@utilize/json-schema';
 import { generate } from '@utilize/zod';
 import { expect, test } from 'vitest';
 
@@ -74,7 +74,9 @@ test('generates a root schema that only contains a $ref', async () => {
 	const bundle = buildBundle([parseJsonFile(root), parseJsonFile(child)], 'root');
 	expect(bundle.problems).toEqual([]);
 
-	const parsed = await parse(bundle.root as never, {
+	assert(isJSONSchema(bundle.root), 'Expected the bundled root to be a schema.');
+
+	const parsed = await parse(bundle.root, {
 		cwd: '/',
 		fileName: bundle.rootFileName,
 	});
@@ -165,7 +167,9 @@ test('normalizes a draft-04 schema only once with keywordPolicy error', async ()
 	expect(second.problems).toEqual([]);
 	expect(parsedFiles[0].schema).toMatchObject({ exclusiveMinimum: true });
 
-	const parsed = await parse(second.root as never, {
+	assert(isJSONSchema(second.root), 'Expected the bundled root to be a schema.');
+
+	const parsed = await parse(second.root, {
 		cwd: '/',
 		fileName: second.rootFileName,
 		keywordPolicy: 'error',

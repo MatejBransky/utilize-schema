@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { parse } from '@utilize/json-schema';
-import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
+import { assert, expectDefined, isParsedJSONSchemaObject, parse } from '@utilize/json-schema';
 
 import { generate } from '../src';
 
@@ -65,7 +64,8 @@ describe('typed allOf merging characterization', () => {
 			},
 			{ cwd: __dirname, fileName: 'Root.json' }
 		);
-		Object.assign(parsed.root as ParsedJSONSchemaObject, { default: undefined });
+		assert(isParsedJSONSchemaObject(parsed.root));
+		Object.assign(parsed.root, { default: undefined });
 
 		expect(generate(parsed.root, { importEffect: false })).toMatchInlineSnapshot(`
 			"export const Root = Schema.String.check(Schema.isMinCodePoints(2), Schema.isMaxCodePoints(4));
@@ -108,15 +108,16 @@ describe('typed allOf merging characterization', () => {
 	});
 
 	test('does not combine boolean exclusive bounds with numeric bounds', async () => {
-		expect(
-			await generateRaw({
-				$schema: 'http://json-schema.org/draft-04/schema#',
-				allOf: [
-					{ type: 'number', minimum: 0, exclusiveMinimum: true },
-					{ type: 'number', minimum: 1 },
-				],
-			} as TestSchema)
-		).toMatchInlineSnapshot(`
+		const schema: TestSchema = {
+			$schema: 'http://json-schema.org/draft-04/schema#',
+			allOf: [
+				{ type: 'number', minimum: 0 },
+				{ type: 'number', minimum: 1 },
+			],
+		};
+		Object.assign(expectDefined(schema.allOf?.[0]), { exclusiveMinimum: true });
+
+		expect(await generateRaw(schema)).toMatchInlineSnapshot(`
 			"export const Root = Schema.Finite.check(Schema.isGreaterThanOrEqualTo(1), Schema.isGreaterThan(0));
 
 			export type Root = typeof Root.Type;

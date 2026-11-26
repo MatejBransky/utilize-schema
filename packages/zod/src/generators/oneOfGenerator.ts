@@ -2,19 +2,20 @@ import { dialectOf, expectDefined } from '@utilize/json-schema';
 import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
+import type { ExpressionGenerator } from './createGenerator';
 import { areMutuallyExclusive } from './exclusiveBranches';
 import { objectGenerator } from './objectGenerator';
 import { composedSchemaParts } from './schemaParts';
 
 import { isResolvedByCaller, ts } from '../utils';
 
-export const oneOfGenerator = createGenerator<
-	ParsedJSONSchemaObject & {
-		oneOf: ParsedJSONSchemaObject[];
-		discriminator?: string;
-	}
->(
-	(schema) => Array.isArray(schema.oneOf),
+export type OneOfSchema = ParsedJSONSchemaObject & {
+	oneOf: ParsedJSONSchemaObject[];
+	discriminator?: string;
+};
+
+export const oneOfGenerator: ExpressionGenerator = createGenerator<OneOfSchema>(
+	(schema): schema is OneOfSchema => Array.isArray(schema.oneOf),
 	(schema, context, { generateSchema, selectGenerator }) => {
 		const subschemas = schema.oneOf.map((subschema) => generateSchema(subschema, context));
 

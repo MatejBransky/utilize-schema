@@ -1,6 +1,7 @@
 import type { Ref } from 'react';
 
 import { createAgent } from '@ui-sdk/react/agent';
+import { assert, isPlainObject } from '@utilize/json-schema';
 import { page } from 'vitest/browser';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
@@ -96,20 +97,41 @@ async function dropFiles(mode: 'add' | 'replace', files: DropFile[]) {
 	target!.dispatchEvent(fileDrag('drop', files));
 }
 
-function savedFiles(): SchemaFile[] {
-	const state = JSON.parse(localStorage.getItem('utilize-schema-playground') ?? '{"files":[]}') as {
-		files: SchemaFile[];
-	};
+function parseSavedState(fallback: string): Record<string, unknown> {
+	const state: unknown = JSON.parse(localStorage.getItem('utilize-schema-playground') ?? fallback);
 
-	return state.files;
+	assert(isPlainObject(state), 'Expected the saved workspace to be an object.');
+
+	return state;
+}
+
+function isSchemaFile(value: unknown): value is SchemaFile {
+	return (
+		isPlainObject(value) &&
+		typeof value.id === 'string' &&
+		typeof value.name === 'string' &&
+		typeof value.content === 'string'
+	);
+}
+
+function savedFiles(): SchemaFile[] {
+	const files = parseSavedState('{"files":[]}').files;
+
+	assert(Array.isArray(files), 'Expected the saved workspace files to be an array.');
+
+	const schemas = files.filter(isSchemaFile);
+
+	assert(schemas.length === files.length, 'Expected every saved workspace file to be valid.');
+
+	return schemas;
 }
 
 function savedData(): string {
-	const state = JSON.parse(localStorage.getItem('utilize-schema-playground') ?? '{"data":""}') as {
-		data: string;
-	};
+	const data = parseSavedState('{"data":""}').data;
 
-	return state.data;
+	assert(typeof data === 'string', 'Expected the saved test data to be a string.');
+
+	return data;
 }
 
 function resultStatus(target: 'zod' | 'effect'): string | null {
@@ -203,7 +225,12 @@ test('the copy button resets when the schema changes', async () => {
 	const screen = await render(<App />);
 	const copy = screen.getByRole('button', { name: 'Copy code' });
 
-	await vi.waitFor(() => expect((copy.element() as HTMLButtonElement).disabled).toBe(false));
+	await vi.waitFor(() => {
+		const element = copy.element();
+
+		assert('disabled' in element, 'Expected the copy control to be a button.');
+		expect(element.disabled).toBe(false);
+	});
 	await copy.click();
 	await expect.element(screen.getByRole('button', { name: 'Copied' })).toBeVisible();
 

@@ -135,17 +135,16 @@ describe('references', () => {
 
 describe('boolean references', () => {
 	test('$ref to true and false schemas', async () => {
-		const Root = await compileToSchema({
+		const schema: TestSchema = {
 			type: 'object',
 			properties: {
 				allowed: { $ref: '#/definitions/allowed' },
 				denied: { $ref: '#/definitions/denied' },
 			},
-			definitions: {
-				allowed: true,
-				denied: false,
-			},
-		} as unknown as TestSchema);
+		};
+		Object.assign(schema, { definitions: { allowed: true, denied: false } });
+
+		const Root = await compileToSchema(schema);
 
 		expect(decode(Root, { allowed: 'anything' })).toEqual({ allowed: 'anything' });
 		expect(decode(Root, { denied: 'anything' })).toBeUndefined();

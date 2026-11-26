@@ -1,6 +1,7 @@
 import { dialects } from './dialect';
 import type { Dialect } from './dialect';
 import { SCHEMA_ARRAY_KEYWORDS, SCHEMA_MAP_KEYWORDS, SINGLE_SCHEMA_KEYWORDS } from './keywords';
+import { isJSONSchema } from './model';
 import type { JSONSchema } from './model';
 import type { DialectMap } from './normalize';
 import { isPlainObject } from './utils';
@@ -239,14 +240,26 @@ function resolvePointer(root: JSONSchema | boolean, pointer: string) {
 
 		token = token.replaceAll('~1', '/').replaceAll('~0', '~');
 
-		if (typeof current !== 'object' || current === null || !Object.hasOwn(current, token)) {
-			return undefined;
+		if (Array.isArray(current)) {
+			const index = Number(token);
+
+			if (!Number.isInteger(index) || !Object.hasOwn(current, index)) {
+				return undefined;
+			}
+
+			current = current[index];
+			continue;
 		}
 
-		current = (current as Record<string, unknown>)[token];
+		if (isPlainObject(current) && Object.hasOwn(current, token)) {
+			current = current[token];
+			continue;
+		}
+
+		return undefined;
 	}
 
-	return current as JSONSchema | boolean | undefined;
+	return isJSONSchema(current) ? current : undefined;
 }
 
 const PLACEHOLDER_ORIGIN = 'https://utilize.invalid';

@@ -2,7 +2,7 @@ import { existsSync, globSync, mkdirSync, realpathSync, statSync, writeFileSync 
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import type { ParseArgsOptionsConfig } from 'node:util';
+import type { ParseArgsOptionDescriptor, ParseArgsOptionsConfig } from 'node:util';
 
 import { dialectCliOptions, readDialectCliOptions } from '../cliOptions';
 import { formatIssue } from '../dialect';
@@ -31,10 +31,63 @@ const commonFlags = {
 	help: { type: 'boolean', short: 'h', default: false },
 } as const;
 
+export type FlagValue<Option extends ParseArgsOptionDescriptor> = Option['type'] extends 'string'
+	? string
+	: Option['type'] extends 'boolean'
+		? boolean
+		: string | boolean;
+
+export type OptionValue<Option extends ParseArgsOptionDescriptor> = Option extends {
+	multiple: true;
+}
+	? FlagValue<Option>[]
+	: FlagValue<Option>;
+
 /** The values `parseArgs` returns for `Flags`. */
-export type CliFlagValues<Flags extends ParseArgsOptionsConfig> = ReturnType<
-	typeof parseArgs<{ args: string[]; allowPositionals: true; options: Flags }>
->['values'];
+export type CliFlagValues<Flags extends ParseArgsOptionsConfig> = {
+	[K in keyof Flags]?: OptionValue<Flags[K]>;
+} & {
+	[K in keyof Flags as undefined extends Flags[K]['default'] ? never : K]: OptionValue<Flags[K]>;
+};
+
+type RawFlagValue = string | boolean | (string | boolean)[] | undefined;
+type RawFlagValues = Record<string, RawFlagValue>;
+
+function pickFlagValues<Flags extends ParseArgsOptionsConfig>(
+	values: CliFlagValues<typeof commonFlags>,
+	flags: Flags
+): CliFlagValues<Flags> {
+	const source: RawFlagValues = Object.fromEntries(Object.entries(values));
+	const picked: RawFlagValues = {};
+
+	for (const flag of Object.keys(flags)) {
+		if (Object.hasOwn(source, flag)) {
+			picked[flag] = source[flag];
+		}
+	}
+
+	if (!isCliFlagValues<Flags>(picked)) {
+		throw new TypeError('Parsed CLI flags do not match the declared options');
+	}
+
+	return picked;
+}
+
+function isCliFlagValues<Flags extends ParseArgsOptionsConfig>(
+	value: RawFlagValues
+): value is CliFlagValues<Flags> {
+	return Object.values(value).every(isRawFlagValue);
+}
+
+function isRawFlagValue(value: unknown): value is RawFlagValue {
+	return (
+		value === undefined ||
+		typeof value === 'string' ||
+		typeof value === 'boolean' ||
+		(Array.isArray(value) &&
+			value.every((item) => typeof item === 'string' || typeof item === 'boolean'))
+	);
+}
 
 /** Compile options read from the flags, or the message to print when a flag is invalid. */
 export type CliOptionsResult<Options> =
@@ -70,25 +123,27 @@ export async function runGeneratorCli<Flags extends ParseArgsOptionsConfig, Opti
 	io: CliIo,
 	cli: GeneratorCli<Flags, Options>
 ): Promise<number> {
-	const parseOptions: ParseArgsOptionsConfig = { ...commonFlags, ...cli.parseOptions };
+	const parseOptions = { ...commonFlags, ...cli.parseOptions };
 	let parsed;
 
 	try {
-		parsed = parseArgs({ args: argv, allowPositionals: true, options: parseOptions });
+		parsed = parseArgs<{
+			args: string[];
+			allowPositionals: true;
+			options: typeof commonFlags;
+		}>({ args: argv, allowPositionals: true, options: parseOptions });
 	} catch (error) {
-		return fail(io, (error as Error).message);
+		return fail(io, errorMessage(error));
 	}
 
-	const { positionals } = parsed;
-	// The merged options lose the literal types `parseArgs` infers the values from, so they are restored here.
-	const values = parsed.values as CliFlagValues<typeof commonFlags>;
+	const { positionals, values } = parsed;
 
 	if (values.help) {
 		io.stdout.write(cli.help);
 		return 0;
 	}
 
-	const options = cli.readOptions(parsed.values as CliFlagValues<Flags>, io);
+	const options = cli.readOptions(pickFlagValues(values, cli.parseOptions), io);
 
 	if (!options.ok) {
 		return fail(io, options.error);
@@ -107,8 +162,16 @@ export async function runGeneratorCli<Flags extends ParseArgsOptionsConfig, Opti
 			? await compileInputFiles(run.input, run, cli, io)
 			: await compileStdin(run, cli, io);
 	} catch (error) {
-		return fail(io, (error as Error).message);
+		return fail(io, errorMessage(error));
 	}
+}
+
+function errorMessage(error: unknown): string {
+	if (typeof error === 'object' && error !== null && 'message' in error) {
+		return typeof error.message === 'string' ? error.message : String(error);
+	}
+
+	return String(error);
 }
 
 /** What one CLI run compiles, read from its flags and arguments. */
@@ -327,7 +390,13 @@ async function readStdin() {
 	const chunks: Buffer[] = [];
 
 	for await (const chunk of process.stdin) {
-		chunks.push(Buffer.from(chunk as Buffer));
+		if (Buffer.isBuffer(chunk)) {
+			chunks.push(chunk);
+		} else if (typeof chunk === 'string') {
+			chunks.push(Buffer.from(chunk));
+		} else {
+			throw new TypeError('Expected the process stdin to emit bytes');
+		}
 	}
 
 	return Buffer.concat(chunks).toString('utf8');

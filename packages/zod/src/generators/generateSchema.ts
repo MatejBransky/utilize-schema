@@ -11,19 +11,16 @@ import type { GeneratorContext } from './types';
 import { applyRefinements } from '../refinements';
 import { isRefNode, NEWLINE, ts } from '../utils';
 
-export const generateSchema = (schema: ParsedJSONSchema | undefined, context: GeneratorContext) => {
-	const simple = simpleSchemaExpression(schema);
-
-	return simple ?? generateObjectSchema(schema as ParsedJSONSchemaObject, context);
-};
-
-function simpleSchemaExpression(schema: ParsedJSONSchema | undefined): string | undefined {
+export const generateSchema = (
+	schema: ParsedJSONSchema | undefined,
+	context: GeneratorContext
+): string => {
 	if (typeof schema !== 'object' || schema === null) {
 		return schema === true ? ts`z.any()` : schema === false ? ts`z.never()` : ts`z.unknown()`;
 	}
 
-	return undefined;
-}
+	return generateObjectSchema(schema, context);
+};
 
 function generateObjectSchema(schema: ParsedJSONSchemaObject, context: GeneratorContext): string {
 	const customExpression = context.customSchemaResolver?.(schema);

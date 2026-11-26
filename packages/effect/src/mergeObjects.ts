@@ -1,4 +1,4 @@
-import { isPlainObject, Meta, schemaRecord } from '@utilize/json-schema';
+import { isParsedJSONSchemaObject, Meta, schemaRecord, withSourceMeta } from '@utilize/json-schema';
 import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { UnresolvedReferenceError } from './errors';
@@ -21,7 +21,20 @@ interface MergeState {
 	additionalProperties: ParsedJSONSchemaObject['additionalProperties'];
 	additionalOwner: number | undefined;
 	additionalDeclared: boolean;
+	source: ParsedJSONSchemaObject | undefined;
 }
+
+/** Metadata for a merge with no source member, such as an empty `allOf`. */
+const SYNTHETIC_SOURCE: ParsedJSONSchemaObject = {
+	[Meta]: {
+		fileName: 'Root.json',
+		filePath: 'Root.json',
+		path: [],
+		parent: null,
+		dialect: 'draft-07',
+		dialectSource: 'fallback',
+	},
+};
 
 type MergeMember =
 	| { kind: 'object'; schema: ParsedJSONSchemaObject }
@@ -53,6 +66,8 @@ export function mergeObjectSchemas(schemas: ParsedJSONSchema[]): MergeResult {
 		if (reason !== undefined) {
 			return { reason };
 		}
+
+		state.source ??= member.schema;
 	}
 
 	return { merged: mergedObject(state) };
@@ -71,6 +86,7 @@ function createMergeState(): MergeState {
 		additionalProperties: undefined,
 		additionalOwner: undefined,
 		additionalDeclared: false,
+		source: undefined,
 	};
 }
 
@@ -81,11 +97,11 @@ function mergeableObject(raw: ParsedJSONSchema): MergeMember {
 		return { kind: 'false' };
 	}
 
-	if (!isPlainObject(dereferenced)) {
+	if (!isParsedJSONSchemaObject(dereferenced)) {
 		return { kind: 'reason', reason: 'only object subschemas can be merged' };
 	}
 
-	const schema = dereferenced as ParsedJSONSchemaObject;
+	const schema = dereferenced;
 	const reason = unmergeableReason(schema);
 
 	return reason === undefined ? { kind: 'object', schema } : { kind: 'reason', reason };
@@ -96,9 +112,7 @@ function mergeObjectMember(
 	schema: ParsedJSONSchemaObject,
 	index: number
 ): string | undefined {
-	const declaredProperties = Object.entries(
-		(schema.properties ?? {}) as Record<string, ParsedJSONSchema>
-	);
+	const declaredProperties = Object.entries(schema.properties ?? {});
 	const additionalConflict = additionalPropertiesConflict(state, index, declaredProperties.length);
 
 	if (additionalConflict !== undefined) {
@@ -214,8 +228,7 @@ function mergedObject(state: MergeState): ParsedJSONSchemaObject {
 		merged.additionalProperties = state.additionalProperties;
 	}
 
-	// oxlint-disable-next-line quality/no-chained-type-assertions -- synthetic node; it has no source Meta to copy
-	return merged as unknown as ParsedJSONSchemaObject;
+	return withSourceMeta(state.source ?? SYNTHETIC_SOURCE, merged);
 }
 
 function unmergeableReason(schema: ParsedJSONSchemaObject): string | undefined {
@@ -237,11 +250,11 @@ function unmergeableReason(schema: ParsedJSONSchemaObject): string | undefined {
 
 /** The target of a `$ref` node, or the node itself when it is not a reference. */
 function dereference(schema: ParsedJSONSchema): ParsedJSONSchema {
-	if (!isPlainObject(schema) || typeof schema.$ref !== 'string') {
+	if (!isParsedJSONSchemaObject(schema) || typeof schema.$ref !== 'string') {
 		return schema;
 	}
 
-	const resolved = (schema as ParsedJSONSchemaObject)[Meta]?.reference;
+	const resolved = schema[Meta]?.reference;
 
 	if (resolved === undefined) {
 		throw new UnresolvedReferenceError(schema.$ref);

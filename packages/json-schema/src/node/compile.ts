@@ -4,6 +4,7 @@ import path from 'node:path';
 import { load as loadYaml } from 'js-yaml';
 
 import { pickDialectOptions, warnDialectIssue } from '../dialect';
+import { isJSONSchemaObject } from '../model';
 import type { JSONSchema } from '../model';
 import { parse } from '../parser';
 import type { ParseOptions } from '../parser';
@@ -14,21 +15,30 @@ export type CodeFormatter = (code: string) => string | Promise<string>;
 /** Reads a schema file: YAML for `.yaml` and `.yml`, JSON otherwise. */
 export function readSchema(filePath: string): JSONSchema {
 	const source = readFileSync(filePath, 'utf8');
+	const schema: unknown = /\.ya?ml$/i.test(filePath) ? loadYaml(source) : JSON.parse(source);
 
-	if (/\.ya?ml$/i.test(filePath)) {
-		return loadYaml(source) as JSONSchema;
-	}
-
-	return JSON.parse(source) as JSONSchema;
+	return requireSchemaObject(schema, filePath);
 }
 
 /** Parses schema text of unknown format, such as stdin: JSON when it parses, YAML otherwise. */
 export function parseSchemaSource(source: string): JSONSchema {
+	let schema: unknown;
+
 	try {
-		return JSON.parse(source) as JSONSchema;
+		schema = JSON.parse(source);
 	} catch {
-		return loadYaml(source) as JSONSchema;
+		schema = loadYaml(source);
 	}
+
+	return requireSchemaObject(schema, 'schema source');
+}
+
+function requireSchemaObject(value: unknown, source: string): JSONSchema {
+	if (!isJSONSchemaObject(value)) {
+		throw new TypeError(`${source} must contain a JSON Schema object`);
+	}
+
+	return value;
 }
 
 /** The header of a generated file, naming the package that generated it. */

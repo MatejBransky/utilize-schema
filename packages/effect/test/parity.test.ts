@@ -17,6 +17,17 @@ interface ParityCase {
 	invalid: unknown[];
 }
 
+function schemaFixture(schema: TestSchema): TestSchema {
+	return schema;
+}
+
+const stringSchema: TestSchema = { type: 'string' };
+const numberSchema: TestSchema = { type: 'number' };
+const objectWithLengthSchema: TestSchema = {
+	type: 'object',
+	properties: { length: stringSchema },
+};
+
 /**
  * The Zod generator is the reference implementation, so parity is checked by
  * running the same values through both generated schemas instead of asserting
@@ -320,13 +331,13 @@ const cases: ParityCase[] = [
 	},
 	{
 		name: 'prototype-named properties',
-		schema: {
+		schema: schemaFixture({
 			type: 'object',
 			properties: {
-				['toString']: { type: 'object', properties: { length: { type: 'string' } } },
-				['constructor']: { type: 'number' },
+				['toString']: objectWithLengthSchema,
+				['constructor']: numberSchema,
 			},
-		} as TestSchema,
+		}),
 		valid: [{}, { ['toString']: { length: 'x' }, ['constructor']: 1 }],
 		invalid: [{ ['toString']: { length: 37 } }, { ['constructor']: 'x' }],
 	},
@@ -613,9 +624,19 @@ describe('design differences', () => {
 
 async function loadRoot(
 	schema: TestSchema,
+	target: 'zod',
+	formatMode?: 'annotate' | 'assert'
+): Promise<z.ZodType>;
+async function loadRoot(
+	schema: TestSchema,
+	target: 'effect',
+	formatMode?: 'annotate' | 'assert'
+): Promise<Schema.Top>;
+async function loadRoot(
+	schema: TestSchema,
 	target: 'zod' | 'effect',
 	formatMode?: 'annotate' | 'assert'
-) {
+): Promise<z.ZodType | Schema.Top> {
 	const directory = await mkdtemp(join(__dirname, '__generated__-'));
 	const file = join(directory, `${target}.ts`);
 
@@ -631,14 +652,51 @@ async function loadRoot(
 
 		await writeFile(file, code);
 
-		const module = (await import(file)) as Record<string, unknown>;
+		const module: unknown = await import(file);
 
-		return module.Root as Parameters<typeof Schema.is>[0];
+		return target === 'zod' ? exportedZodSchema(module) : exportedEffectSchema(module);
 	} finally {
 		await rm(directory, { recursive: true, force: true });
 	}
 }
 
-function zodValid(schema: unknown, value: unknown): boolean {
-	return (schema as z.ZodType).safeParse(value).success;
+function exportedEffectSchema(module: unknown): Schema.Top {
+	if (typeof module !== 'object' || module === null || !('Root' in module)) {
+		throw new TypeError('Generated module did not export Root');
+	}
+
+	const root = module.Root;
+
+	if (!Schema.isSchema(root)) {
+		throw new TypeError('Root export is not an Effect schema');
+	}
+
+	return root;
+}
+
+function exportedZodSchema(module: unknown): z.ZodType {
+	if (typeof module !== 'object' || module === null || !('Root' in module)) {
+		throw new TypeError('Generated module did not export Root');
+	}
+
+	const root = module.Root;
+
+	if (!isZodSchema(root)) {
+		throw new TypeError('Root export is not a Zod schema');
+	}
+
+	return root;
+}
+
+function isZodSchema(value: unknown): value is z.ZodType {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'safeParse' in value &&
+		typeof value.safeParse === 'function'
+	);
+}
+
+function zodValid(schema: z.ZodType, value: unknown): boolean {
+	return schema.safeParse(value).success;
 }

@@ -4,6 +4,7 @@ import { describe, expect, test } from 'vitest';
 
 import { areMutuallyExclusive } from '../src/generators/exclusiveBranches';
 import type { ExclusiveBranchesOptions } from '../src/generators/exclusiveBranches';
+import { parsedSchema } from './test-utils';
 
 const options: ExclusiveBranchesOptions = {
 	dialect: resolveDialect({}).dialect,
@@ -11,7 +12,7 @@ const options: ExclusiveBranchesOptions = {
 };
 
 function branch(schema: JSONSchema): ParsedJSONSchemaObject {
-	return schema as ParsedJSONSchemaObject;
+	return parsedSchema(schema);
 }
 
 describe('areMutuallyExclusive', () => {

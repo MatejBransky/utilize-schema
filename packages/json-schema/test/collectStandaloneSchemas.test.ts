@@ -3,15 +3,25 @@ import { describe, expect, it } from 'vitest';
 import { childSchemasOf, collectStandaloneSchemas, Meta } from '../src';
 import type { JSONSchema, ParsedJSONSchemaObject } from '../src';
 
-function withMeta(schema: JSONSchema, meta: Partial<Meta> = {}) {
+function withMeta<T extends JSONSchema>(
+	schema: T,
+	meta: Partial<Meta> = {}
+): T & ParsedJSONSchemaObject {
+	defineMeta(schema, meta);
+
+	return schema;
+}
+
+function defineMeta<T extends object>(
+	schema: T,
+	meta: Partial<Meta>
+): asserts schema is T & ParsedJSONSchemaObject {
 	Object.defineProperty(schema, Meta, {
 		enumerable: false,
 		value: { ...meta },
 		writable: true,
 		configurable: true,
 	});
-
-	return schema as ParsedJSONSchemaObject;
 }
 
 describe('collectStandaloneSchemas', () => {

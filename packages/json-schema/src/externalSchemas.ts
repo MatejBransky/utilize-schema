@@ -1,7 +1,9 @@
 import { resolveDialect } from './dialect';
 import type { Dialect } from './dialect';
 import { schemaChildren } from './identifiers';
+import { isJSONSchema } from './model';
 import type { JSONSchema } from './model';
+import { isPlainObject } from './utils';
 
 /** Documents served for absolute `$ref` URIs, keyed by retrieval URI. */
 export type ExternalSchemas = Record<string, JSONSchema | boolean>;
@@ -44,19 +46,17 @@ export function normalizeUri(uri: string, base?: string): string {
 }
 
 function identifierOf(schema: JSONSchema | boolean): string | undefined {
-	if (typeof schema !== 'object' || schema === null) {
+	if (!isPlainObject(schema)) {
 		return undefined;
 	}
 
-	const record = schema as Record<string, unknown>;
-
-	if (typeof record.$id === 'string') {
-		return record.$id;
+	if (typeof schema.$id === 'string') {
+		return schema.$id;
 	}
 
 	// Draft-04 used `id`; the suite still exercises it under `*-legacy.json`.
-	if (typeof record.id === 'string') {
-		return record.id;
+	if (typeof schema.id === 'string') {
+		return schema.id;
 	}
 
 	return undefined;
@@ -69,22 +69,23 @@ function indexIdentifiers(
 	seen: WeakSet<object>,
 	dialect: Dialect
 ): void {
-	if (typeof schema !== 'object' || schema === null || seen.has(schema)) {
+	if (!isPlainObject(schema) || seen.has(schema)) {
 		return;
 	}
 
 	seen.add(schema);
 
-	const record = schema as Record<string, unknown>;
-	const nodeDialect = typeof record.$schema === 'string' ? resolveDialect(schema).dialect : dialect;
+	const nodeDialect = typeof schema.$schema === 'string' ? resolveDialect(schema).dialect : dialect;
 	// In draft-07 and older `$ref` replaces the rest of the schema, so a sibling
 	// `$id` does not declare a resource there. The linker makes the same check.
-	const ignoresSiblings = typeof record.$ref === 'string' && nodeDialect.refSiblings === 'ignore';
+	const ignoresSiblings = typeof schema.$ref === 'string' && nodeDialect.refSiblings === 'ignore';
 	const identifier = ignoresSiblings ? undefined : identifierOf(schema);
 	const nextBase = registerIdentifier(identifier, baseUri, schema, index);
 
-	for (const value of schemaChildren(record)) {
-		indexIdentifiers(nextBase, value as JSONSchema, index, seen, nodeDialect);
+	for (const value of schemaChildren(schema)) {
+		if (isJSONSchema(value)) {
+			indexIdentifiers(nextBase, value, index, seen, nodeDialect);
+		}
 	}
 }
 

@@ -1,3 +1,5 @@
+import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
+
 import { createGenerator } from './createGenerator';
 import type { FormatMap, FormatMode } from './types';
 
@@ -5,7 +7,7 @@ import { unicodePattern } from '../regex';
 import { ts } from '../utils';
 
 export const stringGenerator = createGenerator(
-	(schema) => {
+	(schema): schema is ParsedJSONSchemaObject => {
 		if ('enum' in schema) {
 			return false;
 		}

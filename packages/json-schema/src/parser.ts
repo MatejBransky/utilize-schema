@@ -6,10 +6,11 @@ import { indexExternalSchemas, normalizeUri } from './externalSchemas';
 import type { ExternalSchemas } from './externalSchemas';
 import { createSchemaIndex, schemaChildren } from './identifiers';
 import { link } from './linker';
-import { Meta } from './model';
+import { isJSONSchema, isJSONSchemaObject, isParsedJSONSchema } from './model';
 import type { JSONSchema, ParsedJSONSchema } from './model';
 import { prepareSchema } from './normalize';
 import type { DialectMap } from './normalize';
+import { isPlainObject } from './utils';
 
 type SchemaPath = string;
 
@@ -64,15 +65,23 @@ export async function parse(
 							order: 1,
 							canRead: (file: { url: string }) => providedSchema(file.url) !== undefined,
 							// A boolean schema is a valid document, but the resolver type
-							// only admits objects.
-							read: (file: { url: string }) => providedSchema(file.url) as JSONSchema,
+							// only admits objects, so hand it to the JSON parser as source.
+							read: (file: { url: string }) => {
+								const schema = providedSchema(file.url);
+
+								if (schema === undefined) {
+									throw new Error(`Provided schema not found: ${file.url}`);
+								}
+
+								return isJSONSchemaObject(schema) ? schema : String(schema);
+							},
 						},
 					},
 				}
 			: {}
 	);
 
-	const entries = Object.entries($refs.values()) as [SchemaPath, JSONSchema][];
+	const entries = schemaEntries($refs.values());
 	// `$RefParser` registers a nested `$id` as its own entry whose value is a node
 	// inside another document. Preparing and linking both would normalize that
 	// node twice and report its dialect issues twice, so keep the entry that
@@ -92,7 +101,7 @@ export async function parse(
 	// a root pointer and would return its target, which loses the root node and
 	// its metadata. The root document is the object handed to `resolve`.
 	const rootDocument = entries.find(([, value]) => value === input)?.[1];
-	const rootSchema = rootDocument ?? ($refs.get('#') as JSONSchema);
+	const rootSchema = rootDocument ?? schemaFromRootPointer($refs.get('#'));
 	const identifiers = createSchemaIndex();
 
 	// Every document is normalized and indexed before linking, so a `$ref` can
@@ -136,30 +145,81 @@ export async function parse(
 		});
 	}
 
-	const root = rootSchema as ParsedJSONSchema;
+	const root = isParsedJSONSchema(rootSchema)
+		? rootSchema
+		: isJSONSchemaObject(rootSchema)
+			? link({
+					schema: rootSchema,
+					parent: null,
+					fileName: rootFileName,
+					filePath: '#',
+					path: [],
+					$refs,
+					identifiers,
+					stack: new Set(),
+					dialects: rootDialects,
+				})
+			: rootSchema;
+	const referencedSchemas: ParsedJSONSchema[] = [];
 
-	if (typeof root === 'object' && root !== null && !Object.hasOwn(root, Meta)) {
-		link({
-			schema: root,
-			parent: null,
-			fileName: rootFileName,
-			filePath: '#',
-			path: [],
-			$refs,
-			identifiers,
-			stack: new Set(),
-			dialects: rootDialects,
-		});
+	for (const [, entrySchema] of documentEntries) {
+		if (entrySchema !== root && isParsedJSONSchema(entrySchema)) {
+			referencedSchemas.push(entrySchema);
+		}
+	}
+
+	function linkedSchema(value: unknown): ParsedJSONSchema {
+		if (isParsedJSONSchema(value)) {
+			return value;
+		}
+
+		if (isJSONSchemaObject(value)) {
+			return link({
+				schema: value,
+				parent: null,
+				fileName: rootFileName,
+				filePath: '#',
+				path: [],
+				$refs,
+				identifiers,
+				stack: new Set(),
+				dialects: rootDialects,
+			});
+		}
+
+		throw new TypeError('The referenced schema has not been linked');
 	}
 
 	return {
 		root,
-		get: ($ref: string) => $refs.get($ref) as ParsedJSONSchema,
-		referencedSchemas: documentEntries
-			.filter(([, entrySchema]) => entrySchema !== root)
-			.map(([, entrySchema]) => entrySchema) as ParsedJSONSchema[],
+		get: ($ref: string) => linkedSchema($refs.get($ref)),
+		referencedSchemas,
 		issues,
 	};
+}
+
+function schemaEntries(values: unknown): [SchemaPath, JSONSchema][] {
+	const entries: [SchemaPath, JSONSchema][] = [];
+
+	if (!isJSONSchemaObject(values)) {
+		throw new TypeError('Expected a map of schema documents');
+	}
+
+	for (const [filePath, schema] of Object.entries(values)) {
+		if (isJSONSchemaObject(schema)) {
+			entries.push([filePath, schema]);
+		}
+	}
+
+	return entries;
+}
+
+function schemaFromRootPointer(value: unknown): JSONSchema | boolean | null {
+	if (value === null || isJSONSchema(value)) {
+		return value;
+	}
+
+	throw new TypeError('The root schema is not a schema');
 }
 
 /**
@@ -204,13 +264,13 @@ function markSchemaNodes(node: unknown, nodes: Set<unknown>): void {
 		return;
 	}
 
-	if (typeof node !== 'object' || node === null || nodes.has(node)) {
+	if (!isPlainObject(node) || nodes.has(node)) {
 		return;
 	}
 
 	nodes.add(node);
 
-	for (const child of schemaChildren(node as Record<string, unknown>)) {
+	for (const child of schemaChildren(node)) {
 		markSchemaNodes(child, nodes);
 	}
 }

@@ -21,6 +21,7 @@ export type TestSchema = JSONSchema & {
 };
 
 export type GeneratedSchema = Parameters<typeof Schema.decodeUnknownSync>[0];
+export type GeneratedModule = Record<string, GeneratedSchema>;
 
 export { ts };
 
@@ -62,14 +63,16 @@ export async function compile(schema: TestSchema, options: CompileOptions = {}) 
 export async function compileModule(
 	schema: TestSchema,
 	options?: CompileOptions
-): Promise<Record<string, GeneratedSchema>> {
+): Promise<GeneratedModule> {
 	const code = await compile(schema, { ...options, importEffect: true });
 	const directory = await mkdtemp(join(__dirname, '__generated__-'));
 
 	try {
 		const filePath = join(directory, 'schema.ts');
 		await writeFile(filePath, code);
-		return (await import(filePath)) as Record<string, GeneratedSchema>;
+		const module: unknown = await import(filePath);
+
+		return generatedSchemas(module);
 	} finally {
 		await rm(directory, { recursive: true, force: true });
 	}
@@ -83,10 +86,26 @@ export async function compileToSchema(
 	return expectDefined(module.Root);
 }
 
+function generatedSchemas(module: unknown) {
+	const schemas: GeneratedModule = {};
+
+	if (typeof module !== 'object' || module === null) {
+		return schemas;
+	}
+
+	for (const [name, value] of Object.entries(module)) {
+		if (Schema.isSchema(value)) {
+			schemas[name] = Schema.make<GeneratedSchema>(value.ast);
+		}
+	}
+
+	return schemas;
+}
+
 /** Returns the decoded value, or `undefined` when decoding fails. */
-export function decode<A>(schema: GeneratedSchema, input: unknown): A | undefined {
+export function decode(schema: GeneratedSchema, input: unknown) {
 	try {
-		return Schema.decodeUnknownSync(schema)(input) as A;
+		return Schema.decodeUnknownSync(schema)(input);
 	} catch {
 		return undefined;
 	}

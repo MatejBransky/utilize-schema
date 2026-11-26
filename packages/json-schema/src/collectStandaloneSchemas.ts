@@ -1,4 +1,4 @@
-import { Meta } from './model';
+import { isJSONSchemaObject, Meta } from './model';
 import type { ParsedJSONSchema, ParsedJSONSchemaObject } from './model';
 
 /**
@@ -50,7 +50,7 @@ export function collectStandaloneSchemas(
 	}
 
 	function visit(schema: ParsedJSONSchema | undefined, parent: ParsedJSONSchemaObject | null) {
-		if (!isSchemaObject(schema)) {
+		if (typeof schema !== 'object' || schema === null || Array.isArray(schema)) {
 			return;
 		}
 
@@ -61,25 +61,43 @@ export function collectStandaloneSchemas(
 		}
 		seen.add(schema);
 
-		const declaration = inlineCopies.get(schema);
-
-		if (declaration) {
-			declare(declaration, schema);
+		if (visitInlineCopy(schema)) {
 			return;
 		}
 
-		const reference = schema[Meta]?.reference;
+		visitReference(schema);
+		visitDefinitions(schema);
+		visitChildren(schema);
+	}
 
-		if (isSchemaObject(reference)) {
-			declare(reference, schema);
+	function visitInlineCopy(schema: ParsedJSONSchemaObject): boolean {
+		const declaration = inlineCopies.get(schema);
+
+		if (declaration === undefined) {
+			return false;
 		}
 
+		declare(declaration, schema);
+		return true;
+	}
+
+	function visitReference(schema: ParsedJSONSchemaObject): void {
+		const reference = schema[Meta]?.reference;
+
+		if (typeof reference === 'object' && reference !== null && !Array.isArray(reference)) {
+			declare(reference, schema);
+		}
+	}
+
+	function visitDefinitions(schema: ParsedJSONSchemaObject): void {
 		// Definitions get their own declaration, so they are not ordered under
 		// the schema that declares them: ordering must follow $ref edges only.
 		for (const definition of definitionsOf(schema)) {
 			declare(definition, null);
 		}
+	}
 
+	function visitChildren(schema: ParsedJSONSchemaObject): void {
 		for (const child of childSchemasOf(schema)) {
 			visit(child, schema);
 		}
@@ -99,8 +117,8 @@ function* firstDefinitionsOf(schema: ParsedJSONSchemaObject): Generator<ParsedJS
 		return;
 	}
 
-	for (const definition of Object.values(definitions) as ParsedJSONSchema[]) {
-		if (isSchemaObject(definition)) {
+	for (const definition of Object.values(definitions)) {
+		if (typeof definition === 'object' && definition !== null && !Array.isArray(definition)) {
 			yield definition;
 		}
 	}
@@ -111,7 +129,7 @@ function* firstDefinitionsOf(schema: ParsedJSONSchemaObject): Generator<ParsedJS
  * except `$defs`/`definitions` and the target of a `$ref`.
  */
 export function childSchemasOf(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject[] {
-	const children: (ParsedJSONSchema | undefined)[] = [
+	const children: unknown[] = [
 		...Object.values(schema.properties ?? {}),
 		...Object.values(schema.patternProperties ?? {}),
 		schema.additionalProperties,
@@ -120,21 +138,15 @@ export function childSchemasOf(schema: ParsedJSONSchemaObject): ParsedJSONSchema
 		schema.additionalItems,
 		schema.contains,
 		schema.propertyNames,
-		schema.if as ParsedJSONSchema | undefined,
-		schema.then as ParsedJSONSchema | undefined,
-		schema.else as ParsedJSONSchema | undefined,
+		schema.if,
+		schema.then,
+		schema.else,
 		...(schema.allOf ?? []),
 		...(schema.anyOf ?? []),
 		...(schema.oneOf ?? []),
 		schema.not,
-		...Object.values(schema.dependencies ?? {}).filter(
-			(dependency): dependency is ParsedJSONSchemaObject => !Array.isArray(dependency)
-		),
+		...Object.values(schema.dependencies ?? {}).filter((dependency) => !Array.isArray(dependency)),
 	];
 
-	return children.filter(isSchemaObject);
-}
-
-function isSchemaObject(schema: ParsedJSONSchema | undefined): schema is ParsedJSONSchemaObject {
-	return typeof schema === 'object' && schema !== null;
+	return children.filter((child): child is ParsedJSONSchemaObject => isJSONSchemaObject(child));
 }

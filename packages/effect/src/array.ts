@@ -1,17 +1,13 @@
 import { containsBounds, isKeywordApplicable } from '@utilize/json-schema';
-import type {
-	ContainsBounds,
-	ParsedJSONSchema,
-	ParsedJSONSchemaObject,
-} from '@utilize/json-schema';
+import type { ContainsBounds, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import type { Context } from './context';
 import { applyChecks } from './expressions';
-import { arrayRest, prefixItemsOf } from './schemaParts';
+import { arrayRest, itemsOf, prefixItemsOf } from './schemaParts';
 
 export function generateArray(schema: ParsedJSONSchemaObject, context: Context): string {
 	const dialect = context.dialect;
-	const items = schema.items as ParsedJSONSchema | ParsedJSONSchema[] | undefined;
+	const items = itemsOf(schema);
 	const prefixItems = prefixItemsOf(schema, dialect);
 	const checks = arrayChecks(schema, context);
 	const singleItem = Array.isArray(items) ? undefined : items;

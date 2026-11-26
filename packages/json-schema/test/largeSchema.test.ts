@@ -11,7 +11,7 @@ import {
 	writeAzureTemplate,
 } from '../bench/fixtures';
 
-import { Meta, parse } from '../src';
+import { isJSONSchema, isParsedJSONSchemaObject, Meta, parse } from '../src';
 import type { ParsedJSONSchemaObject } from '../src';
 
 describe('large schemas', () => {
@@ -20,8 +20,13 @@ describe('large schemas', () => {
 
 		try {
 			await writeAzureTemplate(directory);
-			const schema = JSON.parse(await readFile(join(directory, 'azure.json'), 'utf8')) as unknown;
-			const parsed = await parse(schema as never, {
+			const schema = JSON.parse(await readFile(join(directory, 'azure.json'), 'utf8'));
+
+			if (!isJSONSchema(schema)) {
+				throw new Error('Expected the Azure template to be a JSON Schema');
+			}
+
+			const parsed = await parse(schema, {
 				cwd: directory + '/',
 				fileName: 'azure.json',
 			});
@@ -47,7 +52,13 @@ describe('large schemas', () => {
 	});
 
 	test('parses a large cyclic FHIR-like bundle', async () => {
-		const parsed = await parse(createFhirSchema() as never, {
+		const schema = createFhirSchema();
+
+		if (!isJSONSchema(schema)) {
+			throw new Error('Expected the FHIR fixture to be a JSON Schema');
+		}
+
+		const parsed = await parse(schema, {
 			cwd: '/',
 			fileName: 'fhir.json',
 		});
@@ -65,10 +76,11 @@ describe('large schemas', () => {
 });
 
 function asObject(schema: unknown): ParsedJSONSchemaObject {
-	expect(schema).toBeTypeOf('object');
-	expect(schema).not.toBeNull();
+	if (!isParsedJSONSchemaObject(schema)) {
+		throw new Error('Expected a linked schema object');
+	}
 
-	return schema as ParsedJSONSchemaObject;
+	return schema;
 }
 
 /** The schema a linked `$ref` node points to. */

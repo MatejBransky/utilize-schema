@@ -1,14 +1,35 @@
 import { describe, expect, test } from 'vitest';
 
 import { dialects } from '../src/dialect';
+import { isParsedJSONSchemaObject, Meta } from '../src/model';
 import type { JSONSchema, ParsedJSONSchemaObject } from '../src/model';
 import { narrowUntypedSchema } from '../src/narrow';
 
 const draft07 = dialects['draft-07'];
 const twentyTwentyTwelve = dialects['2020-12'];
+const testMeta: Partial<Meta> = {
+	fileName: 'Test.json',
+	filePath: '#',
+	path: [],
+	parent: null,
+};
 
-function schema(value: JSONSchema): ParsedJSONSchemaObject {
-	return value as ParsedJSONSchemaObject;
+function schema<T extends JSONSchema>(value: T): T & ParsedJSONSchemaObject {
+	defineMeta(value, testMeta);
+
+	return value;
+}
+
+function defineMeta<T extends object>(
+	value: T,
+	meta: Partial<Meta>
+): asserts value is T & ParsedJSONSchemaObject {
+	Object.defineProperty(value, Meta, {
+		enumerable: false,
+		value: meta,
+		writable: true,
+		configurable: true,
+	});
 }
 
 describe('narrowUntypedSchema', () => {
@@ -43,7 +64,11 @@ describe('narrowUntypedSchema', () => {
 
 	test('adds the target type when a type-specific keyword applies', () => {
 		const node = schema({ minLength: 2 });
-		const narrowed = narrowUntypedSchema(node, 'string', draft07) as ParsedJSONSchemaObject;
+		const narrowed = narrowUntypedSchema(node, 'string', draft07);
+
+		if (!isParsedJSONSchemaObject(narrowed)) {
+			throw new Error('Expected a parsed schema object');
+		}
 
 		expect(narrowed).not.toBe(node);
 		expect(narrowed.type).toBe('string');
@@ -58,7 +83,11 @@ describe('narrowUntypedSchema', () => {
 
 	test('treats normalized dependencies as type-specific in every dialect', () => {
 		const node = schema({ dependencies: { a: ['b'] } });
-		const narrowed = narrowUntypedSchema(node, 'object', draft07) as ParsedJSONSchemaObject;
+		const narrowed = narrowUntypedSchema(node, 'object', draft07);
+
+		if (!isParsedJSONSchemaObject(narrowed)) {
+			throw new Error('Expected a parsed schema object');
+		}
 
 		expect(narrowed.type).toBe('object');
 	});

@@ -2,6 +2,7 @@ import type { InferableType } from './inferTypes';
 import {
 	containsBounds,
 	isKeywordApplicable,
+	isParsedJSONSchemaObject,
 	narrowUntypedSchema,
 	withSourceMeta,
 } from '@utilize/json-schema';
@@ -121,13 +122,15 @@ function appendNotAndConditionalChecks(
     }`);
 	}
 
-	if (schema.if !== undefined && isKeywordApplicable(context.dialect, 'if')) {
+	const conditionSchema = parsedSubschema(schema.if);
+
+	if (conditionSchema !== undefined && isKeywordApplicable(context.dialect, 'if')) {
 		const condition = generate(
-			narrowUntypedSchema(schema.if as ParsedJSONSchema, contextType, context.dialect),
+			narrowUntypedSchema(conditionSchema, contextType, context.dialect),
 			context
 		);
-		const thenSchema = schema.then as ParsedJSONSchema | undefined;
-		const elseSchema = schema.else as ParsedJSONSchema | undefined;
+		const thenSchema = parsedSubschema(schema.then);
+		const elseSchema = parsedSubschema(schema.else);
 		const thenBlock =
 			thenSchema !== undefined
 				? checkBlock(
@@ -149,6 +152,14 @@ function appendNotAndConditionalChecks(
       }
     }`);
 	}
+}
+
+function parsedSubschema(value: unknown): ParsedJSONSchema | undefined {
+	if (typeof value === 'boolean') {
+		return value;
+	}
+
+	return isParsedJSONSchemaObject(value) ? value : undefined;
 }
 
 function appendContainsCheck(

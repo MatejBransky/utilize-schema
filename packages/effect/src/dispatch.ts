@@ -1,4 +1,11 @@
-import { dialectOf, expectDefined, isKeywordApplicable, isPlainObject } from '@utilize/json-schema';
+import {
+	dialectOf,
+	expectDefined,
+	isKeywordApplicable,
+	isParsedJSONSchemaObject,
+	isPlainObject,
+	withSourceMeta,
+} from '@utilize/json-schema';
 import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { generateAllOfExpression } from './allOf';
@@ -17,7 +24,11 @@ export function generateSchema(schema: ParsedJSONSchema, context: Context): stri
 		return simple;
 	}
 
-	const object = schema as ParsedJSONSchemaObject;
+	if (!isParsedJSONSchemaObject(schema)) {
+		return 'Schema.Json';
+	}
+
+	const object = schema;
 	const customExpression = context.customSchemaResolver?.(object);
 
 	if (customExpression !== undefined) {
@@ -81,7 +92,7 @@ function generateType(schema: ParsedJSONSchemaObject, context: Context): string 
 		return union;
 	}
 
-	const type = schema.type as string | undefined;
+	const type = typeof schema.type === 'string' ? schema.type : undefined;
 
 	return TYPE_GENERATORS.get(type ?? '')?.(schema, context) ?? generateUntyped(schema, context);
 }
@@ -113,7 +124,7 @@ function schemaWithType(
 	schema: ParsedJSONSchemaObject,
 	type: ParsedJSONSchemaObject['type']
 ): ParsedJSONSchemaObject {
-	return {
+	return withSourceMeta(schema, {
 		...schema,
 		type,
 		default: undefined,
@@ -121,7 +132,7 @@ function schemaWithType(
 		description: undefined,
 		examples: undefined,
 		$id: undefined,
-	};
+	});
 }
 
 /**
@@ -166,5 +177,9 @@ function branchCheck(branch: unknown, keyword: 'then' | 'else', context: Context
 
 /** `JSONSchema7` types `if`/`then`/`else` without the linked schema metadata. */
 function parsed(schema: unknown): ParsedJSONSchema {
-	return schema as ParsedJSONSchema;
+	if (typeof schema === 'boolean' || schema === null || isParsedJSONSchemaObject(schema)) {
+		return schema;
+	}
+
+	throw new TypeError('Expected a parsed JSON Schema');
 }

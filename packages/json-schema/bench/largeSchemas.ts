@@ -10,7 +10,7 @@ import {
 	writeAzureTemplate,
 } from './fixtures.ts';
 
-import { parse } from '../dist/index.mjs';
+import { assert, isJSONSchema, parse } from '../dist/index.mjs';
 
 const iterations = Number(process.env.BENCH_ITERATIONS ?? 20);
 
@@ -45,18 +45,21 @@ const directory = await mkdtemp(join(tmpdir(), 'utilize-schema-bench-'));
 
 try {
 	await writeAzureTemplate(directory);
-	const azureRoot = JSON.parse(await readFile(join(directory, 'azure.json'), 'utf8')) as unknown;
+	const azureRoot: unknown = JSON.parse(await readFile(join(directory, 'azure.json'), 'utf8'));
 	const fhirSchema = createFhirSchema();
+
+	assert(isJSONSchema(azureRoot), 'Expected the Azure fixture to be a schema.');
+	assert(isJSONSchema(fhirSchema), 'Expected the FHIR fixture to be a schema.');
 
 	const results = [
 		await measure(`Azure-like template (${AZURE_RESOURCE_COUNT} linked files)`, () =>
-			parse(structuredClone(azureRoot) as never, {
+			parse(structuredClone(azureRoot), {
 				cwd: directory + '/',
 				fileName: 'azure.json',
 			})
 		),
 		await measure(`FHIR-like bundle (${FHIR_RESOURCE_COUNT} resources)`, () =>
-			parse(structuredClone(fhirSchema) as never, {
+			parse(structuredClone(fhirSchema), {
 				cwd: '/',
 				fileName: 'fhir.json',
 			})

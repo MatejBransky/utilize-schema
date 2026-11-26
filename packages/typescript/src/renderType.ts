@@ -1,9 +1,11 @@
 import {
 	expectDefined,
+	isParsedJSONSchemaObject,
 	isPlainObject,
 	Meta,
 	schemaRecord,
 	toSafeString,
+	withSourceMeta,
 } from '@utilize/json-schema';
 import type {
 	JSONSchemaTypeName,
@@ -65,7 +67,11 @@ function indent(level: number): string {
 	return INDENT.repeat(level);
 }
 
-export function renderType(schema: ParsedJSONSchema, context: TypeContext, level = 0): string {
+export function renderType(
+	schema: ParsedJSONSchema | undefined,
+	context: TypeContext,
+	level = 0
+): string {
 	const prepared = prepareSchemaInput(schema);
 
 	if (typeof prepared === 'string') {
@@ -96,7 +102,7 @@ export function renderType(schema: ParsedJSONSchema, context: TypeContext, level
 }
 
 function prepareSchemaInput(
-	schema: ParsedJSONSchema
+	schema: ParsedJSONSchema | undefined
 ): ParsedJSONSchemaObject | 'unknown' | 'never' {
 	if (schema === undefined || schema === null || schema === true) {
 		return 'unknown';
@@ -215,7 +221,12 @@ function renderUnionApplicator(
 	context: TypeContext,
 	level: number
 ): string {
-	const members = schema[keyword] as ParsedJSONSchema[];
+	const members = schema[keyword];
+
+	if (!Array.isArray(members)) {
+		throw new Error(`Expected ${keyword} members`);
+	}
+
 	const branch = union(members.map((member) => renderType(member, context, level)));
 	const parent = remainingSchema(schema, keyword);
 
@@ -333,18 +344,18 @@ function renderReference(
 	context: TypeContext,
 	level: number
 ): string {
-	const ref = schema.$ref as string;
+	const ref = expectDefined(schema.$ref, 'Expected a $ref string');
 	const resolved = schema[Meta]?.reference;
 
 	if (resolved === undefined) {
 		throw new UnresolvedReferenceError(ref);
 	}
 
-	if (!isPlainObject(resolved)) {
+	if (!isParsedJSONSchemaObject(resolved)) {
 		return renderType(resolved, context, level);
 	}
 
-	const name = context.nameOf(resolved as ParsedJSONSchemaObject, ref);
+	const name = context.nameOf(resolved, ref);
 	const siblings = referenceSiblings(schema);
 
 	if (siblings === undefined) {
@@ -370,14 +381,9 @@ function referenceSiblings(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObje
 		return undefined;
 	}
 
-	const sibling: Record<string, ParsedJSONSchema> = {};
+	const sibling = Object.fromEntries(keys.map((key) => [key, record[key]]));
 
-	for (const key of keys) {
-		sibling[key] = record[key] as ParsedJSONSchema;
-	}
-
-	// oxlint-disable-next-line quality/no-chained-type-assertions -- synthetic sibling; it has no Meta of its own
-	return sibling as unknown as ParsedJSONSchemaObject;
+	return withSourceMeta(schema, sibling);
 }
 
 function renderLiteral(value: unknown): string {
@@ -413,9 +419,9 @@ function renderLiteral(value: unknown): string {
 }
 
 function renderArray(schema: ParsedJSONSchemaObject, context: TypeContext, level: number): string {
-	const items = schema.items as ParsedJSONSchema | ParsedJSONSchema[] | undefined;
+	const items = schema.items;
 	const prefixItems = Array.isArray(schema.prefixItems)
-		? (schema.prefixItems as ParsedJSONSchema[])
+		? schema.prefixItems
 		: Array.isArray(items)
 			? items
 			: undefined;
@@ -459,7 +465,7 @@ function arrayRest(
 		return false;
 	}
 
-	return (schema.additionalItems as ParsedJSONSchema | undefined) ?? true;
+	return schema.additionalItems ?? true;
 }
 
 function renderObject(schema: ParsedJSONSchemaObject, context: TypeContext, level: number): string {
@@ -669,13 +675,12 @@ export function renderJsDoc(
 	level = 0,
 	declarationName?: string
 ): string[] {
-	if (!isPlainObject(schema)) {
+	if (!isParsedJSONSchemaObject(schema)) {
 		return [];
 	}
 
-	const node = schema as ParsedJSONSchemaObject;
-	const lines = jsDocText(node, declarationName);
-	const tags = jsDocTags(node);
+	const lines = jsDocText(schema, declarationName);
+	const tags = jsDocTags(schema);
 
 	if (lines.length > 0 && tags.length > 0) {
 		lines.push('');

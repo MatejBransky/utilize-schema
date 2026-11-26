@@ -30,5 +30,5 @@ export function constraintKeywords(
 		}
 	}
 
-	return withSourceMeta(schema, rest) as ParsedJSONSchemaObject;
+	return withSourceMeta(schema, rest);
 }

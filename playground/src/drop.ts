@@ -12,6 +12,32 @@ export interface ImportedSchema {
 	content: string;
 }
 
+export interface DropEntry {
+	readonly isFile: boolean;
+	readonly isDirectory: boolean;
+	readonly fullPath: string;
+	readonly name?: string;
+	file?: (resolve: (file: File | null) => void, reject: (error?: unknown) => void) => void;
+	createReader?: () => DropDirectoryReader;
+}
+
+export interface DropDirectoryReader {
+	readEntries(
+		callback: (entries: DropEntry[]) => void,
+		errorCallback?: (error?: unknown) => void
+	): void;
+}
+
+export interface DropDataTransferItem {
+	readonly kind: string;
+	webkitGetAsEntry?: () => DropEntry | null;
+}
+
+export interface DropDataTransfer {
+	readonly items?: ArrayLike<DropDataTransferItem>;
+	readonly files?: ArrayLike<File>;
+}
+
 export function hasFileDrag(dataTransfer: DataTransfer | null): boolean {
 	return Boolean(dataTransfer && Array.from(dataTransfer.types).includes('Files'));
 }
@@ -20,10 +46,10 @@ function isJsonPath(path: string): boolean {
 	return /\.json$/i.test(path);
 }
 
-export async function collectDroppedFiles(dataTransfer: DataTransfer): Promise<DroppedFile[]> {
+export async function collectDroppedFiles(dataTransfer: DropDataTransfer): Promise<DroppedFile[]> {
 	const entries = Array.from(dataTransfer.items ?? [])
 		.map((item) => (item.kind === 'file' ? item.webkitGetAsEntry?.() : null))
-		.filter((entry): entry is FileSystemEntry => entry !== null && entry !== undefined);
+		.filter((entry): entry is DropEntry => entry !== null && entry !== undefined);
 
 	const dropped =
 		entries.length > 0
@@ -73,15 +99,19 @@ export function relativeNames(paths: string[]): string[] {
 	return normalized.map((path) => path.split('/').slice(common.length).join('/'));
 }
 
-function isFileEntry(entry: FileSystemEntry): entry is FileSystemFileEntry {
-	return entry.isFile && 'file' in entry;
+function isFileEntry(
+	entry: DropEntry
+): entry is DropEntry & { file: NonNullable<DropEntry['file']> } {
+	return entry.isFile && entry.file !== undefined;
 }
 
-function isDirectoryEntry(entry: FileSystemEntry): entry is FileSystemDirectoryEntry {
-	return entry.isDirectory && 'createReader' in entry;
+function isDirectoryEntry(
+	entry: DropEntry
+): entry is DropEntry & { createReader: NonNullable<DropEntry['createReader']> } {
+	return entry.isDirectory && entry.createReader !== undefined;
 }
 
-async function readEntry(entry: FileSystemEntry): Promise<DroppedFile[]> {
+async function readEntry(entry: DropEntry): Promise<DroppedFile[]> {
 	if (isFileEntry(entry)) {
 		const file = await new Promise<File | null>((resolve) => {
 			entry.file(resolve, () => resolve(null));
@@ -99,9 +129,9 @@ async function readEntry(entry: FileSystemEntry): Promise<DroppedFile[]> {
 	return (await Promise.all(children.map(readEntry))).flat();
 }
 
-function readDirectory(reader: FileSystemDirectoryReader): Promise<FileSystemEntry[]> {
+function readDirectory(reader: DropDirectoryReader): Promise<DropEntry[]> {
 	return new Promise((resolve, reject) => {
-		const entries: FileSystemEntry[] = [];
+		const entries: DropEntry[] = [];
 		const readBatch = () => {
 			reader.readEntries((batch) => {
 				if (batch.length === 0) {

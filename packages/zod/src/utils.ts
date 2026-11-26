@@ -32,6 +32,8 @@ export function isResolvedByCaller(
  * True for a `$ref` node. Such a node always takes the reference branch first:
  * the reference decides whether the dialect applies the keywords next to it.
  */
-export function isRefNode(schema: ParsedJSONSchemaObject): boolean {
+export function isRefNode(
+	schema: ParsedJSONSchemaObject
+): schema is ParsedJSONSchemaObject & { $ref: string } {
 	return typeof schema.$ref === 'string';
 }

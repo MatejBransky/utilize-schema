@@ -1,6 +1,6 @@
 import { dialectOf, isKeywordApplicable } from './dialect';
 import type { Dialect } from './dialect';
-import { withSourceMeta } from './model';
+import { isParsedJSONSchemaObject, withSourceMeta } from './model';
 import type { ParsedJSONSchema, ParsedJSONSchemaObject } from './model';
 import { isPlainObject, schemaRecord } from './utils';
 
@@ -49,7 +49,11 @@ export function narrowUntypedSchema(
 		return schema;
 	}
 
-	const node = schema as ParsedJSONSchemaObject;
+	if (!isParsedJSONSchemaObject(schema)) {
+		return schema;
+	}
+
+	const node = schema;
 
 	if (
 		node.type !== undefined ||
@@ -69,7 +73,7 @@ export function narrowUntypedSchema(
 		return schema;
 	}
 
-	return withSourceMeta(node, { ...node, type }) as ParsedJSONSchema;
+	return withSourceMeta(node, { ...node, type });
 }
 
 function hasTypeSpecificKeywords(schema: ParsedJSONSchemaObject, dialect: Dialect): boolean {

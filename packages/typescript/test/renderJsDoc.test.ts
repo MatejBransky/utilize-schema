@@ -1,7 +1,8 @@
-import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
 import { renderJsDoc } from '../src/renderType';
+
+import { withMeta } from './test-utils';
 
 describe('renderJsDoc', () => {
 	test('returns no lines without an object schema', () => {
@@ -10,14 +11,14 @@ describe('renderJsDoc', () => {
 	});
 
 	test('renders indented text and tags in annotation order', () => {
-		const schema = {
+		const schema = withMeta({
 			title: 'A title',
 			description: 'First line.\nSecond line.',
 			deprecated: true,
 			default: { enabled: true },
 			format: 'email',
 			examples: ['a@example.com'],
-		} as unknown as ParsedJSONSchemaObject;
+		});
 
 		expect(renderJsDoc(schema, 1, 'OtherName')).toEqual([
 			'\t/**',

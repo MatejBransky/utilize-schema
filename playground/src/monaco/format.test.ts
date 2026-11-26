@@ -1,5 +1,5 @@
 import { generate } from '@utilize/effect';
-import { parse } from '@utilize/json-schema';
+import { assert, isJSONSchema, parse } from '@utilize/json-schema';
 import { expect, test } from 'vitest';
 
 import '../polyfills';
@@ -12,7 +12,10 @@ import { formatTypeScript } from './format';
 test('wraps the generated multi-file example at 80 columns', async () => {
 	const example = exampleById('multi-file')!;
 	const bundle = buildBundle(example.files.map(parseJsonFile), example.files[0].id);
-	const { root } = await parse(bundle.root as never, {
+
+	assert(isJSONSchema(bundle.root), 'Expected the bundled root to be a schema.');
+
+	const { root } = await parse(bundle.root, {
 		cwd: '/',
 		fileName: bundle.rootFileName,
 	});

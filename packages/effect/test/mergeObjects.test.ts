@@ -1,13 +1,31 @@
 import { describe, expect, test } from 'vitest';
 
-import { parse } from '@utilize/json-schema';
-import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
+import {
+	assert,
+	expectDefined,
+	isParsedJSONSchemaObject,
+	Meta,
+	parse,
+	withSourceMeta,
+} from '@utilize/json-schema';
+import type { Meta as MetaType, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { UnresolvedReferenceError } from '../src/errors';
 import { mergeObjectSchemas } from '../src/mergeObjects';
 
+const testMeta = {
+	fileName: 'Root.json',
+	filePath: 'Root.json',
+	path: [],
+	parent: null,
+	dialect: 'draft-07',
+	dialectSource: 'fallback',
+} satisfies MetaType;
+
+const testSource: ParsedJSONSchemaObject = { [Meta]: testMeta };
+
 function object(schema: Record<string, unknown>): ParsedJSONSchemaObject {
-	return schema as unknown as ParsedJSONSchemaObject;
+	return withSourceMeta(testSource, schema);
 }
 
 describe('mergeObjectSchemas', () => {
@@ -93,7 +111,8 @@ describe('mergeObjectSchemas', () => {
 			},
 			{ cwd: __dirname, fileName: 'Root.json' }
 		);
-		const members = (parsed.root as ParsedJSONSchemaObject).allOf as ParsedJSONSchema[];
+		assert(isParsedJSONSchemaObject(parsed.root));
+		const members = expectDefined(parsed.root.allOf);
 
 		expect(mergeObjectSchemas(members)).toEqual({
 			merged: {

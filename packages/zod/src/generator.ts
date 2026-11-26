@@ -81,7 +81,8 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 
 	const broken = breakReferenceCycles(edges, new Set(standaloneSchemas), copies);
 
-	const sorted = (toposort(broken.edges).filter(Boolean) as ParsedJSONSchemaObject[])
+	const sorted = toposort(broken.edges)
+		.filter((schema): schema is ParsedJSONSchemaObject => schema !== null)
 		.filter((schema) => standaloneSchemas.includes(schema))
 		.reverse();
 

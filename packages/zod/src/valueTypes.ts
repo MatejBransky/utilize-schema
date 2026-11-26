@@ -1,4 +1,10 @@
-import { dialectOf, expectDefined, isPlainObject, Meta } from '@utilize/json-schema';
+import {
+	dialectOf,
+	expectDefined,
+	isParsedJSONSchemaObject,
+	Meta,
+	withSourceMeta,
+} from '@utilize/json-schema';
 import type { Dialect, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { allOfGenerator } from './generators/allOfGenerator';
@@ -213,37 +219,70 @@ function renderCollectionType(
 	context: ValueTypeContext
 ): string | undefined {
 	if (generator === recordGenerator) {
-		const additionalProperties = schema.additionalProperties as ParsedJSONSchemaObject;
-
-		return `Record<string, ${renderType(additionalProperties, context)}>`;
+		return renderRecordCollectionType(schema, context);
 	}
 
 	if (generator === objectGenerator) {
-		const { lines, index } = renderObjectMembers(schema, context);
-		const body = lines.join('; ');
-		const indexPart = index ? `${body ? '; ' : ''}[key: string]: ${index}` : '';
-
-		return `{ ${body}${indexPart} }`;
+		return renderObjectCollectionType(schema, context);
 	}
 
 	if (generator === tupleGenerator) {
-		const items = (tupleItems(schema, dialect) ?? []).map(
-			(item) => `${parenthesize(renderType(item, context))}?`
-		);
-		const rest = renderTupleRest(schema, context, dialect);
-
-		return `[${[...items, rest].filter(Boolean).join(', ')}]`;
+		return renderTupleCollectionType(schema, dialect, context);
 	}
 
 	if (generator === arrayGenerator) {
-		const items = schema.items
-			? renderType(schema.items as ParsedJSONSchemaObject, context)
-			: 'unknown';
-
-		return `${parenthesize(items)}[]`;
+		return renderArrayCollectionType(schema, context);
 	}
 
 	return undefined;
+}
+
+function renderRecordCollectionType(
+	schema: ParsedJSONSchemaObject,
+	context: ValueTypeContext
+): string {
+	const additionalProperties = schema.additionalProperties;
+
+	if (!isParsedJSONSchemaObject(additionalProperties)) {
+		return 'unknown';
+	}
+
+	return `Record<string, ${renderType(additionalProperties, context)}>`;
+}
+
+function renderObjectCollectionType(
+	schema: ParsedJSONSchemaObject,
+	context: ValueTypeContext
+): string {
+	const { lines, index } = renderObjectMembers(schema, context);
+	const body = lines.join('; ');
+	const indexPart = index ? `${body ? '; ' : ''}[key: string]: ${index}` : '';
+
+	return `{ ${body}${indexPart} }`;
+}
+
+function renderTupleCollectionType(
+	schema: ParsedJSONSchemaObject,
+	dialect: Dialect,
+	context: ValueTypeContext
+): string {
+	const items = (tupleItems(schema, dialect) ?? []).map(
+		(item) => `${parenthesize(renderType(item, context))}?`
+	);
+	const rest = renderTupleRest(schema, context, dialect);
+
+	return `[${[...items, rest].filter(Boolean).join(', ')}]`;
+}
+
+function renderArrayCollectionType(
+	schema: ParsedJSONSchemaObject,
+	context: ValueTypeContext
+): string {
+	const items = isParsedJSONSchemaObject(schema.items)
+		? renderType(schema.items, context)
+		: 'unknown';
+
+	return `${parenthesize(items)}[]`;
 }
 
 /**
@@ -277,12 +316,12 @@ function renderReferenceType(
 
 /** The union of a `type` list; each branch keeps `readOnly`, like `.readonly()` on the union. */
 function renderTypeList(schema: ParsedJSONSchemaObject, context: ValueTypeContext): string {
-	const types = schema.type as string[];
+	const types = Array.isArray(schema.type) ? schema.type : [];
 
 	return union(
 		types.map((type) =>
 			renderType(
-				{ ...schema, type, default: undefined, title: undefined } as ParsedJSONSchemaObject,
+				withSourceMeta(schema, { ...schema, type, default: undefined, title: undefined }),
 				context
 			)
 		)
@@ -297,8 +336,8 @@ function renderReadOnlyType(schema: ParsedJSONSchemaObject, context: ValueTypeCo
 	}
 
 	if (generator === arrayGenerator) {
-		const items = schema.items
-			? renderType(schema.items as ParsedJSONSchemaObject, context)
+		const items = isParsedJSONSchemaObject(schema.items)
+			? renderType(schema.items, context)
 			: 'unknown';
 
 		return `ReadonlyArray<${parenthesize(items)}>`;
@@ -324,7 +363,11 @@ function renderInterfaceBody(
 	const generator = selectGenerator(schema, dialectOf(schema, context.dialect));
 
 	if (generator === recordGenerator) {
-		const additionalProperties = schema.additionalProperties as ParsedJSONSchemaObject;
+		const additionalProperties = schema.additionalProperties;
+
+		if (!isParsedJSONSchemaObject(additionalProperties)) {
+			return '{\n\t[key: string]: unknown;\n}';
+		}
 
 		return `{\n\t[key: string]: ${renderType(additionalProperties, context)};\n}`;
 	}
@@ -360,8 +403,8 @@ function renderObjectMembers(schema: ParsedJSONSchemaObject, context: ValueTypeC
 	const requiredType =
 		schema.additionalProperties === false
 			? 'never'
-			: isPlainObject(schema.additionalProperties)
-				? renderType(schema.additionalProperties as ParsedJSONSchemaObject, context)
+			: isParsedJSONSchemaObject(schema.additionalProperties)
+				? renderType(schema.additionalProperties, context)
 				: 'unknown';
 	const requiredWithoutProperties = (schema.required ?? []).filter(
 		(key) => !Object.hasOwn(schema.properties ?? {}, key)
@@ -391,8 +434,8 @@ function renderIndexSignature(
 		return 'unknown';
 	}
 
-	if (isPlainObject(additionalProperties)) {
-		const type = renderType(additionalProperties as ParsedJSONSchemaObject, context);
+	if (isParsedJSONSchemaObject(additionalProperties)) {
+		const type = renderType(additionalProperties, context);
 
 		return propertyTypes.length === 0 ? type : union([...propertyTypes, type, 'undefined']);
 	}

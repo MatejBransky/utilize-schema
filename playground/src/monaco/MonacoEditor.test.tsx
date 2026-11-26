@@ -197,7 +197,7 @@ test('updates the model, the position and the options when props change', async 
 test('applies a new theme and read-only mode', async () => {
 	const ref = createRef<MonacoEditorHandle>();
 	const screen = await render(<MonacoEditor {...baseProps} ref={ref} />);
-	const host = screen.getByTestId('editor').element() as HTMLElement;
+	const host = screen.getByTestId('editor').element();
 
 	await screen.rerender(<MonacoEditor {...baseProps} theme="utilize-dark" ref={ref} />);
 	await vi.waitFor(() => expect(fake.state.themes).toContain('utilize-dark'));
@@ -222,7 +222,7 @@ test('hides the on-screen keyboard on a read-only touch device', async () => {
 	try {
 		const ref = createRef<MonacoEditorHandle>();
 		const screen = await render(<MonacoEditor {...baseProps} readOnly ref={ref} />);
-		const host = screen.getByTestId('editor').element() as HTMLElement;
+		const host = screen.getByTestId('editor').element();
 
 		host.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
 		expect(hide).toHaveBeenCalled();
@@ -231,8 +231,8 @@ test('hides the on-screen keyboard on a read-only touch device', async () => {
 		host.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
 		expect(hide).toHaveBeenCalledTimes(1);
 	} finally {
-		delete (navigator as { maxTouchPoints?: number }).maxTouchPoints;
-		delete (navigator as { virtualKeyboard?: unknown }).virtualKeyboard;
+		Reflect.deleteProperty(navigator, 'maxTouchPoints');
+		Reflect.deleteProperty(navigator, 'virtualKeyboard');
 	}
 });
 

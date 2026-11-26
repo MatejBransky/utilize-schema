@@ -3,7 +3,7 @@
  * value type are built from, so the two always agree on the shape.
  */
 
-import { isPlainObject } from '@utilize/json-schema';
+import { isParsedJSONSchemaObject, isPlainObject, withSourceMeta } from '@utilize/json-schema';
 import type { Dialect, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 /**
@@ -11,14 +11,27 @@ import type { Dialect, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize
  * filter keywords, which are applied on top of the merged object.
  */
 export function parentSchema(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject {
-	return {
+	return withSourceMeta(schema, {
 		...schema,
 		allOf: undefined,
 		not: undefined,
 		if: undefined,
 		then: undefined,
 		else: undefined,
-	};
+	});
+}
+
+/** The `items` keyword, which is a single schema or a tuple of schemas before 2020-12. */
+export function itemsOf(
+	schema: ParsedJSONSchemaObject
+): ParsedJSONSchema | ParsedJSONSchema[] | undefined {
+	const items: unknown = schema.items;
+
+	if (Array.isArray(items)) {
+		return items.filter(isParsedSchema);
+	}
+
+	return isParsedSchema(items) ? items : undefined;
 }
 
 /** The positional tuple items: `prefixItems` in 2020-12, an `items` array before it. */
@@ -30,9 +43,13 @@ export function prefixItemsOf(
 		return Array.isArray(schema.prefixItems) ? schema.prefixItems : undefined;
 	}
 
-	const items = schema.items as unknown;
+	const items = itemsOf(schema);
 
-	return Array.isArray(items) ? (items as ParsedJSONSchema[]) : undefined;
+	return Array.isArray(items) ? items : undefined;
+}
+
+function isParsedSchema(value: unknown): value is ParsedJSONSchema {
+	return value === null || typeof value === 'boolean' || isParsedJSONSchemaObject(value);
 }
 
 /** The schema of the items after the tuple items, or `false` when there may be none. */
@@ -53,7 +70,7 @@ export function arrayRest(
 		return false;
 	}
 
-	return (schema.additionalItems as ParsedJSONSchema | undefined) ?? true;
+	return schema.additionalItems ?? true;
 }
 
 export interface ObjectKeys {

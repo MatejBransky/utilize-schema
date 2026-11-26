@@ -1,4 +1,4 @@
-import { schemaRecord } from '@utilize/json-schema';
+import { expectDefined, schemaRecord, withSourceMeta } from '@utilize/json-schema';
 import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { ANNOTATION_KEYWORDS } from './keywords';
@@ -65,7 +65,7 @@ export function mergeTypedSchemas(
 		}
 	}
 
-	return renderTypedSchema(plan, constraints);
+	return renderTypedSchema(plan, constraints, expectDefined(members[0]));
 }
 
 interface MergeTypeState {
@@ -147,7 +147,8 @@ function isMergeableKeyword(
 
 function renderTypedSchema(
 	plan: MergeTypePlan,
-	constraints: TypedConstraints
+	constraints: TypedConstraints,
+	source: ParsedJSONSchemaObject
 ): ParsedJSONSchemaObject {
 	// Keywords like `minimum` or `minItems` only constrain their own JSON type, so
 	// the type stays inferred unless a member declared it.
@@ -161,8 +162,7 @@ function renderTypedSchema(
 		}
 	}
 
-	// oxlint-disable-next-line quality/no-chained-type-assertions -- synthetic node; it has no source Meta to copy
-	return merged as unknown as ParsedJSONSchemaObject;
+	return withSourceMeta(source, merged);
 }
 
 /** The type a subschema constrains, from `type` or its keyword family. */

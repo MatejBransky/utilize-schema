@@ -1,4 +1,4 @@
-import { parse } from '@utilize/json-schema';
+import { assert, isJSONSchema, parse } from '@utilize/json-schema';
 import { generate } from '@utilize/zod';
 import { expect, test } from 'vitest';
 
@@ -16,8 +16,9 @@ test('the TypeScript worker emits runnable JavaScript for generated code', async
 	const bundle = buildBundle(example.files.map(parseJsonFile), example.files[0].id);
 
 	expect(bundle.problems).toEqual([]);
+	assert(isJSONSchema(bundle.root), 'Expected the bundled root to be a schema.');
 
-	const { root } = await parse(bundle.root as never, {
+	const { root } = await parse(bundle.root, {
 		cwd: '/',
 		fileName: bundle.rootFileName,
 	});

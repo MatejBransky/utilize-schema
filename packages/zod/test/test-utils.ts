@@ -1,5 +1,11 @@
-import { expectDefined, parse } from '@utilize/json-schema';
-import type { DialectOptions, JSONSchema } from '@utilize/json-schema';
+import {
+	expectDefined,
+	isParsedJSONSchemaObject,
+	Meta,
+	parse,
+	resolveDialect,
+} from '@utilize/json-schema';
+import type { DialectOptions, JSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 import type { z } from 'zod';
 
 import { formatSource, ts } from '@utilize/test-utils/code';
@@ -18,6 +24,70 @@ export type TestGenerateOptions = Pick<
 >;
 
 export { ts };
+
+/** Adds raw keywords the public model does not declare yet to a typed fixture. */
+export function schemaWithExtensions(
+	schema: JSONSchema,
+	extensions: Record<string, unknown>
+): JSONSchema {
+	return Object.assign(schema, extensions);
+}
+
+/** Builds the linked shape unit tests need without running the parser. */
+export function parsedSchema(schema: JSONSchema): ParsedJSONSchemaObject {
+	Object.defineProperty(schema, Meta, {
+		configurable: true,
+		value: {
+			fileName: 'test.json',
+			filePath: __dirname,
+			path: [],
+			parent: null,
+			dialect: resolveDialect({}).dialect.id,
+			dialectSource: 'fallback',
+		},
+	});
+
+	if (!isParsedJSONSchemaObject(schema)) {
+		throw new Error('Fixture did not become a parsed schema.');
+	}
+
+	return schema;
+}
+
+export interface ProcessFailure {
+	stdout?: string;
+	stderr?: string;
+}
+
+function isProcessFailure(value: unknown): value is ProcessFailure {
+	if (typeof value !== 'object' || value === null) {
+		return false;
+	}
+
+	if ('stdout' in value && typeof value.stdout !== 'string') {
+		return false;
+	}
+
+	if ('stderr' in value && typeof value.stderr !== 'string') {
+		return false;
+	}
+
+	return true;
+}
+
+/** Reads the optional captured output from a failed child process. */
+export function errorOutput(error: unknown): ProcessFailure {
+	return isProcessFailure(error) ? error : {};
+}
+
+function isZodType(value: unknown): value is z.ZodType {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'safeParse' in value &&
+		typeof value.safeParse === 'function'
+	);
+}
 
 export interface TestCompileOptions extends TestGenerateOptions {
 	importZod?: boolean;
@@ -70,7 +140,23 @@ export async function compileModule(
 	try {
 		const filePath = join(directory, 'schema.ts');
 		await writeFile(filePath, code);
-		return (await import(filePath)) as Record<string, z.ZodType>;
+		const loaded: unknown = await import(filePath);
+
+		if (typeof loaded !== 'object' || loaded === null || Array.isArray(loaded)) {
+			throw new Error('Generated module did not evaluate to an object.');
+		}
+
+		const module: Record<string, z.ZodType> = {};
+
+		for (const [name, value] of Object.entries(loaded)) {
+			if (!isZodType(value)) {
+				throw new Error(`Generated export "${name}" is not a Zod schema.`);
+			}
+
+			module[name] = value;
+		}
+
+		return module;
 	} finally {
 		await rm(directory, { recursive: true, force: true });
 	}

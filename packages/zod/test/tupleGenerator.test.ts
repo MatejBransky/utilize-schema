@@ -1,9 +1,10 @@
 import { resolveDialect } from '@utilize/json-schema';
-import type { JSONSchema, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
+import type { JSONSchema, ParsedJSONSchema } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
 import { tupleGenerator } from '../src/generators/tupleGenerator';
 import type { GeneratorContext } from '../src/generators/types';
+import { parsedSchema } from './test-utils';
 
 const draft07 = 'http://json-schema.org/draft-07/schema#';
 const twentyTwentyTwelve = 'https://json-schema.org/draft/2020-12/schema';
@@ -28,7 +29,7 @@ const recursion = {
 };
 
 function generate(schema: JSONSchema, dialect = draft07): string {
-	return tupleGenerator.generate(schema as ParsedJSONSchemaObject, contextFor(dialect), recursion);
+	return tupleGenerator.generate(parsedSchema(schema), contextFor(dialect), recursion);
 }
 
 describe('tuple generator', () => {

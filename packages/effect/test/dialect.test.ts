@@ -22,7 +22,7 @@ const refWithSiblings = (dialect: string): TestSchema =>
 				required: ['extra'],
 			},
 		},
-	}) as unknown as TestSchema;
+	}) satisfies TestSchema;
 
 describe('$ref siblings', () => {
 	test('draft-07 ignores them', async () => {
@@ -48,7 +48,7 @@ describe('$ref siblings', () => {
 			$defs: { Name: { type: 'string' } },
 			type: 'object',
 			properties: { value: { $ref: '#/$defs/Name', not: { const: 'x' } } },
-		} as unknown as TestSchema;
+		} satisfies TestSchema;
 
 		const Root = await compileToSchema(schema);
 
@@ -61,7 +61,7 @@ describe('$ref siblings', () => {
 			$defs: { Name: { type: 'string' } },
 			type: 'object',
 			properties: { value: { $ref: '#/$defs/Name', not: { const: 'x' } } },
-		} as unknown as TestSchema;
+		} satisfies TestSchema;
 
 		const Root = await compileToSchema(schema);
 
@@ -75,7 +75,7 @@ describe('$ref siblings', () => {
 			$defs: { Name: { type: 'string' } },
 			type: 'object',
 			properties: { value: { $ref: '#/$defs/Name', minLength: 3, not: { const: 'abcd' } } },
-		} as unknown as TestSchema;
+		} satisfies TestSchema;
 
 		const Root = await compileToSchema(schema);
 
@@ -96,7 +96,7 @@ describe('$ref siblings', () => {
 				},
 			},
 			$ref: '#/$defs/Node',
-		} as unknown as TestSchema;
+		} satisfies TestSchema;
 
 		const Root = await compileToSchema(schema);
 
@@ -113,7 +113,7 @@ describe('keywords outside the dialect', () => {
 			$schema: draft04,
 			type: 'string',
 			const: 'x',
-		} as unknown as TestSchema;
+		} satisfies TestSchema;
 
 		await expect(compile(schema, { keywordPolicy: 'ignore' })).resolves.toMatchCode(ts`
 			export const Root = Schema.String;
@@ -127,7 +127,7 @@ describe('keywords outside the dialect', () => {
 			$schema: draft04,
 			type: 'array',
 			contains: { enum: [{ id: 1 }] },
-		} as unknown as TestSchema;
+		} satisfies TestSchema;
 
 		const Root = await compileToSchema(schema, { keywordPolicy: 'ignore' });
 
@@ -141,7 +141,7 @@ describe('keywords outside the dialect', () => {
 			type: 'string',
 			if: { pattern: '^a' },
 			then: { minLength: 2 },
-		} as unknown as TestSchema;
+		} satisfies TestSchema;
 
 		const Root = await compileToSchema(schema, { keywordPolicy: 'ignore' });
 
@@ -154,7 +154,7 @@ describe('keywords outside the dialect', () => {
 			type: 'string',
 			if: { pattern: '^a' },
 			then: { minLength: 2 },
-		} as unknown as TestSchema;
+		} satisfies TestSchema;
 
 		const Root = await compileToSchema(schema);
 
@@ -167,7 +167,7 @@ describe('keywords outside the dialect', () => {
 			$schema: draft07,
 			type: 'array',
 			prefixItems: [{ type: 'string' }],
-		} as unknown as TestSchema;
+		} satisfies TestSchema;
 
 		const Root = await compileToSchema(schema, { keywordPolicy: 'ignore' });
 
@@ -179,7 +179,7 @@ describe('keywords outside the dialect', () => {
 			$schema: twentyTwentyTwelve,
 			type: 'array',
 			items: [{ type: 'string' }],
-		} as unknown as TestSchema;
+		} satisfies TestSchema;
 
 		const Root = await compileToSchema(schema, { keywordPolicy: 'ignore' });
 
@@ -192,7 +192,7 @@ describe('keywords outside the dialect', () => {
 			type: 'object',
 			properties: { a: { type: 'string' } },
 			unevaluatedProperties: false,
-		} as unknown as TestSchema;
+		} satisfies TestSchema;
 
 		const Root = await compileToSchema(schema, { keywordPolicy: 'ignore' });
 
@@ -205,7 +205,7 @@ describe('keywords outside the dialect', () => {
 			type: 'array',
 			items: [{ type: 'string' }],
 			additionalItems: false,
-		} as unknown as TestSchema;
+		} satisfies TestSchema;
 
 		const Root = await compileToSchema(schema);
 

@@ -1,4 +1,4 @@
-import { Meta, parse } from '@utilize/json-schema';
+import { isParsedJSONSchemaObject, Meta, parse } from '@utilize/json-schema';
 import type { JSONSchema, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 import { formatSource, ts } from '@utilize/test-utils/code';
 
@@ -19,7 +19,7 @@ export type TestSchema = JSONSchema & {
 
 export { ts };
 
-export function withMeta(obj: JSONSchema, meta: Partial<Meta> = {}) {
+export function withMeta(obj: JSONSchema, meta: Partial<Meta> = {}): ParsedJSONSchemaObject {
 	Object.defineProperty(obj, Meta, {
 		enumerable: false,
 		value: { ...meta },
@@ -27,7 +27,26 @@ export function withMeta(obj: JSONSchema, meta: Partial<Meta> = {}) {
 		configurable: true,
 	});
 
-	return obj as ParsedJSONSchemaObject;
+	if (!isParsedJSONSchemaObject(obj)) {
+		throw new Error('Expected schema metadata to be attached');
+	}
+
+	return obj;
+}
+
+/** The captured output of a failed child process, without trusting the thrown value. */
+export function commandOutput(error: unknown) {
+	if (typeof error !== 'object' || error === null) {
+		return { stdout: '', stderr: '' };
+	}
+
+	const stdout = 'stdout' in error ? error.stdout : undefined;
+	const stderr = 'stderr' in error ? error.stderr : undefined;
+
+	return {
+		stdout: typeof stdout === 'string' ? stdout : '',
+		stderr: typeof stderr === 'string' ? stderr : '',
+	};
 }
 
 export interface CompileOptions extends GenerateOptions {

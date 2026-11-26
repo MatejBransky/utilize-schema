@@ -1,9 +1,10 @@
 import { resolveDialect } from '@utilize/json-schema';
-import type { JSONSchema, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
+import type { JSONSchema, ParsedJSONSchema } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
 import { objectGenerator } from '../src/generators/objectGenerator';
 import type { GeneratorContext } from '../src/generators/types';
+import { parsedSchema } from './test-utils';
 
 const context: GeneratorContext = {
 	lazyRefs: new Set(),
@@ -34,34 +35,40 @@ const recursion = {
 };
 
 function generate(schema: JSONSchema): string {
-	return objectGenerator.generate(schema as ParsedJSONSchemaObject, context, recursion);
+	return objectGenerator.generate(parsedSchema(schema), context, recursion);
 }
 
 describe('object generator', () => {
 	test('does not mark a property with a default as optional', () => {
-		const code = generate({ properties: { count: { type: 'number', default: 0 } } });
+		const code = generate({
+			type: 'object',
+			properties: { count: { type: 'number', default: 0 } },
+		});
 
 		expect(code).toContain('"count": z.number().default(0)');
 		expect(code).not.toContain('"count": z.number().default(0).optional()');
 	});
 
 	test('adds a refinement for required properties without a declaration', () => {
-		const code = generate({ required: ['missing'] });
+		const code = generate({ type: 'object', required: ['missing'] });
 
 		expect(code).toContain('.superRefine(');
 		expect(code).toContain('Required property is missing.');
 	});
 
 	test('selects the object variant from additionalProperties', () => {
-		expect(generate({ additionalProperties: false })).toContain('z.strictObject(');
-		expect(generate({ additionalProperties: true })).toContain('z.looseObject(');
-		expect(generate({ additionalProperties: { type: 'number' } })).toContain(
+		expect(generate({ type: 'object', additionalProperties: false })).toContain('z.strictObject(');
+		expect(generate({ type: 'object', additionalProperties: true })).toContain('z.looseObject(');
+		expect(generate({ type: 'object', additionalProperties: { type: 'number' } })).toContain(
 			'.catchall(z.number())'
 		);
 	});
 
 	test('uses a loose object and refinement for patternProperties', () => {
-		const code = generate({ patternProperties: { '^x_': { type: 'number' } } });
+		const code = generate({
+			type: 'object',
+			patternProperties: { '^x_': { type: 'number' } },
+		});
 
 		expect(code).toContain('z.looseObject(');
 		expect(code).toContain('.superRefine(');

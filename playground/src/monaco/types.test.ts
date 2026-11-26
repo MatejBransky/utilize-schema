@@ -1,5 +1,5 @@
 import { generate } from '@utilize/effect';
-import { parse } from '@utilize/json-schema';
+import { assert, isJSONSchema, parse } from '@utilize/json-schema';
 import { expect, test, vi } from 'vitest';
 
 import '../polyfills';
@@ -38,7 +38,10 @@ test('the Effect Schema declarations resolve in the TypeScript worker', async ()
 test('the recursive multi-file example type-checks', async () => {
 	const example = exampleById('multi-file')!;
 	const bundle = buildBundle(example.files.map(parseJsonFile), example.files[0].id);
-	const { root } = await parse(bundle.root as never, {
+
+	assert(isJSONSchema(bundle.root), 'Expected the bundled root to be a schema.');
+
+	const { root } = await parse(bundle.root, {
 		cwd: '/',
 		fileName: bundle.rootFileName,
 	});

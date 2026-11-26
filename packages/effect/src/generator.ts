@@ -3,7 +3,7 @@ import {
 	collectStandaloneSchemas,
 	dialectOf,
 	expectDefined,
-	isPlainObject,
+	isParsedJSONSchemaObject,
 	mapDeclarationNames,
 	Meta,
 	resolveName,
@@ -40,10 +40,10 @@ export type { CustomSchemaResolver, GenerateOptions } from './context';
  * recursive and mutually recursive schemas work without a topological sort.
  */
 export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}): string {
-	const objectRoot = isPlainObject(root) ? (root as ParsedJSONSchemaObject) : undefined;
+	const objectRoot = isParsedJSONSchemaObject(root) ? root : undefined;
 	const collected = objectRoot
 		? collectStandaloneSchemas(objectRoot)
-		: { schemas: [] as ParsedJSONSchemaObject[], edges: [] as SchemaEdge[] };
+		: { schemas: [], edges: [] satisfies SchemaEdge[] };
 	const standalone = collected.schemas.filter((schema) => schema !== objectRoot);
 	const cyclic = findCyclicSchemas(collected.edges, collected.schemas);
 	const valueAliases = new Map<ParsedJSONSchemaObject, string>();
@@ -139,9 +139,8 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 	return `${parts.join('\n\n')}\n`;
 
 	function renderDeclaration(names: DeclarationNames, schema: ParsedJSONSchema): string {
-		const alias = isPlainObject(schema)
-			? valueTypeContext.aliasFor(schema as ParsedJSONSchemaObject)
-			: undefined;
+		const object = isParsedJSONSchemaObject(schema) ? schema : undefined;
+		const alias = object === undefined ? undefined : valueTypeContext.aliasFor(object);
 		const expression = generateSchema(schema, context);
 		const declaration =
 			alias === undefined
@@ -150,7 +149,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		const lines =
 			alias === undefined
 				? []
-				: [renderValueTypeDeclaration(alias, schema as ParsedJSONSchemaObject, valueTypeContext)];
+				: [renderValueTypeDeclaration(alias, expectDefined(object), valueTypeContext)];
 
 		return [...lines, declaration, `export type ${names.type} = typeof ${names.schema}.Type;`].join(
 			'\n\n'
