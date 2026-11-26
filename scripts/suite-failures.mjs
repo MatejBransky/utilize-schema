@@ -63,8 +63,18 @@ export async function collectDialectFailures({
 	return failuresByDialect;
 }
 
-async function failingCasesFor({
-	files,
+async function failingCasesFor(options) {
+	const failing = [];
+
+	for (const file of options.files) {
+		failing.push(...(await failingInFile({ ...options, file })));
+	}
+
+	return failing.sort();
+}
+
+async function failingInFile({
+	file,
 	token,
 	dialect,
 	isCompatible,
@@ -74,21 +84,19 @@ async function failingCasesFor({
 }) {
 	const failing = [];
 
-	for (const file of files) {
-		for (const testCase of file.cases) {
-			if (!isCompatible(testCase.compatibility, token)) {
-				continue;
-			}
+	for (const testCase of file.cases) {
+		if (!isCompatible(testCase.compatibility, token)) {
+			continue;
+		}
 
-			const failed = await failedInstances(testCase, dialect, compile, accepts);
+		const failed = await failedInstances(testCase, dialect, compile, accepts);
 
-			if (failed > 0) {
-				failing.push(`${suiteCaseKey(file, testCase)} (${failed} failed)`);
-			}
+		if (failed > 0) {
+			failing.push(`${suiteCaseKey(file, testCase)} (${failed} failed)`);
 		}
 	}
 
-	return failing.sort();
+	return failing;
 }
 
 async function failedInstances(testCase, dialect, compile, accepts) {
