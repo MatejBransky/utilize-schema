@@ -6,8 +6,8 @@ import { formatSource, ts } from '@utilize/test-utils/code';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import type { CustomSchemaResolver, FormatMode } from '../src/context';
 import { generate } from '../src/generator';
-import type { CustomSchemaResolver, FormatMode } from '../src/generator';
 
 /** JSON Schema 2020-12 keywords that the draft-07 based `JSONSchema` type lacks. */
 export type TestSchema = JSONSchema & {

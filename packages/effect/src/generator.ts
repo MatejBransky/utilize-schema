@@ -26,7 +26,11 @@ import { formatConstantBase } from './string';
 import { literalType, renderValueTypeDeclaration } from './valueTypes';
 import type { ValueTypeContext } from './valueTypes';
 
-export type { CustomSchemaResolver, FormatMode, GenerateOptions } from './context';
+// `generator.ts` is the entry the playground maps `@utilize/effect` to, so the
+// option types stay reachable from here even though they are declared in
+// `context.ts`. `FormatMode` is not part of that surface; import it from
+// `context.ts` or the package barrel.
+export type { CustomSchemaResolver, GenerateOptions } from './context';
 
 /**
  * Generates Effect Schema (v4) code from a linked JSON Schema.
