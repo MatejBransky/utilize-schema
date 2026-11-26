@@ -426,6 +426,7 @@ function deductionTable(report) {
 			(penalty) => `<tr>
       <td>${escapeHtml(penalty.label)}</td>
       <td class="deduction">−${formatNumber(penalty.points)}${penalty.limit === null ? '' : ` / ${formatNumber(penalty.limit)}`}</td>
+      <td class="left"><code>${escapeHtml(penalty.formula)}</code></td>
       <td class="left">${escapeHtml(penalty.measurement?.value ?? '')} — ${escapeHtml(penalty.measurement?.detail ?? '')}</td>
       <td class="left">${escapeHtml(penalty.action ?? '')}</td>
     </tr>`
@@ -433,7 +434,7 @@ function deductionTable(report) {
 		.join('\n');
 
 	return `<div class="table-wrap"><table>
-      <thead><tr><th>Area</th><th>Deduction</th><th class="left">Measurement</th><th class="left">What moves it</th></tr></thead>
+      <thead><tr><th>Area</th><th>Deduction</th><th class="left">Formula</th><th class="left">Measurement</th><th class="left">What moves it</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
 }
@@ -506,15 +507,23 @@ function longFunctionSummary(report) {
 	const share = `${formatNumber(report.counts.longFunctionPct)}% of all functions`;
 	const list =
 		report.longFunctions.length > 0
-			? 'The functions below'
+			? report.counts.longFunctionCount === 1
+				? 'The function below'
+				: 'The functions below'
 			: 'The per-function list is unavailable';
+	const noun = report.counts.longFunctionCount === 1 ? 'function' : 'functions';
 
-	return `${list} cover ${report.counts.longFunctionCount} functions (${share}) and drive the function-size penalty.`;
+	return `${list} cover${report.counts.longFunctionCount === 1 ? 's' : ''} ${report.counts.longFunctionCount} ${noun} (${share}) and drive the function-size penalty.`;
 }
 
-function healthPageContent(report, commit) {
+export function renderHealthPage(report, commit) {
+	const warning = report.formulaWarning
+		? `<p class="note"><strong>Warning:</strong> ${escapeHtml(report.formulaWarning)}</p>`
+		: '';
+
 	return `
     ${scoreCards(report)}
+    ${warning}
     <section class="section">
       <div class="section-head"><div><h2>What deducts points</h2><p>Fallow starts at 100 and subtracts a capped penalty for each area. Only the areas below deduct anything in this build.</p></div></div>
       ${deductionTable(report)}
@@ -525,11 +534,11 @@ function healthPageContent(report, commit) {
       ${longFunctionTable(report.longFunctions, commit, report.counts.longFunctionCount)}
     </section>
     <section class="section">
-      <div class="section-head"><div><h2>Files imported by more than ${report.fanInThreshold} files</h2><p>${escapeHtml(report.counts.highFanInCount.toString())} of ${escapeHtml(report.counts.files.toString())} scored files are above the fan-in threshold, which drives the coupling penalty.</p></div><span class="badge skip">${report.highFanIn.length}</span></div>
+      <div class="section-head"><div><h2>Files imported by more than ${report.fanInThreshold} files</h2><p>${escapeHtml(formatNumber(report.counts.couplingPct))}% of scored files are above the fan-in threshold; ${escapeHtml(report.counts.highFanInCount.toString())} are listed below.</p></div><span class="badge skip">${report.highFanIn.length}</span></div>
       ${highFanInTable(report.highFanIn, commit)}
     </section>
     <section class="section">
-      <div class="section-head"><div><h2>How to read this</h2><p>Every number comes from the same Fallow JSON that the badge and the CI gate use. A penalty is capped, so fixing one area cannot move the score past its cap.</p></div></div>
+      <div class="section-head"><div><h2>How to read this</h2><p>The score and its penalties come from the same Fallow result as the badge and the CI gate. The long-function list is a focused Fallow query because Fallow omits it below 3% of functions. File length does not deduct points: Fallow keeps <code>maxFileLines</code> off, so the size penalty counts only functions over 60 lines.</p></div></div>
       <p class="note"><a href="../index.html">Open the interactive Fallow map</a> · <a href="../health.json">Raw health JSON</a> · <a href="https://fallow.tools/docs/cli/health/#health-score-formula">Fallow score formula</a></p>
     </section>`;
 }
@@ -540,7 +549,7 @@ function renderFallowHealth({ commit, generatedAt, health, longFunctions }) {
 	mkdirSync(directory, { recursive: true });
 
 	const content = report
-		? healthPageContent(report, commit)
+		? renderHealthPage(report, commit)
 		: '<p>Fallow did not produce a health score for this build.</p>';
 
 	writeFileSync(
@@ -677,18 +686,29 @@ function buildFallowReport(renderOnly, failures) {
 				`${JSON.stringify(fullFallow.health, null, 2)}\n`
 			);
 		}
-	} else {
-		run('pnpm', [
-			'exec',
-			'fallow',
-			'health',
-			'--format',
-			'json',
-			'--quiet',
-			'--output-file',
-			join(REPORTS, 'fallow', 'health.json'),
-		]);
+
+		// The test job measures this once and uploads it with the test reports,
+		// so the Pages render reuses that result instead of analyzing again.
+		const longFunctions = readJson(join(ROOT, '.fallow', 'long-functions.json'));
+		if (longFunctions) {
+			writeFileSync(
+				join(REPORTS, 'fallow', 'long-functions.json'),
+				`${JSON.stringify(longFunctions, null, 2)}\n`
+			);
+		}
+		return;
 	}
+
+	run('pnpm', [
+		'exec',
+		'fallow',
+		'health',
+		'--format',
+		'json',
+		'--quiet',
+		'--output-file',
+		join(REPORTS, 'fallow', 'health.json'),
+	]);
 
 	try {
 		const longFunctions = measureLongFunctions(ROOT);
@@ -697,8 +717,9 @@ function buildFallowReport(renderOnly, failures) {
 			`${JSON.stringify(longFunctions, null, 2)}\n`
 		);
 	} catch (error) {
+		// The health page still explains the penalty from the score data and
+		// shows the derived count with a "list unavailable" note.
 		console.error(`Could not measure long functions: ${error.message}`);
-		failures.push('fallow long functions');
 	}
 }
 

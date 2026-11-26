@@ -97,6 +97,15 @@ jobs:
         run: |
           pnpm fallow:coverage --reuse-coverage --score --format json --quiet --output-file .fallow/full.json
 
+      # Fallow omits `large_functions` when fewer than 3% of functions are long,
+      # so ask for that list once and reuse it for the summary and the Pages
+      # build. The zero threshold only enumerates every function; this is not a
+      # second dead-code, duplication or score run.
+      - name: Measure Fallow long functions
+        if: always() && hashFiles('.fallow/full.json') != ''
+        run: |
+          node scripts/fallow-health-report.mjs --write-long-functions .fallow/long-functions.json
+
       # `--warn` makes a warning fail too: this repository treats a `warn` rule
       # as something to fix, not as background noise.
       - name: Gate the Fallow result
@@ -118,7 +127,7 @@ jobs:
         run: |
           node scripts/fallow-health-report.mjs \
             --from .fallow/full.json \
-            --format github-summary \
+            --long-functions .fallow/long-functions.json \
             --repository "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
             --commit "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
 
@@ -133,6 +142,7 @@ jobs:
           path: |
             .fallow/reports
             .fallow/full.json
+            .fallow/long-functions.json
           retention-days: 1
 
   fallow:

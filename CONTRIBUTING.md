@@ -159,8 +159,9 @@ result failed or warned (a machine format does not enforce its own exit code),
 and `fallow report` renders the same result as the job summary. The job summary
 also appends the score breakdown — the points each penalty deducts, the long
 functions behind the function-size penalty and the most-imported files behind
-the coupling penalty — and the Pages report shows the same breakdown at
-`/reports/fallow/health/`.
+the coupling penalty. The test job measures the long-function list once and
+uploads it with the test reports, so the Pages build renders the same breakdown
+at `/reports/fallow/health/` without analyzing the code again.
 
 `rule-packs/utilize-policy.jsonc` keeps generator source browser-safe: `node:*`
 imports are errors in the generator packages outside `compile.ts` and `cli.ts`.

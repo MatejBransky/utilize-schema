@@ -13,10 +13,12 @@
 // keep only the functions over the score's fixed 60-line calibration. The flag
 // is only for enumeration; the score still uses fallow's fixed calibration.
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
+
+export const SCORE_FORMULA_VERSION = 3;
 
 const PENALTY_LIMITS = {
 	dead_files: 15,
@@ -33,9 +35,14 @@ const PENALTY_LIMITS = {
 	prop_drilling: 5,
 };
 
+function weightedFormula(rate, weight, points) {
+	return `${formatNumber(rate)} × ${weight} = ${formatNumber(points)}`;
+}
+
 const PENALTY_DEFINITIONS = {
 	unit_size: {
 		label: 'Function size',
+		formula: ({ perKLongFunctions }, points) => weightedFormula(perKLongFunctions, '0.5', points),
 		measure: ({ perKLongFunctions, longFunctionCount, functions, longFunctionPct }) => ({
 			value: `${formatNumber(perKLongFunctions)} large functions per 1,000`,
 			detail: `${longFunctionCount} of ${functions} functions (${formatNumber(longFunctionPct)}%) are longer than 60 lines.`,
@@ -45,15 +52,17 @@ const PENALTY_DEFINITIONS = {
 	},
 	coupling: {
 		label: 'Coupling',
-		measure: ({ couplingPct, highFanIn, files, fanInThreshold }) => ({
-			value: `${formatNumber(couplingPct)}% of files above fan-in ${fanInThreshold}`,
-			detail: `${highFanIn.length} of ${files} files are imported by more than ${fanInThreshold} files.`,
+		formula: ({ couplingPct }, points) => weightedFormula(couplingPct, '0.5', points),
+		measure: ({ couplingPct, highFanIn, fanInThreshold }) => ({
+			value: `${formatNumber(couplingPct)}% of scored files above fan-in ${fanInThreshold}`,
+			detail: `${highFanIn.length} file${highFanIn.length === 1 ? '' : 's'} listed below.`,
 		}),
 		action:
 			'Put shared logic behind one module or a facade, so importers depend on a small interface instead of many files.',
 	},
 	dead_files: {
 		label: 'Unused files',
+		formula: ({ deadFilePct }, points) => weightedFormula(deadFilePct, '0.2', points),
 		measure: ({ deadFilePct }) => ({
 			value: `${formatNumber(deadFilePct)}% of files are unused`,
 			detail: 'A file that nothing imports is weight the score still counts.',
@@ -62,6 +71,7 @@ const PENALTY_DEFINITIONS = {
 	},
 	dead_exports: {
 		label: 'Unused exports',
+		formula: ({ deadExportPct }, points) => weightedFormula(deadExportPct, '0.2', points),
 		measure: ({ deadExportPct }) => ({
 			value: `${formatNumber(deadExportPct)}% of value exports are unused`,
 			detail: 'An export that no file imports is dead surface.',
@@ -70,6 +80,8 @@ const PENALTY_DEFINITIONS = {
 	},
 	complexity: {
 		label: 'Critical complexity',
+		formula: ({ criticalComplexityPct }, points) =>
+			weightedFormula(criticalComplexityPct, '4', points),
 		measure: ({ criticalComplexityPct }) => ({
 			value: `${formatNumber(criticalComplexityPct)}% of functions at cyclomatic 50+`,
 			detail: 'Only critical functions move this penalty; the normal thresholds do not.',
@@ -78,6 +90,8 @@ const PENALTY_DEFINITIONS = {
 	},
 	p90_complexity: {
 		label: 'P90 complexity',
+		formula: ({ p90Cyclomatic }, points) =>
+			`${formatNumber(p90Cyclomatic)} − 10 = ${formatNumber(points)}`,
 		measure: ({ p90Cyclomatic }) => ({
 			value: `P90 cyclomatic ${formatNumber(p90Cyclomatic)}`,
 			detail:
@@ -87,6 +101,8 @@ const PENALTY_DEFINITIONS = {
 	},
 	maintainability: {
 		label: 'Low maintainability',
+		formula: ({ maintainabilityLowPct }, points) =>
+			weightedFormula(maintainabilityLowPct, '1.5', points),
 		measure: ({ maintainabilityLowPct }) => ({
 			value: `${formatNumber(maintainabilityLowPct)}% of files have an MI below 70`,
 			detail:
@@ -97,6 +113,8 @@ const PENALTY_DEFINITIONS = {
 	},
 	hotspots: {
 		label: 'Hotspots',
+		formula: ({ hotspotCount, hotspotDenominator }, points) =>
+			`${hotspotCount} ÷ ${hotspotDenominator} × 10 = ${formatNumber(points)}`,
 		measure: ({ hotspotCount }) => ({
 			value: `${hotspotCount} hotspot file${hotspotCount === 1 ? '' : 's'}`,
 			detail: 'A hotspot is both complex and frequently changed.',
@@ -105,6 +123,7 @@ const PENALTY_DEFINITIONS = {
 	},
 	unused_deps: {
 		label: 'Unused dependencies',
+		formula: ({ unusedDepsPerK }, points) => weightedFormula(unusedDepsPerK, '0.5', points),
 		measure: ({ unusedDepCount, unusedDepsPerK }) => ({
 			value: `${unusedDepCount} unused dependenc${unusedDepCount === 1 ? 'y' : 'ies'} (${formatNumber(unusedDepsPerK)} per 1,000 files)`,
 			detail: 'The penalty scales with the size of the repository.',
@@ -113,6 +132,7 @@ const PENALTY_DEFINITIONS = {
 	},
 	circular_deps: {
 		label: 'Circular dependencies',
+		formula: ({ circularDepsPerK }, points) => weightedFormula(circularDepsPerK, '0.5', points),
 		measure: ({ circularDepCount, circularDepsPerK }) => ({
 			value: `${circularDepCount} cycle${circularDepCount === 1 ? '' : 's'} (${formatNumber(circularDepsPerK)} per 1,000 files)`,
 			detail: 'The penalty scales with the size of the repository.',
@@ -121,6 +141,8 @@ const PENALTY_DEFINITIONS = {
 	},
 	duplication: {
 		label: 'Duplication',
+		formula: ({ duplicationPct }, points) =>
+			`${formatNumber(duplicationPct)} − 5 = ${formatNumber(points)}`,
 		measure: ({ duplicationPct }) => ({
 			value: `${formatNumber(duplicationPct)}% duplicated lines`,
 			detail: 'Only duplication above the 5% floor deducts points.',
@@ -129,6 +151,8 @@ const PENALTY_DEFINITIONS = {
 	},
 	prop_drilling: {
 		label: 'Prop drilling',
+		formula: ({ propDrillingCount }, points) =>
+			`${propDrillingCount} × 1 = ${formatNumber(points)}`,
 		measure: ({ propDrillingCount }) => ({
 			value: `${propDrillingCount} prop-drilling chain${propDrillingCount === 1 ? '' : 's'}`,
 			detail: 'The chain passes the same props through several components.',
@@ -220,6 +244,7 @@ function buildContext(health, longFunctions) {
 		: files > 0
 			? (highFanIn.length / files) * 100
 			: 0;
+	const hotspotDenominator = Math.max(1, Math.ceil(files / 100));
 
 	return {
 		...metrics,
@@ -233,6 +258,7 @@ function buildContext(health, longFunctions) {
 		fanInThreshold,
 		highFanIn,
 		couplingPct,
+		hotspotDenominator,
 		propDrillingCount,
 	};
 }
@@ -246,6 +272,7 @@ function describePenalty([key, points], context) {
 		label: definition?.label ?? key.replaceAll('_', ' '),
 		points: value,
 		limit: PENALTY_LIMITS[key] ?? null,
+		formula: definition?.formula?.(context, value) ?? '',
 		measurement: definition?.measure?.(context),
 		action: definition?.action,
 	};
@@ -264,11 +291,16 @@ export function describeHealth(result, { longFunctions = [] } = {}) {
 	const deducted = penalties
 		.filter((penalty) => penalty.points > 0)
 		.sort((a, b) => b.points - a.points);
+	const formulaWarning =
+		score.formula_version === SCORE_FORMULA_VERSION
+			? undefined
+			: `Fallow reports formula v${score.formula_version}; this report uses the v${SCORE_FORMULA_VERSION} caps.`;
 
 	return {
 		score: score.score,
 		grade: score.grade,
 		formulaVersion: score.formula_version,
+		formulaWarning,
 		totalDeduction: round1(deducted.reduce((total, penalty) => total + penalty.points, 0)),
 		penalties,
 		deducted,
@@ -285,6 +317,20 @@ export function describeHealth(result, { longFunctions = [] } = {}) {
 			couplingPct: round1(context.couplingPct),
 		},
 	};
+}
+
+export function parseLongFunctions(report) {
+	return (report.findings ?? [])
+		.filter((finding) => finding.line_count > 60)
+		.map((finding) => ({
+			path: finding.path,
+			name: finding.name,
+			line: finding.line,
+			lines: finding.line_count,
+			cyclomatic: finding.cyclomatic,
+			cognitive: finding.cognitive,
+		}))
+		.sort((a, b) => b.lines - a.lines || a.path.localeCompare(b.path) || a.line - b.line);
 }
 
 /**
@@ -319,19 +365,7 @@ export function measureLongFunctions(root = process.cwd()) {
 	}
 
 	const payload = result.stdout.slice(result.stdout.indexOf('{'));
-	const report = JSON.parse(payload);
-
-	return (report.findings ?? [])
-		.filter((finding) => finding.line_count > 60)
-		.map((finding) => ({
-			path: finding.path,
-			name: finding.name,
-			line: finding.line,
-			lines: finding.line_count,
-			cyclomatic: finding.cyclomatic,
-			cognitive: finding.cognitive,
-		}))
-		.sort((a, b) => b.lines - a.lines || a.path.localeCompare(b.path) || a.line - b.line);
+	return parseLongFunctions(JSON.parse(payload));
 }
 
 function escapeHtml(value) {
@@ -383,6 +417,7 @@ function deductionLines(report) {
 	const rows = report.deducted.map((penalty) => [
 		penalty.label,
 		penaltyPoints(penalty),
+		penalty.formula,
 		[penalty.measurement?.value, penalty.measurement?.detail].filter(Boolean).join(' — '),
 		penalty.action ?? '',
 	]);
@@ -390,91 +425,65 @@ function deductionLines(report) {
 	return [
 		`Fallow starts at 100 and deducts **${formatNumber(report.totalDeduction)}** points.`,
 		'',
-		markdownTable(['Area', 'Deduction', 'Measurement', 'What moves it'], rows),
+		markdownTable(['Area', 'Deduction', 'Formula', 'Measurement', 'What moves it'], rows),
 	];
 }
 
-function reportActionsLink(repository) {
-	return repository ? `${repository}/actions` : 'the full report';
-}
-
-function longFunctionLines(report, { repository, commit, limit }) {
+function longFunctionLines(report, { repository, commit }) {
 	if (report.longFunctions.length === 0) return [];
 
-	const shown = report.longFunctions.slice(0, limit);
-	const rows = shown.map((fn) => [
+	const rows = report.longFunctions.map((fn) => [
 		String(fn.lines),
 		codeCell(fn.name),
 		locationCell(fn.path, fn.line, repository, commit),
 	]);
-	const lines = [
+
+	return [
 		'',
 		`<details><summary>${report.longFunctions.length} functions longer than 60 lines</summary>`,
 		'',
 		markdownTable(['Lines', 'Function', 'Location'], rows),
+		'',
+		'</details>',
 	];
-
-	if (report.longFunctions.length > limit) {
-		lines.push(
-			'',
-			`…and ${report.longFunctions.length - limit} more in the [health report](${reportActionsLink(repository)}).`
-		);
-	}
-
-	lines.push('', '</details>');
-	return lines;
 }
 
-function highFanInLines(report, { repository, commit, limit }) {
+function highFanInLines(report, { repository, commit }) {
 	if (report.highFanIn.length === 0) return [];
 
-	const rows = report.highFanIn
-		.slice(0, limit)
-		.map((file) => [
-			String(file.fan_in),
-			String(file.fan_out),
-			formatNumber(file.maintainability_index),
-			locationCell(file.path, 0, repository, commit),
-		]);
-	const lines = [
+	const rows = report.highFanIn.map((file) => [
+		String(file.fan_in),
+		String(file.fan_out),
+		formatNumber(file.maintainability_index),
+		locationCell(file.path, 0, repository, commit),
+	]);
+
+	return [
 		'',
 		`<details><summary>${report.highFanIn.length} files imported by more than ${report.fanInThreshold} files</summary>`,
 		'',
 		markdownTable(['Fan-in', 'Fan-out', 'Maintainability', 'File'], rows),
+		'',
+		'</details>',
 	];
-
-	if (report.highFanIn.length > limit) {
-		lines.push(
-			'',
-			`…and ${report.highFanIn.length - limit} more in the [health report](${reportActionsLink(repository)}).`
-		);
-	}
-
-	lines.push('', '</details>');
-	return lines;
 }
 
-export function renderHealthMarkdown(
-	report,
-	{ repository, commit, longFunctionLimit = 10, fanInLimit = 10 } = {}
-) {
+export function renderHealthMarkdown(report, { repository, commit } = {}) {
 	if (!report) return '';
 
-	const lines = [
-		`### Fallow health: ${formatNumber(report.score)} (${report.grade})`,
-		'',
+	const lines = [`### Fallow health: ${formatNumber(report.score)} (${report.grade})`, ''];
+
+	if (report.formulaWarning) {
+		lines.push(`> [!WARNING]`, `> ${report.formulaWarning}`, '');
+	}
+
+	lines.push(
 		...deductionLines(report),
-		...longFunctionLines(report, {
-			repository,
-			commit,
-			limit: longFunctionLimit,
-		}),
-		...highFanInLines(report, {
-			repository,
-			commit,
-			limit: fanInLimit,
-		}),
-	];
+		...longFunctionLines(report, { repository, commit }),
+		...highFanInLines(report, { repository, commit }),
+		'',
+		'File length does not deduct points: Fallow keeps `health.maxFileLines` off by default. The size penalty counts only functions longer than 60 lines.'
+	);
 
 	return `${lines.join('\n')}\n`;
 }
@@ -490,22 +499,20 @@ function parseArguments(argv) {
 			allowPositionals: false,
 			options: {
 				from: { type: 'string' },
-				format: { type: 'string', default: 'markdown' },
 				'long-functions': { type: 'string' },
+				'write-long-functions': { type: 'string' },
 				repository: { type: 'string' },
 				commit: { type: 'string' },
-				'no-measure': { type: 'boolean' },
 				help: { type: 'boolean', short: 'h' },
 			},
 		});
 
 		return {
 			from: values.from,
-			format: values.format,
 			longFunctions: values['long-functions'],
+			writeLongFunctions: values['write-long-functions'],
 			repository: values.repository,
 			commit: values.commit,
-			measure: !values['no-measure'],
 			help: values.help,
 		};
 	} catch (error) {
@@ -516,13 +523,13 @@ function parseArguments(argv) {
 function usage() {
 	return [
 		'Usage: node scripts/fallow-health-report.mjs --from <fallow-json> [options]',
+		'       node scripts/fallow-health-report.mjs --write-long-functions <path>',
 		'',
 		'Options:',
-		'  --format <markdown|github-summary>  Output format (default: markdown)',
-		'  --long-functions <path>            Read the long-function list from a JSON file',
-		'  --no-measure                       Do not run fallow to enumerate long functions',
-		'  --repository <url>                 Repository URL for source links',
-		'  --commit <sha>                     Commit for source links',
+		'  --long-functions <path>        Read the long-function list from a JSON file',
+		'  --write-long-functions <path>  Measure and write the long-function list, then exit',
+		'  --repository <url>             Repository URL for source links',
+		'  --commit <sha>                 Commit for source links',
 	].join('\n');
 }
 
@@ -535,14 +542,19 @@ function readInputs(options) {
 		throw new Error(`Could not read ${options.from}: ${error.message}`);
 	}
 
-	if (!options.longFunctions) {
-		return { result, longFunctions: options.measure ? measureLongFunctions() : [] };
+	if (options.longFunctions) {
+		try {
+			return { result, longFunctions: readJson(options.longFunctions) };
+		} catch (error) {
+			throw new Error(`Could not read ${options.longFunctions}: ${error.message}`);
+		}
 	}
 
 	try {
-		return { result, longFunctions: readJson(options.longFunctions) };
+		return { result, longFunctions: measureLongFunctions() };
 	} catch (error) {
-		throw new Error(`Could not read ${options.longFunctions}: ${error.message}`);
+		console.error(`Could not measure long functions: ${error.message}`);
+		return { result, longFunctions: [] };
 	}
 }
 
@@ -558,6 +570,15 @@ function main() {
 
 	if (options.help) {
 		console.log(usage());
+		return;
+	}
+
+	if (options.writeLongFunctions) {
+		const longFunctions = measureLongFunctions();
+		writeFileSync(options.writeLongFunctions, `${JSON.stringify(longFunctions, null, 2)}\n`);
+		console.log(
+			`Wrote ${longFunctions.length} functions over 60 lines to ${options.writeLongFunctions}.`
+		);
 		return;
 	}
 
@@ -581,11 +602,6 @@ function main() {
 
 	if (!report) {
 		console.error(`No health score in ${options.from}.`);
-		process.exit(2);
-	}
-
-	if (options.format !== 'github-summary' && options.format !== 'markdown') {
-		console.error(`Unknown format: ${options.format}\n\n${usage()}`);
 		process.exit(2);
 	}
 

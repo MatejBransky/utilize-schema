@@ -3,8 +3,10 @@ import { test } from 'node:test';
 
 import {
 	describeHealth,
+	fileScores,
 	formatNumber,
 	healthSection,
+	parseLongFunctions,
 	renderHealthMarkdown,
 } from './fallow-health-report.mjs';
 
@@ -60,7 +62,9 @@ test('describes the deductions and the measurement behind each one', () => {
 	assert.equal(report.counts.longFunctionCount, 21);
 	assert.equal(report.counts.highFanInCount, 2);
 	assert.match(report.deducted[0].measurement.detail, /21 of 1268 functions/);
-	assert.match(report.deducted[1].measurement.detail, /2 of 152 files/);
+	assert.match(report.deducted[1].measurement.detail, /2 files listed below/);
+	assert.equal(report.deducted[0].formula, '16.6 × 0.5 = 8.3');
+	assert.equal(report.deducted[1].formula, '4.6 × 0.5 = 2.3');
 });
 
 test('uses the measured long-function list when it is available', () => {
@@ -87,13 +91,14 @@ test('renders the breakdown with source links for the job summary', () => {
 
 	assert.match(markdown, /### Fallow health: 89\.4 \(A\)/);
 	assert.match(markdown, /deducts \*\*10\.6\*\* points/);
-	assert.match(markdown, /\| Function size \| −8\.3 \/ 10 \|/);
+	assert.match(markdown, /\| Function size \| −8\.3 \/ 10 \| 16\.6 × 0\.5 = 8\.3 \|/);
 	assert.match(markdown, /1 of 1268 functions/);
 	assert.match(
 		markdown,
 		/\[<code>a\.ts:10<\/code>\]\(https:\/\/github\.com\/example\/repo\/blob\/abc1234\/a\.ts#L10\)/
 	);
 	assert.match(markdown, /2 files imported by more than 10 files/);
+	assert.match(markdown, /File length does not deduct points/);
 });
 
 test('renders a zero-deduction report without an empty deduction table', () => {
@@ -109,6 +114,40 @@ test('renders a zero-deduction report without an empty deduction table', () => {
 
 	assert.match(markdown, /No area deducts points/);
 	assert.doesNotMatch(markdown, /What moves it/);
+});
+
+test('reads file scores from an array or a map', () => {
+	const scores = [{ path: 'a.ts', fan_in: 3 }];
+
+	assert.deepEqual(fileScores({ file_scores: scores }), scores);
+	assert.deepEqual(fileScores({ file_scores: { 0: scores[0] } }), scores);
+	assert.deepEqual(fileScores({}), []);
+});
+
+test('parses only functions over 60 lines and sorts them longest first', () => {
+	const longFunctions = parseLongFunctions({
+		findings: [
+			{ path: 'a.ts', name: 'short', line: 1, line_count: 60, cyclomatic: 2, cognitive: 1 },
+			{ path: 'b.ts', name: 'long', line: 5, line_count: 120, cyclomatic: 4, cognitive: 3 },
+			{ path: 'c.ts', name: 'longer', line: 9, line_count: 180, cyclomatic: 6, cognitive: 5 },
+		],
+	});
+
+	assert.deepEqual(
+		longFunctions.map((fn) => fn.name),
+		['longer', 'long']
+	);
+	assert.equal(longFunctions[0].lines, 180);
+});
+
+test('warns when the score formula version changes', () => {
+	const report = describeHealth({
+		...health,
+		health_score: { ...health.health_score, formula_version: 4 },
+	});
+	const markdown = renderHealthMarkdown(report);
+
+	assert.match(markdown, /Fallow reports formula v4/);
 });
 
 test('formats numbers without a trailing .0', () => {
