@@ -1,5 +1,29 @@
 # @utilize/typescript
 
+## 0.5.0
+
+### Minor Changes
+
+- 0939ed0: Export the types referenced by exported signatures so consumers can name them: `Writable` and `KeywordIssue` in `@utilize/json-schema`, `ObjectKeys` in `@utilize/effect`, `StandaloneSchemasResult` in `@utilize/typescript`, and the generator predicate, generate and test-option types in `@utilize/zod`. These types were already part of the emitted declarations; the export only makes them importable. The `private-type-leaks` rule now keeps that true.
+
+### Patch Changes
+
+- bab16d9: The CLI and the file-reading part of `compile` now come from `@utilize/json-schema/node`, so the three generators no longer keep their own copies, and they no longer depend on `js-yaml` directly. Flags, help text, exit codes, messages and generated files stay the same.
+- Updated dependencies [72afcad]
+- Updated dependencies [0939ed0]
+- Updated dependencies [338f308]
+- Updated dependencies [41afe47]
+- Updated dependencies [5d32982]
+- Updated dependencies [04c7a38]
+- Updated dependencies [4d5c1b2]
+- Updated dependencies [75e513a]
+- Updated dependencies [d9f8cf8]
+- Updated dependencies [91a0ef6]
+- Updated dependencies [24d44f0]
+- Updated dependencies [0b3806c]
+- Updated dependencies [48bae59]
+  - @utilize/json-schema@0.7.0
+
 ## 0.4.1
 
 ### Patch Changes
