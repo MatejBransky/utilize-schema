@@ -63,7 +63,12 @@ utilize-zod user.json user.zod.ts
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "properties": { "email": { "type": "string", "format": "email" } },
+  "properties": {
+    "email": {
+      "type": "string",
+      "format": "email"
+    }
+  },
   "required": ["email"],
   "additionalProperties": false
 }

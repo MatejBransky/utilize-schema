@@ -25,9 +25,16 @@ when you want types without a schema runtime.
 - **The output imports nothing.** It compiles with `tsc --strict` as part of CI.
 
 ```json
-{ "type": "object",
-  "properties": { "email": { "type": "string", "format": "email" } },
-  "required": ["email"] }
+{
+  "type": "object",
+  "properties": {
+    "email": {
+      "type": "string",
+      "format": "email"
+    }
+  },
+  "required": ["email"]
+}
 ```
 
 ```ts

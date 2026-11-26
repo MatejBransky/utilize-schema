@@ -23,9 +23,16 @@ file imports nothing but `zod`.
 - **93% of the official suite.** 283 of 304 draft-07 cases; 96% line coverage.
 
 ```json
-{ "type": "object",
-  "properties": { "email": { "type": "string", "format": "email" } },
-  "required": ["email"] }
+{
+  "type": "object",
+  "properties": {
+    "email": {
+      "type": "string",
+      "format": "email"
+    }
+  },
+  "required": ["email"]
+}
 ```
 
 ```ts

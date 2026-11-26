@@ -22,9 +22,15 @@ dependency ordering and imports only `effect`.
 - **94% of the official suite.** 286 of 304 draft-07 cases; 96% line coverage.
 
 ```json
-{ "type": "object",
-  "properties": { "name": { "type": "string" } },
-  "required": ["name"] }
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    }
+  },
+  "required": ["name"]
+}
 ```
 
 ```ts
