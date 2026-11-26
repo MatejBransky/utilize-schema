@@ -83,12 +83,12 @@ export function OutputPane({ playground }: OutputPaneProps) {
 				onOpenChange={(open) => layout.setProblemsCollapsed(!open)}
 			>
 				<CollapsibleTrigger className={styles.problemsHeader}>
-					<span className={styles.heading}>Validation</span>
-					<span className={styles.problemsSummary}>
-						<span className={styles.counts} data-severity={errorCount > 0 ? 'error' : 'ok'}>
-							{errorCount} errors, {warningCount} warnings
-						</span>
+					<span className={styles.problemsTitle}>
+						<span className={styles.heading}>Validation</span>
 						<ChevronDownIcon />
+					</span>
+					<span className={styles.counts} data-severity={errorCount > 0 ? 'error' : 'ok'}>
+						{errorCount} errors, {warningCount} warnings
 					</span>
 				</CollapsibleTrigger>
 				<CollapsiblePanel id="validation-problems" className={styles.problemsBody} keepMounted>

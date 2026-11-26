@@ -354,7 +354,7 @@
 }
 
 .sectionToggle svg,
-.problemsSummary svg {
+.problemsTitle svg {
 	flex: none;
 	width: 0.875rem;
 	height: 0.875rem;
@@ -537,7 +537,7 @@
 	outline-offset: -2px;
 }
 
-.problemsSummary {
+.problemsTitle {
 	display: inline-flex;
 	align-items: center;
 	gap: calc(var(--ui-spacing) * 2);
