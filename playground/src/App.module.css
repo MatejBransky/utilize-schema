@@ -361,7 +361,8 @@
 	transition: transform 120ms ease;
 }
 
-.sectionToggle[data-closed] svg {
+.sectionToggle[data-closed] svg,
+.problemsHeader[data-closed] svg {
 	transform: rotate(180deg);
 }
 
@@ -541,10 +542,6 @@
 	display: inline-flex;
 	align-items: center;
 	gap: calc(var(--ui-spacing) * 2);
-}
-
-.problemsHeader[data-closed] svg {
-	transform: rotate(-90deg);
 }
 
 .problems[data-closed] {
