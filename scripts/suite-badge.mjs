@@ -22,15 +22,19 @@ async function loadBaseline(packageName) {
 	return module.baseline;
 }
 
-function badgePathFor(packageName, dialect) {
+export function badgePathFor(packageName, dialect) {
 	return join(BADGE_DIRECTORY, `suite-${packageName}-${dialect}.svg`);
 }
 
-function readCommittedBadge(path) {
+export function readCommittedBadge(path) {
 	return existsSync(path) ? readFileSync(path, 'utf8') : null;
 }
 
-function describeBadge(dialect, entry) {
+export function isBadgeStale(path, badge) {
+	return readCommittedBadge(path) !== badge;
+}
+
+export function describeBadge(dialect, entry) {
 	const percent = Math.floor((entry.passing / entry.cases) * 100);
 
 	return {
@@ -55,7 +59,7 @@ function recordBadge(packageName, dialect, entry, staleBadges) {
 		return;
 	}
 
-	if (readCommittedBadge(path) !== badge) {
+	if (isBadgeStale(path, badge)) {
 		staleBadges.push(`${packageName} ${dialect}`);
 	}
 }
@@ -80,4 +84,6 @@ async function run() {
 	}
 }
 
-await run();
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+	await run();
+}
