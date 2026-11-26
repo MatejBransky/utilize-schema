@@ -19,3 +19,5 @@ coverage/
 fallow-results.sarif
 fallow-results.json
 packages/content-mapper/test/fixtures/main.mjs
+packages/content-mapper/test/fixtures/effect.mjs
+packages/content-mapper/test/.vite-output/

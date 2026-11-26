@@ -137,6 +137,18 @@ export default defineConfig({
 			rules: { 'typescript/no-unsafe-type-assertion': 'off' },
 		},
 		{
+			// The content mapper protocol parses untrusted JSON-RPC payloads at
+			// its boundary. The values are validated before dispatch, but the
+			// wire shape is inherently open, so the dictionary and dynamic-read
+			// rules would force an unsafe cast anyway.
+			files: ['packages/content-mapper/src/mapper-server.ts', 'packages/content-mapper/src/rpc.ts'],
+			rules: {
+				'quality/no-unsafe-dictionary-type': 'off',
+				'quality/no-reflect-get': 'off',
+				'quality/no-unknown-returns': 'off',
+			},
+		},
+		{
 			// The parser and linker are where untrusted JSON becomes the parsed
 			// model; their narrowing is the parse step.
 			files: ['packages/json-schema/src/parser.ts', 'packages/json-schema/src/linker.ts'],

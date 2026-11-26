@@ -45,6 +45,12 @@ function schemaFile(id: string): string | undefined {
  * module the content mapper shows to TypeScript.
  */
 export default function utilizeSchema(options: MapperOptions = {}) {
+	if ((options.target ?? 'zod') === 'typescript') {
+		throw new Error(
+			'The "typescript" target is types-only and has no runtime module; use "zod" or "effect" for the Vite plugin.'
+		);
+	}
+
 	return {
 		name: 'utilize-schema',
 		enforce: 'pre' as const,
@@ -56,9 +62,16 @@ export default function utilizeSchema(options: MapperOptions = {}) {
 			}
 
 			const result = await schemaModule(file, await readFile(file, 'utf8'), options);
+			const diagnostic = result.diagnostics?.[0];
 
-			if (result.diagnostics?.length) {
-				this.error?.(`${file}: ${result.diagnostics[0]!.messageText}`);
+			if (diagnostic) {
+				const message = `${file}: ${diagnostic.messageText}`;
+
+				if (this.error) {
+					this.error(message);
+				} else {
+					throw new Error(message);
+				}
 			}
 
 			// The generated module depends on the files it resolved through `$ref`.

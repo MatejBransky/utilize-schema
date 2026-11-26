@@ -2,6 +2,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { build } from 'vite';
 import { afterAll, expect, test } from 'vitest';
 
 import utilizeSchema from '../src/vite';
@@ -105,7 +106,28 @@ test('leaves the queries Vite answers itself to Vite', async () => {
 	}
 });
 
-test('every target emits only type syntax that can be erased', async () => {
+test('a real Vite build bundles the generated module', async () => {
+	const result = (await build({
+		configFile: false,
+		logLevel: 'silent',
+		build: {
+			write: false,
+			minify: false,
+			rollupOptions: { input: fixture, external: ['zod'] },
+		},
+		plugins: [utilizeSchema()],
+	})) as { output: { code?: string }[] };
+	const code = result.output.map((chunk) => chunk.code ?? '').join('\n');
+
+	expect(code).toContain('z.strictObject');
+	expect(code).toContain('"Person"');
+});
+
+test('rejects the types-only target for a runtime bundle', () => {
+	expect(() => utilizeSchema({ target: 'typescript' })).toThrow(/types-only/);
+});
+
+test('every runtime target emits only type syntax that can be erased', async () => {
 	// `stripTypeScriptTypes` throws on syntax such as `enum`, so this fails as
 	// soon as a generator starts emitting it. A JSON Schema `enum` is the most
 	// likely trigger.
@@ -114,7 +136,7 @@ test('every target emits only type syntax that can be erased', async () => {
 	await mkdir(temp, { recursive: true });
 	await writeFile(choice, JSON.stringify({ title: 'Choice', enum: ['a', 'b', 1] }));
 
-	for (const target of ['zod', 'effect', 'typescript'] as const) {
+	for (const target of ['zod', 'effect'] as const) {
 		const plugin = utilizeSchema({ target });
 
 		for (const file of [fixture, relatedFixture, choice]) {

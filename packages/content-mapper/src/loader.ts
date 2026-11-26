@@ -1,6 +1,7 @@
 // fallow-ignore-file coverage-gaps -- the Node loader is only reached in the spawned mapper process; the integration tests exercise it end to end
 
 import { readFile } from 'node:fs/promises';
+import type { LoadHook } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 import { isTarget, schemaModule } from './module';
@@ -11,11 +12,7 @@ const extension = '.jsonschema';
  * Async ESM load hooks for Node. The generated module is returned as
  * `module-typescript`; Node 24 strips the annotations.
  */
-export async function load(
-	url: string,
-	context: unknown,
-	nextLoad: (url: string, context: unknown) => Promise<unknown>
-): Promise<unknown> {
+export const load: LoadHook = async (url, context, nextLoad) => {
 	if (!url.endsWith(extension)) {
 		return nextLoad(url, context);
 	}
@@ -28,12 +25,19 @@ export async function load(
 		);
 	}
 
+	if (target === 'typescript') {
+		throw new Error(
+			'The "typescript" target is types-only and has no runtime module; use "zod" or "effect" for a runtime import.'
+		);
+	}
+
 	const fileName = fileURLToPath(url);
 	const content = await readFile(fileName, 'utf8');
 	const result = await schemaModule(fileName, content, { target });
+	const diagnostic = result.diagnostics?.[0];
 
-	if (result.diagnostics?.length) {
-		throw new Error(`${fileName}: ${result.diagnostics[0]!.messageText}`);
+	if (diagnostic) {
+		throw new Error(`${fileName}: ${diagnostic.messageText}`);
 	}
 
 	return {
@@ -41,4 +45,4 @@ export async function load(
 		source: result.text,
 		shortCircuit: true,
 	};
-}
+};

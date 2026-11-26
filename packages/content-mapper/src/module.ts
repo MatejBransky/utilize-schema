@@ -22,6 +22,15 @@ export interface MapperDiagnostic {
 	code: number;
 }
 
+/** Stable diagnostic codes; the message is the user-facing part. */
+export const MapperDiagnosticCode = {
+	InvalidJson: 1,
+	InvalidTarget: 2,
+	Schema: 3,
+	UnknownOption: 100,
+	InvalidOption: 101,
+} as const;
+
 export interface SchemaModule {
 	text: string;
 	diagnostics?: MapperDiagnostic[];
@@ -51,14 +60,39 @@ export async function schemaModule(
 	if (!isTarget(target)) {
 		return {
 			text: 'export {};\n',
-			diagnostics: [diagnostic(`Unknown target "${String(target)}".`, content, 0, 0)],
+			diagnostics: [
+				diagnostic(
+					`Unknown target "${String(target)}".`,
+					content,
+					0,
+					0,
+					MapperDiagnosticCode.InvalidTarget
+				),
+			],
 		};
 	}
 
 	let schema: JSONSchema;
 
 	try {
-		schema = JSON.parse(content) as JSONSchema;
+		const parsed: unknown = JSON.parse(content);
+
+		if (!isJSONSchema(parsed)) {
+			return {
+				text: 'export {};\n',
+				diagnostics: [
+					diagnostic(
+						'A JSON Schema must be an object or a boolean.',
+						content,
+						0,
+						0,
+						MapperDiagnosticCode.InvalidJson
+					),
+				],
+			};
+		}
+
+		schema = parsed;
 	} catch (error) {
 		return {
 			text: 'export {};\n',
@@ -79,7 +113,7 @@ export async function schemaModule(
 	} catch (error) {
 		return {
 			text: 'export {};\n',
-			diagnostics: [diagnostic(messageOf(error), content, 0, 0)],
+			diagnostics: [diagnostic(messageOf(error), content, 0, 0, MapperDiagnosticCode.Schema)],
 		};
 	}
 }
@@ -149,14 +183,21 @@ function jsonDiagnostic(content: string, error: unknown): MapperDiagnostic {
 	const offset = position ? Number(position[1]) : 0;
 	const prefix = content.slice(0, offset);
 
-	return diagnostic(message, content, Buffer.byteLength(prefix, 'utf8'), 1);
+	return diagnostic(
+		message,
+		content,
+		Buffer.byteLength(prefix, 'utf8'),
+		1,
+		MapperDiagnosticCode.InvalidJson
+	);
 }
 
 function diagnostic(
 	message: string,
 	content: string,
 	start: number,
-	length: number
+	length: number,
+	code: number
 ): MapperDiagnostic {
 	// TypeScript rejects the whole transform when a diagnostic ends past the
 	// content, which is exactly what a parse error at the end of the file
@@ -168,8 +209,15 @@ function diagnostic(
 		messageText: message,
 		start: safeStart,
 		length: Math.min(length, total - safeStart),
-		code: 1,
+		code,
 	};
+}
+
+function isJSONSchema(value: unknown): value is JSONSchema {
+	return (
+		typeof value === 'boolean' ||
+		(typeof value === 'object' && value !== null && !Array.isArray(value))
+	);
 }
 
 function messageOf(error: unknown): string {

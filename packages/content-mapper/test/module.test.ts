@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { expect, test } from 'vitest';
 
-import { isTarget, schemaModule } from '../src/module';
+import { isTarget, MapperDiagnosticCode, schemaModule } from '../src/module';
 
 const fixture = join(__dirname, 'fixtures', 'person.jsonschema');
 
@@ -56,6 +56,14 @@ test('keeps a JSON diagnostic inside the file it describes', async () => {
 	}
 });
 
+test('reports a missing $ref as a diagnostic', async () => {
+	const content = JSON.stringify({ title: 'Missing', $ref: './missing.jsonschema' });
+	const result = await schemaModule(fixture, content);
+
+	expect(result.diagnostics?.[0]?.messageText).toContain('missing.jsonschema');
+	expect(result.text).toBe('export {};\n');
+});
+
 test('lists the files it resolved through $ref', async () => {
 	const related = join(__dirname, 'fixtures', 'related.jsonschema');
 	const result = await schemaModule(related, readFileSync(related, 'utf8'));
@@ -82,6 +90,16 @@ test('declares the default export for a boolean root on every runtime target', a
 			expect(result.text).toContain('export default Root;');
 		}
 	}
+});
+
+test('uses stable diagnostic codes', () => {
+	expect(MapperDiagnosticCode).toEqual({
+		InvalidJson: 1,
+		InvalidTarget: 2,
+		Schema: 3,
+		UnknownOption: 100,
+		InvalidOption: 101,
+	});
 });
 
 test('recognises only the generation targets', () => {

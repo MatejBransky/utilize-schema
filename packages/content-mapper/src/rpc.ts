@@ -1,10 +1,14 @@
 // fallow-ignore-file coverage-gaps -- the JSON-RPC server runs in the spawned mapper process; the integration tests exercise it end to end
 
-export type Handler = (params: unknown) => unknown | Promise<unknown>;
+export type Handler = (params: unknown) => object | Promise<object>;
 
 /** JSON-RPC 2.0 error codes. */
 const PARSE_ERROR = -32_700;
+const INVALID_REQUEST = -32_600;
 const INTERNAL_ERROR = -32_603;
+
+/** A frame larger than this is treated as a bad header, not buffered forever. */
+const MAX_FRAME_LENGTH = 16 * 1024 * 1024;
 
 /**
  * Minimal JSON-RPC 2.0 server over stdio with the LSP-style `Content-Length`
@@ -37,16 +41,25 @@ export function serve(handlers: Record<string, Handler>): void {
 	});
 
 	function receive(body: string) {
-		let message: Request;
+		let message: unknown;
 
 		try {
-			message = JSON.parse(body) as Request;
+			message = JSON.parse(body);
 		} catch (error) {
 			process.stderr.write(`utilize-schema: malformed content mapper message: ${String(error)}\n`);
 			send({
 				jsonrpc: '2.0',
 				id: null,
 				error: { code: PARSE_ERROR, message: 'Parse error' },
+			});
+			return;
+		}
+
+		if (!isRequest(message)) {
+			send({
+				jsonrpc: '2.0',
+				id: messageId(message),
+				error: { code: INVALID_REQUEST, message: 'Invalid request' },
 			});
 			return;
 		}
@@ -125,7 +138,16 @@ function readFrame(buffer: Buffer): Frame | undefined {
 	}
 
 	const bodyStart = headerEnd + 4;
-	const bodyEnd = bodyStart + Number(match[1]);
+	const length = Number(match[1]);
+
+	if (!Number.isSafeInteger(length) || length > MAX_FRAME_LENGTH) {
+		process.stderr.write(
+			`utilize-schema: dropping content mapper frame of ${match[1]} bytes; the limit is ${MAX_FRAME_LENGTH}\n`
+		);
+		return { rest: Buffer.alloc(0) };
+	}
+
+	const bodyEnd = bodyStart + length;
 
 	if (buffer.length < bodyEnd) {
 		return undefined;
@@ -135,6 +157,25 @@ function readFrame(buffer: Buffer): Frame | undefined {
 		body: buffer.subarray(bodyStart, bodyEnd).toString('utf8'),
 		rest: buffer.subarray(bodyEnd),
 	};
+}
+
+function isRequest(value: unknown): value is Request {
+	return typeof property(value, 'method') === 'string';
+}
+
+function property(value: unknown, key: string): unknown {
+	if (typeof value !== 'object' || value === null) {
+		return undefined;
+	}
+
+	const result: unknown = Reflect.get(value, key);
+	return result;
+}
+
+function messageId(value: unknown): number | string | null {
+	const id = property(value, 'id');
+
+	return typeof id === 'number' || typeof id === 'string' ? id : null;
 }
 
 function send(response: Response): void {

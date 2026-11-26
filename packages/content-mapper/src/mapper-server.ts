@@ -1,6 +1,6 @@
 // fallow-ignore-file coverage-gaps -- the handlers run in the spawned mapper process; the integration tests exercise them end to end
 
-import { isTarget, schemaModule } from './module';
+import { isTarget, MapperDiagnosticCode, schemaModule } from './module';
 import type { MapperDiagnostic, MapperOptions } from './module';
 
 interface OpenProjectParams {
@@ -25,6 +25,8 @@ export type TransformResult = {
 	text: string;
 	diagnostics?: MapperDiagnostic[];
 	mappings: [];
+	/** Files read through `$ref`; TypeScript watches them when `dynamicConfig` is on. */
+	watchedFiles?: string[];
 };
 
 const projects = new Map<string, MapperOptions>();
@@ -33,43 +35,90 @@ const projects = new Map<string, MapperOptions>();
 export function mapperHandlers() {
 	return {
 		initialize(params: unknown) {
-			const { protocolVersion } = (params ?? {}) as { protocolVersion?: number };
+			const protocolVersion =
+				isRecord(params) && typeof params.protocolVersion === 'number' ? params.protocolVersion : 1;
 
 			return {
-				protocolVersion: protocolVersion ?? 1,
+				protocolVersion,
 				// oxlint-disable-next-line unicorn/text-encoding-identifier-case -- the LSP protocol value is "utf-8"
 				positionEncoding: 'utf-8' as const,
 				diagnosticSource: 'utilize-schema',
 			};
 		},
 		openProject(params: unknown) {
-			const project = params as OpenProjectParams;
-			const options = project.options ?? {};
+			if (!isOpenProjectParams(params)) {
+				throw new Error('Invalid openProject parameters.');
+			}
 
-			projects.set(project.projectHandle, options);
+			const rawOptions = params.options ?? {};
+			const options: MapperOptions = isTarget(rawOptions.target)
+				? { target: rawOptions.target }
+				: {};
 
-			return { optionDiagnostics: validateOptions(options) };
-		},
-		async transform(params: unknown): Promise<TransformResult> {
-			const request = params as TransformParams;
-			const result = await schemaModule(
-				request.fileName,
-				request.content,
-				projects.get(request.projectHandle) ?? {}
-			);
+			projects.set(params.projectHandle, options);
 
 			return {
-				extension: '.ts',
-				text: result.text,
-				...(result.diagnostics ? { diagnostics: result.diagnostics } : {}),
-				mappings: [],
+				optionDiagnostics: validateOptions(rawOptions),
+				configIdentity: JSON.stringify(rawOptions),
 			};
 		},
+		async transform(params: unknown): Promise<TransformResult> {
+			if (!isTransformParams(params)) {
+				throw new Error('Invalid transform parameters.');
+			}
+
+			const options = projects.get(params.projectHandle) ?? {};
+			const result = await schemaModule(params.fileName, params.content, options);
+			const response: TransformResult = {
+				extension: '.ts',
+				text: result.text,
+				mappings: [],
+				watchedFiles: result.dependencies ?? [],
+			};
+
+			if (result.diagnostics) {
+				response.diagnostics = result.diagnostics;
+			}
+
+			return response;
+		},
 		closeProject(params: unknown) {
-			projects.delete((params as { projectHandle: string }).projectHandle);
+			const projectHandle = projectHandleOf(params);
+
+			if (projectHandle !== undefined) {
+				projects.delete(projectHandle);
+			}
+
 			return {};
 		},
 	};
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isOpenProjectParams(value: unknown): value is OpenProjectParams {
+	return (
+		isRecord(value) &&
+		typeof value.projectHandle === 'string' &&
+		(value.options === undefined || isRecord(value.options))
+	);
+}
+
+function isTransformParams(value: unknown): value is TransformParams {
+	return (
+		isRecord(value) &&
+		typeof value.projectHandle === 'string' &&
+		typeof value.fileName === 'string' &&
+		typeof value.content === 'string'
+	);
+}
+
+function projectHandleOf(value: unknown): string | undefined {
+	return isRecord(value) && typeof value.projectHandle === 'string'
+		? value.projectHandle
+		: undefined;
 }
 
 function validateOptions(options: Record<string, unknown>): OptionDiagnostic[] {
@@ -80,7 +129,7 @@ function validateOptions(options: Record<string, unknown>): OptionDiagnostic[] {
 			diagnostics.push({
 				path: [key],
 				messageText: `Unknown content mapper option "${key}".`,
-				code: 100,
+				code: MapperDiagnosticCode.UnknownOption,
 			});
 		}
 	}
@@ -89,7 +138,7 @@ function validateOptions(options: Record<string, unknown>): OptionDiagnostic[] {
 		diagnostics.push({
 			path: ['target'],
 			messageText: 'target must be "zod", "effect" or "typescript".',
-			code: 101,
+			code: MapperDiagnosticCode.InvalidOption,
 		});
 	}
 
