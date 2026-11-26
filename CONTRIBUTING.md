@@ -226,12 +226,21 @@ badge cannot hide them. The TypeScript runner skips `format-assertion` cases,
 which a type cannot check, so its denominator is smaller.
 
 The numbers live in `packages/*/test/suite/baseline.ts` and each package's suite
-test asserts them. `draft-07` is additionally pinned case by case in
-`knownFailures.ts` for the runtime generators and `knownGaps.ts` for TypeScript.
-When a count changes, the test prints the measured numbers and the failing case
-keys; update `baseline.ts` on purpose in the same pull request. CI runs
-`pnpm check:suite-badge` and fails when a committed badge no longer matches the
-baseline. Regenerate after a baseline change:
+test asserts them. Every dialect is also pinned case by case: the runtime
+generators record the failing cases in `knownFailuresByDialect.ts`, TypeScript
+in `knownGapCases.ts`, and draft-07 keeps its curated reasons in
+`knownFailures.ts` and `knownGaps.ts`. When a count or a case changes, the test
+prints the measured numbers and the failing keys; update the baseline and
+regenerate the list on purpose in the same pull request:
+
+```sh
+pnpm --filter @utilize/zod update:suite-baseline
+pnpm --filter @utilize/effect update:suite-baseline
+pnpm --filter @utilize/typescript update:suite-baseline
+```
+
+CI runs `pnpm check:suite-badge` and fails when a committed badge no longer
+matches the baseline. Regenerate the badges after a baseline change:
 
 ```sh
 pnpm badge:suite

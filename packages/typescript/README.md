@@ -164,20 +164,20 @@ full table is in [docs/keywords.md](../../docs/keywords.md#typescript).
 ## Conformance
 
 The badges link here. Numbers for every measured dialect live in
-[baseline.ts](test/suite/baseline.ts); the draft-07 gaps are listed case by case.
+[baseline.ts](test/suite/baseline.ts); every dialect is listed case by case.
 
-| Dialect  | Cases passing | Where the gaps are                                                                    |
-| -------- | ------------- | ------------------------------------------------------------------------------------- |
-| draft-04 | 109 / 187     | [baseline](test/suite/baseline.ts)                                                    |
-| draft-06 | 168 / 253     | [baseline](test/suite/baseline.ts)                                                    |
-| draft-07 | 191 / 285     | [known gaps](test/suite/knownGaps.ts) · 81 type gaps (keywords a type cannot express) |
-| 2019-09  | 241 / 396     | [baseline](test/suite/baseline.ts)                                                    |
-| 2020-12  | 235 / 409     | [baseline](test/suite/baseline.ts)                                                    |
+| Dialect  | Cases passing | Where the gaps are                                                                                                       |
+| -------- | ------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| draft-04 | 109 / 187     | [gaps](test/suite/knownGapCases.ts)                                                                                      |
+| draft-06 | 168 / 253     | [gaps](test/suite/knownGapCases.ts)                                                                                      |
+| draft-07 | 191 / 285     | [gaps](test/suite/knownGapCases.ts) · [reasons](test/suite/knownGaps.ts) · 81 type gaps (keywords a type cannot express) |
+| 2019-09  | 241 / 396     | [gaps](test/suite/knownGapCases.ts)                                                                                      |
+| 2020-12  | 235 / 409     | [gaps](test/suite/knownGapCases.ts)                                                                                      |
 
 Which keywords become types is in
-[docs/keywords.md](../../docs/keywords.md#typescript). Only draft-07 is pinned
-case by case; for the other dialects the baseline records case and instance
-counts, so their row is a rate rather than a list.
+[docs/keywords.md](../../docs/keywords.md#typescript). Every dialect is pinned
+case by case in `knownGapCases.ts` (structural gaps and the type-gap keys);
+draft-07 also has the curated reasons in `knownGaps.ts`.
 
 The generator is checked against the official
 [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite)
@@ -206,8 +206,9 @@ Current baseline on suite commit `e2a68a1`:
 The numbers are recorded in `test/suite/baseline.ts` and the test fails when
 they change, so a regression cannot slip in and an improvement has to update the
 baseline on purpose. All five dialects are measured there; the badges at the top
-of this README show the conformant case rate per dialect. Only draft-07 is
-pinned case by case, in `test/suite/knownGaps.ts`.
+of this README show the conformant case rate per dialect. Every dialect is pinned
+case by case in `test/suite/knownGapCases.ts`; draft-07 also has the curated
+reasons in `test/suite/knownGaps.ts`.
 
 ### Inference trade-off
 

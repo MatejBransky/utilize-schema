@@ -43,7 +43,8 @@
 		"test": "vitest",
 		"test:suite": "vitest run test/jsonSchemaTestSuite.test.ts",
 		"ci:test": "vitest run",
-		"dev": "tsdown --watch"
+		"dev": "tsdown --watch",
+		"update:suite-baseline": "node scripts/update-suite-baseline.mjs"
 	},
 	"dependencies": {
 		"@utilize/json-schema": "workspace:*"

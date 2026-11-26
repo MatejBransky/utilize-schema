@@ -7,9 +7,9 @@
  * `instances` and `passingInstances` are the same numbers one level down. Known
  * gaps stay in the denominator: a badge must not hide them.
  *
- * `draft-07` is also pinned case by case in `knownFailures.ts`; the other
- * dialects are measured at case and instance counts. When conformance changes,
- * update the number on purpose in the same pull request. The suite test fails
+ * Every dialect is pinned case by case in `knownFailuresByDialect.ts`;
+ * `draft-07` also has a curated reason per case in `knownFailures.ts`. When
+ * conformance changes, update the number on purpose in the same pull request. The suite test fails
  * on any change, and `pnpm badge:suite` reads this object to render
  * `.github/badges/suite-effect-<dialect>.svg`.
  */
