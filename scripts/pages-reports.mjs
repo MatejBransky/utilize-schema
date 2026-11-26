@@ -11,6 +11,8 @@ import {
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+import { describeHealth, formatNumber, measureLongFunctions } from './fallow-health-report.mjs';
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const ARTIFACTS = join(ROOT, '.fallow', 'reports');
 const REPORTS = join(ROOT, 'playground', 'dist', 'reports');
@@ -87,6 +89,13 @@ p { margin: 0; color: var(--muted); }
 .metric span { display: block; color: var(--muted); font-size: 0.82rem; }
 .metric strong { display: block; margin-top: 4px; font-size: 1.8rem; letter-spacing: -0.04em; }
 .metric small { color: var(--muted); font-size: 0.9rem; font-weight: 600; }
+a.metric { text-decoration: none; color: inherit; }
+a.metric:hover { border-color: var(--accent); }
+.metric-detail { display: block; margin-top: 6px; color: var(--muted); font-size: 0.82rem; }
+.metric-hint { display: block; margin-top: 6px; color: var(--accent); font-size: 0.82rem; font-weight: 700; }
+.deduction { color: var(--fail); font-weight: 700; }
+.cleared { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.left { text-align: left; }
 .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .card { display: flex; flex-direction: column; gap: 14px; padding: 22px; text-decoration: none; color: var(--text); }
 .card:hover { border-color: var(--accent); }
@@ -180,6 +189,7 @@ function page(title, description, rootHref, active, body) {
       <a class="brand" href="${rootHref}">◈ Utilize Schema</a>
       <nav class="nav" aria-label="Reports">
         <a href="${rootHref}fallow/" ${active === 'fallow' ? 'aria-current="page"' : ''}>Fallow</a>
+        <a href="${rootHref}fallow/health/" ${active === 'health' ? 'aria-current="page"' : ''}>Health</a>
         <a href="${rootHref}tests/" ${active === 'tests' ? 'aria-current="page"' : ''}>Tests</a>
         <a href="${rootHref}benchmarks/" ${active === 'benchmarks' ? 'aria-current="page"' : ''}>Benchmarks</a>
       </nav>
@@ -213,14 +223,39 @@ function sumTestCounts(tests) {
 	};
 }
 
+function metricDetail(report) {
+	if (!report) return '';
+
+	if (report.deducted.length === 0) {
+		return '<span class="metric-detail">No area deducts points.</span>';
+	}
+
+	const deductions = report.deducted
+		.map((penalty) => `${penalty.label} −${formatNumber(penalty.points)}`)
+		.join(' · ');
+
+	return `<span class="metric-detail">${escapeHtml(deductions)}</span><span class="metric-hint">Why this score →</span>`;
+}
+
 function hubMetrics(health, counts, benchmark) {
-	const healthScore = health?.health_score;
+	const report = describeHealth(health);
+	const healthScore = report
+		? `${formatNumber(report.score)} <small>${escapeHtml(report.grade)}</small>`
+		: 'Unavailable';
+	const healthMetric = report
+		? `<a class="metric" href="./fallow/health/">
+        <span>Fallow health</span>
+        <strong>${healthScore}</strong>
+        ${metricDetail(report)}
+      </a>`
+		: `<div class="metric">
+        <span>Fallow health</span>
+        <strong>${healthScore}</strong>
+      </div>`;
+
 	return `
     <div class="metrics">
-      <div class="metric">
-        <span>Fallow health</span>
-        <strong>${healthScore ? `${healthScore.score.toFixed(1)} <small>${escapeHtml(healthScore.grade)}</small>` : 'Unavailable'}</strong>
-      </div>
+      ${healthMetric}
       <div class="metric">
         <span>Tests passed</span>
         <strong>${counts.passedTests.toLocaleString()} <small>of ${counts.totalTests.toLocaleString()}</small></strong>
@@ -369,6 +404,167 @@ function renderBenchmarksIndex({ commit, generatedAt, benchmark }) {
 	);
 }
 
+function fallowSourceHref(commit, path, line) {
+	return `${REPOSITORY}/blob/${commit}/${path}${line ? `#L${line}` : ''}`;
+}
+
+function scoreCards(report) {
+	return `<div class="metrics">
+    <div class="metric"><span>Health score</span><strong>${formatNumber(report.score)} <small>${escapeHtml(report.grade)}</small></strong></div>
+    <div class="metric"><span>Points deducted</span><strong>${formatNumber(report.totalDeduction)} <small>of 100</small></strong></div>
+    <div class="metric"><span>Formula</span><strong>v${report.formulaVersion} <small>fixed calibration</small></strong></div>
+  </div>`;
+}
+
+function deductionTable(report) {
+	if (report.deducted.length === 0) {
+		return '<p>No area deducts points.</p>';
+	}
+
+	const rows = report.deducted
+		.map(
+			(penalty) => `<tr>
+      <td>${escapeHtml(penalty.label)}</td>
+      <td class="deduction">−${formatNumber(penalty.points)}${penalty.limit === null ? '' : ` / ${formatNumber(penalty.limit)}`}</td>
+      <td class="left"><code>${escapeHtml(penalty.formula)}</code></td>
+      <td class="left">${escapeHtml(penalty.measurement?.value ?? '')} — ${escapeHtml(penalty.measurement?.detail ?? '')}</td>
+      <td class="left">${escapeHtml(penalty.action ?? '')}</td>
+    </tr>`
+		)
+		.join('\n');
+
+	return `<div class="table-wrap"><table>
+      <thead><tr><th>Area</th><th>Deduction</th><th class="left">Formula</th><th class="left">Measurement</th><th class="left">What moves it</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+}
+
+function clearedBadges(report) {
+	if (report.cleared.length === 0) return '';
+
+	const badges = report.cleared
+		.map((penalty) => `<span class="badge pass">${escapeHtml(penalty.label)} 0</span>`)
+		.join('');
+
+	return `<div class="cleared">${badges}</div>`;
+}
+
+function longFunctionTable(longFunctions, commit, expectedCount) {
+	if (longFunctions.length === 0) {
+		return expectedCount > 0
+			? `<p>The per-function list was not available in this build. Fallow still counts ${expectedCount} functions over 60 lines.</p>`
+			: '<p>No function is longer than 60 lines.</p>';
+	}
+
+	const rows = longFunctions
+		.map((fn) => {
+			const href = fallowSourceHref(commit, fn.path, fn.line);
+
+			return `<tr>
+      <td class="left"><a href="${href}"><code>${escapeHtml(fn.name)}</code></a></td>
+      <td class="left"><a href="${href}"><code>${escapeHtml(fn.path)}:${fn.line}</code></a></td>
+      <td>${fn.lines}</td>
+      <td>${fn.cyclomatic}</td>
+      <td>${fn.cognitive}</td>
+    </tr>`;
+		})
+		.join('\n');
+
+	return `<div class="table-wrap"><table>
+      <thead><tr><th class="left">Function</th><th class="left">Location</th><th>Lines</th><th>Cyclomatic</th><th>Cognitive</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+}
+
+function highFanInTable(highFanIn, commit) {
+	if (highFanIn.length === 0) {
+		return '<p>No scored file is imported by more than the fan-in threshold.</p>';
+	}
+
+	const rows = highFanIn
+		.map(
+			(file) => `<tr>
+      <td class="left"><a href="${fallowSourceHref(commit, file.path, 0)}"><code>${escapeHtml(file.path)}</code></a></td>
+      <td>${file.fan_in}</td>
+      <td>${file.fan_out}</td>
+      <td>${formatNumber(file.maintainability_index)}</td>
+      <td>${file.lines}</td>
+    </tr>`
+		)
+		.join('\n');
+
+	return `<div class="table-wrap"><table>
+      <thead><tr><th class="left">File</th><th>Fan-in</th><th>Fan-out</th><th>Maintainability</th><th>Lines</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+}
+
+function longFunctionSummary(report) {
+	if (report.counts.longFunctionCount === 0) {
+		return 'No function is longer than 60 lines, so the function-size penalty is zero.';
+	}
+
+	const share = `${formatNumber(report.counts.longFunctionPct)}% of all functions`;
+	const list =
+		report.longFunctions.length > 0
+			? report.counts.longFunctionCount === 1
+				? 'The function below'
+				: 'The functions below'
+			: 'The per-function list is unavailable';
+	const plural = report.counts.longFunctionCount === 1 ? '' : 's';
+	const verb = report.counts.longFunctionCount === 1 ? 's' : '';
+
+	return `${list} cover${verb} ${report.counts.longFunctionCount} function${plural} (${share}) and drive${verb} the function-size penalty.`;
+}
+
+export function renderHealthPage(report, commit) {
+	const warning = report.formulaWarning
+		? `<p class="note"><strong>Warning:</strong> ${escapeHtml(report.formulaWarning)}</p>`
+		: '';
+
+	return `
+    ${scoreCards(report)}
+    ${warning}
+    <section class="section">
+      <div class="section-head"><div><h2>What deducts points</h2><p>Fallow starts at 100 and subtracts a capped penalty for each area. Only the areas below deduct anything in this build.</p></div></div>
+      ${deductionTable(report)}
+      ${clearedBadges(report)}
+    </section>
+    <section class="section">
+      <div class="section-head"><div><h2>Functions longer than 60 lines</h2><p>${escapeHtml(longFunctionSummary(report))}</p></div><span class="badge skip">${report.counts.longFunctionCount}</span></div>
+      ${longFunctionTable(report.longFunctions, commit, report.counts.longFunctionCount)}
+    </section>
+    <section class="section">
+      <div class="section-head"><div><h2>Files imported by more than ${report.fanInThreshold} files</h2><p>Fallow uses the larger of the 95th-percentile fan-in and 10 as the threshold. ${escapeHtml(formatNumber(report.counts.couplingPct))}% of scored files are above it; ${escapeHtml(report.counts.highFanInCount.toString())} ${report.counts.highFanInCount === 1 ? 'is' : 'are'} listed below.</p></div><span class="badge skip">${report.highFanIn.length}</span></div>
+      ${highFanInTable(report.highFanIn, commit)}
+    </section>
+    <section class="section">
+      <div class="section-head"><div><h2>How to read this</h2><p>The score and its penalties come from the same Fallow result as the badge and the CI gate. The long-function list is a focused Fallow query because Fallow omits it below 3% of functions. File length is not part of the score: <code>maxFileLines</code> (900 here) reports a long-file finding, but the size penalty counts only functions over 60 lines.</p></div></div>
+      <p class="note"><a href="../index.html">Open the interactive Fallow map</a> · <a href="../health.json">Raw health JSON</a> · <a href="https://fallow.tools/docs/cli/health/#health-score-formula">Fallow score formula</a></p>
+    </section>`;
+}
+
+function renderFallowHealth({ commit, generatedAt, health, longFunctions }) {
+	const report = describeHealth(health, { longFunctions });
+	const directory = join(REPORTS, 'fallow', 'health');
+	mkdirSync(directory, { recursive: true });
+
+	const content = report
+		? renderHealthPage(report, commit)
+		: '<p>Fallow did not produce a health score for this build.</p>';
+
+	writeFileSync(
+		join(directory, 'index.html'),
+		page(
+			'Fallow health score',
+			'Why the Fallow health score is what it is, with the measurement behind each deduction and the files that drive it.',
+			'../../',
+			'health',
+			{ meta: reportMeta(commit, generatedAt), content }
+		)
+	);
+}
+
 function renderScriptsReport({ commit, generatedAt, scripts }) {
 	const output = `${scripts.stdout ?? ''}${scripts.stderr ?? ''}`.trim() || 'No output.';
 	const content = `<pre>${escapeHtml(output)}</pre>`;
@@ -491,6 +687,16 @@ function buildFallowReport(renderOnly, failures) {
 				`${JSON.stringify(fullFallow.health, null, 2)}\n`
 			);
 		}
+
+		// The test job measures this once and uploads it with the test reports,
+		// so the Pages render reuses that result instead of analyzing again.
+		const longFunctions = readJson(join(ROOT, '.fallow', 'long-functions.json'));
+		if (longFunctions) {
+			writeFileSync(
+				join(REPORTS, 'fallow', 'long-functions.json'),
+				`${JSON.stringify(longFunctions, null, 2)}\n`
+			);
+		}
 		return;
 	}
 
@@ -504,6 +710,18 @@ function buildFallowReport(renderOnly, failures) {
 		'--output-file',
 		join(REPORTS, 'fallow', 'health.json'),
 	]);
+
+	try {
+		const longFunctions = measureLongFunctions(ROOT);
+		writeFileSync(
+			join(REPORTS, 'fallow', 'long-functions.json'),
+			`${JSON.stringify(longFunctions, null, 2)}\n`
+		);
+	} catch (error) {
+		// The health page still explains the penalty from the score data and
+		// shows the derived count with a "list unavailable" note.
+		console.error(`Could not measure long functions: ${error.message}`);
+	}
 }
 
 function runBenchmark(failures) {
@@ -531,10 +749,12 @@ async function buildReports() {
 		return report ? summarizeVitest(workspace, report) : undefined;
 	}).filter(Boolean);
 	const health = readJson(join(REPORTS, 'fallow', 'health.json'));
+	const longFunctions = readJson(join(REPORTS, 'fallow', 'long-functions.json')) ?? [];
 	const benchmark = readJson(join(REPORTS, 'benchmarks', 'results.json'));
 	const context = { commit, generatedAt, health, tests, benchmark, scripts };
 
 	renderHub(context);
+	renderFallowHealth({ commit, generatedAt, health, longFunctions });
 	renderTestsIndex(context);
 	renderBenchmarksIndex(context);
 	renderScriptsReport(context);

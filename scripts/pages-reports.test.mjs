@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { describeHealth } from './fallow-health-report.mjs';
 import {
 	escapeHtml,
 	formatMilliseconds,
+	renderHealthPage,
 	stripFaviconLinks,
 	summarizeVitest,
 } from './pages-reports.mjs';
@@ -72,4 +74,57 @@ test('removes favicon links that the single-file Vitest report does not inline',
 	const html = `<head>\n  <link rel="icon" href="./favicon.ico" sizes="48x48" />\n  <link rel="icon" href="./favicon.svg" sizes="any" type="image/svg+xml" />\n  <title>Vitest</title>\n</head>`;
 
 	assert.equal(stripFaviconLinks(html), '<head>\n  <title>Vitest</title>\n</head>');
+});
+
+test('renders the Fallow health detail page with formulas and drivers', () => {
+	const report = describeHealth(
+		{
+			health_score: {
+				formula_version: 3,
+				score: 89.4,
+				grade: 'A',
+				penalties: { unit_size: 8.3, coupling: 2.3 },
+			},
+			summary: { functions_analyzed: 1268 },
+			vital_signs: {
+				functions_over_60_loc_per_k: 16.6,
+				p95_fan_in: 10,
+				coupling_high_pct: 4.6,
+				counts: { files_scored: 152 },
+			},
+			file_scores: [{ path: 'a.ts', fan_in: 22, fan_out: 2, maintainability_index: 92, lines: 38 }],
+		},
+		{
+			longFunctions: [
+				{ path: 'a.ts', name: 'long', line: 10, lines: 100, cyclomatic: 5, cognitive: 4 },
+			],
+		}
+	);
+	const html = renderHealthPage(report, 'abc1234');
+
+	assert.match(html, /Health score/);
+	assert.match(html, /16\.6 × 0\.5 = 8\.3/);
+	assert.match(html, /Functions longer than 60 lines/);
+	assert.match(html, /a\.ts:10/);
+	assert.match(html, /File length is not part of the score/);
+});
+
+test('renders the long-function fallback when the list is unavailable', () => {
+	const report = describeHealth({
+		health_score: {
+			formula_version: 3,
+			score: 89.4,
+			grade: 'A',
+			penalties: { unit_size: 8.3 },
+		},
+		summary: { functions_analyzed: 1268 },
+		vital_signs: {
+			functions_over_60_loc_per_k: 16.6,
+			counts: { files_scored: 152 },
+		},
+		file_scores: [],
+	});
+	const html = renderHealthPage(report, 'abc1234');
+
+	assert.match(html, /per-function list was not available/);
 });
