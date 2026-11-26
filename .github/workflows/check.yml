@@ -83,7 +83,6 @@ jobs:
       # `--reuse-coverage` merges the coverage the test step just measured
       # instead of running the whole suite a second time.
       - name: Full Fallow run with measured coverage
-        if: always() && hashFiles('packages/*/coverage/coverage-final.json', 'playground/coverage/coverage-final.json') != ''
         run: |
           pnpm fallow:coverage --reuse-coverage --format json --quiet --output-file .fallow/full.json
 
