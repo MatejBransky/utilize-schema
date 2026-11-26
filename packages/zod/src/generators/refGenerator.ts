@@ -6,7 +6,7 @@ import type { GeneratorContext } from './types';
 
 import { isRefNode, ts } from '../utils';
 
-export const generator = createGenerator(isRefNode, (schema, context) => {
+export const refGenerator = createGenerator(isRefNode, (schema, context) => {
 	const metadata = schema[Meta];
 	const reference = metadata.reference;
 

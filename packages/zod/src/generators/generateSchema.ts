@@ -3,7 +3,7 @@ import type { Dialect, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize
 
 import { withoutAlwaysValidAnyOf } from './alwaysValidAnyOf';
 import type { Recursion } from './createGenerator';
-import { generator as refGenerator, referenceTo } from './refGenerator';
+import { refGenerator, referenceTo } from './refGenerator';
 import { composedSchemaParts, refSiblingConstraints } from './schemaParts';
 import { selectGenerator } from './selectGenerator';
 import type { GeneratorContext } from './types';

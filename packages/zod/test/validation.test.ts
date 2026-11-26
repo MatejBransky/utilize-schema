@@ -1,7 +1,7 @@
 import type { JSONSchema } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
-import { compile, compileToZod, ts } from './test-utils';
+import { generateCode, compileToZod, ts } from './test-utils';
 
 describe('validation keywords', () => {
 	test('not', async () => {
@@ -115,7 +115,7 @@ describe('validation keywords', () => {
 	});
 
 	test('emits each refinement once in keyword order', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			$schema: 'http://json-schema.org/draft-07/schema#',
 			properties: { a: { type: 'string' } },
 			required: ['a'],
@@ -172,7 +172,7 @@ describe('validation keywords', () => {
 	});
 
 	test('examples are added as metadata', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'string',
 			examples: ['a', 'b'],
 		});

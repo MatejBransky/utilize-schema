@@ -19,7 +19,7 @@ const withoutUnionAnnotations = {
 	readOnly: undefined,
 };
 
-export const generator = createGenerator<
+export const multipleTypeGenerator = createGenerator<
 	ParsedJSONSchemaObject & {
 		type: JSONSchemaTypeName[];
 	}

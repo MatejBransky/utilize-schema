@@ -7,7 +7,7 @@ import type { GeneratorContext } from './types';
 
 import { NEWLINE, ts } from '../utils';
 
-export const generator = createGenerator(
+export const tupleGenerator = createGenerator(
 	(schema, dialect) => {
 		if (schema.type !== 'array') {
 			return false;

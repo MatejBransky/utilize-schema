@@ -6,7 +6,7 @@ import { protoInputCheck } from './protoProperty';
 
 import { ts } from '../utils';
 
-export const generator = createGenerator<{
+export const recordGenerator = createGenerator<{
 	additionalProperties: ParsedJSONSchemaObject;
 }>(
 	(schema) => {

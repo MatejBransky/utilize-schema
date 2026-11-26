@@ -1,11 +1,11 @@
 import { describe, expect, test } from 'vitest';
 
-import { compile, ts } from './test-utils';
+import { generateCode, ts } from './test-utils';
 
 describe('numberic types', () => {
 	test('multiples', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'number',
 				multipleOf: 2,
 			})
@@ -17,7 +17,7 @@ describe('numberic types', () => {
 
 	test('range', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'number',
 				minimum: 1,
 				maximum: 10,
@@ -30,7 +30,7 @@ describe('numberic types', () => {
 
 	test('exclusive range', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'number',
 				exclusiveMinimum: 1,
 				exclusiveMaximum: 10,

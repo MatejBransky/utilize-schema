@@ -1,7 +1,7 @@
 import type { JSONSchema } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
-import { compile, compileToZod } from './test-utils';
+import { generateCode, compileToZod } from './test-utils';
 
 const prefixItemsSchema = {
 	$schema: 'https://json-schema.org/draft/2020-12/schema',
@@ -106,19 +106,19 @@ describe('$schema versions', () => {
 	});
 
 	test('unknown $schema falls back to draft-07 by default', async () => {
-		await expect(compile(customVersionSchema)).resolves.toContain(
+		await expect(generateCode(customVersionSchema)).resolves.toContain(
 			'export const Root = z.string();'
 		);
 	});
 
 	test('unknown $schema can fail with unknownDialect error', async () => {
-		await expect(compile(customVersionSchema, { unknownDialect: 'error' })).rejects.toThrow(
+		await expect(generateCode(customVersionSchema, { unknownDialect: 'error' })).rejects.toThrow(
 			/Unknown dialect/
 		);
 	});
 
 	test('unsupported 2020-12 features fail loudly', async () => {
-		await expect(compile(unsupportedFeatureSchema)).rejects.toThrow(
+		await expect(generateCode(unsupportedFeatureSchema)).rejects.toThrow(
 			/"\$dynamicRef" is not supported/
 		);
 	});

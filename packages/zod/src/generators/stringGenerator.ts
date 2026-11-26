@@ -4,7 +4,7 @@ import type { FormatMap, FormatMode } from './types';
 import { unicodePattern } from '../regex';
 import { ts } from '../utils';
 
-export const generator = createGenerator(
+export const stringGenerator = createGenerator(
 	(schema) => {
 		if ('enum' in schema) {
 			return false;

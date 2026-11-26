@@ -1,12 +1,12 @@
 import type { JSONSchema } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
-import { compile, compileToZod, ts } from './test-utils';
+import { generateCode, compileToZod, ts } from './test-utils';
 
 describe('reference', () => {
 	test('local $refs', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'object',
 				properties: {
 					field: { $ref: '#/$defs/MyType' },
@@ -37,7 +37,7 @@ describe('reference', () => {
 	});
 
 	test('self-referencing', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: {
 				field: { $ref: '#' },
@@ -56,7 +56,7 @@ describe('reference', () => {
 	});
 
 	test('$ref used multiple times', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: {
 				field1: { $ref: '#/$defs/MyType' },
@@ -80,7 +80,7 @@ describe('reference', () => {
 	});
 
 	test('external refs', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: {
 				name: { type: 'string' },
@@ -147,7 +147,7 @@ describe('reference', () => {
 	});
 
 	test('cyclic reference', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: {
 				value: { type: 'string' },
@@ -169,7 +169,7 @@ describe('reference', () => {
 	});
 
 	test('self-reference nested in array items', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: {
 				children: { type: 'array', items: { $ref: '#' } },
@@ -188,7 +188,7 @@ describe('reference', () => {
 	});
 
 	test('self-reference nested in anyOf', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: {
 				parent: { anyOf: [{ $ref: '#' }, { type: 'null' }] },
@@ -207,7 +207,7 @@ describe('reference', () => {
 	});
 
 	test('cyclic reference across files', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: {
 				a: { $ref: './definitions/CycleA.json' },

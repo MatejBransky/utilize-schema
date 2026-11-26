@@ -1,11 +1,11 @@
 import type { JSONSchema } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
-import { compile, compileToZod, ts } from './test-utils';
+import { generateCode, compileToZod, ts } from './test-utils';
 
 describe('cyclic references', () => {
 	test('mutual $defs cycle', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: { a: { $ref: '#/$defs/A' } },
 			$defs: {
@@ -43,7 +43,7 @@ describe('cyclic references', () => {
 	});
 
 	test('object and array cycle across files', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: { list: { $ref: './definitions/ListCycle.json' } },
 		});
@@ -71,7 +71,7 @@ describe('cyclic references', () => {
 	});
 
 	test('array definition that refers back to its root', async () => {
-		const result = await compile(metaSchemaLike);
+		const result = await generateCode(metaSchemaLike);
 
 		await expect(result).toMatchCode(ts`
       type RootValue = { items: RootValue | SchemaArrayValue } | boolean;
@@ -94,7 +94,7 @@ describe('cyclic references', () => {
 	});
 
 	test('array-to-array cycle', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: { a: { $ref: './definitions/ArrayPairA.json' } },
 		});
@@ -119,7 +119,7 @@ describe('cyclic references', () => {
 	});
 
 	test('recursive additionalProperties', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: { name: { type: 'string' } },
 			additionalProperties: { $ref: '#' },
@@ -157,7 +157,7 @@ describe('cyclic references', () => {
 	});
 
 	test('recursive record', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			additionalProperties: { $ref: '#' },
 		});
@@ -198,7 +198,7 @@ describe('cyclic references', () => {
 	});
 
 	test('value type object members keep optional, default, quoted and undeclared required keys', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: {
 				plain: { type: 'string' },
@@ -228,7 +228,7 @@ describe('cyclic references', () => {
 	});
 
 	test('value type object members use an unknown index for pattern properties', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: { name: { type: 'string' } },
 			patternProperties: { '^x-': { $ref: '#' } },
@@ -249,7 +249,7 @@ describe('cyclic references', () => {
 	});
 
 	test('value type object members make undeclared required keys never when additional properties are forbidden', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: { next: { $ref: '#' } },
 			required: ['extra'],
@@ -267,7 +267,7 @@ describe('cyclic references', () => {
 	});
 
 	test('read-only recursive type lists keep object and array wrappers', async () => {
-		const result = await compile(
+		const result = await generateCode(
 			{
 				$schema: 'https://json-schema.org/draft/2020-12/schema',
 				readOnly: true,
@@ -300,14 +300,14 @@ describe('cyclic references', () => {
 	});
 
 	test('recursive value type unions and intersections preserve branch rendering', async () => {
-		const union = await compile(
+		const union = await generateCode(
 			{
 				readOnly: true,
 				anyOf: [{ type: 'object', properties: { next: { $ref: '#' } } }, { type: 'string' }],
 			},
 			{ readOnlyKeyword: true }
 		);
-		const intersection = await compile(
+		const intersection = await generateCode(
 			{
 				readOnly: true,
 				allOf: [
@@ -408,7 +408,7 @@ describe('recursive references at runtime', () => {
 describe('cycles without a type indirection', () => {
 	test('a sibling structural branch does not anchor the cycle', async () => {
 		await expect(
-			compile({
+			generateCode({
 				anyOf: [{ $ref: '#' }, { type: 'object' }],
 			})
 		).rejects.toThrow(/only passes through unions or aliases/);
@@ -416,7 +416,7 @@ describe('cycles without a type indirection', () => {
 
 	test('union-only cycle fails at compile time', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'object',
 				properties: { a: { $ref: '#/$defs/A' } },
 				$defs: {
@@ -447,7 +447,7 @@ const metaSchemaLike: JSONSchema = {
 
 describe('array-only cycles', () => {
 	test('emits lazy for a standalone array cycle', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: {
 				list: { type: 'array', items: { $ref: '#/properties/list' } },

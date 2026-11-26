@@ -1,23 +1,23 @@
 import type { Dialect, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
-import { generator as allOfGenerator } from './allOfGenerator';
-import { generator as anyGenerator } from './anyGenerator';
-import { generator as anyOfGenerator } from './anyOfGenerator';
-import { generator as arrayGenerator } from './arrayGenerator';
-import { generator as booleanGenerator } from './booleanGenerator';
+import { allOfGenerator } from './allOfGenerator';
+import { anyGenerator } from './anyGenerator';
+import { anyOfGenerator } from './anyOfGenerator';
+import { arrayGenerator } from './arrayGenerator';
+import { booleanGenerator } from './booleanGenerator';
 import type { ExpressionGenerator } from './createGenerator';
-import { generator as enumGenerator } from './enumGenerator';
-import { generator as literalGenerator } from './literalGenerator';
-import { generator as multipleTypeGenerator } from './multipleTypeGenerator';
-import { generator as nullGenerator } from './nullGenerator';
-import { generator as numberGenerator } from './numberGenerator';
-import { generator as objectGenerator } from './objectGenerator';
-import { generator as oneOfGenerator } from './oneOfGenerator';
-import { generator as recordGenerator } from './recordGenerator';
-import { generator as refGenerator } from './refGenerator';
+import { enumGenerator } from './enumGenerator';
+import { literalGenerator } from './literalGenerator';
+import { multipleTypeGenerator } from './multipleTypeGenerator';
+import { nullGenerator } from './nullGenerator';
+import { numberGenerator } from './numberGenerator';
+import { objectGenerator } from './objectGenerator';
+import { oneOfGenerator } from './oneOfGenerator';
+import { recordGenerator } from './recordGenerator';
+import { refGenerator } from './refGenerator';
 import { isTypedLiteral } from './schemaParts';
-import { generator as stringGenerator } from './stringGenerator';
-import { generator as tupleGenerator } from './tupleGenerator';
+import { stringGenerator } from './stringGenerator';
+import { tupleGenerator } from './tupleGenerator';
 
 import { isRefNode } from '../utils';
 

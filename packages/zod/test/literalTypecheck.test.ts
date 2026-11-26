@@ -6,7 +6,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 
-import { compile } from './test-utils';
+import { generateCode } from './test-utils';
 
 const require = createRequire(import.meta.url);
 const tsc = join(dirname(require.resolve('typescript/package.json')), 'bin/tsc');
@@ -86,7 +86,7 @@ describe('composite literals', () => {
 
 		try {
 			for (const literalCase of cases) {
-				const code = await compile(literalCase.schema, { importZod: true });
+				const code = await generateCode(literalCase.schema, { importZod: true });
 				const file = join(directory, literalCase.file);
 				await writeFile(file, `${code}\n${literalCase.assertions}`);
 				files.push(file);

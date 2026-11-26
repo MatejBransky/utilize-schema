@@ -2,12 +2,12 @@ import { dialectOf, expectDefined } from '@utilize/json-schema';
 import type { ParsedJSONSchemaObject, SchemaEdge } from '@utilize/json-schema';
 
 import { withoutAlwaysValidAnyOf } from './generators/alwaysValidAnyOf';
-import { generator as arrayGenerator } from './generators/arrayGenerator';
-import { generator as multipleTypeGenerator } from './generators/multipleTypeGenerator';
-import { generator as objectGenerator } from './generators/objectGenerator';
-import { generator as recordGenerator } from './generators/recordGenerator';
+import { arrayGenerator } from './generators/arrayGenerator';
+import { multipleTypeGenerator } from './generators/multipleTypeGenerator';
+import { objectGenerator } from './generators/objectGenerator';
+import { recordGenerator } from './generators/recordGenerator';
 import { selectGenerator } from './generators/selectGenerator';
-import { generator as tupleGenerator } from './generators/tupleGenerator';
+import { tupleGenerator } from './generators/tupleGenerator';
 
 type SchemaNode = SchemaEdge[0];
 

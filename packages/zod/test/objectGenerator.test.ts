@@ -2,7 +2,7 @@ import { resolveDialect } from '@utilize/json-schema';
 import type { JSONSchema, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
-import { generator } from '../src/generators/objectGenerator';
+import { objectGenerator } from '../src/generators/objectGenerator';
 import type { GeneratorContext } from '../src/generators/types';
 
 const context: GeneratorContext = {
@@ -34,7 +34,7 @@ const recursion = {
 };
 
 function generate(schema: JSONSchema): string {
-	return generator.generate(schema as ParsedJSONSchemaObject, context, recursion);
+	return objectGenerator.generate(schema as ParsedJSONSchemaObject, context, recursion);
 }
 
 describe('object generator', () => {

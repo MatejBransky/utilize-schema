@@ -11,7 +11,7 @@ import { isSchemaObject, NEWLINE, shapeKey, ts } from '../utils';
 
 const PROTO = '__proto__';
 
-export const generator = createGenerator(
+export const objectGenerator = createGenerator(
 	(schema) => schema.type === 'object',
 	(schema, context, { generateSchema }) => {
 		const declaredProperties = schema.properties ?? {};
