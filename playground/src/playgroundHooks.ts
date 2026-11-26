@@ -10,7 +10,7 @@ import { buildBundle, detectRootId, normalizeName, parseJsonFile } from './bundl
 import type { Problem, SchemaFile } from './bundle';
 import { collectDroppedFiles, readDroppedSchemas } from './drop';
 import type { DropMode } from './drop';
-import { exampleGeneratorOptions } from './exampleOptions';
+import { generatorOptionsFor } from './exampleOptions';
 import type { ExampleGeneratorOptions } from './exampleOptions';
 import { examples } from './examples';
 import type { FormatMode } from './formatMode';
@@ -387,14 +387,14 @@ function useGeneration(
 
 			if (bundle.root !== null) {
 				try {
-					const { root } = await parse(bundle.root as never, {
+					const { root } = await parse(bundle.root, {
 						cwd: '/',
 						fileName: bundle.rootFileName,
 						keywordPolicy,
 						onDialectIssue: () => {},
 					});
 
-					const generatorOptions = exampleId ? exampleGeneratorOptions[exampleId] : undefined;
+					const generatorOptions = exampleId ? generatorOptionsFor(exampleId) : undefined;
 					const rawCode = generateCodeFor(target, root, generatorOptions, formatMode);
 					const formatCode =
 						generatorOptions?.format ??

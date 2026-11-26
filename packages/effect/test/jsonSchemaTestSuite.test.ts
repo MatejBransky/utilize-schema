@@ -11,6 +11,9 @@ import { loadSuiteFiles, suiteCaseKey } from '@utilize/test-utils/suite/loadSuit
 import type { SuiteCase } from '@utilize/test-utils/suite/loadSuite';
 import { measureDialect } from '@utilize/test-utils/suite/measureDialect';
 
+const knownFailureByKey = new Map(Object.entries(knownFailures));
+const knownFailureInstanceByKey = new Map(Object.entries(knownFailureInstances));
+
 /**
  * Runs the official JSON Schema Test Suite against the generated Zod schemas.
  *
@@ -82,10 +85,10 @@ for (const file of files) {
 			}
 
 			const key = suiteCaseKey(file, testCase);
-			const gap = knownFailures[key];
+			const gap = knownFailureByKey.get(key);
 
 			if (gap) {
-				const expected = knownFailureInstances[key];
+				const expected = knownFailureInstanceByKey.get(key);
 
 				test(`${testCase.description} — known gap: ${gap}`, async () => {
 					if (expected === 'compile') {

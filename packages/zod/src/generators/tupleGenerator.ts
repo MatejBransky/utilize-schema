@@ -1,3 +1,4 @@
+import { expectDefined } from '@utilize/json-schema';
 import type { Dialect, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
@@ -6,7 +7,7 @@ import type { GeneratorContext } from './types';
 
 import { NEWLINE, ts } from '../utils';
 
-export const generator = createGenerator(
+export const tupleGenerator = createGenerator(
 	(schema, dialect) => {
 		if (schema.type !== 'array') {
 			return false;
@@ -15,7 +16,7 @@ export const generator = createGenerator(
 		return tupleItems(schema, dialect) !== undefined;
 	},
 	(schema, context, { generateSchema }) => {
-		const items = tupleItems(schema, context.dialect)!;
+		const items = expectDefined(tupleItems(schema, context.dialect));
 		const minItems = schema.minItems ?? 0;
 		const rest = tupleRest(schema, context.dialect);
 		// The tuple's own maximum is `items.length` when there is no rest schema.

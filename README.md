@@ -554,6 +554,13 @@ compile.
 - Run tests: `pnpm test`
 - Run the full check: `pnpm verify`
 
+Tooling: pnpm workspaces, [tsdown](https://tsdown.dev/) for builds,
+[Vitest](https://vitest.dev/) for tests, [oxlint](https://oxc.rs/docs/guide/usage/linter)
+and [oxfmt](https://oxc.rs/docs/guide/usage/formatter) for lint and format,
+[Changesets](https://github.com/changesets/changesets) for releases, and
+[fallow](https://fallow.tools/) for unused code, duplication, complexity,
+dependency and architecture checks (`pnpm fallow`, `pnpm fallow:audit`).
+
 The full guide, including changesets and release steps, is in
 [CONTRIBUTING.md](./CONTRIBUTING.md) and [RELEASING.md](./RELEASING.md).
 

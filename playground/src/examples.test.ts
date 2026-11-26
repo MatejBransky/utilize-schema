@@ -8,7 +8,7 @@ import { expect, test } from 'vitest';
 import './polyfills';
 
 import { buildBundle, parseJsonFile } from './bundle';
-import { exampleGeneratorOptions } from './exampleOptions';
+import { generatorOptionsFor } from './exampleOptions';
 import type { ExampleGeneratorOptions } from './exampleOptions';
 import { examples } from './examples';
 
@@ -50,7 +50,7 @@ for (const example of examples) {
 				cwd: '/',
 				fileName: bundle.rootFileName,
 			});
-			const code = generator.generate(root, exampleGeneratorOptions[example.id]);
+			const code = generator.generate(root, generatorOptionsFor(example.id));
 
 			expect(code).toContain(generator.marker);
 		});

@@ -1,4 +1,4 @@
-import { parse } from '@utilize/json-schema';
+import { expectDefined, parse } from '@utilize/json-schema';
 import type { DialectOptions, JSONSchema } from '@utilize/json-schema';
 import type { z } from 'zod';
 
@@ -19,7 +19,7 @@ export type TestGenerateOptions = Pick<
 
 export { ts };
 
-export interface CompileOptions extends TestGenerateOptions {
+export interface TestCompileOptions extends TestGenerateOptions {
 	importZod?: boolean;
 	cwd?: string;
 	fileName?: string;
@@ -29,7 +29,10 @@ export interface CompileOptions extends TestGenerateOptions {
 	customSchemaResolver?: CustomSchemaResolver;
 }
 
-export async function compile(schema: JSONSchema, options?: CompileOptions & DialectOptions) {
+export async function generateCode(
+	schema: JSONSchema,
+	options?: TestCompileOptions & DialectOptions
+) {
 	const parsed = await parse(schema, {
 		cwd: options?.cwd ?? __dirname + '/',
 		fileName: options?.fileName ?? 'Root.json',
@@ -59,9 +62,9 @@ export async function compile(schema: JSONSchema, options?: CompileOptions & Dia
  */
 export async function compileModule(
 	schema: JSONSchema,
-	options?: CompileOptions & DialectOptions
+	options?: TestCompileOptions & DialectOptions
 ): Promise<Record<string, z.ZodType>> {
-	const code = await compile(schema, { ...options, importZod: true });
+	const code = await generateCode(schema, { ...options, importZod: true });
 	const directory = await mkdtemp(join(__dirname, '__generated__-'));
 
 	try {
@@ -75,8 +78,8 @@ export async function compileModule(
 
 export async function compileToZod(
 	schema: JSONSchema,
-	options?: CompileOptions & DialectOptions
+	options?: TestCompileOptions & DialectOptions
 ): Promise<z.ZodType> {
 	const module = await compileModule(schema, options);
-	return module.Root!;
+	return expectDefined(module.Root);
 }

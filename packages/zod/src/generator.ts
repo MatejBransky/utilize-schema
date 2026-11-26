@@ -1,4 +1,4 @@
-import { collectStandaloneSchemas, dialectOf, Meta } from '@utilize/json-schema';
+import { collectStandaloneSchemas, dialectOf, expectDefined, Meta } from '@utilize/json-schema';
 import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 import toposort from 'toposort';
 
@@ -207,7 +207,7 @@ function nameDeclarations(
 	});
 
 	return {
-		names: new Map(schemas.map((schema, index) => [schema, mapped.names[index]!])),
+		names: new Map(schemas.map((schema, index) => [schema, expectDefined(mapped.names[index])])),
 		typeNames: mapped.typeNames,
 	};
 }
@@ -240,8 +240,9 @@ const ONE_OF_HELPER = ts`function oneOfSchema<T extends z.ZodType>(
 
   return z.any().transform((value, ctx) => {
     const matches = matchingResults(value);
+    const [match] = matches;
 
-    if (matches.length !== 1) {
+    if (matches.length !== 1 || match === undefined) {
       ctx.addIssue({
         code: 'custom',
         message: 'Value must match exactly one "oneOf" schema.',
@@ -250,6 +251,6 @@ const ONE_OF_HELPER = ts`function oneOfSchema<T extends z.ZodType>(
       return z.NEVER;
     }
 
-    return matches[0]!;
+    return match;
   }) as z.ZodType<z.output<T>, z.input<T>>;
 }`;

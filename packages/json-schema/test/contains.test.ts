@@ -2,12 +2,12 @@ import { describe, expect, test } from 'vitest';
 
 import { containsBounds } from '../src/contains';
 import { dialects } from '../src/dialect';
-import type { ParsedJSONSchemaObject } from '../src/model';
+import type { JSONSchema, ParsedJSONSchemaObject } from '../src/model';
 
 const draft07 = dialects['draft-07'];
 const twentyNineteen = dialects['2019-09'];
 
-function schema(value: object): ParsedJSONSchemaObject {
+function schema(value: JSONSchema): ParsedJSONSchemaObject {
 	return value as ParsedJSONSchemaObject;
 }
 

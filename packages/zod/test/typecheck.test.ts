@@ -6,8 +6,8 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 
-import { compile } from './test-utils';
-import type { CompileOptions } from './test-utils';
+import { generateCode } from './test-utils';
+import type { TestCompileOptions } from './test-utils';
 
 const require = createRequire(import.meta.url);
 const tsc = join(dirname(require.resolve('typescript/package.json')), 'bin/tsc');
@@ -421,13 +421,13 @@ describe('generated recursive schemas type-check', () => {
 
 describe('value types of $ref siblings', () => {
 	test('draft-07 renders only the reference', async () => {
-		await expect(compile(refWithIgnoredCombinatorSchema)).resolves.toContain(
+		await expect(generateCode(refWithIgnoredCombinatorSchema)).resolves.toContain(
 			'type RootValue = { kind?: Kind; tag?: Kind; next?: RootValue };'
 		);
 	});
 
 	test('2019-09 intersects the reference with its siblings', async () => {
-		await expect(compile(refWithAppliedCombinatorSchema)).resolves.toContain(
+		await expect(generateCode(refWithAppliedCombinatorSchema)).resolves.toContain(
 			"type RootValue = { kind?: Kind & ('a' & unknown); next?: RootValue };"
 		);
 	});
@@ -435,13 +435,13 @@ describe('value types of $ref siblings', () => {
 
 const dateTime: JSONSchema = { type: 'string', format: 'date-time' };
 
-async function typeCheck(schemas: Record<string, JSONSchema>, options: CompileOptions = {}) {
+async function typeCheck(schemas: Record<string, JSONSchema>, options: TestCompileOptions = {}) {
 	const directory = await mkdtemp(join(__dirname, '__generated__-'));
 	const files: string[] = [];
 
 	try {
 		for (const [name, schema] of Object.entries(schemas)) {
-			const code = await compile(schema, { importZod: true, ...options });
+			const code = await generateCode(schema, { importZod: true, ...options });
 			const file = join(directory, name);
 			await writeFile(file, code);
 			files.push(file);

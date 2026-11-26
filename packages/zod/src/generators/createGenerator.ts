@@ -28,6 +28,7 @@ export function createGenerator<
 >(predicate: Predicate, generate: Generate<R>): ExpressionGenerator<T> {
 	return {
 		predicate: (input: ParsedJSONSchemaObject, dialect): input is T => predicate(input, dialect),
+		// oxlint-disable-next-line quality/no-chained-type-assertions -- the predicate has already narrowed the node to T
 		generate: generate as unknown as Generate<T>,
 	};
 }

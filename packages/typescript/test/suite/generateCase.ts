@@ -1,5 +1,5 @@
 import { Meta, parse } from '@utilize/json-schema';
-import type { DialectId, JSONSchema } from '@utilize/json-schema';
+import type { DialectId } from '@utilize/json-schema';
 
 import { generate } from '../../src/generator';
 
@@ -34,7 +34,7 @@ export async function renderCaseModule(
 	testCase: SuiteCase,
 	dialect?: DialectId
 ): Promise<CaseModule> {
-	const { root } = await parse(testCase.schema as JSONSchema, {
+	const { root } = await parse(testCase.schema, {
 		cwd: __dirname + '/',
 		fileName: 'Root.json',
 		externalSchemas: testCase.externalSchemas,

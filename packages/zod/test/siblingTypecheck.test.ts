@@ -6,7 +6,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 
-import { compile } from './test-utils';
+import { generateCode } from './test-utils';
 
 const require = createRequire(import.meta.url);
 const tsc = join(dirname(require.resolve('typescript/package.json')), 'bin/tsc');
@@ -29,7 +29,7 @@ describe('sibling keywords in value types', () => {
 		const file = join(directory, 'RecursiveSibling.ts');
 
 		try {
-			const code = await compile(recursiveSiblingSchema, { importZod: true });
+			const code = await generateCode(recursiveSiblingSchema, { importZod: true });
 			await writeFile(
 				file,
 				`${code}

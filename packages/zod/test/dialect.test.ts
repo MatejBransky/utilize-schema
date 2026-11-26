@@ -1,7 +1,7 @@
 import type { JSONSchema } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
-import { compile, compileToZod } from './test-utils';
+import { generateCode, compileToZod } from './test-utils';
 
 const draft04 = 'http://json-schema.org/draft-04/schema#';
 const draft06 = 'http://json-schema.org/draft-06/schema#';
@@ -121,15 +121,17 @@ describe('$ref siblings', () => {
 
 		// The root keeps a `Root` alias to the referenced resource, whose dialect
 		// still decides how its items are generated.
-		await expect(compile(schema)).resolves.toContain(
+		await expect(generateCode(schema)).resolves.toContain(
 			'type ListValue = (ListValue & [string?, ...unknown[]])[];'
 		);
-		await expect(compile(schema)).resolves.toContain('export const Root = List;');
+		await expect(generateCode(schema)).resolves.toContain('export const Root = List;');
 	});
 
 	test('2020-12 generates an intersection', async () => {
-		await expect(compile(refWithSiblings(twentyTwentyTwelve))).resolves.toContain('.intersection(');
-		await expect(compile(refWithSiblings(draft07))).resolves.not.toContain('.intersection(');
+		await expect(generateCode(refWithSiblings(twentyTwentyTwelve))).resolves.toContain(
+			'.intersection('
+		);
+		await expect(generateCode(refWithSiblings(draft07))).resolves.not.toContain('.intersection(');
 	});
 });
 

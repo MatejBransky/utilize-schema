@@ -2,7 +2,7 @@ import { createGenerator } from './createGenerator';
 
 import { ts } from '../utils';
 
-export const generator = createGenerator(
+export const booleanGenerator = createGenerator(
 	(schema) => {
 		if ('enum' in schema) {
 			return false;

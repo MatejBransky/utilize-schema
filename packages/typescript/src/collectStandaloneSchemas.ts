@@ -38,9 +38,7 @@ export function collectStandaloneSchemas(root: ParsedJSONSchemaObject): Standalo
 		const basePath = schema[Meta]?.path ?? [];
 
 		for (const namespace of DEFINITION_NAMESPACES) {
-			const definitions = schema[namespace] as unknown as
-				| Record<string, ParsedJSONSchema>
-				| undefined;
+			const definitions = schema[namespace] as Record<string, ParsedJSONSchema> | undefined;
 
 			if (!isPlainObject(definitions)) {
 				continue;

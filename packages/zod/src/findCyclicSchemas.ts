@@ -1,13 +1,13 @@
-import { dialectOf } from '@utilize/json-schema';
+import { dialectOf, expectDefined } from '@utilize/json-schema';
 import type { ParsedJSONSchemaObject, SchemaEdge } from '@utilize/json-schema';
 
 import { withoutAlwaysValidAnyOf } from './generators/alwaysValidAnyOf';
-import { generator as arrayGenerator } from './generators/arrayGenerator';
-import { generator as multipleTypeGenerator } from './generators/multipleTypeGenerator';
-import { generator as objectGenerator } from './generators/objectGenerator';
-import { generator as recordGenerator } from './generators/recordGenerator';
+import { arrayGenerator } from './generators/arrayGenerator';
+import { multipleTypeGenerator } from './generators/multipleTypeGenerator';
+import { objectGenerator } from './generators/objectGenerator';
+import { recordGenerator } from './generators/recordGenerator';
 import { selectGenerator } from './generators/selectGenerator';
-import { generator as tupleGenerator } from './generators/tupleGenerator';
+import { tupleGenerator } from './generators/tupleGenerator';
 
 type SchemaNode = SchemaEdge[0];
 
@@ -72,9 +72,7 @@ function isStructuralNode(schema: SchemaNode): boolean {
 	}
 
 	if (generator === multipleTypeGenerator) {
-		return (schema.type as unknown as string[]).some(
-			(type) => type === 'object' || type === 'array'
-		);
+		return (schema.type as string[]).some((type) => type === 'object' || type === 'array');
 	}
 
 	return false;
@@ -110,9 +108,15 @@ function findCyclicNodes(edges: SchemaEdge[]): Set<SchemaNode>[] {
 		for (const target of adjacency.get(node) ?? []) {
 			if (!indices.has(target)) {
 				connect(target);
-				lowLinks.set(node, Math.min(lowLinks.get(node)!, lowLinks.get(target)!));
+				lowLinks.set(
+					node,
+					Math.min(expectDefined(lowLinks.get(node)), expectDefined(lowLinks.get(target)))
+				);
 			} else if (onStack.has(target)) {
-				lowLinks.set(node, Math.min(lowLinks.get(node)!, indices.get(target)!));
+				lowLinks.set(
+					node,
+					Math.min(expectDefined(lowLinks.get(node)), expectDefined(indices.get(target)))
+				);
 			}
 		}
 
@@ -146,7 +150,11 @@ function popComponent(
 	let member: SchemaNode;
 
 	do {
-		member = stack.pop()!;
+		const popped = stack.pop();
+		if (popped === undefined) {
+			throw new Error('Cyclic component stack underflow');
+		}
+		member = popped;
 		onStack.delete(member);
 		component.add(member);
 	} while (member !== node);

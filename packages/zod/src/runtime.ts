@@ -32,8 +32,9 @@ export function oneOfSchema<T extends z.ZodType>(
 
 	return z.any().transform((value, ctx) => {
 		const matches = matchingResults(value);
+		const [match] = matches;
 
-		if (matches.length !== 1) {
+		if (matches.length !== 1 || match === undefined) {
 			ctx.addIssue({
 				code: 'custom',
 				message: 'Value must match exactly one "oneOf" schema.',
@@ -42,6 +43,6 @@ export function oneOfSchema<T extends z.ZodType>(
 			return z.NEVER;
 		}
 
-		return matches[0]!;
+		return match;
 	}) as z.ZodType<z.output<T>, z.input<T>>;
 }

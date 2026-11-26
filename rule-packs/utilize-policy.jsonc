@@ -1,3 +1,21 @@
+// Repository invariants that boundaries and standard rules cannot express.
+//
+// `generate()` of every generator must run in the browser, so generator
+// source may not reach a Node built-in. Only `compile.ts` and `cli.ts`, which
+// the browser bundle never imports, are exempt. Three checks share that job,
+// because `banned-import` reads only static `import` and `export ... from`
+// statements, not `import()` or `require()`:
+//
+// - `browser-safe-generator-src` (below) bans static imports.
+// - `browser-safe-generator-src-require` (below) bans every `require()` call.
+//   `banned-call` matches the callee, not its argument, so it cannot ban only
+//   the built-ins. The source is ESM, so no `require()` belongs there anyway.
+// - `no-restricted-imports` in `oxlint.config.ts` bans dynamic `import()` of a
+//   built-in in the same files (`pnpm check:lint`).
+//
+// The bare list leaves out `sea`, `sqlite` and `test` on purpose: Node only
+// resolves those built-ins with the `node:` prefix, and the bare names belong
+// to real npm packages.
 {
 	"$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/rule-pack-schema.json",
 	"version": 1,
@@ -95,13 +113,19 @@
 				"wasi",
 				"worker_threads",
 				"zlib",
-				"sea",
-				"sqlite",
-				"test",
 			],
 			"files": ["packages/zod/src/**", "packages/effect/src/**", "packages/typescript/src/**"],
 			"exclude": ["packages/*/src/compile.ts", "packages/*/src/cli.ts"],
 			"message": "Generator source is bundled into the browser playground; node:* imports belong in compile.ts or cli.ts.",
+			"severity": "error",
+		},
+		{
+			"id": "browser-safe-generator-src-require",
+			"kind": "banned-call",
+			"callees": ["require"],
+			"files": ["packages/zod/src/**", "packages/effect/src/**", "packages/typescript/src/**"],
+			"exclude": ["packages/*/src/compile.ts", "packages/*/src/cli.ts"],
+			"message": "Generator source is ESM and is bundled into the browser playground; use a static import, and keep Node built-ins in compile.ts or cli.ts.",
 			"severity": "error",
 		},
 	],

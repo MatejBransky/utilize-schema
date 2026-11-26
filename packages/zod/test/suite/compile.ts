@@ -20,7 +20,7 @@ export async function compileToZodSchema(
 	formatMode?: FormatMode,
 	dialect?: DialectId
 ): Promise<z.ZodType> {
-	const { root } = await parse(schema as JSONSchema, {
+	const { root } = await parse(schema, {
 		cwd: __dirname + '/',
 		fileName: 'Root.json',
 		externalSchemas,

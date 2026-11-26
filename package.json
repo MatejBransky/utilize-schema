@@ -43,6 +43,7 @@
 		"security": "pnpm audit --audit-level=high",
 		"fallow": "fallow",
 		"fallow:audit": "fallow audit",
+		"fallow:audit:ci": "fallow audit --format json --quiet --output-file .fallow/audit.json && node scripts/fallow-gate.mjs --warn .fallow/audit.json",
 		"fallow:badge": "node scripts/fallow-badge.mjs",
 		"check:fallow-badge": "node scripts/fallow-badge.mjs --check",
 		"fallow:coverage": "node scripts/fallow-coverage.mjs",
