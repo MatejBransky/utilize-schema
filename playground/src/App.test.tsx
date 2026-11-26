@@ -505,6 +505,19 @@ test('the validation panel can be collapsed', async () => {
 	expect(body?.hasAttribute('hidden')).toBe(false);
 });
 
+test('the schema editor fills its pane', async () => {
+	await page.viewport(1200, 800);
+
+	try {
+		const screen = await render(<App />);
+		const editor = screen.getByTestId('schema-editor').element();
+
+		await vi.waitFor(() => expect(editor.getBoundingClientRect().height).toBeGreaterThan(100));
+	} finally {
+		await page.viewport(414, 896);
+	}
+});
+
 test('the test data section collapses to its header', async () => {
 	await page.viewport(1200, 800);
 
