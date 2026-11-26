@@ -67,8 +67,9 @@ produced it.
 
 ### npm trusted publishing
 
-For `@utilize/json-schema`, `@utilize/zod`, `@utilize/effect` and
-`@utilize/typescript`, configure a trusted publisher on npmjs.com:
+For `@utilize/json-schema`, `@utilize/zod`, `@utilize/effect`,
+`@utilize/typescript` and `@utilize/content-mapper`, configure a trusted
+publisher on npmjs.com:
 
 - Provider: GitHub Actions
 - Repository: `MatejBransky/utilize-schema`
@@ -78,6 +79,10 @@ For `@utilize/json-schema`, `@utilize/zod`, `@utilize/effect` and
 
 Publishing uses the GitHub OIDC token. The workflow does not use `NPM_TOKEN`.
 After a successful OIDC release, delete the old `NPM_TOKEN` repository secret.
+
+`@utilize/content-mapper` is new in this release: run the first-publish step
+below and add its trusted publisher before merging the version pull request that
+bumps it to `0.1.0`.
 
 A trusted publisher only applies to a package that already exists on npm, and
 npm removes a fresh configuration that does not complete a publish within about

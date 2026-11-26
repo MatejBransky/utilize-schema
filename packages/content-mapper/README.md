@@ -136,6 +136,9 @@ reporting `Cannot find module './person.jsonschema'`.
   incremental transform yet.
 - JSON parse errors use the parser's reported offset; generation errors point at
   the start of the file. Span-mapped diagnostics are not implemented.
+- The JSON-RPC server rejects a frame over 16 MB with an uncorrelated error; a
+  schema that large in the editor should be split and otherwise waits for the
+  editor's request timeout.
 - Only the Node loader and one Vite/Rollup/Rolldown plugin are included. Other
   bundlers and test runners are not integrated. The plugin relies on Node 24's
   experimental `stripTypeScriptTypes`, which prints one `ExperimentalWarning`
