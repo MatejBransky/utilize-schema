@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, test } from 'vitest';
+import { describe, expect, test } from 'vitest';
 
 import { DRAFT_7, isCompatible } from '@utilize/test-utils/suite/compatibility';
 
@@ -8,6 +8,7 @@ import { knownFailureInstances } from './suite/knownFailureInstances';
 import { knownFailures } from './suite/knownFailures';
 import { loadSuiteFiles, suiteCaseKey } from '@utilize/test-utils/suite/loadSuite';
 import type { SuiteCase } from '@utilize/test-utils/suite/loadSuite';
+import { measureDialect } from '@utilize/test-utils/suite/measureDialect';
 
 /**
  * Runs the official JSON Schema Test Suite against the generated Zod schemas.
@@ -26,15 +27,7 @@ import type { SuiteCase } from '@utilize/test-utils/suite/loadSuite';
  */
 
 const files = loadSuiteFiles();
-
-const stats = {
-	cases: 0,
-	run: 0,
-	knownGaps: 0,
-	assertions: 0,
-	failedAssertions: 0,
-	skippedDialect: 0,
-};
+const totalCases = files.reduce((total, file) => total + file.cases.length, 0);
 
 type SkipKind = 'dialect';
 
@@ -62,28 +55,13 @@ function formatModeFor(testCase: SuiteCase): 'annotate' | 'assert' | undefined {
 	return undefined;
 }
 
-afterAll(() => {
-	console.log(
-		[
-			'JSON Schema Test Suite (draft-07)',
-			`${stats.run - stats.knownGaps}/${stats.run} cases, ${
-				stats.assertions - stats.failedAssertions
-			}/${stats.assertions} assertions`,
-			`${stats.skippedDialect} outside this dialect (measured in the baseline)`,
-		].join(' · ')
-	);
-});
-
 for (const file of files) {
 	const runnable: { testCase: SuiteCase; skip: ReturnType<typeof skipReason> }[] = [];
 
 	for (const testCase of file.cases) {
-		stats.cases++;
-
 		const skip = skipReason(testCase);
 
 		if (skip?.kind === 'dialect') {
-			stats.skippedDialect++;
 			continue;
 		}
 
@@ -102,19 +80,14 @@ for (const file of files) {
 				continue;
 			}
 
-			stats.run++;
-			stats.assertions += testCase.tests.length;
-
 			const key = suiteCaseKey(file, testCase);
 			const gap = knownFailures[key];
 
 			if (gap) {
-				stats.knownGaps++;
 				const expected = knownFailureInstances[key];
 
 				test(`${testCase.description} — known gap: ${gap}`, async () => {
 					if (expected === 'compile') {
-						stats.failedAssertions += testCase.tests.length;
 						await expect(
 							compileToZodSchema(testCase.schema, testCase.externalSchemas, formatModeFor(testCase))
 						).rejects.toThrow();
@@ -139,37 +112,26 @@ for (const file of files) {
 						.filter((suiteTest) => zodSchema.safeParse(suiteTest.data).success !== suiteTest.valid)
 						.map((suiteTest) => suiteTest.description);
 
-					stats.failedAssertions += failures.length;
-
 					expect([...failures].sort()).toEqual([...(expected as string[])].sort());
 				});
 				continue;
 			}
 
 			test(testCase.description, async () => {
-				let failures: string[];
+				const zodSchema = await compileToZodSchema(
+					testCase.schema,
+					testCase.externalSchemas,
+					formatModeFor(testCase)
+				);
 
-				try {
-					const zodSchema = await compileToZodSchema(
-						testCase.schema,
-						testCase.externalSchemas,
-						formatModeFor(testCase)
+				const failures = testCase.tests
+					.filter((suiteTest) => zodSchema.safeParse(suiteTest.data).success !== suiteTest.valid)
+					.map(
+						(suiteTest) =>
+							`${suiteTest.description}: ${JSON.stringify(suiteTest.data)} should be ${
+								suiteTest.valid ? 'valid' : 'invalid'
+							}`
 					);
-
-					failures = testCase.tests
-						.filter((suiteTest) => zodSchema.safeParse(suiteTest.data).success !== suiteTest.valid)
-						.map(
-							(suiteTest) =>
-								`${suiteTest.description}: ${JSON.stringify(suiteTest.data)} should be ${
-									suiteTest.valid ? 'valid' : 'invalid'
-								}`
-						);
-				} catch (error) {
-					stats.failedAssertions += testCase.tests.length;
-					throw error;
-				}
-
-				stats.failedAssertions += failures.length;
 
 				expect(failures).toEqual([]);
 			});
@@ -217,16 +179,31 @@ describe('known failures', () => {
 });
 
 describe('baseline', () => {
-	test('matches the recorded conformance baseline', () => {
-		const recorded = baseline['draft-07'];
+	test('matches the recorded conformance baseline', async () => {
+		const { counts, failing } = await measureDialect(
+			files,
+			DRAFT_7,
+			(testCase) =>
+				compileToZodSchema(
+					testCase.schema,
+					testCase.externalSchemas,
+					formatModeFor(testCase),
+					'draft-07'
+				),
+			(schema, data) => schema.safeParse(data).success
+		);
 
-		expect({
-			cases: stats.run,
-			passing: stats.run - stats.knownGaps,
-			instances: stats.assertions,
-			passingInstances: stats.assertions - stats.failedAssertions,
-		}).toEqual(recorded);
-	});
+		console.log(
+			[
+				'JSON Schema Test Suite (draft-07)',
+				`${counts.passing}/${counts.cases} cases, ${counts.passingInstances}/${counts.instances} assertions`,
+				`${totalCases - counts.cases} outside this dialect (measured in the baseline)`,
+			].join(' · ')
+		);
+		expect(counts, `Failing draft-07 cases (${failing.length}):\n${failing.join('\n')}`).toEqual(
+			baseline['draft-07']
+		);
+	}, 120_000);
 });
 
 const OTHER_DIALECTS = {
@@ -241,52 +218,23 @@ describe('other dialects', () => {
 		const token = OTHER_DIALECTS[dialect];
 
 		test(`${dialect} matches the recorded baseline`, async () => {
-			let cases = 0;
-			let passing = 0;
-			let instances = 0;
-			let passingInstances = 0;
-			const failing: string[] = [];
-
-			for (const file of files) {
-				for (const testCase of file.cases) {
-					if (!isCompatible(testCase.compatibility, token)) {
-						continue;
-					}
-
-					cases++;
-					instances += testCase.tests.length;
-
-					let failed: number;
-
-					try {
-						const zodSchema = await compileToZodSchema(
-							testCase.schema,
-							testCase.externalSchemas,
-							formatModeFor(testCase),
-							dialect
-						);
-
-						failed = testCase.tests.filter(
-							(suiteTest) => zodSchema.safeParse(suiteTest.data).success !== suiteTest.valid
-						).length;
-					} catch {
-						failed = testCase.tests.length;
-					}
-
-					passingInstances += testCase.tests.length - failed;
-
-					if (failed === 0) {
-						passing++;
-					} else {
-						failing.push(`${suiteCaseKey(file, testCase)} (${failed} failed)`);
-					}
-				}
-			}
+			const { counts, failing } = await measureDialect(
+				files,
+				token,
+				(testCase) =>
+					compileToZodSchema(
+						testCase.schema,
+						testCase.externalSchemas,
+						formatModeFor(testCase),
+						dialect
+					),
+				(schema, data) => schema.safeParse(data).success
+			);
 
 			expect(
-				{ cases, passing, instances, passingInstances },
+				counts,
 				`Failing ${dialect} cases (${failing.length}):\n${failing.join('\n')}`
-			).toEqual(baseline[dialect as keyof typeof baseline]);
+			).toEqual(baseline[dialect]);
 		}, 120_000);
 	}
 });

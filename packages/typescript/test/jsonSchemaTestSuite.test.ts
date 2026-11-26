@@ -268,7 +268,7 @@ describe('other dialects', () => {
 			expect(
 				{ cases: runnable.length, passing, typeGaps, gaps: gaps.length },
 				`Failing ${dialect} cases (${gaps.length}):\n${gaps.join('\n')}`
-			).toEqual(baseline[dialect as keyof typeof baseline]);
+			).toEqual(baseline[dialect]);
 		}, 120_000);
 	}
 });
