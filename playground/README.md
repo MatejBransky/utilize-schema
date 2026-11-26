@@ -68,7 +68,9 @@ Pages on every push to `main`. Only same-repository pull requests with the
    second target).
 2. Add an alias for it in `vite.config.ts` and `tsconfig.json` so the browser
    imports its source instead of `dist`.
-3. Add the target to `src/targets.ts` and a case to `generateCodeFor` in
-   `src/App.tsx`.
+3. Add the target to `src/targets.ts`, a case to `generateCodeFor` in
+   `src/generateCode.ts`, and — if the generator has a runtime validator — add
+   it to `runtimeTargetIds` in `src/targets.ts` and to the `validators` map in
+   `src/runtime.ts`, so the results pane can run it.
 4. Add it to the generators list in `src/examples.test.ts`; the whole example
    suite then has to produce code for the new target.

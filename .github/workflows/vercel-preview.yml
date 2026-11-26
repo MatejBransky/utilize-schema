@@ -45,6 +45,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Vercel CLI
+        # A global tool install, not a workspace dependency: it stays outside the
+        # pnpm supply-chain policy that governs manifest dependencies.
         run: npm install --global vercel@67.0.0
 
       - name: Pull Vercel preview environment
