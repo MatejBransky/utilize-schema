@@ -1,7 +1,8 @@
 import { dialectOf, expectDefined, isKeywordApplicable, isPlainObject } from '@utilize/json-schema';
 import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
-import { generateAllOfExpression, generateAlternativeExpression } from './alternatives';
+import { generateAllOfExpression } from './allOf';
+import { generateAlternativeExpression } from './alternatives';
 import type { Context } from './context';
 import { applyAnnotations, applyChecks } from './expressions';
 import { literal, literals } from './literals';

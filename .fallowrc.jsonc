@@ -206,10 +206,10 @@
 		// - cyclomatic 12 is the worst function today, so any function that grows
 		//   past it is new risk. The default 20 would let a function almost double
 		//   before the gate noticed.
-		// - file length 900 is a generous cap rather than a measurement: the
-		//   longest hand-written file is the TypeScript renderer at 881 lines, and
-		//   the Effect target now spreads over fifteen modules whose largest is
-		//   `object.ts` at 241. Nothing needs a per-file exception today.
+		// - file length 900 is a generous cap rather than a measurement. The
+		//   longest hand-written file in the repository is the TypeScript renderer
+		//   at 881 lines; the largest module the Effect generator owns after its
+		//   split is `object.ts` at 241. No file needs a per-file exception today.
 		//
 		// Test code is left out of the complexity checks and the health score
 		// only. A table-driven test or a `describe` block with many cases is long

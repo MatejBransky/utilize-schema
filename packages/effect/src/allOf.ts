@@ -8,13 +8,25 @@ import { ANNOTATION_KEYWORDS } from './keywords';
 import { mergeObjectSchemas } from './mergeObjects';
 import { mergeTypedSchemas } from './mergePlan';
 import { generateObject } from './object';
+import { parentSchema } from './schemaParts';
+
+export function generateAllOfExpression(
+	schema: ParsedJSONSchemaObject,
+	context: Context
+): string | undefined {
+	if (Array.isArray(schema.allOf) && schema.allOf.length > 0) {
+		return generateIntersection([parentSchema(schema), ...schema.allOf], context);
+	}
+
+	return undefined;
+}
 
 /**
  * Merges `allOf` subschemas. Effect Schema has no generic intersection, so the
  * members have to reduce to either disjoint object schemas or one scalar type
  * with combinable constraints.
  */
-export function generateIntersection(schemas: ParsedJSONSchema[], context: Context): string {
+function generateIntersection(schemas: ParsedJSONSchema[], context: Context): string {
 	const flattened = flattenAllOf(schemas);
 
 	if (flattened.includes(false)) {

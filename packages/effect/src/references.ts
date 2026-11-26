@@ -1,10 +1,9 @@
 import { Meta } from '@utilize/json-schema';
 import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
-import { siblingKeywordsCheck } from './alternatives';
 import type { Context } from './context';
 import { UnresolvedReferenceError } from './errors';
-import { applyChecks } from './expressions';
+import { applyChecks, siblingKeywordsCheck } from './expressions';
 import { generateObject } from './object';
 import { planReferenceSiblings } from './refSiblings';
 

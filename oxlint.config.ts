@@ -79,6 +79,9 @@ export default defineConfig({
 		// this half gives an editor and `pnpm check:lint` the same answer
 		// without a fallow run. Tests are deliberately outside it: the parity
 		// suite compares the zod and effect outputs on purpose.
+		//
+		// Overrides apply in order, so the `compile.ts`/`cli.ts` entry below must
+		// stay after these to turn the rule back off for the Node-only entries.
 		...generatorPeers.map((packageName) => ({
 			files: [`packages/${packageName}/src/**/*.ts`],
 			rules: { 'no-restricted-imports': browserSafeGeneratorImports(packageName) },

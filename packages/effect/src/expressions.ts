@@ -15,6 +15,14 @@ export function patternExpression(pattern: string): string {
 	return `new RegExp(${JSON.stringify(pattern)}, 'u')`;
 }
 
+/**
+ * A filter that requires the value to match the keywords declared next to
+ * `keyword` (`$ref`, `anyOf` or `oneOf`).
+ */
+export function siblingKeywordsCheck(constraints: string, keyword: string): string {
+	return `Schema.makeFilter((value) => Schema.is(${constraints})(value) ? undefined : 'Value does not match the keywords next to "${keyword}"')`;
+}
+
 export function applyChecks(expression: string, checks: string[]): string {
 	if (checks.length === 0) {
 		return expression;

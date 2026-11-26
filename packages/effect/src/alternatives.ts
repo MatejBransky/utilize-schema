@@ -1,11 +1,9 @@
 import { expectDefined, isPlainObject, withSourceMeta } from '@utilize/json-schema';
 import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
-import { generateIntersection } from './allOf';
 import { constraintKeywords } from './constraints';
 import type { Context } from './context';
-import { applyChecks } from './expressions';
-import { parentSchema } from './schemaParts';
+import { applyChecks, siblingKeywordsCheck } from './expressions';
 
 /** Keywords that keep a member from taking the `type` declared next to it. */
 const SHAPE_KEYWORDS = ['type', '$ref', 'const', 'enum', 'allOf', 'anyOf', 'oneOf'];
@@ -46,17 +44,6 @@ function canTakeType(member: ParsedJSONSchema): member is ParsedJSONSchemaObject
 	return isPlainObject(member) && SHAPE_KEYWORDS.every((keyword) => member[keyword] === undefined);
 }
 
-export function generateAllOfExpression(
-	schema: ParsedJSONSchemaObject,
-	context: Context
-): string | undefined {
-	if (Array.isArray(schema.allOf) && schema.allOf.length > 0) {
-		return generateIntersection([parentSchema(schema), ...schema.allOf], context);
-	}
-
-	return undefined;
-}
-
 export function generateAlternativeExpression(
 	schema: ParsedJSONSchemaObject,
 	context: Context
@@ -95,14 +82,6 @@ function alternativeKeyword(schema: ParsedJSONSchemaObject): 'anyOf' | 'oneOf' |
 	}
 
 	return Array.isArray(schema.oneOf) ? 'oneOf' : undefined;
-}
-
-/**
- * A filter that requires the value to match the keywords declared next to
- * `keyword` (`$ref`, `anyOf` or `oneOf`).
- */
-export function siblingKeywordsCheck(constraints: string, keyword: string): string {
-	return `Schema.makeFilter((value) => Schema.is(${constraints})(value) ? undefined : 'Value does not match the keywords next to "${keyword}"')`;
 }
 
 /**

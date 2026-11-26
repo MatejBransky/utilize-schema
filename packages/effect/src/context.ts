@@ -48,6 +48,12 @@ export interface GenerateOptions {
 	customSchemaResolver?: CustomSchemaResolver;
 }
 
+/**
+ * What a generator module reads while it renders one node: the document's
+ * dialect, the registered formats and literals, and the recursion back into
+ * `generateSchema`. It is created once per `generate()` call and copied when a
+ * node carries a different dialect.
+ */
 export type Context = {
 	/** Name of an already declared standalone schema. */
 	nameOf: (schema: ParsedJSONSchemaObject, ref: string) => string;
