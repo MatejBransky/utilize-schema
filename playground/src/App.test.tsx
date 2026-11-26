@@ -488,20 +488,24 @@ test('an agent can switch the generator', async () => {
 
 test('the validation panel can be collapsed', async () => {
 	const screen = await render(<App />);
-	const toggle = screen.getByRole('button', { name: /Validation/ });
+	const sectionToggle = screen.getByRole('button', { name: /Validation/ });
 	const body = document.querySelector('#validation-problems');
 
-	expect(toggle.element().getAttribute('aria-expanded')).toBe('true');
+	expect(sectionToggle.element().getAttribute('aria-expanded')).toBe('true');
 	expect(body?.hasAttribute('hidden')).toBe(false);
 
-	await toggle.click();
+	await sectionToggle.click();
 
-	await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('false'));
+	await vi.waitFor(() =>
+		expect(sectionToggle.element().getAttribute('aria-expanded')).toBe('false')
+	);
 	expect(body?.hasAttribute('hidden')).toBe(true);
 
-	await toggle.click();
+	await sectionToggle.click();
 
-	await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('true'));
+	await vi.waitFor(() =>
+		expect(sectionToggle.element().getAttribute('aria-expanded')).toBe('true')
+	);
 	expect(body?.hasAttribute('hidden')).toBe(false);
 });
 
@@ -523,18 +527,20 @@ test('the test data section collapses to its header', async () => {
 
 	try {
 		const screen = await render(<App />);
-		const toggle = screen.getByRole('button', { name: 'Test data' });
+		const sectionToggle = screen.getByRole('button', { name: 'Test data' });
 		const editor = screen.getByTestId('data-editor').element();
 		const editorPanel = editor.closest('#test-data-editor');
 		const results = document.querySelector('#validator-results-panel');
 
-		expect(toggle.element().getAttribute('aria-expanded')).toBe('true');
+		expect(sectionToggle.element().getAttribute('aria-expanded')).toBe('true');
 		expect(editorPanel?.hasAttribute('hidden')).toBe(false);
 		expect(results?.hasAttribute('hidden')).toBe(false);
 
-		await toggle.click();
+		await sectionToggle.click();
 
-		await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('false'));
+		await vi.waitFor(() =>
+			expect(sectionToggle.element().getAttribute('aria-expanded')).toBe('false')
+		);
 		const collapsedRow = document.getElementById('test-data-row');
 		await vi.waitFor(() => expect(collapsedRow?.hasAttribute('data-collapsed')).toBe(true));
 		await vi.waitFor(() => expect(collapsedRow?.getBoundingClientRect().height).toBeLessThan(60));
@@ -542,9 +548,11 @@ test('the test data section collapses to its header', async () => {
 		expect(results?.hasAttribute('hidden')).toBe(true);
 		expect(document.querySelector('[data-testid="data-editor"]')).toBe(editor);
 
-		await toggle.click();
+		await sectionToggle.click();
 
-		await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('true'));
+		await vi.waitFor(() =>
+			expect(sectionToggle.element().getAttribute('aria-expanded')).toBe('true')
+		);
 		expect(editorPanel?.hasAttribute('hidden')).toBe(false);
 		expect(results?.hasAttribute('hidden')).toBe(false);
 		expect(collapsedRow?.getBoundingClientRect().height).toBeGreaterThan(60);
@@ -562,22 +570,26 @@ test('resize and collapse controls remain available on narrow screens', async ()
 		const separator = screen
 			.getByRole('separator', { name: 'Resize schema and test data sections' })
 			.element();
-		const toggle = screen.getByRole('button', { name: 'Test data' });
+		const sectionToggle = screen.getByRole('button', { name: 'Test data' });
 
 		await expect.element(separator).toBeVisible();
-		await expect.element(toggle).toBeVisible();
+		await expect.element(sectionToggle).toBeVisible();
 		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('60'));
 
 		separator.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
 		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('62'));
 
-		await toggle.click();
-		await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('false'));
+		await sectionToggle.click();
+		await vi.waitFor(() =>
+			expect(sectionToggle.element().getAttribute('aria-expanded')).toBe('false')
+		);
 		expect(document.querySelector('#test-data-editor')?.hasAttribute('hidden')).toBe(true);
 		await expect.element(separator).toBeVisible();
 
-		await toggle.click();
-		await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('true'));
+		await sectionToggle.click();
+		await vi.waitFor(() =>
+			expect(sectionToggle.element().getAttribute('aria-expanded')).toBe('true')
+		);
 		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('62'));
 		expect(document.querySelector('#test-data-editor')?.hasAttribute('hidden')).toBe(false);
 	} finally {
