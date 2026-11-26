@@ -17,19 +17,19 @@ describe('formatPattern', () => {
 
 describe('formatBody', () => {
 	test.each([
-		'date-time',
-		'email',
-		'hostname',
-		'idn-email',
-		'idn-hostname',
-		'iri',
-		'iri-reference',
-		'regex',
-		'uri',
-		'uri-reference',
-		'uri-template',
-	])('returns source for %s', (format) => {
-		expect(formatBody(format)).toMatch(/\breturn\b/);
+		['date-time', 'const match = new RegExp('],
+		['email', 'return isEmail(value, false);'],
+		['hostname', 'return isHost(value, false);'],
+		['idn-email', 'return isEmail(value, true);'],
+		['idn-hostname', 'return isHost(value, true);'],
+		['iri', 'return isUri(value, false, true);'],
+		['iri-reference', 'return isUri(value, true, true);'],
+		['regex', "new RegExp(value, 'u');"],
+		['uri', 'return isUri(value, false, false);'],
+		['uri-reference', 'return isUri(value, true, false);'],
+		['uri-template', 'return isUriTemplate(value);'],
+	])('returns source for %s', (format, fragment) => {
+		expect(formatBody(format)).toContain(fragment);
 	});
 
 	test('returns nothing for a pattern format', () => {

@@ -17,7 +17,7 @@ const patterns = new Map<string, string>([
 	['relative-json-pointer', String.raw`^(?:0|[1-9][0-9]*)(?:#|\/(?:[^~]|~[01])*)?${exactEnd}`],
 ]);
 
-export function formatPattern(format: string) {
+export function formatPattern(format: string): string | undefined {
 	return patterns.get(format);
 }
 
@@ -40,7 +40,7 @@ export function formatNameFor(
 }
 
 /** `date-time` becomes `formatDateTime`, so one constant covers a format. */
-export function formatConstantBase(format: string) {
+export function formatConstantBase(format: string): string {
 	const pascal = format.replaceAll(/[^a-zA-Z0-9]+(.)?/g, (_, next: string | undefined) =>
 		next === undefined ? '' : next.toUpperCase()
 	);
