@@ -3,7 +3,10 @@ import { createRequire } from 'node:module';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { collectDialectFailures, renderDialectFailures } from '../../../scripts/suite-failures.mjs';
+
 import { renderKnownFailureInstances } from '@utilize/test-utils/suite/baseline';
+import { DRAFT_7, isCompatible, OTHER_DIALECTS } from '@utilize/test-utils/suite/compatibility';
 import { evaluateGeneratedCode, nameRootSchema } from '@utilize/test-utils/suite/evaluate';
 import { loadSuiteFiles, suiteCaseKey, suiteDirectory } from '@utilize/test-utils/suite/loadSuite';
 
@@ -23,6 +26,34 @@ const { knownFailures } = await import(
 console.log = () => {};
 console.warn = () => {};
 
+function formatModeFor(testCase) {
+	if (testCase.tags?.includes('format-assertion')) {
+		return 'assert';
+	}
+
+	if (testCase.tags?.includes('format-annotation')) {
+		return 'annotate';
+	}
+
+	return undefined;
+}
+
+async function compileForDialect(testCase, dialect) {
+	const { root: parsedRoot } = await parse(testCase.schema, {
+		cwd: `${join(root, 'packages/zod/test/suite')}/`,
+		fileName: 'Root.json',
+		externalSchemas: testCase.externalSchemas,
+		dialect,
+	});
+	const code = generate(parsedRoot, {
+		importZod: false,
+		formatMode: formatModeFor(testCase),
+		customNameResolver: nameRootSchema,
+	});
+
+	return evaluateGeneratedCode(code, { z });
+}
+
 async function compile(schema, externalSchemas) {
 	const { root: parsedRoot } = await parse(schema, {
 		cwd: suiteDirectory + '/',
@@ -34,8 +65,10 @@ async function compile(schema, externalSchemas) {
 	return evaluateGeneratedCode(code, { z });
 }
 
+const files = loadSuiteFiles();
+
 const cases = new Map();
-for (const file of loadSuiteFiles()) {
+for (const file of files) {
 	for (const testCase of file.cases) {
 		cases.set(suiteCaseKey(file, testCase), { file: file.name, testCase });
 	}
@@ -74,3 +107,21 @@ ${body}
 
 writeFileSync(join(root, 'packages/zod/test/suite/knownFailureInstances.ts'), file);
 process.stdout.write(`wrote ${Object.keys(output).length} entries\n`);
+
+const failuresByDialect = await collectDialectFailures({
+	files,
+	dialects: { 'draft-07': DRAFT_7, ...OTHER_DIALECTS },
+	isCompatible,
+	suiteCaseKey,
+	compile: (testCase, dialect) => compileForDialect(testCase, dialect),
+	accepts: (schema, data) => schema.safeParse(data).success,
+});
+
+writeFileSync(
+	join(root, 'packages/zod/test/suite/knownFailuresByDialect.ts'),
+	renderDialectFailures(failuresByDialect, 'node scripts/update-suite-baseline.mjs')
+);
+
+process.stdout.write(
+	`${Object.values(failuresByDialect).reduce((sum, failing) => sum + failing.length, 0)} dialect failures\n`
+);

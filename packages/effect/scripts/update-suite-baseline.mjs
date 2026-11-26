@@ -2,8 +2,10 @@ import { writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { collectDialectFailures, renderDialectFailures } from '../../../scripts/suite-failures.mjs';
+
 import { renderKnownFailureInstances } from '@utilize/test-utils/suite/baseline';
-import { isCompatible } from '@utilize/test-utils/suite/compatibility';
+import { DRAFT_7, isCompatible, OTHER_DIALECTS } from '@utilize/test-utils/suite/compatibility';
 import { evaluateGeneratedCode, nameRootSchema } from '@utilize/test-utils/suite/evaluate';
 import { loadSuiteFiles, suiteCaseKey } from '@utilize/test-utils/suite/loadSuite';
 import { Schema } from 'effect';
@@ -25,11 +27,12 @@ function formatModeFor(testCase) {
 	return undefined;
 }
 
-async function compileToSchema(schema, externalSchemas, formatMode) {
+async function compileToSchema(schema, externalSchemas, formatMode, dialect) {
 	const { root: parsedRoot } = await parse(schema, {
 		cwd: `${join(root, 'test/suite')}/`,
 		fileName: 'Root.json',
 		externalSchemas,
+		dialect,
 	});
 	const code = generate(parsedRoot, {
 		importEffect: false,
@@ -55,7 +58,9 @@ let cases = 0;
 let assertions = 0;
 let failingAssertions = 0;
 
-for (const file of loadSuiteFiles()) {
+const files = loadSuiteFiles();
+
+for (const file of files) {
 	for (const testCase of file.cases) {
 		if (!isCompatible(testCase.compatibility)) {
 			continue;
@@ -122,4 +127,23 @@ process.stdout.write(
 	`${cases - Object.keys(instances).length}/${cases} cases, ${
 		assertions - failingAssertions
 	}/${assertions} assertions, ${Object.keys(instances).length} known gaps\n`
+);
+
+const failuresByDialect = await collectDialectFailures({
+	files,
+	dialects: { 'draft-07': DRAFT_7, ...OTHER_DIALECTS },
+	isCompatible,
+	suiteCaseKey,
+	compile: (testCase, dialect) =>
+		compileToSchema(testCase.schema, testCase.externalSchemas, formatModeFor(testCase), dialect),
+	accepts: (schema, data) => isValid(schema, data),
+});
+
+writeFileSync(
+	join(root, 'test/suite/knownFailuresByDialect.ts'),
+	renderDialectFailures(failuresByDialect, 'pnpm --filter @utilize/effect update:suite-baseline')
+);
+
+process.stdout.write(
+	`${Object.values(failuresByDialect).reduce((sum, failing) => sum + failing.length, 0)} dialect failures\n`
 );

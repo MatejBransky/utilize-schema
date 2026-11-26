@@ -6,7 +6,8 @@
  * invalid instance is rejected. `typeGaps` counts cases that differ only because
  * an instance is rejected by a validation keyword a TypeScript type cannot
  * express. `gaps` counts cases that crash, emit invalid TypeScript or reject a
- * valid instance; for `draft-07` those are listed in `knownGaps.ts`.
+ * valid instance; the per-dialect lists are in `knownGapCases.ts`, with curated
+ * draft-07 reasons in `knownGaps.ts`.
  *
  * `cases` is the number of cases this target runs: the dialect's cases minus
  * the `format-assertion` ones, which a type cannot check. `instances` and

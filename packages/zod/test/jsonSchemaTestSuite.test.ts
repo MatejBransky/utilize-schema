@@ -8,6 +8,7 @@ import { measureDialect } from '@utilize/test-utils/suite/measureDialect';
 import { baseline } from './suite/baseline';
 import { compileToZodSchema } from './suite/compile';
 import { knownFailureInstances } from './suite/knownFailureInstances';
+import { knownFailuresByDialect } from './suite/knownFailuresByDialect';
 import { knownFailures } from './suite/knownFailures';
 
 const knownFailureByKey = new Map(Object.entries(knownFailures));
@@ -203,8 +204,11 @@ describe('baseline', () => {
 				`${totalCases - counts.cases} outside this dialect (measured in the baseline)`,
 			].join(' · ')
 		);
-		expect(counts, `Failing draft-07 cases (${failing.length}):\n${failing.join('\n')}`).toEqual(
-			baseline['draft-07']
+		const failureMessage = `Failing draft-07 cases (${failing.length}):\n${failing.join('\n')}`;
+
+		expect(counts, failureMessage).toEqual(baseline['draft-07']);
+		expect([...failing].sort(), failureMessage).toEqual(
+			[...knownFailuresByDialect['draft-07']].sort()
 		);
 	}, 120_000);
 });
@@ -227,10 +231,12 @@ describe('other dialects', () => {
 				(schema, data) => schema.safeParse(data).success
 			);
 
-			expect(
-				counts,
-				`Failing ${dialect} cases (${failing.length}):\n${failing.join('\n')}`
-			).toEqual(baseline[dialect]);
+			const failureMessage = `Failing ${dialect} cases (${failing.length}):\n${failing.join('\n')}`;
+
+			expect(counts, failureMessage).toEqual(baseline[dialect]);
+			expect([...failing].sort(), failureMessage).toEqual(
+				[...knownFailuresByDialect[dialect]].sort()
+			);
 		}, 120_000);
 	}
 });
