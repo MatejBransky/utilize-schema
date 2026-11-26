@@ -63,31 +63,34 @@ function isStructuralNode(schema: SchemaNode): boolean {
 		return false;
 	}
 
+	const candidate = withoutAlwaysValidAnyOf(schema);
 	const dialect = dialectOf(schema);
-	const implicitTypes = inferTypeKeywords(withoutAlwaysValidAnyOf(schema), dialect);
 
-	if (implicitTypes.some((type) => type === 'object' || type === 'array')) {
+	if (hasStructuralType(inferTypeKeywords(candidate, dialect))) {
 		return true;
 	}
 
-	const generator = selectGenerator(withoutAlwaysValidAnyOf(schema), dialect);
+	const generator = selectGenerator(candidate, dialect);
 
-	if (
-		generator === objectGenerator ||
-		generator === recordGenerator ||
-		generator === arrayGenerator ||
-		generator === tupleGenerator
-	) {
+	if (STRUCTURAL_GENERATORS.has(generator)) {
 		return true;
 	}
 
-	if (generator === multipleTypeGenerator) {
-		const types = Array.isArray(schema.type) ? schema.type : [schema.type];
+	return (
+		generator === multipleTypeGenerator &&
+		hasStructuralType(Array.isArray(schema.type) ? schema.type : [schema.type])
+	);
+}
 
-		return types.some((type) => type === 'object' || type === 'array');
-	}
+const STRUCTURAL_GENERATORS = new Set([
+	objectGenerator,
+	recordGenerator,
+	arrayGenerator,
+	tupleGenerator,
+]);
 
-	return false;
+function hasStructuralType(types: readonly (string | undefined)[]): boolean {
+	return types.some((type) => type === 'object' || type === 'array');
 }
 
 function findCyclicNodes(edges: SchemaEdge[]): Set<SchemaNode>[] {
