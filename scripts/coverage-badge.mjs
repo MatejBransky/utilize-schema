@@ -1,7 +1,7 @@
-// Measures unit test line coverage per package and writes one shields-style
-// SVG badge per package to .github/badges/. With `--check` it writes nothing
-// and fails when a committed badge no longer matches the measured value.
-import { execFileSync } from 'node:child_process';
+// Reads the unit test line coverage per package from the `lcov.info` that the
+// coverage-enabled test run wrote, and renders one shields-style SVG badge per
+// package to .github/badges/. With `--check` it writes nothing and fails when
+// a committed badge no longer matches the measured value.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,23 +15,16 @@ const IS_CHECK = process.argv.includes('--check');
 
 const LABEL = 'coverage';
 
-function measureLineCoveragePercent(packageName) {
-	const packageDirectory = join(ROOT, 'packages', packageName);
-	execFileSync(
-		'pnpm',
-		[
-			'exec',
-			'vitest',
-			'run',
-			'--coverage.enabled',
-			'--coverage.provider=v8',
-			'--coverage.reporter=lcov',
-			'--coverage.include=src/**',
-		],
-		{ cwd: packageDirectory, stdio: ['ignore', 'ignore', 'inherit'] }
-	);
-	const lcov = readFileSync(join(packageDirectory, 'coverage', 'lcov.info'), 'utf8');
-	return calculatePercent(lcov);
+function readLineCoveragePercent(packageName) {
+	const lcovPath = join(ROOT, 'packages', packageName, 'coverage', 'lcov.info');
+
+	if (!existsSync(lcovPath)) {
+		throw new Error(
+			`Missing ${lcovPath}. Run "pnpm ci:test:coverage" before reading the coverage badges.`
+		);
+	}
+
+	return calculatePercent(readFileSync(lcovPath, 'utf8'));
 }
 
 function calculatePercent(lcov) {
@@ -94,7 +87,7 @@ function run() {
 	mkdirSync(BADGE_DIRECTORY, { recursive: true });
 
 	for (const packageName of PACKAGES) {
-		const update = badgeUpdate(packageName, measureLineCoveragePercent(packageName));
+		const update = badgeUpdate(packageName, readLineCoveragePercent(packageName));
 		recordBadge(update, staleBadges);
 	}
 

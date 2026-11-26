@@ -1,10 +1,13 @@
-// Runs the unit tests of every workspace with V8 coverage, merges the
-// Istanbul `coverage-final.json` files into one, and runs `fallow` in combined
-// mode on it, so dead code, duplication, complexity and rule-pack policy are
-// judged on the same tree and CRAP uses measured coverage instead of fallow's
-// static estimate. Extra arguments are passed on to `fallow`.
+// Merges the Istanbul `coverage-final.json` files of every workspace into one
+// and runs `fallow` in combined mode on it, so dead code, duplication,
+// complexity and rule-pack policy are judged on the same tree and CRAP uses
+// measured coverage instead of fallow's static estimate. Extra arguments are
+// passed on to `fallow`.
 //
-// Each package's coverage counts only its own `src`, measured by its own
+// By default it runs the unit tests of every workspace with V8 coverage first.
+// With `--reuse-coverage` it skips those runs and merges the coverage that
+// `pnpm ci:test:coverage` already wrote, so CI never executes the test suite
+// twice. Each package's coverage counts only its own `src`, measured by its own
 // tests. Generators import `@utilize/json-schema` through its `dist` (no
 // source maps), so json-schema code that only generator tests run counts as
 // uncovered. Run `pnpm build:dev` first: the generator tests need that `dist`.
@@ -13,7 +16,7 @@
 // purpose: fallow picks that path up on its own, and then the commit hook and
 // every other local run would stop using the static estimate.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -26,6 +29,22 @@ const WORKSPACES = [
 	'playground',
 ];
 const MERGED_COVERAGE = join(ROOT, 'coverage', 'merged', 'coverage-final.json');
+const REUSE_COVERAGE = process.argv.includes('--reuse-coverage');
+const FALLOW_ARGUMENTS = process.argv
+	.slice(2)
+	.filter((argument) => argument !== '--reuse-coverage');
+
+function readCoverage(workspace) {
+	const coveragePath = join(ROOT, workspace, 'coverage', 'coverage-final.json');
+
+	if (!existsSync(coveragePath)) {
+		throw new Error(
+			`Missing ${coveragePath}. Run "pnpm ci:test:coverage" before reusing coverage.`
+		);
+	}
+
+	return JSON.parse(readFileSync(coveragePath, 'utf8'));
+}
 
 function measureCoverage(workspace) {
 	const directory = join(ROOT, workspace);
@@ -72,6 +91,11 @@ function mergeCoverage(coverageMaps) {
 
 function run() {
 	const coverageMaps = WORKSPACES.map((workspace) => {
+		if (REUSE_COVERAGE) {
+			console.error(`Reusing coverage: ${workspace}`);
+			return readCoverage(workspace);
+		}
+
 		console.error(`Measuring coverage: ${workspace}`);
 		return measureCoverage(workspace);
 	});
@@ -81,7 +105,7 @@ function run() {
 
 	const fallow = spawnSync(
 		'pnpm',
-		['exec', 'fallow', '--coverage', MERGED_COVERAGE, ...process.argv.slice(2)],
+		['exec', 'fallow', '--coverage', MERGED_COVERAGE, ...FALLOW_ARGUMENTS],
 		{ cwd: ROOT, stdio: 'inherit' }
 	);
 	process.exit(fallow.status ?? 1);

@@ -8,5 +8,9 @@ export default defineConfig({
 		reporters: isGitHubActions
 			? ['default', ['github-actions', { jobSummary: { title: '@utilize/zod tests' } }]]
 			: ['default'],
+		coverage: {
+			include: ['src/**'],
+			reporter: ['lcov', 'json'],
+		},
 	},
 });
