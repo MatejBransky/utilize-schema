@@ -29,7 +29,7 @@ export interface GeneratedModule {
 	readonly namespace: object;
 }
 
-type RuntimeSchema = object | ((...args: never[]) => void);
+export type RuntimeSchema = object | ((...args: never[]) => void);
 
 interface ZodRuntime {
 	readonly z: typeof ZodNamespace;
