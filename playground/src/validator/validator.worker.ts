@@ -1,8 +1,10 @@
 /**
- * Runs the generated validators away from the page. Their code is built from
- * schemas that can come from a shared URL, so it is untrusted: in a worker it
- * cannot reach the page, its storage or the editors, and a validator that never
- * finishes can be stopped without freezing the page.
+ * Runs untrusted generated validators in a dedicated, same-origin worker. The
+ * code cannot reach the page DOM, localStorage or the editors, and a validator
+ * that never finishes can be stopped without freezing the page.
+ *
+ * This is not a security sandbox: worker code can still use IndexedDB, the Cache
+ * API, BroadcastChannel and credentialed same-origin fetch.
  */
 import { loadModule, validateModule } from '../runtime';
 import type { RuntimeResult } from '../runtime';
@@ -25,6 +27,8 @@ addEventListener('message', (event: MessageEvent<ValidationRequest>) => {
 });
 
 async function handleMessage({ id, data, sources }: ValidationRequest) {
+	postMessage({ id, type: 'started' } satisfies ValidationResponse);
+
 	let response: ValidationResponse;
 
 	try {
@@ -49,7 +53,7 @@ async function check(
 	try {
 		const module = await moduleFor(target, source.javascript);
 
-		return toReport(validateModule(target, module, source.rootName, data));
+		return toReport(await validateModule(target, module, source.rootName, data));
 	} catch (error) {
 		return { ok: false, issues: [], error: messageOf(error) };
 	}

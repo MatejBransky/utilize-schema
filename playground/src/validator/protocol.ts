@@ -27,5 +27,6 @@ export interface ValidatorReport {
 export type ValidatorReports = Partial<Record<RuntimeTargetId, ValidatorReport>>;
 
 export type ValidationResponse =
+	| { id: number; type: 'started' }
 	| { id: number; reports: ValidatorReports }
 	| { id: number; error: string };
