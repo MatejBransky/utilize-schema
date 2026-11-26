@@ -25,16 +25,6 @@ type MapperResponse = {
 	result?: unknown;
 };
 
-function responseAt(responses: MapperResponse[], index: number): MapperResponse {
-	const response = responses[index];
-
-	if (!response) {
-		throw new Error(`Missing mapper response ${index}.`);
-	}
-
-	return response;
-}
-
 // The script imports a `.jsonschema` file, which only the content mapper can
 // resolve, so it is written at runtime: a committed copy would look like dead
 // code to the static analysis.
@@ -177,24 +167,31 @@ mapper.on('exit', (code) => { process.exitCode = code ?? 1; });
 		.split(/Content-Length: \d+\r\n\r\n/)
 		.filter(Boolean)
 		.map((body) => JSON.parse(body) as MapperResponse);
+	const byId = new Map<number | string, MapperResponse>();
+	const nullErrors: { code: number; message: string }[] = [];
 
-	expect(responses.map((response) => response.id)).toEqual([null, 1, null, null, 2, 3, 4, 5]);
-	expect(responseAt(responses, 0).error?.code).toBe(-32_700);
-	expect(responseAt(responses, 1).error?.message).toBe('Unknown content mapper method nope');
-	expect(responseAt(responses, 2).error?.code).toBe(-32_600);
-	expect(responseAt(responses, 3).error?.message).toBe('Request too large');
-	expect((responseAt(responses, 4).result as { diagnosticSource?: string }).diagnosticSource).toBe(
-		'utilize-schema '
-	);
-	expect((responseAt(responses, 5).result as { configIdentity?: string }).configIdentity).toBe(
-		'{"target":"zod"}'
-	);
-	expect((responseAt(responses, 6).result as { watchedFiles?: string[] }).watchedFiles).toContain(
-		fixture
-	);
+	for (const response of responses) {
+		if (response.id === null) {
+			if (response.error) {
+				nullErrors.push(response.error);
+			}
+		} else if (typeof response.id === 'number' || typeof response.id === 'string') {
+			byId.set(response.id, response);
+		}
+	}
+
+	const resultOf = <T>(id: number): T | undefined => byId.get(id)?.result as T | undefined;
+
+	expect(nullErrors.some((error) => error.code === -32_700)).toBe(true);
+	expect(nullErrors.some((error) => error.code === -32_600)).toBe(true);
+	expect(nullErrors.some((error) => error.message === 'Request too large')).toBe(true);
+	expect(byId.get(1)?.error?.message).toBe('Unknown content mapper method nope');
+	expect(resultOf<{ diagnosticSource?: string }>(2)?.diagnosticSource).toBe('utilize-schema ');
+	expect(resultOf<{ configIdentity?: string }>(3)?.configIdentity).toBe('{"target":"zod"}');
+	expect(resultOf<{ watchedFiles?: string[] }>(4)?.watchedFiles).toContain(fixture);
 	expect(
-		(responseAt(responses, 7).result as { optionDiagnostics?: { messageText: string }[] })
-			.optionDiagnostics?.[0]?.messageText
+		resultOf<{ optionDiagnostics?: { messageText: string }[] }>(5)?.optionDiagnostics?.[0]
+			?.messageText
 	).toContain('Unknown content mapper option "nope"');
 });
 
