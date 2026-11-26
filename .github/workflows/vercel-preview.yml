@@ -44,19 +44,21 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Vercel's optional platform packages lack pnpm trust metadata; scope the
+      # bypass to this pinned CLI version instead of the repository policy.
       - name: Pull Vercel preview environment
         working-directory: playground
-        run: pnpm dlx vercel@67.0.0 pull --yes --environment=preview
+        run: pnpm --config.trust-policy=off --config.minimum-release-age=0 dlx vercel@67.0.0 pull --yes --environment=preview
 
       - name: Build playground
         working-directory: playground
-        run: pnpm dlx vercel@67.0.0 build
+        run: pnpm --config.trust-policy=off --config.minimum-release-age=0 dlx vercel@67.0.0 build
 
       - name: Deploy preview
         id: deploy
         working-directory: playground
         run: |
-          url=$(pnpm dlx vercel@67.0.0 deploy --prebuilt --yes)
+          url=$(pnpm --config.trust-policy=off --config.minimum-release-age=0 dlx vercel@67.0.0 deploy --prebuilt --yes)
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
       - name: Add preview URL to summary
