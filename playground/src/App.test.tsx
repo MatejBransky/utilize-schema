@@ -229,6 +229,7 @@ test('an agent can find and change the playground controls', async () => {
 	}
 
 	const labels = components.map((entry) => entry.label);
+	expect(new Set(labels).size).toBe(labels.length);
 	for (const label of [
 		'Generator',
 		'Example',
@@ -238,12 +239,57 @@ test('an agent can find and change the playground controls', async () => {
 		'Schema files',
 		'Add file',
 		'Format schema',
+		'Format data',
+		'Example test data',
+		'Test data section',
+		'Validation section',
+		'Workspace layout',
 		'Copy code',
 		'Share',
 		'GitHub',
 	]) {
 		expect(labels, `${label} is missing from the snapshot`).toContain(label);
 	}
+
+	const cases = await agent.query({ within: 'Example test data' });
+	expect('error' in cases).toBe(false);
+	if ('error' in cases) {
+		throw new Error(cases.error);
+	}
+	const invalidCase = cases[0]?.items?.find((item) => item.label === 'Invalid');
+	expect(invalidCase?.value).toBe('invalid');
+	await expect
+		.element(screen.getByRole('separator', { name: 'Resize schema and test data sections' }))
+		.toBeVisible();
+
+	const controls = await agent.act({
+		steps: [
+			{ ref: 'Format data', action: 'press' },
+			{ ref: 'Example test data', action: 'setValue', args: [invalidCase!.value] },
+			{ ref: 'Test data section', action: 'setOpen', args: [false] },
+			{ ref: 'Test data section', action: 'setOpen', args: [true] },
+			{ ref: 'Validation section', action: 'setOpen', args: [false] },
+			{ ref: 'Validation section', action: 'setOpen', args: [true] },
+			{ ref: 'Workspace layout', action: 'setLayout', args: ['62,38'] },
+		],
+	});
+	expect(controls.ok, controls.error?.message).toBe(true);
+	await expect.element(screen.getByRole('radio', { name: 'Invalid' })).toBeChecked();
+	expect(
+		screen.getByRole('button', { name: 'Test data' }).element().getAttribute('aria-expanded')
+	).toBe('true');
+	expect(
+		screen
+			.getByRole('button', { name: /Validation/ })
+			.element()
+			.getAttribute('aria-expanded')
+	).toBe('true');
+
+	const separator = screen
+		.getByRole('separator', { name: 'Resize schema and test data sections' })
+		.element();
+	separator.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+	await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('60'));
 
 	const result = await agent.act({
 		steps: [
@@ -326,7 +372,7 @@ test('the color mode button cycles through auto, light and dark', async () => {
 	await vi.waitFor(() => expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('auto'));
 });
 
-test('the schema and test data sections can be resized', async () => {
+test('the schema and test data sections can be resized by keyboard', async () => {
 	await page.viewport(1200, 800);
 
 	try {
@@ -334,11 +380,29 @@ test('the schema and test data sections can be resized', async () => {
 		const separator = screen
 			.getByRole('separator', { name: 'Resize schema and test data sections' })
 			.element();
+		const group = separator.closest('[data-slot="resizable"]')!;
+		const panelRatio = () => {
+			const [top, bottom] = Array.from(
+				group.querySelectorAll<HTMLElement>('[data-slot="resizable-panel"]')
+			).map((panel) => panel.getBoundingClientRect().height);
 
-		expect(separator.getAttribute('aria-valuenow')).toBe('60');
+			return top / (top + bottom);
+		};
+
+		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('60'));
+		await vi.waitFor(() => expect(panelRatio()).toBeCloseTo(0.6, 1));
 
 		separator.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
 		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('58'));
+		await vi.waitFor(() => expect(panelRatio()).toBeCloseTo(0.58, 1));
+
+		separator.dispatchEvent(
+			new KeyboardEvent('keydown', { key: 'ArrowDown', shiftKey: true, bubbles: true })
+		);
+		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('68'));
+
+		separator.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('20'));
 
 		separator.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
 		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('80'));
@@ -447,33 +511,65 @@ test('the test data section collapses to its header', async () => {
 	try {
 		const screen = await render(<App />);
 		const toggle = screen.getByRole('button', { name: 'Test data' });
-		const editor = document.querySelector('#test-data-editor');
+		const editor = screen.getByTestId('data-editor').element();
+		const editorPanel = editor.closest('#test-data-editor');
 		const results = document.querySelector('#validator-results-panel');
 
 		expect(toggle.element().getAttribute('aria-expanded')).toBe('true');
-		expect(editor?.hasAttribute('hidden')).toBe(false);
+		expect(editorPanel?.hasAttribute('hidden')).toBe(false);
 		expect(results?.hasAttribute('hidden')).toBe(false);
 
 		await toggle.click();
 
 		await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('false'));
-		expect(editor?.hasAttribute('hidden')).toBe(true);
+		const collapsedRow = document.getElementById('test-data-row');
+		expect(collapsedRow?.hasAttribute('data-collapsed')).toBe(true);
+		expect(collapsedRow?.getBoundingClientRect().height).toBeLessThan(60);
+		expect(editorPanel?.hasAttribute('hidden')).toBe(true);
 		expect(results?.hasAttribute('hidden')).toBe(true);
+		expect(document.querySelector('[data-testid="data-editor"]')).toBe(editor);
 
 		await toggle.click();
 
 		await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('true'));
-		expect(editor?.hasAttribute('hidden')).toBe(false);
+		expect(editorPanel?.hasAttribute('hidden')).toBe(false);
 		expect(results?.hasAttribute('hidden')).toBe(false);
+		expect(collapsedRow?.getBoundingClientRect().height).toBeGreaterThan(60);
+		expect(document.querySelector('[data-testid="data-editor"]')).toBe(editor);
 	} finally {
 		await page.viewport(414, 896);
 	}
 });
 
-test('the test data collapse control is hidden on narrow screens', async () => {
-	const screen = await render(<App />);
+test('resize and collapse controls remain available on narrow screens', async () => {
+	await page.viewport(414, 896);
 
-	expect(screen.getByRole('button', { name: 'Test data' }).query()).toBeNull();
+	try {
+		const screen = await render(<App />);
+		const separator = screen
+			.getByRole('separator', { name: 'Resize schema and test data sections' })
+			.element();
+		const toggle = screen.getByRole('button', { name: 'Test data' });
+
+		await expect.element(separator).toBeVisible();
+		await expect.element(toggle).toBeVisible();
+		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('60'));
+
+		separator.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('62'));
+
+		await toggle.click();
+		await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('false'));
+		expect(document.querySelector('#test-data-editor')?.hasAttribute('hidden')).toBe(true);
+		await expect.element(separator).toBeVisible();
+
+		separator.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+		await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('true'));
+		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('62'));
+		expect(document.querySelector('#test-data-editor')?.hasAttribute('hidden')).toBe(false);
+	} finally {
+		await page.viewport(414, 896);
+	}
 });
 
 test('dropping a JSON file on a collapsed test data header is ignored', async () => {
@@ -680,7 +776,7 @@ test('the test data is validated by the generated Zod schema', async () => {
 	await vi.waitFor(() => expect(resultStatus('zod')).toBe('valid'), { timeout: 15_000 });
 	expect(savedData()).toContain('"firstName": "Ada"');
 
-	await screen.getByRole('button', { name: 'Invalid' }).click();
+	await screen.getByRole('radio', { name: 'Invalid' }).click();
 
 	await vi.waitFor(() => expect(resultStatus('zod')).toBe('invalid'), { timeout: 15_000 });
 
@@ -701,7 +797,7 @@ test('the result pane follows the selected generator', async () => {
 	await vi.waitFor(() => expect(resultStatus('effect')).toBe('valid'), { timeout: 15_000 });
 	expect(document.querySelector('[data-testid="result-zod"]')).toBeNull();
 
-	await screen.getByRole('button', { name: 'Invalid' }).click();
+	await screen.getByRole('radio', { name: 'Invalid' }).click();
 	await vi.waitFor(() => expect(resultStatus('effect')).toBe('invalid'), { timeout: 15_000 });
 	expect(document.querySelector('[data-testid="result-zod"]')).toBeNull();
 
@@ -711,6 +807,35 @@ test('the result pane follows the selected generator', async () => {
 	await expect.element(screen.getByText(/emits types only/)).toBeVisible();
 	expect(document.querySelector('[data-testid="result-effect"]')).toBeNull();
 });
+
+const booleanRootCases = [
+	{ target: 'zod', schema: true, status: 'valid' },
+	{ target: 'zod', schema: false, status: 'invalid' },
+	{ target: 'effect', schema: true, status: 'valid' },
+	{ target: 'effect', schema: false, status: 'invalid' },
+] as const;
+
+test.each(booleanRootCases)(
+	'$target runs a $schema root through its validator',
+	async (testCase) => {
+		localStorage.setItem(
+			'utilize-schema-playground',
+			JSON.stringify({
+				files: [{ id: 'root', name: 'root.json', content: JSON.stringify(testCase.schema) }],
+				target: testCase.target,
+				data: '{"value":1}',
+			})
+		);
+		await render(<App />);
+
+		await vi.waitFor(() => expect(resultStatus(testCase.target)).toBe(testCase.status), {
+			timeout: 15_000,
+		});
+		const card = document.querySelector(`[data-testid="result-${testCase.target}"]`);
+		expect(card?.textContent).not.toContain('The validator could not run');
+		expect(card?.textContent).not.toContain('The schema rejects all values.');
+	}
+);
 
 test('switching examples loads their test data', async () => {
 	const screen = await render(<App />);
@@ -722,7 +847,7 @@ test('switching examples loads their test data', async () => {
 	await vi.waitFor(() => expect(resultStatus('zod')).toBe('valid'), { timeout: 15_000 });
 	await vi.waitFor(() => expect(new URL(location.href).searchParams.get('example')).toBe('enum'));
 
-	await screen.getByRole('button', { name: 'Invalid' }).click();
+	await screen.getByRole('radio', { name: 'Invalid' }).click();
 
 	await vi.waitFor(() => expect(resultStatus('zod')).toBe('invalid'), { timeout: 15_000 });
 	expect(savedData()).toBe('"purple"');

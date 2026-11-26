@@ -8,7 +8,6 @@ import { defaultFormatMode } from './formatMode';
 import { generateCodeFor } from './generateCode';
 import { loadModule, validateModule } from './runtime';
 
-/** Three independent failures: a missing key, a wrong type, and a bad pattern. */
 const schema = {
 	$schema: 'http://json-schema.org/draft-07/schema#',
 	title: 'Person',

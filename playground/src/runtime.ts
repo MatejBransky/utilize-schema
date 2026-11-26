@@ -10,21 +10,17 @@ import type { z as ZodNamespace } from 'zod';
 import type { RuntimeTargetId } from './targets';
 
 export interface RuntimeIssue {
-	/** JSON path of the value that failed, for example `$.items[0].sku`. */
 	path: string;
 	message: string;
 }
 
 export interface RuntimeResult {
 	ok: boolean;
-	/** The decoded value. Defaults inserted by the generated schema show up here. */
 	value?: unknown;
 	issues: RuntimeIssue[];
-	/** Set when the validator itself could not run. */
 	error?: string;
 }
 
-/** The namespace object exported by a generated ES module. */
 export interface GeneratedModule {
 	readonly namespace: object;
 }
@@ -78,11 +74,6 @@ const packageUrls = new Map<RuntimePackageName, string>();
 let zodPackage: ZodPackage | undefined;
 let effectPackage: EffectPackage | undefined;
 
-/**
- * Generated modules read the selected package through this immutable bridge.
- * Getters let the runtime expose packages lazily without leaving writable slots
- * that generated code could replace before another target runs.
- */
 const packages: PackageBridge = {
 	get zod() {
 		return zodPackage;
@@ -100,14 +91,6 @@ Object.defineProperty(globalThis, PACKAGES_GLOBAL, {
 	enumerable: false,
 });
 
-/**
- * Loads the JavaScript emitted for a generated module as a real ES module.
- *
- * Only the import specifiers are rewritten, at the positions `es-module-lexer`
- * reports: each package is swapped for a small module that re-exports what the
- * playground supplies. Everything else, including how the module exports its
- * declarations, keeps its ES module meaning.
- */
 export async function loadModule(javascript: string): Promise<GeneratedModule> {
 	await initLexer;
 
@@ -137,7 +120,6 @@ export async function loadModule(javascript: string): Promise<GeneratedModule> {
 	return { namespace };
 }
 
-/** The generators export the root schema under its resolved name. */
 export function rootValidator(module: GeneratedModule, rootName: string): RuntimeSchema {
 	const descriptor = Object.getOwnPropertyDescriptor(module.namespace, rootName);
 
@@ -158,7 +140,6 @@ function isRuntimeSchema(value: unknown): value is RuntimeSchema {
 	return (typeof value === 'object' && value !== null) || typeof value === 'function';
 }
 
-/** Runs the root schema of a loaded module on the data. Never throws. */
 export async function validateModule(
 	target: RuntimeTargetId,
 	module: GeneratedModule,
@@ -224,7 +205,6 @@ function isZodValidator(value: unknown): value is ZodValidator {
 	);
 }
 
-/** Generated Effect validators are schemas without decoding-service requirements. */
 function isEffectValidator(
 	schema: unknown,
 	isSchema: (value: unknown) => value is EffectSchema.Top
@@ -278,7 +258,6 @@ const validators: Record<
 	effect: validateWithEffect,
 };
 
-/** Imports only the runtime requested by the current validator. */
 function runtimeModule(name: 'zod'): Promise<ZodRuntime>;
 function runtimeModule(name: 'effect'): Promise<EffectRuntime>;
 function runtimeModule(name: RuntimePackageName): Promise<RuntimeModule>;
@@ -332,7 +311,6 @@ async function packageUrl(name: string): Promise<string> {
 	return url;
 }
 
-/** A `data:` URL works for `import()` in browsers, workers and Node alike. */
 function moduleUrl(source: string): string {
 	// The URL replaces a specifier inside its original quotes, so no quote may
 	// stay unescaped. `encodeURIComponent` leaves `'` as it is.

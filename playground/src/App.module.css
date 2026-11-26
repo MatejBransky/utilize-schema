@@ -1,7 +1,8 @@
 .app {
 	display: flex;
 	flex-direction: column;
-	height: 100%;
+	height: 100vh;
+	height: 100dvh;
 }
 
 .generatorPicker {
@@ -48,55 +49,42 @@
 	position: relative;
 	flex: 1;
 	min-height: 0;
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-	grid-template-rows:
-		minmax(0, var(--workspace-top, 60%))
-		minmax(0, var(--workspace-bottom, 40%));
+	border: 0;
 }
 
-.workspace[data-resizing='true'] {
+.workspace[data-dragging] {
 	user-select: none;
 }
 
-.workspace[data-collapsed='true'] {
-	grid-template-rows: minmax(0, 1fr) auto;
-}
-
-.workspace[data-collapsed='true'] .splitter {
-	display: none;
-}
-
-.splitter {
-	position: absolute;
-	top: calc(var(--workspace-top, 60%) - 3px);
-	right: 0;
-	left: 0;
-	z-index: 5;
-	height: 6px;
+.workspacePanel {
+	min-width: 0;
+	min-height: 0;
 	padding: 0;
-	border: 0;
-	background: transparent;
-	cursor: row-resize;
-	touch-action: none;
+	overflow: hidden;
 }
 
-.splitter::before {
-	content: '';
-	position: absolute;
-	inset: 2px 0 auto;
-	height: 2px;
+.workspaceRow {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	height: 100%;
+	min-height: 0;
+}
+
+.resizeHandle {
+	width: 100%;
+	height: 1px;
 	background: var(--ui-border);
 }
 
-.splitter:hover::before,
-.splitter:focus-visible::before,
-.splitter[data-resizing='true']::before {
+.resizeHandle[data-hovering],
+.resizeHandle[data-dragging],
+.resizeHandle:focus-visible {
 	background: var(--ui-foreground);
 }
 
-.splitter:focus-visible {
-	outline: none;
+.resizeHandle:focus-visible {
+	outline: 2px solid var(--ui-ring);
+	outline-offset: 2px;
 }
 
 .pane {
@@ -110,11 +98,10 @@
 .schemaPane {
 	position: relative;
 	border-right: 1px solid var(--ui-border);
-	border-bottom: 1px solid var(--ui-border);
 }
 
 .outputPane {
-	border-bottom: 1px solid var(--ui-border);
+	min-height: 0;
 }
 
 .dataPane {
@@ -319,7 +306,7 @@
 
 .editorFill {
 	display: flex;
-	height: 100%;
+	flex: 1;
 	min-height: 0;
 }
 
@@ -366,7 +353,7 @@
 	transition: transform 120ms ease;
 }
 
-.sectionToggle[aria-expanded='false'] svg {
+.sectionToggle[data-closed] svg {
 	transform: rotate(180deg);
 }
 
@@ -414,10 +401,31 @@
 }
 
 .cases {
-	display: flex;
+	position: relative;
+	display: inline-flex;
+	isolate: isolate;
 	flex-wrap: wrap;
 	align-items: center;
 	gap: calc(var(--ui-spacing) * 1);
+	padding: 0;
+	border: 0;
+	background: transparent;
+}
+
+.caseIndicator {
+	position: absolute;
+	z-index: -1;
+	top: var(--segmented-control-indicator-top);
+	left: var(--segmented-control-indicator-left);
+	width: var(--segmented-control-indicator-width);
+	height: var(--segmented-control-indicator-height);
+	border: 0;
+	background: var(--ui-foreground);
+	pointer-events: none;
+}
+
+.caseIndicator[data-activation-direction='none'] {
+	transition: none;
 }
 
 .case {
@@ -437,15 +445,13 @@
 	border-style: dashed;
 }
 
-.case:hover:not(:disabled) {
-	background: var(--ui-muted);
+.case[data-unchecked]:hover:not(:disabled) {
 	color: var(--ui-foreground);
 }
 
-.case[data-selected] {
+.case[data-checked] {
 	border-color: var(--ui-foreground);
 	border-style: solid;
-	background: var(--ui-foreground);
 	color: var(--ui-background);
 }
 
@@ -510,6 +516,10 @@
 	cursor: pointer;
 }
 
+.problemsHeader::after {
+	content: none;
+}
+
 .problemsHeader:hover {
 	background: var(--ui-muted);
 }
@@ -525,22 +535,24 @@
 	gap: calc(var(--ui-spacing) * 2);
 }
 
-.problemsHeader[aria-expanded='false'] svg {
+.problemsHeader[data-closed] svg {
 	transform: rotate(-90deg);
 }
 
-.problems[data-collapsed='true'] {
+.problems[data-closed] {
 	flex: none;
 	min-height: 0;
 	max-height: none;
 }
 
-.problems[data-collapsed='true'] .problemsHeader {
+.problems[data-closed] .problemsHeader {
 	border-bottom: 0;
 }
 
-.problemsBody[hidden] {
-	display: none;
+.problemsBody {
+	display: flex;
+	flex: 1;
+	min-height: 0;
 }
 
 .counts {
@@ -623,7 +635,7 @@
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 	gap: 1px;
-	background: rgb(0 0 0 / 0.72);
+	background: var(--ui-overlay);
 }
 
 .dataDropOverlay {
@@ -631,7 +643,7 @@
 	inset: 0;
 	z-index: 10;
 	display: flex;
-	background: rgb(0 0 0 / 0.72);
+	background: var(--ui-overlay);
 }
 
 .dataDropOverlay .dropTarget {
@@ -682,27 +694,15 @@
 }
 
 @media (max-width: 900px) {
-	.workspace {
+	.workspaceRow {
 		grid-template-columns: minmax(0, 1fr);
-		grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.6fr) minmax(0, 0.6fr);
-	}
-
-	.workspace[data-collapsed='true'] {
-		grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.6fr) minmax(0, 0.6fr);
-	}
-
-	.splitter {
-		display: none;
+		grid-template-rows: repeat(2, minmax(0, 1fr));
 	}
 
 	.schemaPane,
 	.dataPane {
 		border-right: 0;
 		border-bottom: 1px solid var(--ui-border);
-	}
-
-	.resultPane {
-		border-bottom: 0;
 	}
 
 	.problems {
@@ -721,30 +721,13 @@
 @media (max-width: 640px) {
 	.app {
 		height: auto;
-		min-height: 100%;
+		min-height: 100dvh;
 	}
 
-	.workspace,
-	.workspace[data-collapsed='true'] {
+	.workspace {
 		flex: none;
-		grid-template-rows: none;
-	}
-
-	.pane {
-		height: 30rem;
-		min-height: 0;
-	}
-
-	.outputPane {
-		height: 34rem;
-	}
-
-	.dataPane {
-		height: 20rem;
-	}
-
-	.resultPane {
-		height: 24rem;
+		height: 36rem;
+		min-height: 36rem;
 	}
 
 	.outputHeader {

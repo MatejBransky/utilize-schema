@@ -1,9 +1,13 @@
+import { parse } from '@utilize/json-schema';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { cleanup, renderHook } from 'vitest-browser-react';
 
+import { defaultFormatMode } from '../formatMode';
+import { generateCodeFor } from '../generateCode';
 import type { RuntimeSource } from '../generateCode';
 import { emitJavaScript } from '../monaco/transpile';
-import type { TargetId } from '../targets';
+import { runtimeTargetIds } from '../targets';
+import type { RuntimeTargetId, TargetId } from '../targets';
 import { createValidatorClient } from './ValidatorClient';
 import type { ValidatorClient } from './ValidatorClient';
 import { useValidatorResults } from './useValidatorResults';
@@ -24,7 +28,11 @@ const dispose = vi.fn();
 beforeEach(() => {
 	vi.mocked(emitJavaScript).mockReset().mockResolvedValue('emitted javascript');
 	vi.mocked(createValidatorClient).mockReset().mockReturnValue({ run, cancel, dispose });
-	run.mockReset().mockResolvedValue({ zod: { ok: true, issues: [] } });
+	run.mockReset().mockImplementation(async (_data, sources) => {
+		const target: RuntimeTargetId = sources.zod ? 'zod' : 'effect';
+
+		return { [target]: { ok: true, issues: [] } };
+	});
 	cancel.mockReset();
 	dispose.mockReset();
 });
@@ -33,35 +41,49 @@ afterEach(async () => {
 	await cleanup();
 });
 
-test.each([true, false])('a %s boolean root reports a result without a worker', async (schema) => {
-	const hook = await renderHook(
-		(props: HookProps | undefined) => {
-			if (!props) {
-				throw new Error('Hook props are required.');
-			}
+const booleanCases = runtimeTargetIds.flatMap((target) =>
+	[true, false].map((schema) => ({ target, schema }))
+);
 
-			return useValidatorResults(props.target, props.runtime, props.data, false);
-		},
-		{
-			initialProps: {
-				target: 'zod',
-				runtime: { status: 'generated', code: '', booleanRoot: schema },
-				data: '{"value":1}',
-			},
+test.each(booleanCases)(
+	'$target sends a $schema root through the worker',
+	async ({ target, schema }) => {
+		const { root } = await parse(schema, { cwd: '/', fileName: 'schema.json' });
+		const { runtime } = generateCodeFor(target, root, defaultFormatMode);
+
+		if (!runtime || runtime.status !== 'generated') {
+			throw new Error('Expected generated runtime source.');
 		}
-	);
 
-	await vi.waitFor(() => expect(hook.result.current.status).toBe('ready'));
-	const state = hook.result.current;
+		const hook = await renderHook(
+			(props: HookProps | undefined) => {
+				if (!props) {
+					throw new Error('Hook props are required.');
+				}
 
-	expect(state.status === 'ready' && state.result.ok).toBe(schema);
-	expect(state.status === 'ready' && state.result.issues).toEqual(
-		schema ? [] : [{ path: '$', message: 'The schema rejects all values.' }]
-	);
-	expect(emitJavaScript).not.toHaveBeenCalled();
-	expect(createValidatorClient).not.toHaveBeenCalled();
-	await hook.unmount();
-});
+				return useValidatorResults(props.target, props.runtime, props.data, false);
+			},
+			{
+				initialProps: {
+					target,
+					runtime,
+					data: '{"value":1}',
+				},
+			}
+		);
+
+		await vi.waitFor(() => expect(hook.result.current.status).toBe('ready'));
+		expect(emitJavaScript).toHaveBeenCalledWith(runtime.runtimeCode);
+		expect(createValidatorClient).toHaveBeenCalledTimes(1);
+		expect(run).toHaveBeenCalledWith(
+			{ value: 1 },
+			{
+				[target]: { javascript: 'emitted javascript', rootName: 'Root' },
+			}
+		);
+		await hook.unmount();
+	}
+);
 
 test('cleanup cancels posted work when the next state has no runnable validator', async () => {
 	run.mockReturnValue(new Promise<never>(() => {}));
@@ -76,7 +98,7 @@ test('cleanup cancels posted work when the next state has no runnable validator'
 		{
 			initialProps: {
 				target: 'zod',
-				runtime: { status: 'generated', code: 'code', rootName: 'schema' },
+				runtime: generated('code', 'schema'),
 				data: '"valid"',
 			},
 		}
@@ -85,7 +107,7 @@ test('cleanup cancels posted work when the next state has no runnable validator'
 	await vi.waitFor(() => expect(run).toHaveBeenCalledTimes(1));
 	await hook.rerender({
 		target: 'zod',
-		runtime: { status: 'generated', code: 'code', rootName: 'schema' },
+		runtime: generated('code', 'schema'),
 		data: '{',
 	});
 
@@ -115,7 +137,7 @@ test('transpiling superseded code does not post stale work to the worker', async
 		{
 			initialProps: {
 				target: 'zod',
-				runtime: { status: 'generated', code: 'old code', rootName: 'oldSchema' },
+				runtime: generated('old code', 'oldSchema'),
 				data: '"old"',
 			},
 		}
@@ -124,7 +146,7 @@ test('transpiling superseded code does not post stale work to the worker', async
 	await vi.waitFor(() => expect(emitJavaScript).toHaveBeenCalledWith('old code'));
 	await hook.rerender({
 		target: 'zod',
-		runtime: { status: 'generated', code: 'new code', rootName: 'newSchema' },
+		runtime: generated('new code', 'newSchema'),
 		data: '"new"',
 	});
 	resolveOld('old javascript');
@@ -136,3 +158,7 @@ test('transpiling superseded code does not post stale work to the worker', async
 	});
 	await hook.unmount();
 });
+
+function generated(code: string, rootName: string): RuntimeSource {
+	return { status: 'generated', code, runtimeCode: code, rootName };
+}

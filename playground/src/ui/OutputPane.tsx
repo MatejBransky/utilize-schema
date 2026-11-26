@@ -1,4 +1,5 @@
 import { Button } from '@ui-sdk/react/button';
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@ui-sdk/react/collapsible';
 import {
 	ScrollArea,
 	ScrollAreaContent,
@@ -49,6 +50,7 @@ export function OutputPane({ playground }: OutputPaneProps) {
 	} = playground;
 	const errorCount = problems.filter((problem) => problem.severity === 'error').length;
 	const warningCount = problems.length - errorCount;
+
 	return (
 		<section className={`${styles.pane} ${styles.outputPane}`}>
 			<div className={styles.outputHeader}>
@@ -73,18 +75,14 @@ export function OutputPane({ playground }: OutputPaneProps) {
 				readOnly
 			/>
 
-			<div
+			<Collapsible
+				aria-label="Validation section"
 				className={styles.problems}
 				data-testid="problems"
-				data-collapsed={layout.problemsCollapsed ? 'true' : undefined}
+				open={!layout.problemsCollapsed}
+				onOpenChange={(open) => layout.setProblemsCollapsed(!open)}
 			>
-				<button
-					type="button"
-					className={styles.problemsHeader}
-					aria-expanded={!layout.problemsCollapsed}
-					aria-controls="validation-problems"
-					onClick={layout.toggleProblemsCollapsed}
-				>
+				<CollapsibleTrigger className={styles.problemsHeader}>
 					<span className={styles.heading}>Validation</span>
 					<span className={styles.problemsSummary}>
 						<span className={styles.counts} data-severity={errorCount > 0 ? 'error' : 'ok'}>
@@ -92,15 +90,11 @@ export function OutputPane({ playground }: OutputPaneProps) {
 						</span>
 						<ChevronDownIcon />
 					</span>
-				</button>
-				<div
-					id="validation-problems"
-					className={styles.problemsBody}
-					hidden={layout.problemsCollapsed}
-				>
+				</CollapsibleTrigger>
+				<CollapsiblePanel id="validation-problems" className={styles.problemsBody} keepMounted>
 					<ProblemList problems={problems} files={files} onSelect={onSelectProblem} />
-				</div>
-			</div>
+				</CollapsiblePanel>
+			</Collapsible>
 		</section>
 	);
 }

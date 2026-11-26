@@ -8,22 +8,17 @@ import type { ExampleGeneratorOptions } from './exampleOptions';
 import type { FormatMode } from './formatMode';
 import type { RuntimeTargetId, TargetId } from './targets';
 
-/** Generated code of one runtime target, or why the generator could not produce it. */
 export type RuntimeSource =
 	| {
 			status: 'generated';
 			code: string;
-			/** Export that holds an object root schema. */
+			runtimeCode: string;
 			rootName?: string;
-			/** The root itself when the JSON Schema is boolean. */
-			booleanRoot?: boolean;
 	  }
 	| { status: 'failed'; error: Error };
 
-/** The code shown in the editor and, for a runtime target, the validator it produced. */
 export interface GeneratedCode {
 	code: string;
-	/** `null` for targets, such as TypeScript, that do not generate a runtime validator. */
 	runtime: RuntimeSource | null;
 }
 
@@ -37,7 +32,6 @@ const runtimeGenerators: Record<
 		generateEffect(root, { importEffect: true, formatMode, ...options?.effect }),
 };
 
-/** Generates the code and runtime validator of the selected target only. */
 export function generateCodeFor(
 	target: TargetId,
 	root: ParsedJSONSchema,
@@ -69,13 +63,20 @@ function generateRuntimeSource(
 ): RuntimeSource {
 	try {
 		const code = runtimeGenerators[target](root, formatMode, options);
+		const rootName = typeof root === 'boolean' ? 'Root' : rootDeclarationName(root);
+		const runtimeCode =
+			target === 'zod' && typeof root === 'boolean' ? zodBooleanModule(code) : code;
 
-		return typeof root === 'boolean'
-			? { status: 'generated', code, booleanRoot: root }
-			: { status: 'generated', code, rootName: rootDeclarationName(root) };
+		return { status: 'generated', code, runtimeCode, rootName };
 	} catch (error) {
 		return { status: 'failed', error: error instanceof Error ? error : new Error(String(error)) };
 	}
+}
+
+function zodBooleanModule(code: string): string {
+	const expression = code.trim().replace(/;$/, '');
+
+	return `import { z } from 'zod';\n\nexport const Root = ${expression};`;
 }
 
 function generatedCode(source: RuntimeSource): string {
@@ -86,10 +87,6 @@ function generatedCode(source: RuntimeSource): string {
 	return source.code;
 }
 
-/**
- * The generators record the name they declare each standalone schema under in
- * its `resolvedName`, and the root is always a standalone schema.
- */
 export function rootDeclarationName(root: ParsedJSONSchema): string | undefined {
 	return typeof root === 'object' && root !== null ? root[Meta].resolvedName : undefined;
 }

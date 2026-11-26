@@ -47,7 +47,6 @@ function zodTypesPlugin(): Plugin {
 	};
 }
 
-/** The Effect `Schema` module plus every declaration it imports, linked by specifier. */
 function effectTypesPlugin(): Plugin {
 	const virtualId = 'virtual:effect-types';
 	const resolvedId = `\0${virtualId}`;
@@ -79,6 +78,14 @@ export default defineConfig({
 	// Keep worker code splitting so the validator can load only the selected
 	// Zod or Effect runtime instead of inlining both into an IIFE worker bundle.
 	worker: { format: 'es' },
+	optimizeDeps: {
+		include: [
+			'@ui-sdk/react/collapsible',
+			'@ui-sdk/react/resizable',
+			'@ui-sdk/react/segmented-control',
+			'react-dom/client',
+		],
+	},
 	plugins: [react(), zodTypesPlugin(), effectTypesPlugin()],
 	resolve: {
 		alias: {

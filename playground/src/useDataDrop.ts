@@ -5,7 +5,6 @@ import { isElement } from './dom';
 import { collectDroppedFiles, hasFileDrag, readDroppedSchemas } from './drop';
 
 export interface DataDropOptions {
-	/** The collapsed row does not accept drops; its header stays a header. */
 	collapsed: boolean;
 	onData: (content: string) => void;
 }
@@ -17,10 +16,6 @@ interface DataDropHandlers {
 	onDrop: (event: ReactDragEvent<HTMLElement>) => void;
 }
 
-/**
- * Accepts a JSON document dropped on the test data pane and replaces the test
- * data with its content.
- */
 export function useDataDrop({ collapsed, onData }: DataDropOptions) {
 	const [dragging, setDragging] = useState(false);
 

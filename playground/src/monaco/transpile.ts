@@ -3,12 +3,6 @@ import { monaco } from './setup';
 let modelCounter = 0;
 let emitQueue: Promise<void> = Promise.resolve();
 
-/**
- * Uses the TypeScript worker that already powers the generated-code editor to
- * emit the JavaScript for the generated validators. The worker is loaded for
- * every TypeScript editor anyway, so running the validators does not add a
- * compiler to the bundle.
- */
 export async function emitJavaScript(source: string): Promise<string> {
 	const uri = monaco.Uri.parse(`file:///playground/validator-${(modelCounter += 1)}.ts`);
 	const model = monaco.editor.createModel(source, 'typescript', uri);
@@ -38,11 +32,7 @@ export async function emitJavaScript(source: string): Promise<string> {
 	}
 }
 
-/**
- * Monaco's TypeScript worker has one compiler-options set, not per-model emit
- * options. Serialize transpiles and restore the editor defaults immediately
- * after each operation, including when worker startup or emit fails.
- */
+// Monaco has one compiler-options set per worker, so transpiles must serialize.
 function withEmitOptions<T>(operation: () => Promise<T>): Promise<T> {
 	const result = emitQueue.then(async () => {
 		const defaults = monaco.typescript.typescriptDefaults;
@@ -63,10 +53,7 @@ function withEmitOptions<T>(operation: () => Promise<T>): Promise<T> {
 	return result;
 }
 
-/**
- * `getTypeScriptWorker` rejects until the language contribution has finished
- * registering its mode, which happens just after the first model is created.
- */
+// Monaco rejects getTypeScriptWorker until the language mode finishes registering.
 async function getWorker(): Promise<
 	Awaited<ReturnType<typeof monaco.typescript.getTypeScriptWorker>>
 > {

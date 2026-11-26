@@ -58,12 +58,7 @@ const generators: {
 	},
 ];
 
-/**
- * These tests generate code and import the generated module, which Vite
- * transforms on demand. That takes a few milliseconds locally, but the shared
- * CI runner runs the browser project at the same time, so the default 5 s
- * budget has timed out there.
- */
+// On-demand transforms time out alongside the browser project on shared CI runners.
 const runtimeTestTimeout = 30_000;
 
 async function parseExample(example: Example) {
@@ -84,7 +79,6 @@ async function parseExample(example: Example) {
 	return root;
 }
 
-/** Runs generated code the same way a consumer would import it. */
 async function importModule(code: string): Promise<GeneratedModule> {
 	const directory = await mkdtemp(join(__dirname, '__generated__-'));
 

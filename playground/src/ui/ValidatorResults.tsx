@@ -106,8 +106,8 @@ function failureNote(result: ValidatorReport): string {
 function IssueList({ issues }: { issues: ValidatorReport['issues'] }) {
 	return (
 		<ul className={styles.issues}>
-			{issues.map((issue, index) => (
-				<li key={`${issue.path}-${index}`} className={styles.issue}>
+			{issues.map((issue) => (
+				<li key={JSON.stringify([issue.path, issue.message])} className={styles.issue}>
 					<code className={styles.path}>{issue.path}</code>
 					<span className={styles.issueMessage}>{issue.message}</span>
 				</li>

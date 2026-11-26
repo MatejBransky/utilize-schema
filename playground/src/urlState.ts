@@ -17,7 +17,6 @@ export interface UrlState {
 	target: TargetId;
 	keywordPolicy: KeywordPolicy;
 	formatMode: FormatMode;
-	/** JSON document validated against the generated schemas. */
 	data: string;
 }
 

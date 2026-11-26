@@ -1,11 +1,4 @@
-/**
- * Runs untrusted generated validators in a dedicated, same-origin worker. The
- * code cannot reach the page DOM, localStorage or the editors, and a validator
- * that never finishes can be stopped without freezing the page.
- *
- * This is not a security sandbox: worker code can still use IndexedDB, the Cache
- * API, BroadcastChannel and credentialed same-origin fetch.
- */
+// Worker code cannot reach the page DOM, but same-origin storage and fetch remain available.
 import { loadModule, validateModule } from '../runtime';
 import type { GeneratedModule, RuntimeResult } from '../runtime';
 import { runtimeTargetIds } from '../targets';
@@ -18,7 +11,6 @@ import type {
 	ValidatorSource,
 } from './protocol';
 
-/** The latest module of each target, so editing the test data does not load it again. */
 const loaded = new Map<RuntimeTargetId, { javascript: string; module: Promise<GeneratedModule> }>();
 
 addEventListener('message', (event: MessageEvent<ValidationRequest>) => {
@@ -84,7 +76,6 @@ function moduleFor(target: RuntimeTargetId, javascript: string): Promise<Generat
 	return module;
 }
 
-/** Decoded values can hold anything, so they cross to the page as text. */
 function toReport({ value, ...result }: RuntimeResult): ValidatorReport {
 	return result.ok ? { ...result, value: formatValue(value) } : result;
 }

@@ -1,7 +1,12 @@
 import { Button } from '@ui-sdk/react/button';
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@ui-sdk/react/collapsible';
+import {
+	SegmentedControl,
+	SegmentedControlIndicator,
+	SegmentedControlItem,
+} from '@ui-sdk/react/segmented-control';
 
 import { exampleById, exampleCaseForData } from '../examples';
-import type { Example, ExampleCase } from '../examples';
 import { MonacoEditor } from '../monaco/MonacoEditor';
 import type { Playground } from '../playgroundHooks';
 import { ChevronDownIcon } from './icons';
@@ -30,22 +35,54 @@ export function DataPane({ playground }: DataPaneProps) {
 	const example = exampleById(exampleId);
 	const activeCase = example ? exampleCaseForData(example, data) : undefined;
 	const collapsed = layout.dataCollapsed;
+
 	return (
-		<section
+		<Collapsible
+			render={<section />}
+			aria-label="Test data section"
 			className={`${styles.pane} ${styles.dataPane}`}
-			data-collapsed={collapsed ? 'true' : undefined}
+			open={!collapsed}
+			onOpenChange={layout.setDataOpen}
 			{...dataDrop.handlers}
 		>
-			<DataPaneHeader
-				collapsed={collapsed}
-				narrowLayout={layout.narrowLayout}
-				example={example}
-				activeCase={activeCase}
-				onToggle={layout.toggleDataCollapsed}
-				onSelectCase={(item) => onDataChange(JSON.stringify(item.data, null, 2))}
-				onFormat={() => dataEditorRef.current?.format()}
-			/>
-			<div id="test-data-editor" className={styles.editorFill} hidden={collapsed}>
+			<div className={`${styles.outputHeader} ${styles.sectionHeader}`}>
+				<CollapsibleTrigger className={styles.sectionToggle}>
+					<span className={styles.heading}>Test data</span>
+					<ChevronDownIcon />
+				</CollapsibleTrigger>
+				<div className={styles.outputActions}>
+					{example ? (
+						<SegmentedControl
+							aria-label="Example test data"
+							className={styles.cases}
+							value={activeCase?.value ?? null}
+							onValueChange={(value) => {
+								const item = example.cases.find((candidate) => candidate.value === value);
+
+								if (item) {
+									onDataChange(JSON.stringify(item.data, null, 2));
+								}
+							}}
+						>
+							<SegmentedControlIndicator className={styles.caseIndicator} />
+							{example.cases.map((item) => (
+								<SegmentedControlItem
+									key={item.value}
+									value={item.value}
+									className={styles.case}
+									data-expect={item.expect}
+								>
+									{item.label}
+								</SegmentedControlItem>
+							))}
+						</SegmentedControl>
+					) : null}
+					<Button className={styles.statusButton} onClick={() => dataEditorRef.current?.format()}>
+						Format data
+					</Button>
+				</div>
+			</div>
+			<CollapsiblePanel id="test-data-editor" className={styles.editorFill} keepMounted>
 				<MonacoEditor
 					ref={dataEditorRef}
 					testId="data-editor"
@@ -55,69 +92,9 @@ export function DataPane({ playground }: DataPaneProps) {
 					value={data}
 					onChange={onDataChange}
 				/>
-			</div>
+			</CollapsiblePanel>
 			<DataDropOverlay visible={dataDrop.dragging && !collapsed} />
-		</section>
-	);
-}
-
-interface DataPaneHeaderProps {
-	collapsed: boolean;
-	narrowLayout: boolean;
-	example: Example | undefined;
-	activeCase: ExampleCase | undefined;
-	onToggle: () => void;
-	onSelectCase: (item: ExampleCase) => void;
-	onFormat: () => void;
-}
-
-function DataPaneHeader({
-	collapsed,
-	narrowLayout,
-	example,
-	activeCase,
-	onToggle,
-	onSelectCase,
-	onFormat,
-}: DataPaneHeaderProps) {
-	return (
-		<div className={`${styles.outputHeader} ${styles.sectionHeader}`}>
-			{narrowLayout ? (
-				<span className={styles.heading}>Test data</span>
-			) : (
-				<button
-					type="button"
-					className={styles.sectionToggle}
-					aria-expanded={!collapsed}
-					aria-controls="test-data-editor"
-					onClick={onToggle}
-				>
-					<span className={styles.heading}>Test data</span>
-					<ChevronDownIcon />
-				</button>
-			)}
-			<div className={styles.outputActions}>
-				{example ? (
-					<div className={styles.cases} aria-label="Example test data">
-						{example.cases.map((item) => (
-							<Button
-								key={item.label}
-								className={styles.case}
-								data-expect={item.expect}
-								data-selected={item === activeCase ? 'true' : undefined}
-								aria-pressed={item === activeCase}
-								onClick={() => onSelectCase(item)}
-							>
-								{item.label}
-							</Button>
-						))}
-					</div>
-				) : null}
-				<Button className={styles.statusButton} onClick={onFormat}>
-					Format data
-				</Button>
-			</div>
-		</div>
+		</Collapsible>
 	);
 }
 

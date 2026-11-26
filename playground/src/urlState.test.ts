@@ -30,7 +30,7 @@ function example(): Example {
 		name: 'Const',
 		group: 'Basics',
 		files: [file('const')],
-		cases: [{ label: 'Valid', expect: 'valid', data: 'green' }],
+		cases: [{ value: 'valid', label: 'Valid', expect: 'valid', data: 'green' }],
 	};
 }
 

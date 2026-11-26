@@ -5,12 +5,10 @@ import type { RuntimeSource } from '../generateCode';
 import { emitJavaScript } from '../monaco/transpile';
 import { isRuntimeTarget, targets } from '../targets';
 import type { RuntimeTargetId, TargetId } from '../targets';
-import { booleanRootReport } from './booleanRoot';
 import type { ValidatorReport, ValidatorSource } from './protocol';
 import { createValidatorClient } from './ValidatorClient';
 import type { ValidatorClient } from './ValidatorClient';
 
-/** What happened to the validator of the selected generator. */
 export type ValidationState =
 	| { status: 'running' }
 	| { status: 'unavailable'; reason: string }
@@ -26,23 +24,12 @@ interface GeneratedValidator {
 	rootName: string;
 }
 
-/** The generated validator to run, once the selected target produces one. */
-type RunnableValidator = GeneratedValidator | { target: RuntimeTargetId; booleanRoot: boolean };
-
 interface RunContext {
 	clientRef: RefObject<ValidatorClient | null>;
 	cache: EmitCache;
 	setState: (state: ValidationState) => void;
 }
 
-/**
- * Runs the generated runtime validator of the selected target on the test data
- * in a worker.
- *
- * @param target The generator selected in the playground.
- * @param runtime The generated validator, or `null` when the target has none.
- * @param busy Whether new code is being generated.
- */
 export function useValidatorResults(
 	target: TargetId,
 	runtime: RuntimeSource | null,
@@ -83,11 +70,6 @@ export function useValidatorResults(
 			return;
 		}
 
-		if ('booleanRoot' in runnable) {
-			setState({ status: 'ready', result: booleanRootReport(runnable.booleanRoot, parsed) });
-			return;
-		}
-
 		return scheduleRun(runnable, parsed, {
 			clientRef,
 			cache: emitCacheRef.current,
@@ -98,11 +80,10 @@ export function useValidatorResults(
 	return state;
 }
 
-/** The validator to run, or the state that says why there is none. */
 function runnableValidator(
 	target: TargetId,
 	runtime: RuntimeSource | null
-): RunnableValidator | ValidationState {
+): GeneratedValidator | ValidationState {
 	if (!isRuntimeTarget(target)) {
 		return {
 			status: 'unavailable',
@@ -122,11 +103,7 @@ function runnableValidator(
 	}
 
 	if (runtime.rootName) {
-		return { target, code: runtime.code, rootName: runtime.rootName };
-	}
-
-	if (typeof runtime.booleanRoot === 'boolean') {
-		return { target, booleanRoot: runtime.booleanRoot };
+		return { target, code: runtime.runtimeCode, rootName: runtime.rootName };
 	}
 
 	return {
@@ -135,7 +112,6 @@ function runnableValidator(
 	};
 }
 
-/** Debounces a run and cancels it when the inputs change first. */
 function scheduleRun(runnable: GeneratedValidator, parsed: unknown, context: RunContext) {
 	let cancelled = false;
 
@@ -205,7 +181,6 @@ async function emitSource(
 	return { javascript, rootName };
 }
 
-/** Emits the target's latest code once, so editing the test data reuses it. */
 function emitLatest(cache: EmitCache, target: RuntimeTargetId, code: string): Promise<string> {
 	const cached = cache.get(target);
 

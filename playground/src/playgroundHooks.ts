@@ -133,7 +133,6 @@ interface PersistedWorkspace {
 	data: string;
 }
 
-/** Keeps the workspace in local storage so a reload restores it. */
 function useWorkspacePersistence({
 	files,
 	target,
@@ -159,10 +158,6 @@ interface ExampleSelection {
 	applyExample: (id: string) => void;
 }
 
-/**
- * The example the workspace came from, the case the current test data matches,
- * and loading an example into the workspace.
- */
 function useExampleSelection(
 	exampleId: string | null,
 	data: string,
@@ -495,7 +490,6 @@ function useGeneration(
 	return { exampleId, problems, code, runtime, busy };
 }
 
-/** Generates and formats the selected target's code and runtime validator. */
 async function generateOutput(
 	bundle: ReturnType<typeof buildBundle>,
 	target: TargetId,

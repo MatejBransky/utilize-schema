@@ -3,6 +3,7 @@ import type { JSONSchema } from '@utilize/json-schema';
 import type { SchemaFile } from './bundle';
 
 export interface ExampleCase {
+	value: string;
 	label: string;
 	expect: 'valid' | 'invalid';
 	data: unknown;
@@ -13,7 +14,6 @@ export interface Example {
 	name: string;
 	group: string;
 	files: SchemaFile[];
-	/** Sample documents loaded into the test-data editor with this example. */
 	cases: ExampleCase[];
 }
 
@@ -25,12 +25,12 @@ function draft07(schema: JSONSchema): JSONSchema {
 	return { $schema: 'http://json-schema.org/draft-07/schema#', ...schema };
 }
 
-function valid(data: unknown, label = 'Valid'): ExampleCase {
-	return { label, expect: 'valid', data };
+function valid(data: unknown, label = 'Valid', value = 'valid'): ExampleCase {
+	return { value, label, expect: 'valid', data };
 }
 
 function invalid(data: unknown): ExampleCase {
-	return { label: 'Invalid', expect: 'invalid', data };
+	return { value: 'invalid', label: 'Invalid', expect: 'invalid', data };
 }
 
 function single(
@@ -545,8 +545,8 @@ export const examples: Example[] = [
 			],
 		},
 		[
-			valid({ type: 'Id', search: 'ada' }, 'Leaf'),
-			valid({ type: 'And', filters: [{ type: 'Id', search: 'ada' }] }, 'Nested'),
+			valid({ type: 'Id', search: 'ada' }, 'Leaf', 'leaf'),
+			valid({ type: 'And', filters: [{ type: 'Id', search: 'ada' }] }, 'Nested', 'nested'),
 			invalid({ type: 'Or', search: 'ada' }),
 		]
 	),
@@ -786,12 +786,10 @@ export function exampleById(id: string | null): Example | undefined {
 	return examples.find((example) => example.id === id);
 }
 
-/** The data the test-data editor starts with when an example is selected. */
 export function exampleData(example: Example): string {
 	return JSON.stringify(example.cases[0]?.data ?? {}, null, 2);
 }
 
-/** The example case whose data matches the editor content, if any. */
 export function exampleCaseForData(example: Example, content: string): ExampleCase | undefined {
 	let parsed: unknown;
 

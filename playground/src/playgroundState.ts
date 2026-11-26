@@ -158,7 +158,6 @@ function hasFiles(value: unknown): value is Partial<UrlState> & { files: SchemaF
 	return Array.isArray(state.files) && state.files.length > 0 && state.files.every(isSchemaFile);
 }
 
-/** The test data that belongs to a saved workspace. */
 function dataForFiles(files: SchemaFile[]): string {
 	const example = exampleById(resolveExampleId(files));
 

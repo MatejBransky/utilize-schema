@@ -9,7 +9,6 @@ import type {
 import { runtimeTargetIds } from '../targets';
 import type { RuntimeTargetId } from '../targets';
 
-/** Long enough for the first run, which loads the selected runtime into the worker. */
 const TIMEOUT_MS = 10_000;
 
 interface PendingRequest {
@@ -32,15 +31,6 @@ export interface ValidatorClient {
 	dispose(): void;
 }
 
-/**
- * Sends validation requests to the validator worker. A newer run supersedes
- * pending runs for the same target. Superseded runs resolve without reports and
- * the worker is recycled so stale queued work cannot occupy it.
- *
- * The timeout starts when the worker acknowledges that execution has begun.
- * A timed-out run stops the worker; unrelated pending runs are replayed on a
- * fresh worker instead of being rejected with it.
- */
 export function createValidatorClient(): ValidatorClient {
 	const pending = new Map<number, PendingRequest>();
 	const loadedSources = new Map<RuntimeTargetId, string>();
@@ -132,7 +122,6 @@ export function createValidatorClient(): ValidatorClient {
 		}
 	}
 
-	/** Removes only superseded targets, keeping unrelated work from the same request. */
 	function supersedePending(targets: ReadonlySet<RuntimeTargetId>): number {
 		let count = 0;
 
@@ -159,7 +148,6 @@ export function createValidatorClient(): ValidatorClient {
 		return count;
 	}
 
-	/** Rejects only the timed-out run, then gives other targets a fresh worker. */
 	function failRequest(id: number, error: Error) {
 		const request = pending.get(id);
 
@@ -213,7 +201,6 @@ export function createValidatorClient(): ValidatorClient {
 		replayPending();
 	}
 
-	/** Ends the worker and every request still waiting on it. */
 	function stop(error: Error) {
 		gateway.dispose();
 		loadedSources.clear();
@@ -258,7 +245,6 @@ interface WorkerGateway {
 	dispose(): void;
 }
 
-/** Creates the worker lazily and ignores events from workers that were replaced. */
 function createWorkerGateway(
 	onResponse: (response: ValidationResponse) => void,
 	onFailure: (error: Error) => void
