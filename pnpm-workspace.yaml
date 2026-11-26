@@ -26,8 +26,8 @@ catalog:
 # Supply-chain guardrails for registry dependencies.
 minimumReleaseAge: 1440
 minimumReleaseAgeStrict: true
-# vercel@67.0.0 restored trusted-publisher evidence; the preview workflow pins it
-# so deployments do not wait for the release-age cutoff.
+# The preview workflow pins this exact Vercel CLI. pnpm dlx in CI does not read
+# the npm trusted-publisher evidence for it, so exclude only this version.
 minimumReleaseAgeExclude:
   - vercel@67.0.0
 trustPolicy: no-downgrade
@@ -35,6 +35,7 @@ trustPolicy: no-downgrade
 # are the same oxc maintainer, but pnpm treats the switch as a trust downgrade.
 trustPolicyExclude:
   - tsrs
+  - vercel@67.0.0
 blockExoticSubdeps: true
 
 # monaco-editor@0.57.0 pins dompurify to exactly 3.4.15, which is affected by
