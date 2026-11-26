@@ -29,14 +29,10 @@ function renderList(values) {
 }
 
 /**
- * @param {{
- *   files: import('@utilize/test-utils/suite/loadSuite').SuiteFile[],
- *   dialects: Record<string, number>,
- *   isCompatible: (compatibility: string | undefined, dialect: number) => boolean,
- *   suiteCaseKey: (file: import('@utilize/test-utils/suite/loadSuite').SuiteFile, testCase: unknown) => string,
- *   compile: (testCase: import('@utilize/test-utils/suite/loadSuite').SuiteCase, dialect: string) => Promise<unknown>,
- *   accepts: (schema: unknown, data: unknown) => boolean,
- * }} options
+ * `options` carries the loaded suite files, the dialect tokens, and the
+ * package-specific `compile`/`accepts` closures. The shapes are documented on
+ * suite loader types in the test-utils package; they stay untyped here so this
+ * script has no workspace dependency of its own.
  */
 export async function collectDialectFailures({
 	files,
