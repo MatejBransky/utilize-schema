@@ -28,6 +28,16 @@ export interface SchemaIndex {
 	resolve(ref: string, baseUri: string): JSONSchema | boolean | undefined;
 }
 
+function identifierOf(
+	node: Record<string, unknown>,
+	dialect: Dialect,
+	ignoresSiblings: boolean
+): string | undefined {
+	const rawId = node[idKeyword(dialect)];
+
+	return !ignoresSiblings && typeof rawId === 'string' && rawId.length > 0 ? rawId : undefined;
+}
+
 export function createSchemaIndex(): SchemaIndex & {
 	/**
 	 * Indexes a document. `nodeDialects` comes from `prepareSchema`; without it
@@ -89,16 +99,6 @@ export function createSchemaIndex(): SchemaIndex & {
 		for (const child of schemaChildren(node)) {
 			walk(child, nextBase, dialect, nodeDialects);
 		}
-	}
-
-	function identifierOf(
-		node: Record<string, unknown>,
-		dialect: Dialect,
-		ignoresSiblings: boolean
-	): string | undefined {
-		const rawId = node[idKeyword(dialect)];
-
-		return !ignoresSiblings && typeof rawId === 'string' && rawId.length > 0 ? rawId : undefined;
 	}
 
 	function indexIdentifier(
