@@ -18,6 +18,16 @@ import {
 } from '../src/node';
 import type { CliIo } from '../src/node';
 
+const io = (): CliIo & { errors: string[] } => {
+	const errors: string[] = [];
+
+	return {
+		errors,
+		stdout: { write: () => true },
+		stderr: { write: (chunk) => errors.push(chunk) },
+	};
+};
+
 describe('schema files', () => {
 	let directory: string;
 
@@ -121,16 +131,6 @@ describe('parseForCompile', () => {
 });
 
 describe('readFormatAndDialectFlags', () => {
-	const io = (): CliIo & { errors: string[] } => {
-		const errors: string[] = [];
-
-		return {
-			errors,
-			stdout: { write: () => true },
-			stderr: { write: (chunk) => errors.push(chunk) },
-		};
-	};
-
 	test('declares --format-mode with assert as default', () => {
 		expect(formatAndDialectFlags['format-mode']).toEqual({ type: 'string', default: 'assert' });
 	});
