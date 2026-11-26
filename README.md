@@ -182,6 +182,9 @@ directory or stdout. Generated files start with a "do not edit" banner
 The [`playground`](./playground) is a browser app for editing multiple JSON
 Schema files with references. Switch between the three generators, change the
 keyword policy and the format mode, and watch the generated code update live.
+Start from one of the built-in examples: each comes with labelled valid and
+invalid test documents, so you can compare the generated code with what the
+validator does on the same screen.
 A test-data editor below the schemas runs the selected generator's validator and
 shows the decoded value, defaults included, or every issue with its JSON path;
 the TypeScript target emits types only, so the pane says there is no runtime

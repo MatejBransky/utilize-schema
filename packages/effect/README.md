@@ -41,6 +41,11 @@ pnpm add -D @utilize/effect
 utilize-effect user.json user.effect.ts
 ```
 
+`effect` 4.x is required. Try it in the
+[playground](https://matejbransky.github.io/utilize-schema/?generator=effect):
+open an example, switch between the three generators, and check how a test
+document validates against the generated schema.
+
 <details>
 <summary>Table of contents</summary>
 

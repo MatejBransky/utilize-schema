@@ -42,6 +42,11 @@ pnpm add -D @utilize/typescript
 utilize-typescript user.json user.ts
 ```
 
+Try it in the
+[playground](https://matejbransky.github.io/utilize-schema/?generator=typescript):
+open an example, switch between the three generators, and compare the emitted
+types with the other two targets.
+
 <details>
 <summary>Table of contents</summary>
 

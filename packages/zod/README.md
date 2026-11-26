@@ -39,6 +39,11 @@ pnpm add -D @utilize/zod
 utilize-zod user.json user.zod.ts
 ```
 
+`zod` 4.5 or newer is required. Try it in the
+[playground](https://matejbransky.github.io/utilize-schema/?generator=zod): open
+an example, switch between the three generators, and check how a test document
+validates against the generated schema.
+
 <details>
 <summary>Table of contents</summary>
 
@@ -62,12 +67,6 @@ await compile({
   input: './schema.json',
   output: './schema.generated.ts',
 });
-```
-
-`@utilize/zod` requires `zod` 4.5 or newer as a peer dependency:
-
-```sh
-pnpm add zod
 ```
 
 ## Options
