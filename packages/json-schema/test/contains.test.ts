@@ -2,13 +2,34 @@ import { describe, expect, test } from 'vitest';
 
 import { containsBounds } from '../src/contains';
 import { dialects } from '../src/dialect';
+import { Meta } from '../src/model';
 import type { JSONSchema, ParsedJSONSchemaObject } from '../src/model';
 
 const draft07 = dialects['draft-07'];
 const twentyNineteen = dialects['2019-09'];
+const testMeta: Partial<Meta> = {
+	fileName: 'Test.json',
+	filePath: '#',
+	path: [],
+	parent: null,
+};
 
-function schema(value: JSONSchema): ParsedJSONSchemaObject {
-	return value as ParsedJSONSchemaObject;
+function schema<T extends JSONSchema>(value: T): T & ParsedJSONSchemaObject {
+	defineMeta(value, testMeta);
+
+	return value;
+}
+
+function defineMeta<T extends object>(
+	value: T,
+	meta: Partial<Meta>
+): asserts value is T & ParsedJSONSchemaObject {
+	Object.defineProperty(value, Meta, {
+		enumerable: false,
+		value: meta,
+		writable: true,
+		configurable: true,
+	});
 }
 
 describe('containsBounds', () => {

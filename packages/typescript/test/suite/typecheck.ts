@@ -5,6 +5,8 @@ import { dirname, join, resolve } from 'node:path';
 
 import { expectDefined } from '@utilize/json-schema';
 
+import { commandOutput } from '../test-utils';
+
 import type { CaseModule } from './generateCase';
 
 const require = createRequire(import.meta.url);
@@ -133,8 +135,8 @@ function compile(files: string[]): Diagnostic[] {
 
 		return [];
 	} catch (error) {
-		const output = error as { stdout?: string; stderr?: string };
-		const text = `${output.stdout ?? ''}${output.stderr ?? ''}`;
+		const output = commandOutput(error);
+		const text = `${output.stdout}${output.stderr}`;
 
 		return text
 			.split('\n')

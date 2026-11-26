@@ -1,9 +1,11 @@
+import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
+
 import { createGenerator } from './createGenerator';
 
 import { ts } from '../utils';
 
 export const numberGenerator = createGenerator(
-	(schema) => {
+	(schema): schema is ParsedJSONSchemaObject => {
 		const numberTypes = ['number', 'integer'];
 
 		if ('enum' in schema) {

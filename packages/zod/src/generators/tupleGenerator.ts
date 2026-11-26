@@ -2,13 +2,16 @@ import { expectDefined } from '@utilize/json-schema';
 import type { Dialect, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
+import type { ExpressionGenerator } from './createGenerator';
 import type { Recursion } from './createGenerator';
 import type { GeneratorContext } from './types';
 
 import { NEWLINE, ts } from '../utils';
 
-export const tupleGenerator = createGenerator(
-	(schema, dialect) => {
+export type TupleSchema = ParsedJSONSchemaObject & { type: 'array' };
+
+export const tupleGenerator: ExpressionGenerator = createGenerator<TupleSchema>(
+	(schema, dialect): schema is TupleSchema => {
 		if (schema.type !== 'array') {
 			return false;
 		}

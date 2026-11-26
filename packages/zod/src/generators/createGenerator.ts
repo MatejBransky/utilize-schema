@@ -2,8 +2,17 @@ import type { Dialect, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize
 
 import type { GeneratorContext } from './types';
 
-/** Picks a generator. Only the node's dialect may change the choice. */
-export type Predicate = (input: ParsedJSONSchemaObject, dialect: Dialect) => boolean;
+/** Narrows the parsed node to the shape a generator reads. */
+export type Predicate<T extends ParsedJSONSchemaObject = ParsedJSONSchemaObject> = (
+	input: ParsedJSONSchemaObject,
+	dialect: Dialect
+) => input is T;
+
+export type Generate<T extends ParsedJSONSchemaObject = ParsedJSONSchemaObject> = (
+	schema: T,
+	context: GeneratorContext,
+	recursion: Recursion
+) => string;
 
 /**
  * What a keyword generator calls for its subschemas. `generateSchema` passes
@@ -15,20 +24,29 @@ export type Recursion = {
 	selectGenerator: (input: ParsedJSONSchemaObject, dialect: Dialect) => ExpressionGenerator;
 };
 
-export type Generate<T> = (schema: T, context: GeneratorContext, recursion: Recursion) => string;
-
-export type ExpressionGenerator<T = ParsedJSONSchemaObject> = {
+export type ExpressionGenerator = {
 	predicate: Predicate;
-	generate: Generate<T>;
+	generate: Generate;
 };
 
-export function createGenerator<
-	R extends Partial<ParsedJSONSchemaObject> = ParsedJSONSchemaObject,
-	T extends ParsedJSONSchemaObject = ParsedJSONSchemaObject,
->(predicate: Predicate, generate: Generate<R>): ExpressionGenerator<T> {
+/**
+ * Builds a generator from its narrowing predicate. The returned `generate`
+ * checks the predicate before calling the narrow implementation, so erasing
+ * the generator's node type is safe: callers only reach the implementation
+ * when the predicate has actually narrowed the input.
+ */
+export function createGenerator<T extends ParsedJSONSchemaObject = ParsedJSONSchemaObject>(
+	predicate: Predicate<T>,
+	generate: Generate<T>
+): ExpressionGenerator {
 	return {
-		predicate: (input: ParsedJSONSchemaObject, dialect): input is T => predicate(input, dialect),
-		// oxlint-disable-next-line quality/no-chained-type-assertions -- the predicate has already narrowed the node to T
-		generate: generate as unknown as Generate<T>,
+		predicate,
+		generate(schema, context, recursion) {
+			if (!predicate(schema, context.dialect)) {
+				throw new Error('Generator selected for a schema its predicate does not match.');
+			}
+
+			return generate(schema, context, recursion);
+		},
 	};
 }

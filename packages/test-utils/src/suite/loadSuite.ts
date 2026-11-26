@@ -1,3 +1,4 @@
+import { isJSONSchema, isPlainObject } from '@utilize/json-schema';
 import type { JSONSchema } from '@utilize/json-schema';
 
 import { readFileSync, readdirSync } from 'node:fs';
@@ -48,13 +49,58 @@ export function loadSuiteFiles(): SuiteFile[] {
 	files.sort();
 
 	return files.map((name) => {
-		const file = JSON.parse(readFileSync(join(suiteDirectory, name), 'utf8')) as {
-			description: string;
-			tests: SuiteCase[];
-		};
+		const file: unknown = JSON.parse(readFileSync(join(suiteDirectory, name), 'utf8'));
 
-		return { name, description: file.description, cases: file.tests };
+		if (
+			!isPlainObject(file) ||
+			typeof file.description !== 'string' ||
+			!Array.isArray(file.tests)
+		) {
+			throw new TypeError(`${name} is not a JSON Schema Test Suite file`);
+		}
+
+		const cases: SuiteCase[] = [];
+
+		for (const value of file.tests) {
+			if (!isSuiteCase(value)) {
+				throw new TypeError(`${name} contains an invalid test case`);
+			}
+
+			cases.push(value);
+		}
+
+		return { name, description: file.description, cases };
 	});
+}
+
+function isSuiteCase(value: unknown): value is SuiteCase {
+	if (!isPlainObject(value)) {
+		return false;
+	}
+
+	return (
+		typeof value.description === 'string' &&
+		isJSONSchema(value.schema) &&
+		Array.isArray(value.tests) &&
+		value.tests.every(isSuiteTest) &&
+		(value.compatibility === undefined || typeof value.compatibility === 'string') &&
+		(value.tags === undefined ||
+			(Array.isArray(value.tags) && value.tags.every((tag) => typeof tag === 'string'))) &&
+		(value.externalSchemas === undefined || isExternalSchemas(value.externalSchemas))
+	);
+}
+
+function isSuiteTest(value: unknown): value is SuiteTest {
+	return (
+		isPlainObject(value) &&
+		typeof value.description === 'string' &&
+		'data' in value &&
+		typeof value.valid === 'boolean'
+	);
+}
+
+function isExternalSchemas(value: unknown): value is Record<string, JSONSchema | boolean> {
+	return isPlainObject(value) && Object.values(value).every(isJSONSchema);
 }
 
 /** The key used by `knownFailures` to identify a single test case. */

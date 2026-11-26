@@ -2,6 +2,7 @@ import {
 	childSchemasOf,
 	dialectOf,
 	expectDefined,
+	isParsedJSONSchemaObject,
 	isPlainObject,
 	Meta,
 } from '@utilize/json-schema';
@@ -299,9 +300,13 @@ class StructuralKeys {
 		let key = this.keys.get(value);
 
 		if (key === undefined) {
-			key = Array.isArray(value)
-				? this.ofArray(value)
-				: this.ofObject(value as Record<string, unknown>);
+			if (Array.isArray(value)) {
+				key = this.ofArray(value);
+			} else if (isPlainObject(value)) {
+				key = this.ofObject(value);
+			} else {
+				key = `#${this.identityOf(value)}`;
+			}
 			this.keys.set(value, key);
 		}
 
@@ -317,7 +322,7 @@ class StructuralKeys {
 			return `#${this.identityOf(value)}`;
 		}
 
-		const meta = (value as Partial<ParsedJSONSchemaObject>)[Meta];
+		const meta = isParsedJSONSchemaObject(value) ? value[Meta] : undefined;
 		const keywords = Object.keys(value);
 		keywords.sort();
 		const entries = keywords.map(

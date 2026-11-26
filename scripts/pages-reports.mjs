@@ -8,12 +8,12 @@ import {
 	rmSync,
 	writeFileSync,
 } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { describeHealth, formatNumber, measureLongFunctions } from './fallow-health-report.mjs';
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const ROOT = resolve(import.meta.dirname, '..');
 const ARTIFACTS = join(ROOT, '.fallow', 'reports');
 const REPORTS = join(ROOT, 'playground', 'dist', 'reports');
 const REPOSITORY = 'https://github.com/MatejBransky/utilize-schema';
@@ -135,7 +135,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 `;
 
 export function escapeHtml(value) {
-	return String(value).replace(/[&<>"']/g, (character) => {
+	return String(value).replaceAll(/[&<>"']/g, (character) => {
 		const entities = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 		return entities[character];
 	});
@@ -146,7 +146,7 @@ export function formatMilliseconds(value) {
 }
 
 export function stripFaviconLinks(html) {
-	return html.replace(/^[ \t]*<link rel="icon"[^\n]*>\r?\n/gm, '');
+	return html.replaceAll(/^[ \t]*<link rel="icon"[^\n]*>\r?\n/gm, '');
 }
 
 export function summarizeVitest(workspace, report) {
@@ -224,7 +224,9 @@ function sumTestCounts(tests) {
 }
 
 function metricDetail(report) {
-	if (!report) return '';
+	if (!report) {
+		return '';
+	}
 
 	if (report.deducted.length === 0) {
 		return '<span class="metric-detail">No area deducts points.</span>';
@@ -440,7 +442,9 @@ function deductionTable(report) {
 }
 
 function clearedBadges(report) {
-	if (report.cleared.length === 0) return '';
+	if (report.cleared.length === 0) {
+		return '';
+	}
 
 	const badges = report.cleared
 		.map((penalty) => `<span class="badge pass">${escapeHtml(penalty.label)} 0</span>`)
@@ -588,7 +592,9 @@ function readJson(path) {
 
 function prepareVitestReport(workspace, directory) {
 	const reportPath = join(directory, workspace, 'index.html');
-	if (!existsSync(reportPath)) return;
+	if (!existsSync(reportPath)) {
+		return;
+	}
 
 	const html = readFileSync(reportPath, 'utf8');
 	writeFileSync(reportPath, stripFaviconLinks(html));
@@ -626,7 +632,9 @@ function collectTestReports() {
 		const result = run('pnpm', ['--filter', workspace.package, 'exec', 'vitest', 'run'], {
 			env: { TEST_REPORT_DIR: testDirectory },
 		});
-		if (result.status !== 0) failures.push(`${workspace.name} tests`);
+		if (result.status !== 0) {
+			failures.push(`${workspace.name} tests`);
+		}
 		prepareVitestReport(workspace.id, testDirectory);
 	}
 
@@ -638,14 +646,18 @@ function collectTestReports() {
 		join(ARTIFACTS, 'scripts.json'),
 		`${JSON.stringify({ status: scripts.status, stdout: scripts.stdout, stderr: scripts.stderr }, null, 2)}\n`
 	);
-	if (scripts.status !== 0) failures.push('script tests');
+	if (scripts.status !== 0) {
+		failures.push('script tests');
+	}
 
 	return failures;
 }
 
 function readScriptContext() {
 	const saved = readJson(join(ARTIFACTS, 'scripts.json'));
-	if (saved) return saved;
+	if (saved) {
+		return saved;
+	}
 
 	const outputPath = join(ARTIFACTS, 'script-tests.txt');
 	return {
@@ -677,7 +689,9 @@ function buildFallowReport(renderOnly, failures) {
 		join(REPORTS, 'fallow', 'index.html'),
 		'--no-open',
 	]);
-	if (fallowMap.status !== 0) failures.push('fallow viz');
+	if (fallowMap.status !== 0) {
+		failures.push('fallow viz');
+	}
 
 	if (renderOnly) {
 		const fullFallow = readJson(join(ROOT, '.fallow', 'full.json'));
@@ -728,7 +742,9 @@ function runBenchmark(failures) {
 	const result = run('pnpm', ['--filter', '@utilize/json-schema', 'bench'], {
 		env: { BENCH_OUTPUT: join(REPORTS, 'benchmarks', 'results.json') },
 	});
-	if (result.status !== 0) failures.push('benchmarks');
+	if (result.status !== 0) {
+		failures.push('benchmarks');
+	}
 }
 
 async function buildReports() {
@@ -739,15 +755,17 @@ async function buildReports() {
 	const commit = currentCommit();
 	const generatedAt = new Date().toISOString();
 	const scripts = readScriptContext();
-	if (scripts.status !== 0) failures.push('script tests');
+	if (scripts.status !== 0) {
+		failures.push('script tests');
+	}
 
 	buildFallowReport(renderOnly, failures);
 	runBenchmark(failures);
 
-	const tests = TEST_WORKSPACES.map((workspace) => {
+	const tests = TEST_WORKSPACES.flatMap((workspace) => {
 		const report = readJson(join(REPORTS, 'tests', workspace.id, 'results.json'));
-		return report ? summarizeVitest(workspace, report) : undefined;
-	}).filter(Boolean);
+		return report ? [summarizeVitest(workspace, report)] : [];
+	});
 	const health = readJson(join(REPORTS, 'fallow', 'health.json'));
 	const longFunctions = readJson(join(REPORTS, 'fallow', 'long-functions.json')) ?? [];
 	const benchmark = readJson(join(REPORTS, 'benchmarks', 'results.json'));

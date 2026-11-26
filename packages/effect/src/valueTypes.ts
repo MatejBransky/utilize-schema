@@ -2,16 +2,18 @@ import {
 	dialectOf,
 	expectDefined,
 	isKeywordApplicable,
+	isParsedJSONSchemaObject,
 	isPlainObject,
 	Meta,
 	schemaRecord,
+	withSourceMeta,
 } from '@utilize/json-schema';
 import type { Dialect, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { typedAlternatives } from './alternatives';
 import type { CustomSchemaResolver } from './context';
 import { planReferenceSiblings } from './refSiblings';
-import { arrayRest, objectKeys, parentSchema, prefixItemsOf } from './schemaParts';
+import { arrayRest, itemsOf, objectKeys, parentSchema, prefixItemsOf } from './schemaParts';
 
 export interface ValueTypeContext {
 	/**
@@ -144,7 +146,11 @@ function renderValueType(
 		return simple;
 	}
 
-	const object = schema as ParsedJSONSchemaObject;
+	if (!isParsedJSONSchemaObject(schema)) {
+		return 'Schema.Json';
+	}
+
+	const object = schema;
 
 	if (isResolvedByCaller(object, context)) {
 		return 'unknown';
@@ -157,7 +163,7 @@ function renderValueType(
 		return structured;
 	}
 
-	const type = object.type as string | undefined;
+	const type = typeof object.type === 'string' ? object.type : undefined;
 
 	return VALUE_TYPE_GENERATORS.get(type ?? '')?.(object, context, self) ?? 'Schema.Json';
 }
@@ -313,7 +319,7 @@ function renderArray(
 	self: string | undefined
 ): string {
 	const dialect = dialectOf(schema, context.dialect);
-	const items = schema.items as ParsedJSONSchema | ParsedJSONSchema[] | undefined;
+	const items = itemsOf(schema);
 	const prefixItems = prefixItemsOf(schema, dialect);
 	const singleItem = Array.isArray(items) ? undefined : items;
 
@@ -395,7 +401,7 @@ function schemaWithType(
 	schema: ParsedJSONSchemaObject,
 	type: ParsedJSONSchemaObject['type']
 ): ParsedJSONSchemaObject {
-	return { ...schema, type };
+	return withSourceMeta(schema, { ...schema, type });
 }
 
 export function literalType(value: unknown): string {

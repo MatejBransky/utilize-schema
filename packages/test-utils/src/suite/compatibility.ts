@@ -23,6 +23,12 @@ export const OTHER_DIALECTS = {
 	'2020-12': 2020,
 } as const satisfies Record<string, Dialect>;
 
+const DIALECTS: ReadonlySet<number> = new Set([3, DRAFT_7, ...Object.values(OTHER_DIALECTS), 9999]);
+
+function isDialect(value: number): value is Dialect {
+	return DIALECTS.has(value);
+}
+
 export function isCompatible(compatibility: string | undefined, version: Dialect = DRAFT_7) {
 	if (!compatibility) {
 		return true;
@@ -38,7 +44,11 @@ export function isCompatible(compatibility: string | undefined, version: Dialect
 		}
 
 		const [, operator = '', digits] = match;
-		const dialect = Number(digits) as Dialect;
+		const dialect = Number(digits);
+
+		if (!isDialect(dialect)) {
+			throw new Error(`Unsupported compatibility dialect: "${digits}"`);
+		}
 
 		if (operator === '') {
 			isValid = version >= dialect;

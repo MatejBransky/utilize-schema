@@ -55,6 +55,14 @@ interface DialectGapData {
 	typeGaps: string[];
 }
 
+function isOtherDialect(dialect: string): dialect is keyof typeof OTHER_DIALECTS {
+	return Object.hasOwn(OTHER_DIALECTS, dialect);
+}
+
+function isGapDialect(dialect: string): dialect is GapDialect {
+	return dialect === 'draft-07' || isOtherDialect(dialect);
+}
+
 afterAll(() => {
 	if (!UPDATE_BASELINE) {
 		return;
@@ -70,19 +78,19 @@ afterAll(() => {
 	console.log('wrote test/suite/knownGapCases.ts');
 });
 
-function gapsForDialect(dialect: string): string[] {
+function gapsForDialect(dialect: GapDialect): string[] {
 	return Object.entries(gapCases)
 		.flatMap(([key, entry]) => {
-			const reason = entry.gaps?.[dialect as GapDialect];
+			const reason = entry.gaps?.[dialect];
 
 			return reason === undefined ? [] : [`${key}: ${reason}`];
 		})
 		.sort();
 }
 
-function typeGapsForDialect(dialect: string): string[] {
+function typeGapsForDialect(dialect: GapDialect): string[] {
 	return Object.entries(gapCases)
-		.filter(([, entry]) => entry.typeGaps?.includes(dialect as GapDialect))
+		.filter(([, entry]) => entry.typeGaps?.includes(dialect))
 		.map(([key]) => key)
 		.sort();
 }
@@ -91,11 +99,15 @@ function renderKnownGapCases(data: Record<string, DialectGapData>): string {
 	const cases = new Map<string, CaseGaps>();
 
 	for (const [dialect, entry] of Object.entries(data)) {
+		if (!isGapDialect(dialect)) {
+			continue;
+		}
+
 		for (const { key, reason } of entry.gaps) {
 			const value = cases.get(key) ?? {};
 
 			value.gaps ??= {};
-			value.gaps[dialect as GapDialect] = reason;
+			value.gaps[dialect] = reason;
 			cases.set(key, value);
 		}
 
@@ -103,7 +115,7 @@ function renderKnownGapCases(data: Record<string, DialectGapData>): string {
 			const value = cases.get(key) ?? {};
 
 			value.typeGaps ??= [];
-			value.typeGaps.push(dialect as GapDialect);
+			value.typeGaps.push(dialect);
 			cases.set(key, value);
 		}
 	}
@@ -333,7 +345,7 @@ describe('JSON Schema Test Suite (draft-07, type level)', () => {
 });
 
 describe('other dialects', () => {
-	for (const dialect of Object.keys(OTHER_DIALECTS) as (keyof typeof OTHER_DIALECTS)[]) {
+	for (const dialect of Object.keys(OTHER_DIALECTS).filter(isOtherDialect)) {
 		const token = OTHER_DIALECTS[dialect];
 
 		test(`${dialect} matches the recorded baseline`, async () => {

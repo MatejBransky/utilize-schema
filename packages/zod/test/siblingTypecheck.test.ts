@@ -6,7 +6,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 
-import { generateCode } from './test-utils';
+import { errorOutput, generateCode } from './test-utils';
 
 const require = createRequire(import.meta.url);
 const tsc = join(dirname(require.resolve('typescript/package.json')), 'bin/tsc');
@@ -61,7 +61,7 @@ void bad;
 					{ encoding: 'utf8', stdio: 'pipe' }
 				);
 			} catch (error) {
-				const output = error as { stdout?: string; stderr?: string };
+				const output = errorOutput(error);
 
 				throw new Error(`tsc failed:\n${output.stdout ?? ''}${output.stderr ?? ''}`, {
 					cause: error,

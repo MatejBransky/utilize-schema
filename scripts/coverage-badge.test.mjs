@@ -6,12 +6,12 @@ import test from 'node:test';
 
 import { calculatePercent, readLineCoveragePercent } from './coverage-badge.mjs';
 
-test('calculatePercent floors the line coverage', () => {
+void test('calculatePercent floors the line coverage', () => {
 	assert.equal(calculatePercent('LF:10\nLH:9\n'), 90);
 	assert.equal(calculatePercent('LF:3\nLH:2\nLF:3\nLH:3\n'), 83);
 });
 
-test('readLineCoveragePercent reads lcov.info from the package coverage directory', () => {
+void test('readLineCoveragePercent reads lcov.info from the package coverage directory', () => {
 	const root = mkdtempSync(join(tmpdir(), 'utilize-coverage-badge-'));
 
 	try {
@@ -25,7 +25,7 @@ test('readLineCoveragePercent reads lcov.info from the package coverage director
 	}
 });
 
-test('readLineCoveragePercent explains missing coverage', () => {
+void test('readLineCoveragePercent explains missing coverage', () => {
 	const root = mkdtempSync(join(tmpdir(), 'utilize-coverage-badge-'));
 
 	try {

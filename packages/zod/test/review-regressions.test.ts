@@ -1,7 +1,7 @@
 import type { JSONSchema } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
-import { generateCode, compileToZod } from './test-utils';
+import { compileToZod, generateCode, schemaWithExtensions } from './test-utils';
 
 describe('review regressions', () => {
 	test('boolean false schemas reject all values', async () => {
@@ -67,23 +67,29 @@ describe('review regressions', () => {
 				unevaluatedProperties: { type: 'string' },
 				$recursiveRef: { type: 'number' },
 			},
-		} as unknown as JSONSchema;
+		} satisfies JSONSchema;
 
 		await expect(generateCode(schema)).resolves.toContain('export const Root');
 	});
 
 	test('combines dependentRequired and dependentSchemas for the same key', async () => {
-		const Root = await compileToZod({
-			$schema: 'https://json-schema.org/draft/2020-12/schema',
-			type: 'object',
-			properties: {
-				a: { type: 'string' },
-				b: { type: 'string' },
-				c: { type: 'string' },
-			},
-			dependentRequired: { a: ['b'] },
-			dependentSchemas: { a: { required: ['c'] } },
-		} as unknown as JSONSchema);
+		const Root = await compileToZod(
+			schemaWithExtensions(
+				{
+					$schema: 'https://json-schema.org/draft/2020-12/schema',
+					type: 'object',
+					properties: {
+						a: { type: 'string' },
+						b: { type: 'string' },
+						c: { type: 'string' },
+					},
+				},
+				{
+					dependentRequired: { a: ['b'] },
+					dependentSchemas: { a: { required: ['c'] } },
+				}
+			)
+		);
 
 		expect(Root.safeParse({ a: 'x', b: 'y', c: 'z' }).success).toBe(true);
 		expect(Root.safeParse({ a: 'x', c: 'z' }).success).toBe(false);
@@ -158,15 +164,14 @@ test('$refs into prefixItems survive schema normalization', async () => {
 		$schema: 'https://json-schema.org/draft/2020-12/schema',
 		type: 'object',
 		properties: {
-			list: {
-				type: 'array',
-				prefixItems: [{ type: 'string' }],
-				items: { type: 'number' },
-			},
+			list: schemaWithExtensions(
+				{ type: 'array', items: { type: 'number' } },
+				{ prefixItems: [{ type: 'string' }] }
+			),
 			first: { $ref: '#/properties/list/prefixItems/0' },
 		},
 		required: ['list', 'first'],
-	} as unknown as JSONSchema);
+	} satisfies JSONSchema);
 
 	expect(Root.safeParse({ list: ['a', 1], first: 'b' }).success).toBe(true);
 	expect(Root.safeParse({ list: ['a', 1], first: 1 }).success).toBe(false);

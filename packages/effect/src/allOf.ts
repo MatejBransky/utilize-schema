@@ -1,4 +1,4 @@
-import { expectDefined, isPlainObject } from '@utilize/json-schema';
+import { expectDefined, isParsedJSONSchemaObject, withSourceMeta } from '@utilize/json-schema';
 import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import type { Context } from './context';
@@ -35,7 +35,7 @@ function generateIntersection(schemas: ParsedJSONSchema[], context: Context): st
 
 	const members = flattened.filter(
 		(schema): schema is ParsedJSONSchemaObject =>
-			isPlainObject(schema) && !isEmptySchema(schema as ParsedJSONSchemaObject)
+			isParsedJSONSchemaObject(schema) && !isEmptySchema(schema)
 	);
 
 	if (members.length === 0) {
@@ -84,20 +84,21 @@ function generateConjunction(
 	for (const member of members) {
 		if (Array.isArray(member.anyOf) || Array.isArray(member.oneOf)) {
 			const { anyOf, oneOf, ...rest } = member;
+			const constraints = withSourceMeta(member, rest);
 
 			// Keywords next to the union constrain the value as well, so they stay
 			// a separate member instead of being dropped with the union.
-			if (!isEmptySchema(rest)) {
-				parts.push(rest);
+			if (!isEmptySchema(constraints)) {
+				parts.push(constraints);
 			}
 
 			// `anyOf` and `oneOf` both constrain the value, so they stay separate.
 			if (Array.isArray(anyOf)) {
-				parts.push({ anyOf } as ParsedJSONSchemaObject);
+				parts.push(withSourceMeta(member, { anyOf }));
 			}
 
 			if (Array.isArray(oneOf)) {
-				parts.push({ oneOf } as ParsedJSONSchemaObject);
+				parts.push(withSourceMeta(member, { oneOf }));
 			}
 
 			continue;
@@ -123,7 +124,7 @@ function generateConjunction(
 
 /** Removes the `allOf` that is being flattened and keeps every other keyword. */
 function withoutAllOf(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject {
-	return { ...schema, allOf: undefined };
+	return withSourceMeta(schema, { ...schema, allOf: undefined });
 }
 
 /**
@@ -135,12 +136,12 @@ function flattenAllOf(schemas: ParsedJSONSchema[]): ParsedJSONSchema[] {
 	const flattened: ParsedJSONSchema[] = [];
 
 	for (const schema of schemas) {
-		if (!isPlainObject(schema)) {
+		if (!isParsedJSONSchemaObject(schema)) {
 			flattened.push(schema);
 			continue;
 		}
 
-		const node = schema as ParsedJSONSchemaObject;
+		const node = schema;
 
 		if (!Array.isArray(node.allOf) || node.allOf.length === 0) {
 			flattened.push(schema);

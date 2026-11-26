@@ -1,7 +1,13 @@
-import { expect, test } from 'vitest';
+import { assert, expect, test } from 'vitest';
 
-import { Meta, parse, indexExternalSchemas } from '../src';
+import { isParsedJSONSchemaObject, Meta, parse, indexExternalSchemas } from '../src';
 import type { JSONSchema, ParsedJSONSchemaObject } from '../src';
+
+function parsedObject(value: unknown): ParsedJSONSchemaObject {
+	assert(isParsedJSONSchemaObject(value));
+
+	return value;
+}
 
 test('serves external schemas by retrieval URI', async () => {
 	const externalSchemas = {
@@ -25,7 +31,8 @@ test('serves external schemas by retrieval URI', async () => {
 		}
 	);
 
-	const user = (parsed.root as ParsedJSONSchemaObject).properties?.user as ParsedJSONSchemaObject;
+	const root = parsedObject(parsed.root);
+	const user = parsedObject(root.properties?.user);
 
 	expect(user[Meta].reference).toMatchObject({
 		type: 'object',
@@ -36,6 +43,24 @@ test('serves external schemas by retrieval URI', async () => {
 	expect(
 		Object.getOwnPropertySymbols(externalSchemas['https://example.com/user.json'])
 	).toHaveLength(0);
+});
+
+test('serves a boolean external schema through $ref', async () => {
+	const parsed = await parse(
+		{ $ref: 'https://example.com/false.json' },
+		{
+			cwd: __dirname + '/',
+			fileName: 'Root.json',
+			externalSchemas: { 'https://example.com/false.json': false },
+		}
+	);
+
+	if (!isParsedJSONSchemaObject(parsed.root)) {
+		throw new TypeError('Expected the root document to be an object');
+	}
+
+	expect(parsed.root[Meta].reference).toBe(false);
+	expect(parsed.referencedSchemas).toContain(false);
 });
 
 test('serves identifiers declared inside a provided document', async () => {
@@ -60,15 +85,23 @@ test('serves identifiers declared inside a provided document', async () => {
 		}
 	);
 
-	const root = parsed.root as ParsedJSONSchemaObject;
-	const reference = root.properties?.bundle as ParsedJSONSchemaObject;
-	const bundle = reference[Meta].reference as ParsedJSONSchemaObject;
-	const name = bundle.allOf?.[0] as ParsedJSONSchemaObject;
+	const root = parsedObject(parsed.root);
+	const reference = parsedObject(root.properties?.bundle);
+	const bundle = parsedObject(reference[Meta].reference);
+	const name = parsedObject(bundle.allOf?.[0]);
 
 	expect(name[Meta].reference).toMatchObject({ type: 'string' });
 });
 
 test('reports a nested identifier once when it is also referenced directly', async () => {
+	const bundle = Object.assign(
+		{ $id: 'https://example.com/bundle.json', prefixItems: [{}] } satisfies JSONSchema,
+		{
+			definitions: {
+				name: { $id: 'https://example.com/name.json', prefixItems: [{}] } satisfies JSONSchema,
+			},
+		}
+	);
 	const parsed = await parse(
 		{
 			allOf: [
@@ -81,13 +114,7 @@ test('reports a nested identifier once when it is also referenced directly', asy
 			fileName: 'Root.json',
 			keywordPolicy: 'warn',
 			externalSchemas: {
-				'https://example.com/bundle.json': {
-					$id: 'https://example.com/bundle.json',
-					prefixItems: [{}],
-					definitions: {
-						name: { $id: 'https://example.com/name.json', prefixItems: [{}] },
-					},
-				} as unknown as JSONSchema,
+				'https://example.com/bundle.json': bundle,
 			},
 		}
 	);
@@ -105,7 +132,7 @@ test('does not index identifiers that live in schema data', () => {
 				fallback: { default: { $id: 'https://example.com/default.json' } },
 				samples: { examples: [{ id: 'https://example.com/examples.json' }] },
 			},
-		} as unknown as JSONSchema,
+		} satisfies JSONSchema,
 	});
 
 	expect(index.has('https://example.com/enum.json')).toBe(false);
@@ -117,7 +144,7 @@ test('indexes identifiers declared in schema positions', () => {
 	const index = indexExternalSchemas({
 		'https://example.com/bundle.json': {
 			definitions: { name: { $id: 'https://example.com/name.json', type: 'string' } },
-		} as unknown as JSONSchema,
+		} satisfies JSONSchema,
 	});
 
 	expect(index.get('https://example.com/name.json')).toMatchObject({ type: 'string' });
@@ -129,7 +156,7 @@ test('resolves nested identifiers against the current base URI', () => {
 			definitions: {
 				name: { $id: 'name.json', type: 'string' },
 			},
-		} as unknown as JSONSchema,
+		} satisfies JSONSchema,
 	});
 
 	expect(index.get('https://example.com/root/name.json')).toMatchObject({ type: 'string' });
@@ -141,7 +168,7 @@ test('keeps explicit retrieval keys when a nested identifier resolves to the sam
 			definitions: {
 				name: { $id: 'https://example.com/shared.json', type: 'string' },
 			},
-		} as unknown as JSONSchema,
+		} satisfies JSONSchema,
 		'https://example.com/shared.json': { type: 'number' },
 	});
 
@@ -156,7 +183,7 @@ test('ignores identifiers next to a $ref in draft-07 and older', () => {
 				sibling: { $ref: '#/definitions/name', $id: 'https://example.com/ignored.json' },
 				name: { type: 'string' },
 			},
-		} as unknown as JSONSchema,
+		} satisfies JSONSchema,
 	});
 
 	expect(legacy.has('https://example.com/ignored.json')).toBe(false);
@@ -169,7 +196,7 @@ test('ignores identifiers next to a $ref in draft-07 and older', () => {
 				sibling: { $ref: '#/$defs/name', $id: 'https://example.com/kept.json' },
 				name: { type: 'string' },
 			},
-		} as unknown as JSONSchema,
+		} satisfies JSONSchema,
 	});
 
 	expect(modern.has('https://example.com/kept.json')).toBe(true);
@@ -187,10 +214,9 @@ test('indexes the draft-04 id keyword', async () => {
 			externalSchemas: {
 				'https://example.com/bundle.json': {
 					definitions: {
-						legacy: {
+						legacy: Object.assign({ type: 'number' } satisfies JSONSchema, {
 							id: 'https://example.com/legacy.json',
-							type: 'number',
-						} as unknown as JSONSchema,
+						}),
 					},
 					items: { $ref: 'https://example.com/legacy.json' },
 				},
@@ -198,10 +224,10 @@ test('indexes the draft-04 id keyword', async () => {
 		}
 	);
 
-	const root = parsed.root as ParsedJSONSchemaObject;
-	const reference = root.properties?.bundle as ParsedJSONSchemaObject;
-	const bundle = reference[Meta].reference as ParsedJSONSchemaObject;
-	const item = bundle.items as ParsedJSONSchemaObject;
+	const root = parsedObject(parsed.root);
+	const reference = parsedObject(root.properties?.bundle);
+	const bundle = parsedObject(reference[Meta].reference);
+	const item = parsedObject(bundle.items);
 
 	expect(item[Meta].reference).toMatchObject({ type: 'number' });
 });

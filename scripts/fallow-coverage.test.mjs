@@ -6,14 +6,14 @@ import test from 'node:test';
 
 import { readCoverage, splitFallowArguments } from './fallow-coverage.mjs';
 
-test('splitFallowArguments strips only the reuse flag', () => {
+void test('splitFallowArguments strips only the reuse flag', () => {
 	assert.deepEqual(
 		splitFallowArguments(['--reuse-coverage', '--format', 'json', '--reuse-coverage']),
 		['--format', 'json']
 	);
 });
 
-test('readCoverage reads the coverage-final.json of a workspace', () => {
+void test('readCoverage reads the coverage-final.json of a workspace', () => {
 	const root = mkdtempSync(join(tmpdir(), 'utilize-fallow-coverage-'));
 
 	try {
@@ -27,7 +27,7 @@ test('readCoverage reads the coverage-final.json of a workspace', () => {
 	}
 });
 
-test('readCoverage explains missing reused coverage', () => {
+void test('readCoverage explains missing reused coverage', () => {
 	const root = mkdtempSync(join(tmpdir(), 'utilize-fallow-coverage-'));
 
 	try {

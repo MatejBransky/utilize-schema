@@ -31,7 +31,7 @@
 		"badge:suite": "node scripts/suite-badge.mjs",
 		"check:suite-badge": "node scripts/suite-badge.mjs --check",
 		"check:format": "oxfmt --check .",
-		"check:lint": "oxlint packages playground",
+		"check:lint": "oxlint packages playground scripts",
 		"check:types": "pnpm run --recursive --aggregate-output --reporter-hide-prefix --if-present check:types",
 		"format": "oxfmt .",
 		"test": "pnpm run --recursive --parallel --aggregate-output --reporter-hide-prefix --if-present test && pnpm test:scripts",

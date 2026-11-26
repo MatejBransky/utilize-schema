@@ -4,6 +4,10 @@ import type { JSONSchema7, JSONSchema7TypeName } from 'json-schema';
 import type { DialectId, DialectSource } from './dialect';
 
 export interface JSONSchema extends JSONSchema7 {
+	/** draft-04 identifier; `$id` replaced it in draft-06. */
+	id?: string;
+	/** 2019-09 location-independent identifier. */
+	$anchor?: string;
 	discriminator?: string;
 	/** 2019-09 annotation; draft-07 schemas can carry it too. */
 	deprecated?: boolean;
@@ -113,6 +117,24 @@ export interface ParsedJSONSchemaObject
 
 export type ParsedJSONSchema = ParsedJSONSchemaObject | boolean | null;
 
+/** Structural guard for a schema object; document validation belongs to the parser. */
+export function isJSONSchemaObject(value: unknown): value is JSONSchema {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function isJSONSchema(value: unknown): value is JSONSchema | boolean {
+	return typeof value === 'boolean' || isJSONSchemaObject(value);
+}
+
+/** A parsed schema object carries the non-enumerable metadata symbol added by the linker. */
+export function isParsedJSONSchemaObject(value: unknown): value is ParsedJSONSchemaObject {
+	return isJSONSchemaObject(value) && Object.hasOwn(value, Meta);
+}
+
+export function isParsedJSONSchema(value: unknown): value is ParsedJSONSchema {
+	return value === null || typeof value === 'boolean' || isParsedJSONSchemaObject(value);
+}
+
 /**
  * Copies the non-enumerable `Meta` from a source node to a synthetic node.
  * Generators create shallow copies while applying a type or splitting a `$ref`
@@ -125,13 +147,22 @@ export function withSourceMeta<T extends object>(
 ): T & ParsedJSONSchemaObject {
 	const meta = source[Meta];
 
-	if (meta) {
-		Object.defineProperty(value, Meta, {
-			enumerable: false,
-			configurable: true,
-			value: meta,
-		});
+	if (meta === undefined) {
+		throw new TypeError('Expected a source schema with metadata');
 	}
 
-	return value as T & ParsedJSONSchemaObject;
+	defineSourceMeta(value, meta);
+
+	return value;
+}
+
+function defineSourceMeta<T extends object>(
+	value: T,
+	meta: Meta
+): asserts value is T & ParsedJSONSchemaObject {
+	Object.defineProperty(value, Meta, {
+		enumerable: false,
+		configurable: true,
+		value: meta,
+	});
 }

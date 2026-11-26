@@ -1,16 +1,21 @@
 import { writeFileSync } from 'node:fs';
 
 import { pickDialectOptions } from '@utilize/json-schema';
-import type { DialectOptions, ExternalSchemas, JSONSchema } from '@utilize/json-schema';
+import type {
+	DialectOptions,
+	ExternalSchemas,
+	JSONSchema,
+	ParsedJSONSchema,
+} from '@utilize/json-schema';
 import {
+	bindCompileFile,
 	compilePaths,
 	generatedFileBanner,
-	parseForCompile,
 	prependBanner,
 	readSchema,
-	schemaFileLocation,
+	withParsedSchema,
 } from '@utilize/json-schema/node';
-import type { CodeFormatter } from '@utilize/json-schema/node';
+import type { CodeFormatter, SchemaFileLocation } from '@utilize/json-schema/node';
 
 import type { FormatMode, GenerateOptions } from './context';
 import { generate } from './generator';
@@ -63,6 +68,9 @@ export { type CodeFormatter, readSchema };
 
 export const DEFAULT_BANNER = generatedFileBanner('@utilize/effect');
 
+/** Compiles an Effect Schema source file to generated code without writing anything. */
+export const compileFile = bindCompileFile(compileSchema);
+
 /**
  * Reads a JSON or YAML schema file, follows its references and writes the
  * generated Effect Schema module next to it.
@@ -85,15 +93,18 @@ export async function compile(options: CompileOptions): Promise<void> {
 	writeFileSync(outputPath, withBanner(code, options.bannerComment), 'utf8');
 }
 
-/** Compiles a JSON or YAML schema file to generated code without writing anything. */
-export async function compileFile(inputPath: string, options: Partial<CompileSchemaOptions> = {}) {
-	return compileSchema(readSchema(inputPath), { ...schemaFileLocation(inputPath), ...options });
+/** Compiles an already parsed JSON Schema value to generated code. */
+export async function compileSchema(
+	schema: JSONSchema | boolean,
+	options: Partial<CompileSchemaOptions> & SchemaFileLocation
+) {
+	return await withParsedSchema(schema, options, renderEffectModule);
 }
 
-/** Compiles an already parsed JSON Schema value to generated code. */
-export async function compileSchema(schema: JSONSchema, options: CompileSchemaOptions) {
-	const { root } = await parseForCompile(schema, options);
-
+function renderEffectModule(
+	root: ParsedJSONSchema,
+	options: Partial<CompileSchemaOptions> & SchemaFileLocation
+): string | Promise<string> {
 	const code = generate(root, {
 		importEffect: options.importEffect,
 		customNameResolver: options.customNameResolver,

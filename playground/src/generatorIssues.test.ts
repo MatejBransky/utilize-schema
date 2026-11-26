@@ -1,4 +1,5 @@
 import { parse } from '@utilize/json-schema';
+import type { JSONSchema } from '@utilize/json-schema';
 import { transformWithOxc } from 'vite';
 import { expect, test } from 'vitest';
 
@@ -22,7 +23,7 @@ const schema = {
 		},
 	},
 	required: ['firstName', 'lastName'],
-};
+} satisfies JSONSchema;
 
 const data = {
 	firstName: 'Ada',
@@ -34,7 +35,7 @@ const expectedPaths = ['$.lastName', '$.age', '$.address.zip'];
 
 for (const target of ['zod', 'effect'] as const) {
 	test(`${target} reports every invalid field instead of stopping at the first`, async () => {
-		const { root } = await parse(structuredClone(schema) as never, {
+		const { root } = await parse(structuredClone(schema), {
 			cwd: '/',
 			fileName: 'person.json',
 		});

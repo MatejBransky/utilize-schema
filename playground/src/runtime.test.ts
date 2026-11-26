@@ -1,3 +1,4 @@
+import { assert, isPlainObject } from '@utilize/json-schema';
 import { Schema } from 'effect';
 import { expect, test } from 'vitest';
 
@@ -32,12 +33,14 @@ test('Effect reports every invalid field instead of stopping at the first', asyn
 test('generated code cannot replace the runtime package bridge', async () => {
 	await loadModule("import { z } from 'zod'; export const schema = z.string();");
 	await loadModule("import { Schema } from 'effect'; export const schema = Schema.String;");
-	const bridge = (globalThis as unknown as Record<string, unknown>)[
-		'__utilizePlaygroundPackages'
-	] as {
-		zod: { z: object };
-		effect: { Schema: object };
-	};
+	const descriptor = Object.getOwnPropertyDescriptor(globalThis, '__utilizePlaygroundPackages');
+
+	assert(descriptor !== undefined, 'Expected the runtime package bridge to be installed.');
+	const bridge: unknown = descriptor.value;
+
+	assert(isPlainObject(bridge), 'Expected the runtime package bridge to be an object.');
+	assert(isPlainObject(bridge.zod), 'Expected the Zod bridge to be an object.');
+	assert(isPlainObject(bridge.effect), 'Expected the Effect bridge to be an object.');
 
 	expect(Object.isFrozen(bridge)).toBe(true);
 	expect(Object.isFrozen(bridge.zod)).toBe(true);

@@ -46,12 +46,10 @@ export function composedSchemaParts(
 	}
 
 	const value: unknown = schema[keyword];
-
-	// oxlint-disable-next-line quality/no-chained-type-assertions -- synthetic node; it has no source Meta to copy
-	const main = {
+	const main = withSourceMeta(schema, {
 		[keyword]: value,
 		discriminator: schema.discriminator,
-	} as unknown as ParsedJSONSchemaObject;
+	});
 
 	return { main, rest };
 }

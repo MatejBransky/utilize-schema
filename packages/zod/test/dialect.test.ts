@@ -1,28 +1,27 @@
 import type { JSONSchema } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
-import { generateCode, compileToZod } from './test-utils';
+import { compileToZod, generateCode, schemaWithExtensions } from './test-utils';
 
 const draft04 = 'http://json-schema.org/draft-04/schema#';
 const draft06 = 'http://json-schema.org/draft-06/schema#';
 const draft07 = 'http://json-schema.org/draft-07/schema#';
 const twentyTwentyTwelve = 'https://json-schema.org/draft/2020-12/schema';
 
-const refWithSiblings = (dialect: string) =>
-	({
-		$schema: dialect,
-		$defs: {
-			Base: { type: 'object', properties: { name: { type: 'string' } } },
+const refWithSiblings = (dialect: string): JSONSchema => ({
+	$schema: dialect,
+	$defs: {
+		Base: { type: 'object', properties: { name: { type: 'string' } } },
+	},
+	type: 'object',
+	properties: {
+		value: {
+			$ref: '#/$defs/Base',
+			properties: { extra: { type: 'number' } },
+			required: ['extra'],
 		},
-		type: 'object',
-		properties: {
-			value: {
-				$ref: '#/$defs/Base',
-				properties: { extra: { type: 'number' } },
-				required: ['extra'],
-			},
-		},
-	}) as unknown as JSONSchema;
+	},
+});
 
 describe('$ref siblings', () => {
 	test('draft-07 ignores them', async () => {
@@ -47,7 +46,7 @@ describe('$ref siblings', () => {
 			$defs: { Name: { type: 'string' } },
 			type: 'object',
 			properties: { value: { $ref: '#/$defs/Name', minLength: 3 } },
-		} as unknown as JSONSchema;
+		} satisfies JSONSchema;
 
 		const Root = await compileToZod(schema);
 
@@ -60,7 +59,7 @@ describe('$ref siblings', () => {
 			$defs: { Name: { type: 'string' } },
 			type: 'object',
 			properties: { value: { $ref: '#/$defs/Name', minLength: 3 } },
-		} as unknown as JSONSchema;
+		} satisfies JSONSchema;
 
 		const Root = await compileToZod(schema);
 
@@ -77,7 +76,7 @@ describe('$ref siblings', () => {
 				name: { $ref: '#/$defs/Name', not: { const: 'x' } },
 				list: { $ref: '#/$defs/List', uniqueItems: true },
 			},
-		} as unknown as JSONSchema;
+		} satisfies JSONSchema;
 
 		const Root = await compileToZod(schema);
 
@@ -93,7 +92,7 @@ describe('$ref siblings', () => {
 				name: { $ref: '#/$defs/Name', not: { const: 'x' } },
 				list: { $ref: '#/$defs/List', uniqueItems: true },
 			},
-		} as unknown as JSONSchema;
+		} satisfies JSONSchema;
 
 		const Root = await compileToZod(schema);
 
@@ -109,15 +108,14 @@ describe('$ref siblings', () => {
 				List: {
 					$schema: twentyTwentyTwelve,
 					type: 'array',
-					items: {
-						$ref: '#/definitions/List',
-						type: 'array',
-						prefixItems: [{ type: 'string' }],
-					},
+					items: schemaWithExtensions(
+						{ $ref: '#/definitions/List', type: 'array' },
+						{ prefixItems: [{ type: 'string' }] }
+					),
 				},
 			},
 			$ref: '#/definitions/List',
-		} as unknown as JSONSchema;
+		} satisfies JSONSchema;
 
 		// The root keeps a `Root` alias to the referenced resource, whose dialect
 		// still decides how its items are generated.
@@ -141,7 +139,7 @@ describe('keywords outside the dialect', () => {
 			$schema: draft04,
 			type: 'string',
 			const: 'x',
-		} as unknown as JSONSchema;
+		} satisfies JSONSchema;
 
 		const Root = await compileToZod(schema, { keywordPolicy: 'ignore' });
 
@@ -155,7 +153,7 @@ describe('keywords outside the dialect', () => {
 			type: 'string',
 			if: { pattern: '^a' },
 			then: { minLength: 2 },
-		} as unknown as JSONSchema;
+		} satisfies JSONSchema;
 
 		const Root = await compileToZod(schema, { keywordPolicy: 'ignore' });
 
@@ -168,7 +166,7 @@ describe('keywords outside the dialect', () => {
 			type: 'string',
 			if: { pattern: '^a' },
 			then: { minLength: 2 },
-		} as unknown as JSONSchema;
+		} satisfies JSONSchema;
 
 		const Root = await compileToZod(schema);
 
@@ -181,7 +179,7 @@ describe('keywords outside the dialect', () => {
 			$schema: draft07,
 			type: 'array',
 			prefixItems: [{ type: 'string' }],
-		} as unknown as JSONSchema;
+		} satisfies JSONSchema;
 
 		const Root = await compileToZod(schema, { keywordPolicy: 'ignore' });
 
@@ -193,7 +191,7 @@ describe('keywords outside the dialect', () => {
 			$schema: twentyTwentyTwelve,
 			type: 'array',
 			items: [{ type: 'string' }],
-		} as unknown as JSONSchema;
+		} satisfies JSONSchema;
 
 		const Root = await compileToZod(schema, { keywordPolicy: 'ignore' });
 
@@ -206,7 +204,7 @@ describe('keywords outside the dialect', () => {
 			type: 'object',
 			properties: { a: { type: 'string' }, b: { type: 'string' } },
 			dependencies: { a: ['b'] },
-		} as unknown as JSONSchema;
+		} satisfies JSONSchema;
 
 		const Root = await compileToZod(schema, { keywordPolicy: 'ignore' });
 
@@ -219,7 +217,7 @@ describe('keywords outside the dialect', () => {
 			type: 'array',
 			items: [{ type: 'string' }],
 			additionalItems: false,
-		} as unknown as JSONSchema;
+		} satisfies JSONSchema;
 
 		const Root = await compileToZod(schema);
 

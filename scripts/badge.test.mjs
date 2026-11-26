@@ -7,7 +7,7 @@ import test from 'node:test';
 import { pickColor, renderBadge } from './badge.mjs';
 import { badgePathFor, describeBadge, findOrphanBadges, isBadgeStale } from './suite-badge.mjs';
 
-test('pickColor uses inclusive thresholds', () => {
+void test('pickColor uses inclusive thresholds', () => {
 	assert.equal(pickColor(100), '#4c1');
 	assert.equal(pickColor(95), '#4c1');
 	assert.equal(pickColor(94), '#97ca00');
@@ -22,7 +22,7 @@ test('pickColor uses inclusive thresholds', () => {
 	assert.equal(pickColor(0), '#e05d44');
 });
 
-test('renderBadge uses its default description and measured geometry', () => {
+void test('renderBadge uses its default description and measured geometry', () => {
 	const badge = renderBadge({ label: 'draft-07', message: '93% passed', color: '#4c1' });
 
 	assert.match(badge, /width="142"/);
@@ -31,7 +31,7 @@ test('renderBadge uses its default description and measured geometry', () => {
 	assert.match(badge, /<rect x="62" width="80" height="20" fill="#4c1"\/>/);
 });
 
-test('renderBadge accepts a custom accessible description', () => {
+void test('renderBadge accepts a custom accessible description', () => {
 	const badge = renderBadge({
 		label: 'draft-07',
 		message: '93% passed',
@@ -43,7 +43,7 @@ test('renderBadge accepts a custom accessible description', () => {
 	assert.match(badge, /<title>Zod draft-07: 283 of 304 cases<\/title>/);
 });
 
-test('describeBadge floors the percentage and includes the measured counts', () => {
+void test('describeBadge floors the percentage and includes the measured counts', () => {
 	const { percent, badge } = describeBadge('draft-07', { passing: 283, cases: 304 });
 
 	assert.equal(percent, 93);
@@ -51,11 +51,11 @@ test('describeBadge floors the percentage and includes the measured counts', () 
 	assert.match(badge, />93% passed</);
 });
 
-test('badgePathFor names badges by package and dialect', () => {
+void test('badgePathFor names badges by package and dialect', () => {
 	assert.match(badgePathFor('zod', 'draft-04'), /suite-zod-draft-04\.svg$/);
 });
 
-test('isBadgeStale detects missing, matching and changed badges', () => {
+void test('isBadgeStale detects missing, matching and changed badges', () => {
 	const directory = mkdtempSync(join(tmpdir(), 'utilize-badge-'));
 	const path = join(directory, 'badge.svg');
 
@@ -72,7 +72,7 @@ test('isBadgeStale detects missing, matching and changed badges', () => {
 	}
 });
 
-test('findOrphanBadges reports committed conformance badges without a baseline', () => {
+void test('findOrphanBadges reports committed conformance badges without a baseline', () => {
 	const directory = mkdtempSync(join(tmpdir(), 'utilize-badge-'));
 	const expected = join(directory, 'suite-zod-draft-07.svg');
 

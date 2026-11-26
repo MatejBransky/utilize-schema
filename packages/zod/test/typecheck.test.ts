@@ -6,7 +6,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 
-import { generateCode } from './test-utils';
+import { generateCode, schemaWithExtensions } from './test-utils';
 import type { TestCompileOptions } from './test-utils';
 
 const require = createRequire(import.meta.url);
@@ -40,7 +40,7 @@ const inlineCopyCycleSchema: JSONSchema = {
 const refWithIgnoredLiteralSchema: JSONSchema = {
 	type: 'object',
 	properties: {
-		kind: { $ref: '#/definitions/Kind', type: 'string', const: 'a' } as JSONSchema,
+		kind: { $ref: '#/definitions/Kind', type: 'string', const: 'a' },
 		next: { $ref: '#' },
 	},
 	definitions: { Kind: { type: 'string' } },
@@ -51,8 +51,8 @@ const refWithIgnoredCombinatorSchema: JSONSchema = {
 	$schema: 'http://json-schema.org/draft-07/schema#',
 	type: 'object',
 	properties: {
-		kind: { $ref: '#/definitions/Kind', const: 'a', minLength: 1 } as JSONSchema,
-		tag: { $ref: '#/definitions/Kind', allOf: [{ const: 'b' }], type: 'string' } as JSONSchema,
+		kind: { $ref: '#/definitions/Kind', const: 'a', minLength: 1 },
+		tag: { $ref: '#/definitions/Kind', allOf: [{ const: 'b' }], type: 'string' },
 		next: { $ref: '#' },
 	},
 	definitions: { Kind: { type: 'string' } },
@@ -67,7 +67,7 @@ const refWithAppliedCombinatorSchema = {
 		next: { $ref: '#' },
 	},
 	$defs: { Kind: { type: 'string' } },
-} as unknown as JSONSchema;
+} satisfies JSONSchema;
 
 /** Both arrays of the recursive schema are hoisted into one declaration. */
 const hoistedCycleSchema: JSONSchema = {
@@ -223,24 +223,28 @@ const prefixItemsSchema = {
 	type: 'array',
 	prefixItems: [{ type: 'string' }],
 	items: { type: 'number' },
-} as unknown as JSONSchema;
+} satisfies JSONSchema;
 
-const dependentRequiredSchema = {
-	$schema: 'https://json-schema.org/draft/2020-12/schema',
-	type: 'object',
-	properties: {
-		a: { type: 'string' },
-		b: { type: 'string' },
+const dependentRequiredSchema = schemaWithExtensions(
+	{
+		$schema: 'https://json-schema.org/draft/2020-12/schema',
+		type: 'object',
+		properties: {
+			a: { type: 'string' },
+			b: { type: 'string' },
+		},
 	},
-	dependentRequired: { a: ['b'] },
-} as unknown as JSONSchema;
+	{ dependentRequired: { a: ['b'] } }
+);
 
-const draft04ExclusiveSchema = {
-	$schema: 'http://json-schema.org/draft-04/schema#',
-	type: 'number',
-	minimum: 0,
-	exclusiveMinimum: true,
-} as unknown as JSONSchema;
+const draft04ExclusiveSchema = schemaWithExtensions(
+	{
+		$schema: 'http://json-schema.org/draft-04/schema#',
+		type: 'number',
+		minimum: 0,
+	},
+	{ exclusiveMinimum: true }
+);
 
 const siblingAllOfSchema: JSONSchema = {
 	allOf: [{ type: 'object', properties: { a: { type: 'string' } }, required: ['a'] }],
@@ -260,7 +264,7 @@ const booleanRefSchema = {
 		denied: { $ref: '#/$defs/denied' },
 	},
 	$defs: { allowed: true, denied: false },
-} as unknown as JSONSchema;
+} satisfies JSONSchema;
 
 const patternPropertiesSchema: JSONSchema = {
 	type: 'object',

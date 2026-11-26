@@ -1,4 +1,4 @@
-import { isPlainObject, Meta } from '@utilize/json-schema';
+import { isParsedJSONSchemaObject, Meta } from '@utilize/json-schema';
 import type {
 	CustomNameResolver,
 	ParsedJSONSchema,
@@ -54,21 +54,22 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		customSchemaResolver: options.customSchemaResolver,
 	};
 
-	if (!isPlainObject(root)) {
+	if (!isParsedJSONSchemaObject(root)) {
 		return `export type Root = ${renderType(root, context)};\n`;
 	}
 
-	const collected = collectStandaloneSchemas(root as ParsedJSONSchemaObject);
+	const collected = collectStandaloneSchemas(root);
 	const unsupported = findUnsupportedCycles(collected.schemas);
 
 	if (unsupported.length > 0) {
 		throw new UnsupportedCircularTypeError(unsupported);
 	}
 
-	const rootSchema = root as ParsedJSONSchemaObject;
+	const rootSchema = root;
 	const rootName = ensureName(rootSchema);
 	const definitions = collected.schemas.filter(
-		(schema): schema is ParsedJSONSchemaObject => schema !== rootSchema && isPlainObject(schema)
+		(schema): schema is ParsedJSONSchemaObject =>
+			schema !== rootSchema && isParsedJSONSchemaObject(schema)
 	);
 
 	// Every name has to exist before the first declaration is rendered, because
@@ -96,7 +97,11 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 
 	function ensureBooleanDefinitionName(definition: BooleanDefinition): string {
 		// A boolean has no metadata of its own, so the name comes from its path.
-		const synthetic = { [Meta]: { path: definition.path } } as ParsedJSONSchemaObject;
+		const synthetic = { [Meta]: { path: definition.path } };
+
+		if (!isParsedJSONSchemaObject(synthetic)) {
+			throw new Error('Expected a synthetic schema with metadata');
+		}
 
 		return ensureName(synthetic);
 	}

@@ -4,13 +4,13 @@
 // regenerating it. With `--check` it writes nothing and fails on that.
 // Requires Node 24+ for built-in TypeScript type stripping of baseline.ts.
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { pickColor, renderBadge } from './badge.mjs';
 
 const PACKAGES = ['zod', 'effect', 'typescript'];
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const ROOT = resolve(import.meta.dirname, '..');
 const BADGE_DIRECTORY = join(ROOT, '.github', 'badges');
 const IS_CHECK = process.argv.includes('--check');
 

@@ -4,7 +4,8 @@ import path from 'node:path';
 import { load as loadYaml } from 'js-yaml';
 
 import { pickDialectOptions, warnDialectIssue } from '../dialect';
-import type { JSONSchema } from '../model';
+import { isJSONSchema } from '../model';
+import type { JSONSchema, ParsedJSONSchema } from '../model';
 import { parse } from '../parser';
 import type { ParseOptions } from '../parser';
 
@@ -12,23 +13,32 @@ import type { ParseOptions } from '../parser';
 export type CodeFormatter = (code: string) => string | Promise<string>;
 
 /** Reads a schema file: YAML for `.yaml` and `.yml`, JSON otherwise. */
-export function readSchema(filePath: string): JSONSchema {
+export function readSchema(filePath: string): JSONSchema | boolean {
 	const source = readFileSync(filePath, 'utf8');
+	const schema: unknown = /\.ya?ml$/i.test(filePath) ? loadYaml(source) : JSON.parse(source);
 
-	if (/\.ya?ml$/i.test(filePath)) {
-		return loadYaml(source) as JSONSchema;
-	}
-
-	return JSON.parse(source) as JSONSchema;
+	return requireSchema(schema, filePath);
 }
 
 /** Parses schema text of unknown format, such as stdin: JSON when it parses, YAML otherwise. */
-export function parseSchemaSource(source: string): JSONSchema {
+export function parseSchemaSource(source: string): JSONSchema | boolean {
+	let schema: unknown;
+
 	try {
-		return JSON.parse(source) as JSONSchema;
+		schema = JSON.parse(source);
 	} catch {
-		return loadYaml(source) as JSONSchema;
+		schema = loadYaml(source);
 	}
+
+	return requireSchema(schema, 'schema source');
+}
+
+function requireSchema(value: unknown, source: string): JSONSchema | boolean {
+	if (!isJSONSchema(value)) {
+		throw new TypeError(`${source} must contain a JSON Schema`);
+	}
+
+	return value;
 }
 
 /** The header of a generated file, naming the package that generated it. */
@@ -99,13 +109,24 @@ export function schemaFileLocation(filePath: string): SchemaFileLocation {
 	return { cwd: path.dirname(filePath), fileName: path.basename(filePath) };
 }
 
+/** Binds a generator's `compileSchema` to the shared file-reading path. */
+export function bindCompileFile<Options extends SchemaFileLocation>(
+	compileSchema: (
+		schema: JSONSchema | boolean,
+		options: Partial<Options> & SchemaFileLocation
+	) => Promise<string>
+): (inputPath: string, options?: Partial<Options>) => Promise<string> {
+	return (inputPath, options = {}) =>
+		compileSchema(readSchema(inputPath), { ...schemaFileLocation(inputPath), ...options });
+}
+
 /**
  * Parses a schema for a generator's `compileSchema`. Unlike `parse`, dialect
  * issues are printed as warnings unless `onDialectIssue` handles them, so
  * programmatic builds still see them.
  */
 export function parseForCompile(
-	schema: JSONSchema,
+	schema: JSONSchema | boolean,
 	options: ParseOptions
 ): ReturnType<typeof parse> {
 	return parse(schema, {
@@ -115,4 +136,15 @@ export function parseForCompile(
 		...pickDialectOptions(options),
 		onDialectIssue: options.onDialectIssue ?? warnDialectIssue,
 	});
+}
+
+/** Parses a schema and hands its linked root to a generator. */
+export async function withParsedSchema<Options extends SchemaFileLocation, Result>(
+	schema: JSONSchema | boolean,
+	options: Partial<Options> & SchemaFileLocation,
+	render: (root: ParsedJSONSchema, options: Partial<Options> & SchemaFileLocation) => Result
+): Promise<Result> {
+	const { root } = await parseForCompile(schema, options);
+
+	return render(root, options);
 }

@@ -2,14 +2,17 @@ import { isPlainObject } from '@utilize/json-schema';
 import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
+import type { ExpressionGenerator } from './createGenerator';
 import { protoInputCheck } from './protoProperty';
 
 import { ts } from '../utils';
 
-export const recordGenerator = createGenerator<{
+export type RecordSchema = ParsedJSONSchemaObject & {
 	additionalProperties: ParsedJSONSchemaObject;
-}>(
-	(schema) => {
+};
+
+export const recordGenerator: ExpressionGenerator = createGenerator<RecordSchema>(
+	(schema): schema is RecordSchema => {
 		if (
 			!schema.properties &&
 			!schema.required?.length &&

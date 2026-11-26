@@ -1,6 +1,7 @@
 import {
 	expectDefined,
 	isKeywordApplicable,
+	isParsedJSONSchemaObject,
 	isPlainObject,
 	narrowUntypedSchema,
 } from '@utilize/json-schema';
@@ -225,14 +226,14 @@ function dependencyChecks(schema: ParsedJSONSchemaObject, context: Context): str
  * generator narrows the same way, through `narrowUntypedSchema`.
  */
 function generateDependencySchema(dependency: ParsedJSONSchema, context: Context): string {
-	if (!isPlainObject(dependency)) {
+	if (!isParsedJSONSchemaObject(dependency)) {
 		return context.generateSchema(dependency, context);
 	}
 
 	// A resolver that keys on the node itself has already had its chance on the
 	// original node; asking it again about the narrowed copy would run user code
 	// twice for every dependency.
-	const custom = context.customSchemaResolver?.(dependency as ParsedJSONSchemaObject);
+	const custom = context.customSchemaResolver?.(dependency);
 
 	return (
 		custom ??

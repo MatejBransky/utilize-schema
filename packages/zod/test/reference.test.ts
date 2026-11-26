@@ -295,7 +295,7 @@ describe('boolean references', () => {
 				allowed: true,
 				denied: false,
 			},
-		} as unknown as JSONSchema);
+		} satisfies JSONSchema);
 
 		expect(Root.safeParse({ allowed: 'anything' }).success).toBe(true);
 		expect(Root.safeParse({ denied: 'anything' }).success).toBe(false);

@@ -1,6 +1,7 @@
 import { dialects } from './dialect';
 import type { Dialect } from './dialect';
 import { SCHEMA_ARRAY_KEYWORDS, SCHEMA_MAP_KEYWORDS, SINGLE_SCHEMA_KEYWORDS } from './keywords';
+import { isJSONSchema, isJSONSchemaObject } from './model';
 import type { JSONSchema } from './model';
 import type { DialectMap } from './normalize';
 import { isPlainObject } from './utils';
@@ -29,11 +30,11 @@ export interface SchemaIndex {
 }
 
 function identifierOf(
-	node: Record<string, unknown>,
+	node: JSONSchema,
 	dialect: Dialect,
 	ignoresSiblings: boolean
 ): string | undefined {
-	const rawId = node[idKeyword(dialect)];
+	const rawId = dialect.keywords.has('$id') ? node.$id : node.id;
 
 	return !ignoresSiblings && typeof rawId === 'string' && rawId.length > 0 ? rawId : undefined;
 }
@@ -43,15 +44,20 @@ export function createSchemaIndex(): SchemaIndex & {
 	 * Indexes a document. `nodeDialects` comes from `prepareSchema`; without it
 	 * every node is read as draft-07.
 	 */
-	addDocument(retrievalUri: string, root: JSONSchema, nodeDialects?: DialectMap): void;
+	addDocument(retrievalUri: string, root: JSONSchema | boolean, nodeDialects?: DialectMap): void;
 } {
 	const resources = new Map<string, JSONSchema | boolean>();
 	const anchors = new Map<string, JSONSchema | boolean>();
 	const bases = new WeakMap<object, string>();
 
-	function addDocument(retrievalUri: string, root: JSONSchema, nodeDialects?: DialectMap) {
+	function addDocument(
+		retrievalUri: string,
+		root: JSONSchema | boolean,
+		nodeDialects?: DialectMap
+	) {
+		resources.set(retrievalUri, root);
+
 		if (typeof root === 'object' && root !== null) {
-			resources.set(retrievalUri, root);
 			bases.set(root, retrievalUri);
 		}
 
@@ -71,13 +77,13 @@ export function createSchemaIndex(): SchemaIndex & {
 			return;
 		}
 
-		if (isPlainObject(node)) {
+		if (isJSONSchemaObject(node)) {
 			indexNode(node, baseUri, inheritedDialect, nodeDialects);
 		}
 	}
 
 	function indexNode(
-		node: Record<string, unknown>,
+		node: JSONSchema,
 		baseUri: string,
 		inheritedDialect: Dialect,
 		nodeDialects: DialectMap | undefined
@@ -101,11 +107,7 @@ export function createSchemaIndex(): SchemaIndex & {
 		}
 	}
 
-	function indexIdentifier(
-		node: Record<string, unknown>,
-		id: string | undefined,
-		baseUri: string
-	): string {
+	function indexIdentifier(node: JSONSchema, id: string | undefined, baseUri: string): string {
 		if (!id) {
 			return baseUri;
 		}
@@ -168,16 +170,11 @@ export function createSchemaIndex(): SchemaIndex & {
 	};
 }
 
-/** draft-04 names the identifier `id`; draft-06 renamed it to `$id`. */
-function idKeyword(dialect: Dialect): 'id' | '$id' {
-	return dialect.keywords.has('$id') ? '$id' : 'id';
-}
-
 /**
  * Yields only schema-bearing children, so `$id` in `default` or `examples` is
  * ignored. Exported so every indexer walks the same keywords.
  */
-export function* schemaChildren(node: Record<string, unknown>): Generator<unknown> {
+export function* schemaChildren(node: JSONSchema): Generator<unknown> {
 	for (const [keyword, value] of Object.entries(node)) {
 		if (keyword === 'items') {
 			yield* itemsChildren(value);
@@ -239,14 +236,26 @@ function resolvePointer(root: JSONSchema | boolean, pointer: string) {
 
 		token = token.replaceAll('~1', '/').replaceAll('~0', '~');
 
-		if (typeof current !== 'object' || current === null || !Object.hasOwn(current, token)) {
-			return undefined;
+		if (Array.isArray(current)) {
+			const index = Number(token);
+
+			if (!Number.isInteger(index) || !Object.hasOwn(current, index)) {
+				return undefined;
+			}
+
+			current = current[index];
+			continue;
 		}
 
-		current = (current as Record<string, unknown>)[token];
+		if (isPlainObject(current) && Object.hasOwn(current, token)) {
+			current = current[token];
+			continue;
+		}
+
+		return undefined;
 	}
 
-	return current as JSONSchema | boolean | undefined;
+	return isJSONSchema(current) ? current : undefined;
 }
 
 const PLACEHOLDER_ORIGIN = 'https://utilize.invalid';

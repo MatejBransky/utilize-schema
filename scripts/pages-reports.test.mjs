@@ -24,14 +24,14 @@ function vitestReport(overrides = {}) {
 		numPendingTests: 1,
 		numTodoTests: 0,
 		testResults: [
-			{ startTime: 1_000, endTime: 1_250 },
-			{ startTime: 1_100, endTime: 1_400 },
+			{ startTime: 1000, endTime: 1250 },
+			{ startTime: 1100, endTime: 1400 },
 		],
 		...overrides,
 	};
 }
 
-test('summarizes Vitest counts and wall-clock duration', () => {
+void test('summarizes Vitest counts and wall-clock duration', () => {
 	assert.deepEqual(summarizeVitest(workspace, vitestReport()), {
 		id: 'example',
 		name: '@utilize/example',
@@ -48,7 +48,7 @@ test('summarizes Vitest counts and wall-clock duration', () => {
 	});
 });
 
-test('handles a Vitest report with no test files', () => {
+void test('handles a Vitest report with no test files', () => {
 	const summary = summarizeVitest(
 		workspace,
 		vitestReport({ testResults: [], numTotalTests: 0, numPassedTests: 0, numPendingTests: 0 })
@@ -58,25 +58,25 @@ test('handles a Vitest report with no test files', () => {
 	assert.equal(summary.tests, 0);
 });
 
-test('escapes HTML metacharacters in report data', () => {
+void test('escapes HTML metacharacters in report data', () => {
 	assert.equal(
 		escapeHtml(`<script>"alert('x')" & more</script>`),
 		'&lt;script&gt;&quot;alert(&#39;x&#39;)&quot; &amp; more&lt;/script&gt;'
 	);
 });
 
-test('formats benchmark timings in milliseconds', () => {
+void test('formats benchmark timings in milliseconds', () => {
 	assert.equal(formatMilliseconds(12.345), '12.3 ms');
 	assert.equal(formatMilliseconds(0), '0.0 ms');
 });
 
-test('removes favicon links that the single-file Vitest report does not inline', () => {
+void test('removes favicon links that the single-file Vitest report does not inline', () => {
 	const html = `<head>\n  <link rel="icon" href="./favicon.ico" sizes="48x48" />\n  <link rel="icon" href="./favicon.svg" sizes="any" type="image/svg+xml" />\n  <title>Vitest</title>\n</head>`;
 
 	assert.equal(stripFaviconLinks(html), '<head>\n  <title>Vitest</title>\n</head>');
 });
 
-test('renders the Fallow health detail page with formulas and drivers', () => {
+void test('renders the Fallow health detail page with formulas and drivers', () => {
 	const report = describeHealth(
 		{
 			health_score: {
@@ -109,7 +109,7 @@ test('renders the Fallow health detail page with formulas and drivers', () => {
 	assert.match(html, /File length is not part of the score/);
 });
 
-test('renders the long-function fallback when the list is unavailable', () => {
+void test('renders the long-function fallback when the list is unavailable', () => {
 	const report = describeHealth({
 		health_score: {
 			formula_version: 3,

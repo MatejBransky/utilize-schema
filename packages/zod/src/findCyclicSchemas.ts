@@ -72,7 +72,9 @@ function isStructuralNode(schema: SchemaNode): boolean {
 	}
 
 	if (generator === multipleTypeGenerator) {
-		return (schema.type as string[]).some((type) => type === 'object' || type === 'array');
+		const types = Array.isArray(schema.type) ? schema.type : [schema.type];
+
+		return types.some((type) => type === 'object' || type === 'array');
 	}
 
 	return false;

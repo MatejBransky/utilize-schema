@@ -42,11 +42,11 @@ export function readDialectCliOptions(values: DialectCliValues): DialectCliResul
 		return { ok: false, error: `Unknown fallback dialect "${fallbackDialect}"` };
 	}
 
-	if (unknownDialect !== undefined && !UNKNOWN_DIALECT_MODES.has(unknownDialect)) {
+	if (!isUnknownDialectMode(unknownDialect)) {
 		return { ok: false, error: '--unknown-dialect must be "error" or "fallback"' };
 	}
 
-	if (keywordPolicy !== undefined && !KEYWORD_POLICIES.has(keywordPolicy)) {
+	if (!isKeywordPolicy(keywordPolicy)) {
 		return { ok: false, error: '--keyword-policy must be "error", "warn" or "ignore"' };
 	}
 
@@ -55,12 +55,22 @@ export function readDialectCliOptions(values: DialectCliValues): DialectCliResul
 		options: {
 			dialect,
 			fallbackDialect,
-			unknownDialect: unknownDialect as DialectOptions['unknownDialect'],
-			keywordPolicy: keywordPolicy as KeywordPolicy | undefined,
+			unknownDialect,
+			keywordPolicy,
 		},
 	};
 }
 
 function isDialectId(value: string): value is DialectId {
 	return Object.hasOwn(dialects, value);
+}
+
+function isKeywordPolicy(value: string | undefined): value is KeywordPolicy | undefined {
+	return value === undefined || KEYWORD_POLICIES.has(value);
+}
+
+function isUnknownDialectMode(
+	value: string | undefined
+): value is DialectOptions['unknownDialect'] {
+	return value === undefined || UNKNOWN_DIALECT_MODES.has(value);
 }

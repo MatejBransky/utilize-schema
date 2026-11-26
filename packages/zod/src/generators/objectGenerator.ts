@@ -2,6 +2,7 @@ import { Meta } from '@utilize/json-schema';
 import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
+import type { ExpressionGenerator } from './createGenerator';
 import type { Recursion } from './createGenerator';
 import { protoInputCheck } from './protoProperty';
 import type { GeneratorContext } from './types';
@@ -11,8 +12,10 @@ import { isSchemaObject, NEWLINE, shapeKey, ts } from '../utils';
 
 const PROTO = '__proto__';
 
-export const objectGenerator = createGenerator(
-	(schema) => schema.type === 'object',
+export type ObjectSchema = ParsedJSONSchemaObject & { type: 'object' };
+
+export const objectGenerator: ExpressionGenerator = createGenerator<ObjectSchema>(
+	(schema): schema is ObjectSchema => schema.type === 'object',
 	(schema, context, { generateSchema }) => {
 		const declaredProperties = schema.properties ?? {};
 		const propertiesPart = renderProperties(

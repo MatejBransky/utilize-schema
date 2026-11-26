@@ -1,5 +1,5 @@
 import { generate as generateEffect } from '@utilize/effect';
-import { parse } from '@utilize/json-schema';
+import { assert, isJSONSchema, parse } from '@utilize/json-schema';
 import type { ParsedJSONSchema } from '@utilize/json-schema';
 import { generate as generateTypeScript } from '@utilize/typescript';
 import { generate as generateZod } from '@utilize/zod';
@@ -70,8 +70,9 @@ async function parseExample(example: Example) {
 
 	expect(bundle.root).not.toBeNull();
 	expect(bundle.problems).toEqual([]);
+	assert(isJSONSchema(bundle.root), 'Expected the bundled root to be a schema.');
 
-	const { root } = await parse(bundle.root as never, {
+	const { root } = await parse(bundle.root, {
 		cwd: '/',
 		fileName: bundle.rootFileName,
 	});

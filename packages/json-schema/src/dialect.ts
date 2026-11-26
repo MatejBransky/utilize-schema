@@ -1,5 +1,5 @@
 import { ANNOTATION_KEYWORDS } from './keywords';
-import { Meta } from './model';
+import { isParsedJSONSchemaObject, Meta } from './model';
 import type { ParsedJSONSchemaObject, Path } from './model';
 import { isPlainObject } from './utils';
 
@@ -393,8 +393,8 @@ export function dialectOf(
 	schema: ParsedJSONSchemaObject | unknown,
 	fallback: Dialect = dialects['draft-07']
 ): Dialect {
-	if (typeof schema === 'object' && schema !== null) {
-		const meta = (schema as ParsedJSONSchemaObject)[Meta];
+	if (isParsedJSONSchemaObject(schema)) {
+		const meta = schema[Meta];
 
 		if (meta?.dialect) {
 			return dialects[meta.dialect] ?? fallback;

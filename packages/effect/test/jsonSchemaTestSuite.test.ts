@@ -104,14 +104,13 @@ for (const file of files) {
 						return;
 					}
 
-					expect(
-						expected,
-						`No recorded failing instances for "${key}"; run the baseline update script`
-					).toBeDefined();
-					expect(
-						(expected as string[]).length,
-						`"${key}" no longer fails; remove the entry`
-					).toBeGreaterThan(0);
+					if (expected === undefined) {
+						throw new Error(
+							`No recorded failing instances for "${key}"; run the baseline update script`
+						);
+					}
+
+					expect(expected.length, `"${key}" no longer fails; remove the entry`).toBeGreaterThan(0);
 
 					const schema = await compileToEffectSchema(
 						testCase.schema,
@@ -124,7 +123,7 @@ for (const file of files) {
 						)
 						.map((suiteTest) => suiteTest.description);
 
-					expect([...failures].sort()).toEqual([...(expected as string[])].sort());
+					expect([...failures].sort()).toEqual([...expected].sort());
 				});
 				continue;
 			}
@@ -221,8 +220,12 @@ describe('baseline', () => {
 	}, 120_000);
 });
 
+function isOtherDialect(key: string): key is keyof typeof OTHER_DIALECTS {
+	return key in OTHER_DIALECTS;
+}
+
 describe('other dialects', () => {
-	for (const dialect of Object.keys(OTHER_DIALECTS) as (keyof typeof OTHER_DIALECTS)[]) {
+	for (const dialect of Object.keys(OTHER_DIALECTS).filter(isOtherDialect)) {
 		const token = OTHER_DIALECTS[dialect];
 
 		test(`${dialect} matches the recorded baseline`, async () => {

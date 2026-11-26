@@ -1,13 +1,10 @@
 import {
 	collectStandaloneSchemas as collectSharedStandaloneSchemas,
+	isParsedJSONSchemaObject,
 	isPlainObject,
 	Meta,
 } from '@utilize/json-schema';
-import type {
-	ParsedJSONSchema,
-	ParsedJSONSchemaObject,
-	StandaloneSchemas,
-} from '@utilize/json-schema';
+import type { ParsedJSONSchemaObject, StandaloneSchemas } from '@utilize/json-schema';
 
 /**
  * A `$defs` or `definitions` entry that is a boolean schema. Booleans carry no
@@ -38,15 +35,15 @@ export function collectStandaloneSchemas(root: ParsedJSONSchemaObject): Standalo
 		const basePath = schema[Meta]?.path ?? [];
 
 		for (const namespace of DEFINITION_NAMESPACES) {
-			const definitions = schema[namespace] as Record<string, ParsedJSONSchema> | undefined;
+			const definitions = schema[namespace];
 
 			if (!isPlainObject(definitions)) {
 				continue;
 			}
 
 			for (const [key, definition] of Object.entries(definitions)) {
-				if (isPlainObject(definition)) {
-					yield definition as ParsedJSONSchemaObject;
+				if (isParsedJSONSchemaObject(definition)) {
+					yield definition;
 				} else if (typeof definition === 'boolean') {
 					booleanDefinitions.push({ schema: definition, path: [...basePath, namespace, key] });
 				}

@@ -6,7 +6,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 
-import { generateCode } from './test-utils';
+import { errorOutput, generateCode } from './test-utils';
 
 const require = createRequire(import.meta.url);
 const tsc = join(dirname(require.resolve('typescript/package.json')), 'bin/tsc');
@@ -18,12 +18,12 @@ const readOnlySchema: JSONSchema = {
 	required: ['id'],
 };
 
-const unevaluatedSchema = {
+const unevaluatedSchema: JSONSchema = {
 	$schema: 'https://json-schema.org/draft/2020-12/schema',
 	type: 'object',
 	properties: { name: { type: 'string' } },
 	unevaluatedProperties: false,
-} as unknown as JSONSchema;
+};
 
 const cases = [
 	{
@@ -39,7 +39,7 @@ void ok;
 	},
 	{
 		file: 'RecursiveReadOnly.ts',
-		schema: { type: 'array', readOnly: true, items: { $ref: '#' } } as JSONSchema,
+		schema: { type: 'array', readOnly: true, items: { $ref: '#' } } satisfies JSONSchema,
 		options: { readOnlyKeyword: true },
 		assertions: `
 const empty: Root = [];
@@ -53,7 +53,7 @@ void empty;
 			readOnly: true,
 			properties: { id: { type: 'string' } },
 			required: ['id'],
-		} as JSONSchema,
+		} satisfies JSONSchema,
 		options: { readOnlyKeyword: true },
 		assertions: `
 const ok: Root = { id: 'x' };
@@ -69,7 +69,7 @@ void none;
 			type: ['object', 'null'],
 			readOnly: true,
 			properties: { next: { $ref: '#' } },
-		} as JSONSchema,
+		} satisfies JSONSchema,
 		options: { readOnlyKeyword: true },
 		assertions: `
 const chain: Root = { next: { next: null } };
@@ -127,7 +127,7 @@ describe('annotations', () => {
 					{ encoding: 'utf8', stdio: 'pipe' }
 				);
 			} catch (error) {
-				const output = error as { stdout?: string; stderr?: string };
+				const output = errorOutput(error);
 
 				throw new Error(`tsc failed:\n${output.stdout ?? ''}${output.stderr ?? ''}`, {
 					cause: error,

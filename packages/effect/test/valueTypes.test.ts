@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { dialectOf, Meta, parse } from '@utilize/json-schema';
-import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
+import { assert, dialectOf, isParsedJSONSchemaObject, Meta, parse } from '@utilize/json-schema';
 
 import type { CustomSchemaResolver } from '../src/context';
 import { renderValueTypeDeclaration } from '../src/valueTypes';
@@ -14,7 +13,8 @@ async function render(
 	customSchemaResolver?: CustomSchemaResolver
 ): Promise<string> {
 	const parsed = await parse(schema, { cwd: __dirname, fileName: 'Root.json' });
-	const root = parsed.root as ParsedJSONSchemaObject;
+	assert(isParsedJSONSchemaObject(parsed.root));
+	const root = parsed.root;
 	const context: ValueTypeContext = {
 		dialect: dialectOf(root),
 		aliasFor: (target) => (target === root ? 'Value' : undefined),

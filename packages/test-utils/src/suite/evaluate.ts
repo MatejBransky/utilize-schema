@@ -18,10 +18,26 @@ export const nameRootSchema: CustomNameResolver = (schema) =>
  * of schemas compile without touching the filesystem.
  */
 function evaluateModule<T>(names: string[], body: string, values: unknown[]): T {
-	// fallow-ignore-next-line security-sink -- the suite evaluates generated code in memory; no input comes from outside the test process
-	const evaluate = new Function(...names, body) as (...args: unknown[]) => T;
+	const evaluate = createFunction<T>(names, body);
 
 	return evaluate(...values);
+}
+
+function createFunction<T>(names: string[], body: string): (...args: unknown[]) => T {
+	// fallow-ignore-next-line security-sink -- the suite evaluates generated code in memory; no input comes from outside the test process
+	const generated = new Function(...names, body);
+
+	if (!isCallable<T>(generated)) {
+		throw new TypeError('Generated code did not evaluate to a function');
+	}
+
+	return generated;
+}
+
+type FunctionLike = { readonly call: unknown };
+
+function isCallable<T>(value: FunctionLike): value is FunctionLike & ((...args: unknown[]) => T) {
+	return typeof value === 'function';
 }
 
 export function evaluateGeneratedCode<T>(code: string, scope: Record<string, unknown>): T {

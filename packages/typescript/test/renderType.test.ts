@@ -1,15 +1,25 @@
-import type { ParsedJSONSchema } from '@utilize/json-schema';
+import { isJSONSchemaObject, isParsedJSONSchemaObject } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
 import { renderType } from '../src/renderType';
 import type { TypeContext } from '../src/renderType';
+
+import { withMeta } from './test-utils';
 
 const context: TypeContext = {
 	nameOf: () => 'Reference',
 };
 
 function render(schema: unknown): string {
-	return renderType(schema as ParsedJSONSchema, context);
+	if (schema === undefined || schema === null || typeof schema === 'boolean') {
+		return renderType(schema, context);
+	}
+
+	if (!isJSONSchemaObject(schema)) {
+		throw new TypeError('Expected a schema object');
+	}
+
+	return renderType(isParsedJSONSchemaObject(schema) ? schema : withMeta(schema), context);
 }
 
 describe('renderType dispatch', () => {
@@ -22,7 +32,7 @@ describe('renderType dispatch', () => {
 
 	test('prefers a custom resolver over built-in rendering', () => {
 		expect(
-			renderType({ type: 'string' } as unknown as ParsedJSONSchema, {
+			renderType(withMeta({ type: 'string' }), {
 				...context,
 				customSchemaResolver: () => 'Date',
 			})
@@ -30,10 +40,12 @@ describe('renderType dispatch', () => {
 	});
 
 	test('dispatches literals, applicators and type arrays', () => {
-		expect(render({ const: 'a' })).toBe("'a'");
-		expect(render({ enum: ['a', 'b'] })).toBe("'a' | 'b'");
-		expect(render({ anyOf: [{ type: 'string' }, { type: 'number' }] })).toBe('string | number');
-		expect(render({ type: ['string', 'number'] })).toBe('string | number');
-		expect(render({ type: [] })).toBe('never');
+		expect(render(withMeta({ const: 'a' }))).toBe("'a'");
+		expect(render(withMeta({ enum: ['a', 'b'] }))).toBe("'a' | 'b'");
+		expect(render(withMeta({ anyOf: [{ type: 'string' }, { type: 'number' }] }))).toBe(
+			'string | number'
+		);
+		expect(render(withMeta({ type: ['string', 'number'] }))).toBe('string | number');
+		expect(render(withMeta({ type: [] }))).toBe('never');
 	});
 });

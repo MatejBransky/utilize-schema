@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
-import { compile } from '../src';
+import { compile, compileSchema } from '../src';
 
 const directories: string[] = [];
 
@@ -22,6 +22,12 @@ afterEach(async () => {
 });
 
 describe('compile', () => {
+	test('compiles a boolean schema document', async () => {
+		await expect(
+			compileSchema(true, { cwd: join(tmpdir(), 'utilize-zod-boolean'), fileName: 'Root.json' })
+		).resolves.toContain('z.any()');
+	});
+
 	test('writes to schema.generated.ts when output is omitted', async () => {
 		vi.spyOn(console, 'log').mockImplementation(() => {});
 		const directory = await makeDirectory();

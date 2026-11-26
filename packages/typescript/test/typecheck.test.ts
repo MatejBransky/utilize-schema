@@ -5,7 +5,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 
-import { compile } from './test-utils';
+import { commandOutput, compile } from './test-utils';
 import type { TestSchema } from './test-utils';
 
 const require = createRequire(import.meta.url);
@@ -246,9 +246,9 @@ async function typeCheck(schemas: Record<string, TestSchema>) {
 				{ encoding: 'utf8', stdio: 'pipe' }
 			);
 		} catch (error) {
-			const output = error as { stdout?: string; stderr?: string };
+			const output = commandOutput(error);
 
-			throw new Error(`tsc failed:\n${output.stdout ?? ''}${output.stderr ?? ''}`, {
+			throw new Error(`tsc failed:\n${output.stdout}${output.stderr}`, {
 				cause: error,
 			});
 		}

@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
+import { expectDefined } from '@utilize/json-schema';
+
 import { compile, compileToSchema, decode } from './test-utils';
 import type { TestSchema } from './test-utils';
 
@@ -28,20 +30,23 @@ const draft04ExclusiveSchema: TestSchema = {
 	$schema: 'http://json-schema.org/draft-04/schema#',
 	type: 'number',
 	minimum: 0,
-	// draft-04 uses a boolean flag next to `minimum`.
-	exclusiveMinimum: true as unknown as number,
 };
+// draft-04 uses a boolean flag next to `minimum`.
+Object.assign(draft04ExclusiveSchema, { exclusiveMinimum: true });
 
 const unknownVersionSchema: TestSchema = {
 	$schema: 'https://example.com/custom-meta-schema',
 	type: 'string',
 };
 
-const unsupportedFeatureSchema = {
+const unsupportedFeatureSchema: TestSchema = {
 	$schema: 'https://json-schema.org/draft/2020-12/schema',
 	type: 'object',
-	properties: { value: { $dynamicRef: '#meta' } },
-} as unknown as TestSchema;
+	properties: { value: {} },
+};
+Object.assign(expectDefined(unsupportedFeatureSchema.properties?.value), {
+	$dynamicRef: '#meta',
+});
 
 describe('$schema versions', () => {
 	test('2020-12 prefixItems and items', async () => {

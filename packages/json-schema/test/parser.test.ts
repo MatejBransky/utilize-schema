@@ -3,10 +3,20 @@ import { assert, expect, test } from 'vitest';
 import RefProperties from './RefProperties.json';
 
 import { Meta, parse } from '../src';
-import type { JSONSchema, ParsedJSONSchemaObject } from '../src';
+import type { JSONSchema } from '../src';
 
 test('parser', async () => {
-	const parsed = await parse(RefProperties as JSONSchema, {
+	const schema = {
+		...RefProperties,
+		type: 'object',
+		definitions: {
+			internalEnum: {
+				...RefProperties.definitions.internalEnum,
+				type: 'string',
+			},
+		},
+	} satisfies JSONSchema;
+	const parsed = await parse(schema, {
 		cwd: __dirname + '/',
 		fileName: 'RefProperties.json',
 	});
@@ -121,7 +131,7 @@ test('links sibling definitions when the root is a $ref', async () => {
 	});
 
 	assert(typeof parsed.root === 'object' && parsed.root !== null);
-	const defs = (parsed.root as { $defs?: Record<string, ParsedJSONSchemaObject> }).$defs;
+	const defs = parsed.root.$defs;
 	expect(defs?.Child?.[Meta]).toBeDefined();
 });
 
@@ -476,14 +486,14 @@ test('decodes escaped tokens in a JSON pointer', async () => {
 });
 
 test('a $ref to a boolean schema keeps the boolean as its reference', async () => {
-	const schema = {
+	const schema: JSONSchema = {
 		type: 'object',
 		properties: {
 			allowed: { $ref: '#/$defs/allowed' },
 			denied: { $ref: '#/$defs/denied' },
 		},
 		$defs: { allowed: true, denied: false },
-	} as unknown as JSONSchema;
+	};
 	const parsed = await parse(schema, {
 		cwd: __dirname + '/',
 		fileName: 'Unknown',
@@ -495,11 +505,11 @@ test('a $ref to a boolean schema keeps the boolean as its reference', async () =
 });
 
 test('keeps the document root when it is a $ref', async () => {
-	const schema = {
+	const schema: JSONSchema = {
 		$ref: '#/definitions/name',
 		title: 'Root title',
 		definitions: { name: { type: 'string' } },
-	} as unknown as JSONSchema;
+	};
 	const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Root.json' });
 
 	assert(typeof parsed.root === 'object' && parsed.root !== null);
@@ -512,14 +522,15 @@ test('keeps the document root when it is a $ref', async () => {
 });
 
 test('get("#") resolves a root pointer and returns the target document for a file reference', async () => {
-	const localPointer = await parse(
-		{
-			$ref: '#/definitions/name',
-			title: 'Root title',
-			definitions: { name: { type: 'string' } },
-		} as unknown as JSONSchema,
-		{ cwd: __dirname + '/', fileName: 'Root.json' }
-	);
+	const localSchema: JSONSchema = {
+		$ref: '#/definitions/name',
+		title: 'Root title',
+		definitions: { name: { type: 'string' } },
+	};
+	const localPointer = await parse(localSchema, {
+		cwd: __dirname + '/',
+		fileName: 'Root.json',
+	});
 
 	expect(localPointer.get('#')).toMatchObject({ type: 'string' });
 
