@@ -1,5 +1,26 @@
 # @utilize/json-schema
 
+## 0.7.0
+
+### Minor Changes
+
+- 0939ed0: Export the types referenced by exported signatures so consumers can name them: `Writable` and `KeywordIssue` in `@utilize/json-schema`, `ObjectKeys` in `@utilize/effect`, `StandaloneSchemasResult` in `@utilize/typescript`, and the generator predicate, generate and test-option types in `@utilize/zod`. These types were already part of the emitted declarations; the export only makes them importable. The `private-type-leaks` rule now keeps that true.
+- 41afe47: Add `expectDefined` for replacing non-null assertions with a throwing invariant, and narrow the Zod runtime helpers with it.
+- 75e513a: Remove the deprecated `SchemaVersion` type and `detectSchemaVersion` helper. Use `DialectId` and `detectDialect` instead: `detectDialect(schema)?.dialect.id ?? fallback` returns the same value as the removed helper. Both aliases were `@deprecated` and the repository still re-exported them, so `deprecated-exports-in-use` reported them as dead API.
+- d9f8cf8: Rename the `GeneratorCli.flags` field to `parseOptions`. The field is the `parseArgs` option map, not a feature-flag object, and the old name made the `configObjectHeuristics` detector report the CLI's own option map as a feature flag. `runGeneratorCli` behaves the same; the generator CLIs in `@utilize/zod`, `@utilize/effect` and `@utilize/typescript` pass the same object under the new name.
+- 91a0ef6: Add the `@utilize/json-schema/node` entry with the Node-only helpers the generators' `compile` functions and CLIs share: `runGeneratorCli`, `formatAndDialectFlags`, `readFormatAndDialectFlags` and `isEntrypoint` for the CLIs, and `readSchema`, `parseSchemaSource`, `parseForCompile`, `compilePaths`, `schemaFileLocation`, `generatedFileBanner` and `prependBanner` for compiling files. They read and write files, so they are not in the main entry, which stays free of `node:*` imports and keeps running in the browser. The package now has an `exports` map (`.`, `./node`, `./dist/*` and `./package.json`) and depends on `js-yaml` to read YAML schemas.
+- 24d44f0: Export the naming helpers the generators share: `resolveName`, `resolveExplicitName`, `generateName`, `toSafeString`, `justName`, `stripExtension`, `mapName`, `mapDeclarationNames` and `allocateName`, with the `CustomNameResolver`, `NameMapper`, `ResolveNameOptions`, `DeclarationNames`, `MapDeclarationNamesOptions` and `MappedDeclarationNames` types. Zod, Effect and TypeScript each had their own copy; they now use these. The generators still export the same names as before.
+- 0b3806c: Export `SCHEMA_MAP_KEYWORDS`, `SINGLE_SCHEMA_KEYWORDS` and `SCHEMA_ARRAY_KEYWORDS`: the keywords whose value is an object of subschemas, one subschema, or an array of subschemas. The normalizer, the identifier index and the playground's bundler each had their own copy of these lists; they now share one.
+- 48bae59: Export `collectStandaloneSchemas`, `childSchemasOf` and the `SchemaEdge` type. The generators each had their own copy of this code; they now share this one. `collectStandaloneSchemas` finds every schema that gets its own declaration (the root, `$defs`/`definitions` entries and `$ref` targets) and the dependency edges between them. The `inlineCopies` and `definitionsOf` options let a generator treat inline copies as references or read definitions its own way.
+
+### Patch Changes
+
+- 72afcad: List the built entry files by name in the `exports` map instead of a `./dist/*` wildcard. `@utilize/zod/dist/index.mjs`, `dist/runtime.mjs`, `dist/cli.mjs` (and `@utilize/json-schema/dist/index.mjs`, `dist/node.mjs`), with their `.d.ts` files, still resolve. Only the bundler's hashed chunk files, whose names change on every build, are no longer importable directly.
+- 338f308: Drop the unused `dequal` and `moize` dependencies. Nothing imports them, so installing any generator now downloads four fewer packages (`dequal`, `moize` and its `fast-equals` and `micro-memoize`).
+- 5d32982: Name the `compilePaths` and `schemaFileLocation` return types.
+- 04c7a38: Accept boolean root schemas in `parse`.
+- 4d5c1b2: Narrow `Writable.write` to `void` for the lint migration.
+
 ## 0.6.0
 
 ### Minor Changes
