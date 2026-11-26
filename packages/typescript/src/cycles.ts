@@ -1,5 +1,10 @@
-import { isParsedJSONSchemaObject, Meta, reachesThrough } from '@utilize/json-schema';
-import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
+import {
+	isJSONSchemaObject,
+	isParsedJSONSchemaObject,
+	Meta,
+	reachesThrough,
+} from '@utilize/json-schema';
+import type { JSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 /**
  * Schemas that take part in a `$ref` cycle which TypeScript cannot express.
@@ -23,6 +28,8 @@ export function findUnsupportedCycles(
 	return cycles;
 }
 
+type CycleNode = JSONSchema | ParsedJSONSchemaObject;
+
 /**
  * Follows the positions whose rendered type is transparent: `$ref` targets and
  * composition members. Property, item and index positions are deferred by
@@ -32,16 +39,16 @@ function reachesTransparently(
 	start: ParsedJSONSchemaObject,
 	target: ParsedJSONSchemaObject
 ): boolean {
-	return reachesThrough(start, target, transparentChildren);
+	return reachesThrough<CycleNode>(start, target, transparentChildren);
 }
 
-function transparentChildren(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject[] {
-	const children: ParsedJSONSchemaObject[] = [];
+function transparentChildren(schema: CycleNode): CycleNode[] {
+	const children: CycleNode[] = [];
 
-	if (typeof schema.$ref === 'string') {
+	if (isParsedJSONSchemaObject(schema) && typeof schema.$ref === 'string') {
 		const referenced = schema[Meta]?.reference;
 
-		if (isParsedJSONSchemaObject(referenced)) {
+		if (isJSONSchemaObject(referenced)) {
 			children.push(referenced);
 		}
 	}
@@ -50,7 +57,7 @@ function transparentChildren(schema: ParsedJSONSchemaObject): ParsedJSONSchemaOb
 		const members = schema[keyword];
 
 		if (Array.isArray(members)) {
-			children.push(...members.filter(isParsedJSONSchemaObject));
+			children.push(...members.filter(isJSONSchemaObject));
 		}
 	}
 

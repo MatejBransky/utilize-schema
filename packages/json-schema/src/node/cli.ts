@@ -104,7 +104,7 @@ export interface GeneratorCli<Flags extends ParseArgsOptionsConfig, Options> {
 	readOptions(values: CliFlagValues<Flags>, io: CliIo): CliOptionsResult<Options>;
 	/** Compiles schema text read from stdin. */
 	compileSchema(
-		schema: JSONSchema,
+		schema: JSONSchema | boolean,
 		options: Options & { cwd: string; fileName: string }
 	): Promise<string>;
 	/** Compiles one schema file. */

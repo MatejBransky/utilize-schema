@@ -4,13 +4,13 @@ import { parse } from '@utilize/json-schema';
 import type { CustomNameResolver, ExternalSchemas, JSONSchema } from '@utilize/json-schema';
 
 import {
+	bindCompileFile,
 	compilePaths,
 	generatedFileBanner,
 	prependBanner,
 	readSchema,
-	schemaFileLocation,
 } from '@utilize/json-schema/node';
-import type { CodeFormatter } from '@utilize/json-schema/node';
+import type { CodeFormatter, SchemaFileLocation } from '@utilize/json-schema/node';
 
 import { generate } from './generator';
 import type { CustomSchemaResolver } from './generator';
@@ -52,6 +52,9 @@ export const DEFAULT_BANNER = generatedFileBanner('@utilize/typescript');
  * Reads a JSON or YAML schema file, follows its references and writes the
  * generated TypeScript type module next to it.
  */
+/** Compiles a JSON or YAML schema source file to generated types without writing anything. */
+export const compileFile = bindCompileFile(compileSchema);
+
 export async function compile(options: CompileOptions): Promise<void> {
 	const { inputPath, outputPath } = compilePaths(options);
 
@@ -65,13 +68,11 @@ export async function compile(options: CompileOptions): Promise<void> {
 	writeFileSync(outputPath, withBanner(code, options.bannerComment), 'utf8');
 }
 
-/** Compiles a JSON or YAML schema file to generated code without writing anything. */
-export async function compileFile(inputPath: string, options: Partial<CompileSchemaOptions> = {}) {
-	return compileSchema(readSchema(inputPath), { ...schemaFileLocation(inputPath), ...options });
-}
-
 /** Compiles an already parsed JSON Schema value to generated code. */
-export async function compileSchema(schema: JSONSchema, options: CompileSchemaOptions) {
+export async function compileSchema(
+	schema: JSONSchema | boolean,
+	options: Partial<CompileSchemaOptions> & SchemaFileLocation
+) {
 	const { root } = await parse(schema, {
 		cwd: options.cwd,
 		fileName: options.fileName,

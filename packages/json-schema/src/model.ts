@@ -4,6 +4,10 @@ import type { JSONSchema7, JSONSchema7TypeName } from 'json-schema';
 import type { DialectId, DialectSource } from './dialect';
 
 export interface JSONSchema extends JSONSchema7 {
+	/** draft-04 identifier; `$id` replaced it in draft-06. */
+	id?: string;
+	/** 2019-09 location-independent identifier. */
+	$anchor?: string;
 	discriminator?: string;
 	/** 2019-09 annotation; draft-07 schemas can carry it too. */
 	deprecated?: boolean;
@@ -141,7 +145,13 @@ export function withSourceMeta<T extends object>(
 	source: ParsedJSONSchemaObject,
 	value: T
 ): T & ParsedJSONSchemaObject {
-	defineSourceMeta(value, source[Meta]);
+	const meta = source[Meta];
+
+	if (meta === undefined) {
+		throw new TypeError('Expected a source schema with metadata');
+	}
+
+	defineSourceMeta(value, meta);
 
 	return value;
 }

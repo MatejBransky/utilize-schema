@@ -1,9 +1,8 @@
 import { resolveDialect } from './dialect';
 import type { Dialect } from './dialect';
 import { schemaChildren } from './identifiers';
-import { isJSONSchema } from './model';
+import { isJSONSchemaObject } from './model';
 import type { JSONSchema } from './model';
-import { isPlainObject } from './utils';
 
 /** Documents served for absolute `$ref` URIs, keyed by retrieval URI. */
 export type ExternalSchemas = Record<string, JSONSchema | boolean>;
@@ -46,7 +45,7 @@ export function normalizeUri(uri: string, base?: string): string {
 }
 
 function identifierOf(schema: JSONSchema | boolean): string | undefined {
-	if (!isPlainObject(schema)) {
+	if (!isJSONSchemaObject(schema)) {
 		return undefined;
 	}
 
@@ -69,7 +68,7 @@ function indexIdentifiers(
 	seen: WeakSet<object>,
 	dialect: Dialect
 ): void {
-	if (!isPlainObject(schema) || seen.has(schema)) {
+	if (!isJSONSchemaObject(schema) || seen.has(schema)) {
 		return;
 	}
 
@@ -83,7 +82,7 @@ function indexIdentifiers(
 	const nextBase = registerIdentifier(identifier, baseUri, schema, index);
 
 	for (const value of schemaChildren(schema)) {
-		if (isJSONSchema(value)) {
+		if (isJSONSchemaObject(value)) {
 			indexIdentifiers(nextBase, value, index, seen, nodeDialect);
 		}
 	}

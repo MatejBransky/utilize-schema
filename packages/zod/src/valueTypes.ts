@@ -343,7 +343,7 @@ function renderReadOnlyType(schema: ParsedJSONSchemaObject, context: ValueTypeCo
 		return `ReadonlyArray<${parenthesize(items)}>`;
 	}
 
-	const inner = renderType({ ...schema, readOnly: undefined }, context);
+	const inner = renderType(withSourceMeta(schema, { ...schema, readOnly: undefined }), context);
 
 	if (
 		generator === objectGenerator ||

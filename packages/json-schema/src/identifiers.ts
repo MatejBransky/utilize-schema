@@ -1,7 +1,7 @@
 import { dialects } from './dialect';
 import type { Dialect } from './dialect';
 import { SCHEMA_ARRAY_KEYWORDS, SCHEMA_MAP_KEYWORDS, SINGLE_SCHEMA_KEYWORDS } from './keywords';
-import { isJSONSchema } from './model';
+import { isJSONSchema, isJSONSchemaObject } from './model';
 import type { JSONSchema } from './model';
 import type { DialectMap } from './normalize';
 import { isPlainObject } from './utils';
@@ -30,11 +30,11 @@ export interface SchemaIndex {
 }
 
 function identifierOf(
-	node: Record<string, unknown>,
+	node: JSONSchema,
 	dialect: Dialect,
 	ignoresSiblings: boolean
 ): string | undefined {
-	const rawId = node[idKeyword(dialect)];
+	const rawId = dialect.keywords.has('$id') ? node.$id : node.id;
 
 	return !ignoresSiblings && typeof rawId === 'string' && rawId.length > 0 ? rawId : undefined;
 }
@@ -72,13 +72,13 @@ export function createSchemaIndex(): SchemaIndex & {
 			return;
 		}
 
-		if (isPlainObject(node)) {
+		if (isJSONSchemaObject(node)) {
 			indexNode(node, baseUri, inheritedDialect, nodeDialects);
 		}
 	}
 
 	function indexNode(
-		node: Record<string, unknown>,
+		node: JSONSchema,
 		baseUri: string,
 		inheritedDialect: Dialect,
 		nodeDialects: DialectMap | undefined
@@ -102,11 +102,7 @@ export function createSchemaIndex(): SchemaIndex & {
 		}
 	}
 
-	function indexIdentifier(
-		node: Record<string, unknown>,
-		id: string | undefined,
-		baseUri: string
-	): string {
+	function indexIdentifier(node: JSONSchema, id: string | undefined, baseUri: string): string {
 		if (!id) {
 			return baseUri;
 		}
@@ -169,16 +165,11 @@ export function createSchemaIndex(): SchemaIndex & {
 	};
 }
 
-/** draft-04 names the identifier `id`; draft-06 renamed it to `$id`. */
-function idKeyword(dialect: Dialect): 'id' | '$id' {
-	return dialect.keywords.has('$id') ? '$id' : 'id';
-}
-
 /**
  * Yields only schema-bearing children, so `$id` in `default` or `examples` is
  * ignored. Exported so every indexer walks the same keywords.
  */
-export function* schemaChildren(node: Record<string, unknown>): Generator<unknown> {
+export function* schemaChildren(node: JSONSchema): Generator<unknown> {
 	for (const [keyword, value] of Object.entries(node)) {
 		if (keyword === 'items') {
 			yield* itemsChildren(value);

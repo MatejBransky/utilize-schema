@@ -10,7 +10,6 @@ import { isJSONSchema, isJSONSchemaObject, isParsedJSONSchema } from './model';
 import type { JSONSchema, ParsedJSONSchema } from './model';
 import { prepareSchema } from './normalize';
 import type { DialectMap } from './normalize';
-import { isPlainObject } from './utils';
 
 type SchemaPath = string;
 
@@ -264,7 +263,7 @@ function markSchemaNodes(node: unknown, nodes: Set<unknown>): void {
 		return;
 	}
 
-	if (!isPlainObject(node) || nodes.has(node)) {
+	if (!isJSONSchemaObject(node) || nodes.has(node)) {
 		return;
 	}
 

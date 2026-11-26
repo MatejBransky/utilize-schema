@@ -29,14 +29,10 @@ type LinkContext = Omit<LinkNodeOptions, 'schema' | 'parent' | 'path'>;
 type SchemaNode = JSONSchema | unknown[];
 type SchemaReference = JSONSchema | boolean | null;
 
-interface ResolvedReference {
-	pointer: string;
-	reference: SchemaReference | undefined;
-}
-
 export function link(options: LinkNodeOptions): ParsedJSONSchemaObject {
 	const { schema, parent = null, path, ...context } = options;
-	const linked = linkNode(schema, parent, path, context);
+	const linkedParent = parent === null ? null : isParsedSchemaNode(parent) ? parent : null;
+	const linked = linkNode(schema, linkedParent, path, context);
 
 	if (!linked) {
 		throw new TypeError('Expected a schema object');
@@ -47,23 +43,19 @@ export function link(options: LinkNodeOptions): ParsedJSONSchemaObject {
 
 function linkNode(
 	schema: unknown,
-	parent: SchemaNode | null,
+	parent: ParsedJSONSchemaObject | null,
 	path: Path,
 	context: LinkContext
 ): ParsedJSONSchemaObject | undefined {
-	const node = schemaNode(schema);
-
-	if (!node) {
+	if (typeof schema !== 'object' || schema === null) {
 		return undefined;
 	}
 
-	const rawRef = isJSONSchemaObject(node) ? node.$ref : undefined;
-	const ref = typeof rawRef === 'string' ? rawRef : undefined;
-	const { pointer, reference } = resolveReference(node, ref, path, context);
+	const node: SchemaNode = schema;
 
-	if (!isValidReference(reference)) {
-		throw new Error(`Reference is not a valid object: ${pointer}`);
-	}
+	const rawRef = Array.isArray(node) ? undefined : node.$ref;
+	const ref = typeof rawRef === 'string' ? rawRef : undefined;
+	const reference = resolveReference(node, ref, context);
 
 	if (isParsedSchemaNode(node)) {
 		return node;
@@ -88,20 +80,9 @@ function linkNode(
 	return node;
 }
 
-function schemaNode(value: unknown): SchemaNode | undefined {
-	if (isJSONSchemaObject(value) || Array.isArray(value)) {
-		return value;
-	}
-
-	return undefined;
-}
-
 /** The linker also annotates tuple arrays, which act as parents of their items. */
-function isParsedSchemaNode(schema: SchemaNode | null): schema is ParsedJSONSchemaObject {
-	return (
-		schema !== null &&
-		(isParsedJSONSchemaObject(schema) || (Array.isArray(schema) && Object.hasOwn(schema, Meta)))
-	);
+function isParsedSchemaNode(schema: SchemaNode): schema is ParsedJSONSchemaObject {
+	return Object.hasOwn(schema, Meta);
 }
 
 function hasReference(ref: string | undefined, reference: SchemaReference | undefined): boolean {
@@ -111,13 +92,10 @@ function hasReference(ref: string | undefined, reference: SchemaReference | unde
 function resolveReference(
 	schema: SchemaNode,
 	ref: string | undefined,
-	path: Path,
 	context: LinkContext
-): ResolvedReference {
-	let pointer = [context.filePath, ...path].join('/');
-
+): SchemaReference | undefined {
 	if (!ref) {
-		return { pointer, reference: undefined };
+		return undefined;
 	}
 
 	// `$id` establishes a base URI for its whole resource, so a `$ref` has
@@ -129,14 +107,14 @@ function resolveReference(
 	);
 
 	if (reference === undefined) {
-		pointer = fallbackPointer(ref, context.filePath);
+		const pointer = fallbackPointer(ref, context.filePath);
 
 		if (context.$refs.exists(pointer, {})) {
 			reference = referenceFromPointer(context.$refs.get(pointer), pointer);
 		}
 	}
 
-	return { pointer, reference };
+	return reference;
 }
 
 function referenceFromPointer(value: unknown, pointer: string): SchemaReference {
@@ -153,7 +131,12 @@ function setReference(meta: Meta, reference: SchemaReference | undefined): void 
 		return;
 	}
 
-	if (!isJSONSchemaObject(reference) || isParsedJSONSchemaObject(reference)) {
+	if (reference === null || typeof reference === 'boolean') {
+		meta.reference = reference;
+		return;
+	}
+
+	if (isParsedSchemaNode(reference)) {
 		meta.reference = reference;
 		return;
 	}
@@ -183,18 +166,9 @@ function fallbackPointer(ref: string, filePath: string): string {
 	return ref;
 }
 
-function isValidReference(reference: SchemaReference | undefined): boolean {
-	return (
-		reference === undefined ||
-		reference === null ||
-		typeof reference === 'boolean' ||
-		isJSONSchemaObject(reference)
-	);
-}
-
 function createMeta(
 	schema: SchemaNode,
-	parent: SchemaNode | null,
+	parent: ParsedJSONSchemaObject | null,
 	path: Path,
 	context: LinkContext
 ): Meta {
@@ -202,8 +176,8 @@ function createMeta(
 		filePath: context.filePath,
 		fileName: context.fileName,
 		path,
-		parent: isParsedSchemaNode(parent) ? parent : null,
-		...dialectMeta(schema, parent, context.dialects),
+		parent,
+		...dialectMeta(schema, parent?.[Meta], context.dialects),
 	};
 }
 
@@ -215,7 +189,11 @@ function defineMeta(schema: SchemaNode, meta: Meta): asserts schema is ParsedJSO
 	});
 }
 
-function linkReferenceChildren(schema: SchemaNode, path: Path, context: LinkContext): void {
+function linkReferenceChildren(
+	schema: ParsedJSONSchemaObject,
+	path: Path,
+	context: LinkContext
+): void {
 	// A root `$ref` can carry sibling definitions (for example after the
 	// playground bundles a remote file). Link them too.
 	context.stack.add(schema);
@@ -229,7 +207,7 @@ function linkReferenceChildren(schema: SchemaNode, path: Path, context: LinkCont
 	context.stack.delete(schema);
 }
 
-function linkChildren(schema: SchemaNode, path: Path, context: LinkContext): void {
+function linkChildren(schema: ParsedJSONSchemaObject, path: Path, context: LinkContext): void {
 	context.stack.add(schema);
 
 	if (Array.isArray(schema)) {
@@ -243,13 +221,18 @@ function linkChildren(schema: SchemaNode, path: Path, context: LinkContext): voi
 	context.stack.delete(schema);
 }
 
-function linkChild(schema: unknown, parent: SchemaNode, path: Path, context: LinkContext): void {
+function linkChild(
+	schema: unknown,
+	parent: ParsedJSONSchemaObject,
+	path: Path,
+	context: LinkContext
+): void {
 	linkNode(schema, parent, path, context);
 }
 
 function dialectMeta(
 	schema: SchemaNode,
-	parent: SchemaNode | null,
+	parentMeta: Meta | undefined,
 	dialects: DialectMap | undefined
 ): Pick<Meta, 'dialect' | 'dialectSource'> {
 	const prepared = dialects?.get(schema);
@@ -257,8 +240,6 @@ function dialectMeta(
 	if (prepared) {
 		return { dialect: prepared.dialect.id, dialectSource: prepared.source };
 	}
-
-	const parentMeta = isParsedSchemaNode(parent) ? parent[Meta] : undefined;
 
 	if (parentMeta) {
 		return { dialect: parentMeta.dialect, dialectSource: parentMeta.dialectSource };

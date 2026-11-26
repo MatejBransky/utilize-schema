@@ -49,6 +49,12 @@ describe('schema files', () => {
 		expect(readSchema(path.join(directory, 'c.json'))).toEqual({ type: 'boolean' });
 	});
 
+	test('readSchema accepts a boolean schema document', () => {
+		writeFileSync(path.join(directory, 'a.json'), 'true');
+
+		expect(readSchema(path.join(directory, 'a.json'))).toBe(true);
+	});
+
 	test('readSchema does not fall back to YAML for a .json file', () => {
 		writeFileSync(path.join(directory, 'a.json'), 'type: string\n');
 
@@ -58,6 +64,7 @@ describe('schema files', () => {
 	test('parseSchemaSource reads JSON, then falls back to YAML', () => {
 		expect(parseSchemaSource('{"type":"string"}')).toEqual({ type: 'string' });
 		expect(parseSchemaSource('type: string\n')).toEqual({ type: 'string' });
+		expect(parseSchemaSource('false')).toBe(false);
 	});
 });
 
