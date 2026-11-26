@@ -34,3 +34,15 @@ for (const target of ['zod', 'effect'] as const) {
 		});
 	}
 }
+
+test('a failed generator keeps its error for the results pane', async () => {
+	// `\-` is only invalid under the Unicode flag, which the Zod generator uses.
+	const { root } = await parse(
+		{ type: 'string', pattern: String.raw`\-` },
+		{ cwd: '/', fileName: 'schema.json' }
+	);
+	const { code, runtime } = generateCodeFor('zod', root, defaultFormatMode);
+
+	expect(code).toBe('');
+	expect(runtime).toMatchObject({ status: 'failed', error: expect.any(Error) });
+});

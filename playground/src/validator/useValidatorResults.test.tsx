@@ -1,4 +1,5 @@
 import { parse } from '@utilize/json-schema';
+import { useEffect } from 'react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { cleanup, renderHook } from 'vitest-browser-react';
 
@@ -11,6 +12,7 @@ import type { RuntimeTargetId, TargetId } from '../targets';
 import { createValidatorClient } from './ValidatorClient';
 import type { ValidatorClient } from './ValidatorClient';
 import { useValidatorResults } from './useValidatorResults';
+import type { ValidationState } from './useValidatorResults';
 
 vi.mock('../monaco/transpile', () => ({ emitJavaScript: vi.fn() }));
 vi.mock('./ValidatorClient', () => ({ createValidatorClient: vi.fn() }));
@@ -162,3 +164,70 @@ test('transpiling superseded code does not post stale work to the worker', async
 function generated(code: string, rootName: string): RuntimeSource {
 	return { status: 'generated', code, runtimeCode: code, rootName };
 }
+
+test('a failed generator reports its own error instead of blaming the schema', async () => {
+	const hook = await renderHook(
+		(props: HookProps | undefined) => {
+			if (!props) {
+				throw new Error('Hook props are required.');
+			}
+
+			return useValidatorResults(props.target, props.runtime, props.data, false);
+		},
+		{
+			initialProps: {
+				target: 'zod',
+				runtime: { status: 'failed', error: new Error(String.raw`Unsupported pattern "\-"`) },
+				data: '"x"',
+			},
+		}
+	);
+
+	await vi.waitFor(() =>
+		expect(hook.result.current).toEqual({
+			status: 'error',
+			message: String.raw`Unsupported pattern "\-"`,
+		})
+	);
+	expect(emitJavaScript).not.toHaveBeenCalled();
+	await hook.unmount();
+});
+
+test('never commits the previous report under a new target', async () => {
+	const committed: ValidationState[] = [];
+
+	const hook = await renderHook(
+		(props: HookProps | undefined) => {
+			if (!props) {
+				throw new Error('Hook props are required.');
+			}
+
+			const state = useValidatorResults(props.target, props.runtime, props.data, false);
+
+			useEffect(() => {
+				committed.push(state);
+			}, [state]);
+
+			return state;
+		},
+		{
+			initialProps: {
+				target: 'zod',
+				runtime: generated('zod code', 'zodSchema'),
+				data: '"common"',
+			},
+		}
+	);
+
+	await vi.waitFor(() => expect(hook.result.current.status).toBe('ready'));
+	committed.length = 0;
+
+	await hook.rerender({
+		target: 'effect',
+		runtime: generated('effect code', 'effectSchema'),
+		data: '"common"',
+	});
+
+	expect(committed[0]).toEqual({ status: 'running' });
+	await hook.unmount();
+});

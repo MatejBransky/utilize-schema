@@ -43,7 +43,9 @@ export function generateCodeFor(
 		case 'effect': {
 			const runtime = generateRuntimeSource(root, target, formatMode, options);
 
-			return { code: generatedCode(runtime), runtime };
+			// A failed runtime is reported by the validator pane and the problem
+			// list, so it must survive instead of throwing away the reason here.
+			return { code: runtime.status === 'generated' ? runtime.code : '', runtime };
 		}
 		case 'typescript':
 			return { code: generateTypeScript(root, { ...options?.typescript }), runtime: null };
@@ -77,14 +79,6 @@ function zodBooleanModule(code: string): string {
 	const expression = code.trim().replace(/;$/, '');
 
 	return `import { z } from 'zod';\n\nexport const Root = ${expression};`;
-}
-
-function generatedCode(source: RuntimeSource): string {
-	if (source.status === 'failed') {
-		throw source.error;
-	}
-
-	return source.code;
 }
 
 export function rootDeclarationName(root: ParsedJSONSchema): string | undefined {
