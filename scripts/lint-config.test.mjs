@@ -15,7 +15,7 @@ function resolvedConfig(file) {
 	);
 }
 
-test('no-unsafe-type-assertion is enforced in every project area', () => {
+void test('no-unsafe-type-assertion is enforced in every project area', () => {
 	const representativeFiles = [
 		'packages/json-schema/src/parser.ts',
 		'packages/json-schema/test/parser.test.ts',
@@ -25,6 +25,7 @@ test('no-unsafe-type-assertion is enforced in every project area', () => {
 		'packages/typescript/src/renderType.ts',
 		'packages/test-utils/src/suite/evaluate.ts',
 		'playground/src/App.test.tsx',
+		'scripts/coverage-badge.mjs',
 	];
 
 	for (const file of representativeFiles) {
@@ -42,6 +43,11 @@ test('no-unsafe-type-assertion is enforced in every project area', () => {
 				override.rules?.[rule],
 				'allow',
 				`${rule} is allowed for ${override.files?.join(', ')}`
+			);
+			assert.notEqual(
+				override.rules?.[rule],
+				'warn',
+				`${rule} is downgraded for ${override.files?.join(', ')}`
 			);
 		}
 	}

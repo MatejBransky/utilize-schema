@@ -43,13 +43,13 @@ const health = {
 	],
 };
 
-test('reads a health section from a health or combined result', () => {
+void test('reads a health section from a health or combined result', () => {
 	assert.equal(healthSection(health), health);
 	assert.equal(healthSection({ health }), health);
 	assert.equal(healthSection(undefined), undefined);
 });
 
-test('describes the deductions and the measurement behind each one', () => {
+void test('describes the deductions and the measurement behind each one', () => {
 	const report = describeHealth(health);
 
 	assert.equal(report.score, 89.4);
@@ -67,7 +67,7 @@ test('describes the deductions and the measurement behind each one', () => {
 	assert.equal(report.deducted[1].formula, '4.6 × 0.5 = 2.3');
 });
 
-test('uses the measured long-function list when it is available', () => {
+void test('uses the measured long-function list when it is available', () => {
 	const report = describeHealth(health, {
 		longFunctions: [
 			{ path: 'a.ts', name: 'long', line: 10, lines: 100, cyclomatic: 5, cognitive: 4 },
@@ -78,7 +78,7 @@ test('uses the measured long-function list when it is available', () => {
 	assert.equal(report.longFunctions.length, 1);
 });
 
-test('renders the breakdown with source links for the job summary', () => {
+void test('renders the breakdown with source links for the job summary', () => {
 	const report = describeHealth(health, {
 		longFunctions: [
 			{ path: 'a.ts', name: 'long', line: 10, lines: 100, cyclomatic: 5, cognitive: 4 },
@@ -101,7 +101,7 @@ test('renders the breakdown with source links for the job summary', () => {
 	assert.match(markdown, /File length does not deduct points/);
 });
 
-test('renders a zero-deduction report without an empty deduction table', () => {
+void test('renders a zero-deduction report without an empty deduction table', () => {
 	const report = describeHealth({
 		...health,
 		health_score: {
@@ -116,7 +116,7 @@ test('renders a zero-deduction report without an empty deduction table', () => {
 	assert.doesNotMatch(markdown, /What moves it/);
 });
 
-test('uses the larger of p95 fan-in and 10 for the coupling list', () => {
+void test('uses the larger of p95 fan-in and 10 for the coupling list', () => {
 	const report = describeHealth({
 		...health,
 		vital_signs: { ...health.vital_signs, p95_fan_in: 15, coupling_high_pct: 1 },
@@ -133,7 +133,7 @@ test('uses the larger of p95 fan-in and 10 for the coupling list', () => {
 	);
 });
 
-test('uses the documented hot-spot denominator and duplication floor', () => {
+void test('uses the documented hot-spot denominator and duplication floor', () => {
 	const report = describeHealth({
 		health_score: {
 			formula_version: 3,
@@ -156,7 +156,7 @@ test('uses the documented hot-spot denominator and duplication floor', () => {
 	assert.equal(duplication.formula, '15 − 5 = 10');
 });
 
-test('reads file scores from an array or a map', () => {
+void test('reads file scores from an array or a map', () => {
 	const scores = [{ path: 'a.ts', fan_in: 3 }];
 
 	assert.deepEqual(fileScores({ file_scores: scores }), scores);
@@ -164,7 +164,7 @@ test('reads file scores from an array or a map', () => {
 	assert.deepEqual(fileScores({}), []);
 });
 
-test('parses only functions over 60 lines and sorts them longest first', () => {
+void test('parses only functions over 60 lines and sorts them longest first', () => {
 	const longFunctions = parseLongFunctions({
 		findings: [
 			{ path: 'a.ts', name: 'short', line: 1, line_count: 60, cyclomatic: 2, cognitive: 1 },
@@ -180,7 +180,7 @@ test('parses only functions over 60 lines and sorts them longest first', () => {
 	assert.equal(longFunctions[0].lines, 180);
 });
 
-test('warns when the score formula version changes', () => {
+void test('warns when the score formula version changes', () => {
 	const report = describeHealth({
 		...health,
 		health_score: { ...health.health_score, formula_version: 4 },
@@ -190,7 +190,7 @@ test('warns when the score formula version changes', () => {
 	assert.match(markdown, /Fallow reports formula v4/);
 });
 
-test('formats numbers without a trailing .0', () => {
+void test('formats numbers without a trailing .0', () => {
 	assert.equal(formatNumber(89.4), '89.4');
 	assert.equal(formatNumber(10), '10');
 	assert.equal(formatNumber(undefined), 'n/a');

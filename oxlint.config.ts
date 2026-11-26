@@ -1,7 +1,8 @@
 import { builtinModules } from 'node:module';
 
 import cloudflare from '@cloudflare/oxlint-config';
-import { defineConfig, type DummyRule } from 'oxlint';
+import { defineConfig } from 'oxlint';
+import type { DummyRule } from 'oxlint';
 
 // Bare built-in names (`fs`, `fs/promises`, ...). The `node:` form is matched
 // by a pattern below, which also covers the prefix-only modules such as

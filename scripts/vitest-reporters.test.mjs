@@ -20,14 +20,14 @@ afterEach(() => {
 	}
 });
 
-test('uses only the default reporter outside CI unless reports are requested', () => {
+void test('uses only the default reporter outside CI unless reports are requested', () => {
 	delete process.env.GITHUB_ACTIONS;
 	delete process.env.TEST_REPORT_DIR;
 
 	assert.deepEqual(createReporters('workspace tests', 'workspace'), ['default']);
 });
 
-test('adds the GitHub Actions reporter and job summary in CI', () => {
+void test('adds the GitHub Actions reporter and job summary in CI', () => {
 	process.env.GITHUB_ACTIONS = 'true';
 	delete process.env.TEST_REPORT_DIR;
 
@@ -37,7 +37,7 @@ test('adds the GitHub Actions reporter and job summary in CI', () => {
 	]);
 });
 
-test('writes a self-contained HTML report and JSON results per workspace', () => {
+void test('writes a self-contained HTML report and JSON results per workspace', () => {
 	delete process.env.GITHUB_ACTIONS;
 	process.env.TEST_REPORT_DIR = '/reports/tests';
 

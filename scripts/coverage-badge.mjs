@@ -5,13 +5,13 @@
 // when a committed badge no longer matches the measured value.
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { pickColor, renderBadge } from './badge.mjs';
 
 const PACKAGES = ['json-schema', 'zod', 'effect', 'typescript'];
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const ROOT = resolve(import.meta.dirname, '..');
 const BADGE_DIRECTORY = join(ROOT, '.github', 'badges');
 const IS_CHECK = process.argv.includes('--check');
 const IS_MEASURE = process.argv.includes('--measure');

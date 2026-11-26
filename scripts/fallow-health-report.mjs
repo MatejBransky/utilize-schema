@@ -14,7 +14,6 @@
 // is only for enumeration; the score still uses fallow's fixed calibration.
 import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 
@@ -165,19 +164,25 @@ const PENALTY_DEFINITIONS = {
 };
 
 export function healthSection(result) {
-	if (!result) return undefined;
+	if (!result) {
+		return undefined;
+	}
 	return result.health_score ? result : result.health;
 }
 
 export function fileScores(health) {
 	const scores = health?.file_scores;
-	if (!scores) return [];
+	if (!scores) {
+		return [];
+	}
 	return Array.isArray(scores) ? scores : Object.values(scores);
 }
 
 export function formatNumber(value, digits = 1) {
 	const number = Number(value);
-	if (!Number.isFinite(number)) return 'n/a';
+	if (!Number.isFinite(number)) {
+		return 'n/a';
+	}
 	return number.toFixed(digits).replace(/\.0$/, '');
 }
 
@@ -287,7 +292,9 @@ export function describeHealth(result, { longFunctions = [] } = {}) {
 	const health = healthSection(result);
 	const score = health?.health_score;
 
-	if (!score) return undefined;
+	if (!score) {
+		return undefined;
+	}
 
 	const context = buildContext(health, longFunctions);
 	const penalties = Object.entries(score.penalties ?? {}).map((entry) =>
@@ -362,7 +369,9 @@ export function measureLongFunctions(root = process.cwd()) {
 		{ cwd: root, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }
 	);
 
-	if (result.error) throw result.error;
+	if (result.error) {
+		throw result.error;
+	}
 	if (result.status !== 0) {
 		throw new Error(
 			`Fallow could not enumerate long functions: ${result.stderr.trim() || `exit ${result.status}`}`
@@ -374,14 +383,16 @@ export function measureLongFunctions(root = process.cwd()) {
 }
 
 function escapeHtml(value) {
-	return String(value).replace(/[&<>"']/g, (character) => {
+	return String(value).replaceAll(/[&<>"']/g, (character) => {
 		const entities = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 		return entities[character];
 	});
 }
 
 function markdownCell(value) {
-	return String(value).replaceAll('|', '\\|').replaceAll('\n', ' ');
+	return String(value)
+		.replaceAll('|', String.raw`\|`)
+		.replaceAll('\n', ' ');
 }
 
 function codeCell(value) {
@@ -389,7 +400,9 @@ function codeCell(value) {
 }
 
 function sourceUrl(repository, commit, path, line) {
-	if (!repository || !commit) return undefined;
+	if (!repository || !commit) {
+		return undefined;
+	}
 	return `${repository}/blob/${commit}/${path}${line ? `#L${line}` : ''}`;
 }
 
@@ -435,7 +448,9 @@ function deductionLines(report) {
 }
 
 function longFunctionLines(report, { repository, commit }) {
-	if (report.longFunctions.length === 0) return [];
+	if (report.longFunctions.length === 0) {
+		return [];
+	}
 
 	const rows = report.longFunctions.map((fn) => [
 		String(fn.lines),
@@ -454,7 +469,9 @@ function longFunctionLines(report, { repository, commit }) {
 }
 
 function highFanInLines(report, { repository, commit }) {
-	if (report.highFanIn.length === 0) return [];
+	if (report.highFanIn.length === 0) {
+		return [];
+	}
 
 	const rows = report.highFanIn.map((file) => [
 		String(file.fan_in),
@@ -474,7 +491,9 @@ function highFanInLines(report, { repository, commit }) {
 }
 
 export function renderHealthMarkdown(report, { repository, commit } = {}) {
-	if (!report) return '';
+	if (!report) {
+		return '';
+	}
 
 	const lines = [`### Fallow health: ${formatNumber(report.score)} (${report.grade})`, ''];
 
@@ -521,7 +540,7 @@ function parseArguments(argv) {
 			help: values.help,
 		};
 	} catch (error) {
-		throw new Error(error.message);
+		throw new Error(error.message, { cause: error });
 	}
 }
 
@@ -544,7 +563,7 @@ function readInputs(options) {
 	try {
 		result = readJson(options.from);
 	} catch (error) {
-		throw new Error(`Could not read ${options.from}: ${error.message}`);
+		throw new Error(`Could not read ${options.from}: ${error.message}`, { cause: error });
 	}
 
 	if (options.longFunctions) {

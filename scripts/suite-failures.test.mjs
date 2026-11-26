@@ -30,7 +30,7 @@ const files = [
 	},
 ];
 
-test('collectDialectFailures reports the failing instances of every dialect', async () => {
+void test('collectDialectFailures reports the failing instances of every dialect', async () => {
 	const failures = await collectDialectFailures({
 		files,
 		dialects: { 'draft-04': 4, 'draft-07': 7 },
@@ -56,7 +56,7 @@ test('collectDialectFailures reports the failing instances of every dialect', as
 	});
 });
 
-test('renderDialectFailures renders the generated module', () => {
+void test('renderDialectFailures renders the generated module', () => {
 	const source = renderDialectFailures(
 		{ 'draft-04': ['sample.json :: case (1 failed)'] },
 		'node script.mjs'
