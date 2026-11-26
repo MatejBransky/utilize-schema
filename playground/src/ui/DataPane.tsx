@@ -45,7 +45,7 @@ export function DataPane({ playground }: DataPaneProps) {
 			onOpenChange={layout.setDataOpen}
 			{...dataDrop.handlers}
 		>
-			<div className={`${styles.outputHeader} ${styles.sectionHeader}`}>
+			<div id="test-data-header" className={`${styles.outputHeader} ${styles.sectionHeader}`}>
 				<CollapsibleTrigger className={styles.sectionToggle}>
 					<span className={styles.heading}>Test data</span>
 					<ChevronDownIcon />

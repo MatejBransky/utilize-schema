@@ -21,7 +21,8 @@ export function WorkspaceSplitter({ layout, top, bottom }: WorkspaceSplitterProp
 			aria-label="Workspace layout"
 			className={styles.workspace}
 			orientation="vertical"
-			layout={layout.panelLayout}
+			defaultLayout={[60, 40]}
+			controller={layout.controller}
 			step={2}
 			largeStep={10}
 			onLayoutChange={layout.onLayoutChange}
@@ -30,7 +31,7 @@ export function WorkspaceSplitter({ layout, top, bottom }: WorkspaceSplitterProp
 				id="schema-output-row"
 				className={styles.workspacePanel}
 				minSize={MIN_SPLIT}
-				maxSize={layout.dataCollapsed ? 100 - layout.collapsedBottomSize : MAX_SPLIT}
+				maxSize={100}
 			>
 				{top}
 			</ResizablePanel>
@@ -41,9 +42,9 @@ export function WorkspaceSplitter({ layout, top, bottom }: WorkspaceSplitterProp
 			<ResizablePanel
 				id={TEST_DATA_PANEL}
 				className={styles.workspacePanel}
+				minSize={layout.collapsedSize}
+				maxSize={MAX_SPLIT}
 				data-collapsed={layout.dataCollapsed ? 'true' : undefined}
-				minSize={layout.dataCollapsed ? layout.collapsedBottomSize : MIN_SPLIT}
-				maxSize={layout.dataCollapsed ? Math.max(MIN_SPLIT, layout.collapsedBottomSize) : MAX_SPLIT}
 			>
 				{bottom}
 			</ResizablePanel>

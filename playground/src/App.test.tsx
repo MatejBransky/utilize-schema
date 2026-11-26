@@ -405,7 +405,7 @@ test('the schema and test data sections can be resized by keyboard', async () =>
 		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('20'));
 
 		separator.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
-		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('80'));
+		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('94'));
 	} finally {
 		await page.viewport(414, 896);
 	}
@@ -523,8 +523,8 @@ test('the test data section collapses to its header', async () => {
 
 		await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('false'));
 		const collapsedRow = document.getElementById('test-data-row');
-		expect(collapsedRow?.hasAttribute('data-collapsed')).toBe(true);
-		expect(collapsedRow?.getBoundingClientRect().height).toBeLessThan(60);
+		await vi.waitFor(() => expect(collapsedRow?.hasAttribute('data-collapsed')).toBe(true));
+		await vi.waitFor(() => expect(collapsedRow?.getBoundingClientRect().height).toBeLessThan(60));
 		expect(editorPanel?.hasAttribute('hidden')).toBe(true);
 		expect(results?.hasAttribute('hidden')).toBe(true);
 		expect(document.querySelector('[data-testid="data-editor"]')).toBe(editor);
@@ -563,7 +563,7 @@ test('resize and collapse controls remain available on narrow screens', async ()
 		expect(document.querySelector('#test-data-editor')?.hasAttribute('hidden')).toBe(true);
 		await expect.element(separator).toBeVisible();
 
-		separator.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+		await toggle.click();
 		await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('true'));
 		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('62'));
 		expect(document.querySelector('#test-data-editor')?.hasAttribute('hidden')).toBe(false);
