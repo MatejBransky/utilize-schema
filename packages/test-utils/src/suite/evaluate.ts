@@ -24,6 +24,7 @@ function evaluateModule<T>(names: string[], body: string, values: unknown[]): T 
 }
 
 function createFunction<T>(names: string[], body: string): (...args: unknown[]) => T {
+	// fallow-ignore-next-line security-sink -- the suite evaluates generated code in memory; no input comes from outside the test process
 	const generated = new Function(...names, body);
 
 	if (!isCallable<T>(generated)) {
