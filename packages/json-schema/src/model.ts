@@ -113,6 +113,24 @@ export interface ParsedJSONSchemaObject
 
 export type ParsedJSONSchema = ParsedJSONSchemaObject | boolean | null;
 
+/** Structural guard for a schema object; document validation belongs to the parser. */
+export function isJSONSchemaObject(value: unknown): value is JSONSchema {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function isJSONSchema(value: unknown): value is JSONSchema | boolean {
+	return typeof value === 'boolean' || isJSONSchemaObject(value);
+}
+
+/** A parsed schema object carries the non-enumerable metadata symbol added by the linker. */
+export function isParsedJSONSchemaObject(value: unknown): value is ParsedJSONSchemaObject {
+	return isJSONSchemaObject(value) && Object.hasOwn(value, Meta);
+}
+
+export function isParsedJSONSchema(value: unknown): value is ParsedJSONSchema {
+	return value === null || typeof value === 'boolean' || isParsedJSONSchemaObject(value);
+}
+
 /**
  * Copies the non-enumerable `Meta` from a source node to a synthetic node.
  * Generators create shallow copies while applying a type or splitting a `$ref`
@@ -123,15 +141,18 @@ export function withSourceMeta<T extends object>(
 	source: ParsedJSONSchemaObject,
 	value: T
 ): T & ParsedJSONSchemaObject {
-	const meta = source[Meta];
+	defineSourceMeta(value, source[Meta]);
 
-	if (meta) {
-		Object.defineProperty(value, Meta, {
-			enumerable: false,
-			configurable: true,
-			value: meta,
-		});
-	}
+	return value;
+}
 
-	return value as T & ParsedJSONSchemaObject;
+function defineSourceMeta<T extends object>(
+	value: T,
+	meta: Meta
+): asserts value is T & ParsedJSONSchemaObject {
+	Object.defineProperty(value, Meta, {
+		enumerable: false,
+		configurable: true,
+		value: meta,
+	});
 }

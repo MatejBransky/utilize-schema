@@ -1,3 +1,5 @@
+import type { JSONSchema } from './model';
+
 /**
  * Determines if a value is a plain object (i.e., created by {} or new Object()).
  * This function is a replacement for lodash.isPlainObject.
@@ -41,10 +43,15 @@ export function expectDefined<T>(
 }
 
 /**
- * Reads the keywords of a linked schema node without copying it. The parser and
- * linker already validated the document, so the node's own keys are fields.
+ * Reads a linked schema node as a string-keyed record without copying it. The
+ * parser and linker already validated the document, so the node's own keys are
+ * fields.
  */
-// oxlint-disable-next-line quality/no-object-parameters -- linked nodes are read by dynamic keyword and have no index signature
-export function schemaRecord(schema: object): Record<string, unknown> {
-	return schema as Record<string, unknown>;
+export function schemaRecord(schema: JSONSchema): Record<string, unknown>;
+export function schemaRecord(schema: unknown): Record<string, unknown> {
+	if (!isPlainObject(schema)) {
+		throw new TypeError('Expected a schema object');
+	}
+
+	return schema;
 }
