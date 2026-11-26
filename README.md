@@ -360,7 +360,8 @@ The Zod and Effect Schema generators accept the same input and are checked
 against each other by a differential test suite
 (`packages/effect/test/parity.test.ts`), so the table below is kept honest by
 CI. All three generators are also checked against the official JSON Schema Test
-Suite for draft-07:
+Suite for every measured dialect — draft-04, draft-06, draft-07, 2019-09 and
+2020-12; the numbers below are draft-07:
 
 - **Zod:** 283 of 304 cases (1,399 of 1,655 assertions) pass.
   [Known gaps](./packages/zod/test/suite/knownFailures.ts)
@@ -414,8 +415,8 @@ Assertions add up the same way, because one instance is one assertion:
 | − failing                   | 256   | 255           |
 | **= passing**               | 1,399 | 1,400         |
 
-The type-level runner reports accepted and rejected instances separately instead
-of a pass count; those numbers are in [docs/conformance.md](./docs/conformance.md).
+The type-level runner prints both the pass count and the accepted/rejected
+split; the current numbers are in [docs/conformance.md](./docs/conformance.md).
 
 </details>
 
