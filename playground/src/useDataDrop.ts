@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { DragEvent as ReactDragEvent } from 'react';
 
+import { isElement } from './dom';
 import { collectDroppedFiles, hasFileDrag, readDroppedSchemas } from './drop';
 
 export interface DataDropOptions {
@@ -36,7 +37,7 @@ export function useDataDrop({ collapsed, onData }: DataDropOptions) {
 	function leaveDrop(event: ReactDragEvent<HTMLElement>) {
 		const next = event.relatedTarget;
 
-		if (next instanceof Node && event.currentTarget.contains(next)) {
+		if (isElement(next) && event.currentTarget.contains(next)) {
 			return;
 		}
 

@@ -35,6 +35,19 @@ interface ZodRuntime {
 	readonly z: typeof ZodNamespace;
 }
 
+interface ZodIssue {
+	readonly path: readonly PropertyKey[];
+	readonly message: string;
+}
+
+type ZodParseResult =
+	| { readonly success: true; readonly data: unknown }
+	| { readonly success: false; readonly error: { readonly issues: readonly ZodIssue[] } };
+
+interface ZodValidator {
+	safeParse(data: unknown): ZodParseResult;
+}
+
 interface EffectRuntime {
 	readonly Result: typeof EffectResult;
 	readonly Schema: typeof EffectSchema;
@@ -156,9 +169,9 @@ export async function validateModule(
 }
 
 export async function validateWithZod(schema: unknown, data: unknown): Promise<RuntimeResult> {
-	const { z } = await runtimeModule('zod');
+	await runtimeModule('zod');
 
-	if (!(schema instanceof z.ZodType)) {
+	if (!isZodValidator(schema)) {
 		throw new Error('The generated root is not a Zod schema.');
 	}
 
@@ -200,6 +213,15 @@ export async function validateWithEffect(schema: unknown, data: unknown): Promis
 			message: issue.message,
 		})),
 	};
+}
+
+function isZodValidator(value: unknown): value is ZodValidator {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'safeParse' in value &&
+		typeof value.safeParse === 'function'
+	);
 }
 
 /** Generated Effect validators are schemas without decoding-service requirements. */
