@@ -47,6 +47,7 @@ function zodTypesPlugin(): Plugin {
 	};
 }
 
+/** The Effect `Schema` module plus every declaration it imports, linked by specifier. */
 function effectTypesPlugin(): Plugin {
 	const virtualId = 'virtual:effect-types';
 	const resolvedId = `\0${virtualId}`;

@@ -846,7 +846,7 @@ test.each(booleanRootCases)(
 		});
 		const card = document.querySelector(`[data-testid="result-${testCase.target}"]`);
 		expect(card?.textContent).not.toContain('The validator could not run');
-		expect(card?.textContent).not.toContain('The schema rejects all values.');
+		expect(card?.textContent).not.toContain('The validator rejected the data.');
 	}
 );
 

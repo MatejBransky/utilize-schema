@@ -12,7 +12,7 @@ export interface ResultPaneProps {
 export function ResultPane({ playground }: ResultPaneProps) {
 	const { target, validation, activeCase, layout } = playground;
 	return (
-		<section className={`${styles.pane} ${styles.resultPane}`}>
+		<section className={styles.pane}>
 			<div className={`${styles.outputHeader} ${styles.sectionHeader}`}>
 				<h2 className={styles.heading}>Generated validator results</h2>
 				<span className={styles.muted}>
