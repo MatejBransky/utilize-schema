@@ -134,8 +134,8 @@ reporting `Cannot find module './person.jsonschema'`.
 
 - The parser and generators run on every transform; there is no cache or
   incremental transform yet.
-- Diagnostics report JSON and generation errors at the start of the file;
-  span-mapped diagnostics are not implemented.
+- JSON parse errors use the parser's reported offset; generation errors point at
+  the start of the file. Span-mapped diagnostics are not implemented.
 - Only the Node loader and one Vite/Rollup/Rolldown plugin are included. Other
   bundlers and test runners are not integrated. The plugin relies on Node 24's
   experimental `stripTypeScriptTypes`, which prints one `ExperimentalWarning`

@@ -183,6 +183,9 @@ mapper.on('exit', (code) => { process.exitCode = code ?? 1; });
 	expect(responseAt(responses, 1).error?.message).toBe('Unknown content mapper method nope');
 	expect(responseAt(responses, 2).error?.code).toBe(-32_600);
 	expect(responseAt(responses, 3).error?.message).toBe('Request too large');
+	expect((responseAt(responses, 4).result as { diagnosticSource?: string }).diagnosticSource).toBe(
+		'utilize-schema '
+	);
 	expect((responseAt(responses, 5).result as { configIdentity?: string }).configIdentity).toBe(
 		'{"target":"zod"}'
 	);

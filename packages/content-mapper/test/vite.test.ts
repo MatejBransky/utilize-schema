@@ -3,9 +3,16 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { build } from 'vite';
+import type { Plugin } from 'vite';
 import { afterAll, expect, test } from 'vitest';
 
 import utilizeSchema from '../src/vite';
+
+test('is assignable to the Vite plugin type', () => {
+	const plugin: Plugin = utilizeSchema();
+
+	expect(plugin.name).toBe('utilize-schema');
+});
 
 type TestContext = {
 	error: (message: string) => never;
