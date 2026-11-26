@@ -239,7 +239,7 @@ describe('other dialects', () => {
 
 					// Paths under the suite directory would make the recorded list
 					// depend on the machine that generated it.
-					crashes.set(key, message.replaceAll(`${__dirname}/`, ''));
+					crashes.set(key, message.replaceAll(`${__dirname}/suite/`, ''));
 				}
 			}
 
