@@ -3,6 +3,7 @@ import {
 	collectStandaloneSchemas,
 	dialectOf,
 	expectDefined,
+	formatNameFor,
 	isParsedJSONSchemaObject,
 	mapDeclarationNames,
 	Meta,
@@ -22,7 +23,6 @@ import { UnresolvedReferenceError } from './errors';
 import { findCyclicSchemas } from './findCyclicSchemas';
 import { formatCheck } from './formats';
 import { canonicalJson, hasStructuredLiteral, jsonLiteralHelper } from './literals';
-import { formatConstantBase } from './string';
 import { literalType, renderValueTypeDeclaration } from './valueTypes';
 import type { ValueTypeContext } from './valueTypes';
 
@@ -75,18 +75,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 	let jsonLiteralName: string | undefined;
 
 	const context: Context = {
-		formatOf(format) {
-			const existing = formatNames.get(format);
-
-			if (existing !== undefined) {
-				return existing;
-			}
-
-			const name = allocateName(formatConstantBase(format), usedNames);
-
-			formatNames.set(format, name);
-			return name;
-		},
+		formatOf: (format) => formatNameFor(format, formatNames, usedNames),
 		jsonLiteralCall(value) {
 			jsonLiteralName ??= allocateName('jsonLiteral', usedNames);
 

@@ -91,6 +91,31 @@ describe('references', () => {
 		expect(result).toContain('Schema.suspend(() => DataType)');
 	});
 
+	test('resolves a URN resource with a nested pointer reference', async () => {
+		const Root = await compileToSchema({
+			allOf: [{ $ref: 'urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed' }],
+			definitions: {
+				foo: {
+					$id: 'urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed',
+					definitions: { bar: { type: 'string' } },
+					allOf: [{ $ref: '#/definitions/bar' }],
+				},
+			},
+		});
+
+		expect(decode(Root, 'bar')).toBe('bar');
+		expect(decode(Root, 12)).toBeUndefined();
+	});
+
+	test('resolves a pointer reference into tuple items without a declared type', async () => {
+		const Root = await compileToSchema({
+			items: [{ type: 'integer' }, { $ref: '#/items/0' }],
+		});
+
+		expect(decode(Root, [1, 2])).toEqual([1, 2]);
+		expect(decode(Root, [1, 'foo'])).toBeUndefined();
+	});
+
 	test('parses a tree three levels deep and rejects an invalid node', async () => {
 		const Root = await compileToSchema({
 			type: 'object',

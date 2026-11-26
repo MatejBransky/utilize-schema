@@ -128,40 +128,43 @@ describe('schema combinations', () => {
 	});
 
 	test('issue with duplicates', async () => {
-		const result = await generateCode({
-			$id: 'http://json-schema.org/draft-07/schema#',
-			title: 'Core schema meta-schema',
-			type: ['object', 'boolean'],
-			properties: {
-				$id: {
-					type: 'string',
-					format: 'uri-reference',
+		const result = await generateCode(
+			{
+				$id: 'http://json-schema.org/draft-07/schema#',
+				title: 'Core schema meta-schema',
+				type: ['object', 'boolean'],
+				properties: {
+					$id: {
+						type: 'string',
+						format: 'uri-reference',
+					},
+					maxLength: { $ref: '#/definitions/nonNegativeInteger' },
+					minLength: { $ref: '#/definitions/nonNegativeIntegerDefault0' },
+					items: {
+						anyOf: [{ $ref: '#' }, { $ref: '#/definitions/schemaArray' }],
+						default: true,
+					},
 				},
-				maxLength: { $ref: '#/definitions/nonNegativeInteger' },
-				minLength: { $ref: '#/definitions/nonNegativeIntegerDefault0' },
-				items: {
-					anyOf: [{ $ref: '#' }, { $ref: '#/definitions/schemaArray' }],
-					default: true,
-				},
-			},
-			definitions: {
-				schemaArray: {
-					type: 'array',
-					minItems: 1,
-					items: { $ref: '#' },
-				},
+				definitions: {
+					schemaArray: {
+						type: 'array',
+						minItems: 1,
+						items: { $ref: '#' },
+					},
 
-				nonNegativeInteger: {
-					type: 'integer',
-					minimum: 0,
+					nonNegativeInteger: {
+						type: 'integer',
+						minimum: 0,
+					},
+					nonNegativeIntegerDefault0: {
+						allOf: [{ $ref: '#/definitions/nonNegativeInteger' }, { default: 0 }],
+					},
+					maxLength: { $ref: '#/definitions/nonNegativeInteger' },
+					minLength: { $ref: '#/definitions/nonNegativeIntegerDefault0' },
 				},
-				nonNegativeIntegerDefault0: {
-					allOf: [{ $ref: '#/definitions/nonNegativeInteger' }, { default: 0 }],
-				},
-				maxLength: { $ref: '#/definitions/nonNegativeInteger' },
-				minLength: { $ref: '#/definitions/nonNegativeIntegerDefault0' },
 			},
-		});
+			{ formatMode: 'annotate' }
+		);
 
 		await expect(result).toMatchCode(ts`
 export const NonNegativeInteger = z.int().min(0);

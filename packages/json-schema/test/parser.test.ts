@@ -262,6 +262,28 @@ test('resolves a $ref against the nearest $id', async () => {
 	expect(reference.type).toBe('string');
 });
 
+test('resolves an in-document URN before attempting an external read', async () => {
+	const schema: JSONSchema = {
+		allOf: [{ $ref: 'urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed' }],
+		definitions: {
+			foo: {
+				$id: 'urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed',
+				definitions: { bar: { type: 'string' } },
+				allOf: [{ $ref: '#/definitions/bar' }],
+			},
+		},
+	};
+	const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Unknown' });
+
+	assert(typeof parsed.root === 'object' && parsed.root !== null);
+	const rootReference = parsed.root.allOf?.[0] as ParsedJSONSchemaObject;
+	const resource = rootReference[Meta].reference as ParsedJSONSchemaObject;
+	const pointerReference = resource.allOf?.[0] as ParsedJSONSchemaObject;
+
+	expect(resource).toBe((parsed.root.definitions as Record<string, ParsedJSONSchemaObject>).foo);
+	expect(pointerReference[Meta].reference).toMatchObject({ type: 'string' });
+});
+
 test('resolves a $ref to an $anchor', async () => {
 	const schema = {
 		$id: 'https://example.com/schema',

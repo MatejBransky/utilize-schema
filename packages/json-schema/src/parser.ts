@@ -42,51 +42,49 @@ export async function parse(
 	}
 
 	const parser = new $RefParser();
-	// Parsing normalizes and links in place. Clone the input so the same schema
-	// object can be compiled again, and with another dialect, without leftovers.
-	const input = structuredClone(schema);
-
-	const provided = options.externalSchemas
-		? indexExternalSchemas(options.externalSchemas)
-		: undefined;
-	const providedSchema = (url: string) => provided?.get(url) ?? provided?.get(normalizeUri(url));
-
-	const $refs = await parser.resolve(
-		cwd,
-		input,
-		provided
-			? {
-					resolve: {
-						external: true,
-						// Runs before the built-in file and HTTP resolvers, so a provided
-						// URI is served from memory instead of being fetched.
-						provided: {
-							order: 1,
-							canRead: (file: { url: string }) => providedSchema(file.url) !== undefined,
-							// A boolean schema is a valid document, but the resolver type
-							// only admits objects, so hand it to the JSON parser as source.
-							read: (file: { url: string }) => {
-								const schema = providedSchema(file.url);
-
-								if (schema === undefined) {
-									throw new Error(`Provided schema not found: ${file.url}`);
-								}
-
-								return isJSONSchemaObject(schema) ? schema : String(schema);
-							},
-						},
-					},
-				}
-			: {}
+	const rootDialect = resolveDialect(schema, options).dialect.id;
+	// Pre-index cloned documents so opaque in-document IDs resolve before $RefParser reads them as paths.
+	// Indexing clones each document, so parsing can normalize and link in place
+	// without leaving leftovers on the caller's schema.
+	const provided = indexExternalSchemas(
+		{ ...options.externalSchemas, [cwd]: schema },
+		{ ...options, fallbackDialect: rootDialect }
 	);
+	const input = provided.get(cwd);
+
+	if (input === undefined) {
+		throw new Error(`Provided schema is missing its root document: ${cwd}`);
+	}
+
+	const providedSchema = (url: string) => provided.get(url) ?? provided.get(normalizeUri(url));
+
+	const $refs = await parser.resolve(cwd, input, {
+		resolve: {
+			external: true,
+			// Provided URIs and identifiers must win over file and HTTP reads.
+			provided: {
+				order: 1,
+				canRead: (file: { url: string }) => providedSchema(file.url) !== undefined,
+				// A boolean schema is a valid document, but the resolver type only
+				// admits objects, so hand it to the JSON parser as source.
+				read: (file: { url: string }) => {
+					const providedDocument = providedSchema(file.url);
+
+					if (providedDocument === undefined) {
+						throw new Error(`Provided schema not found: ${file.url}`);
+					}
+
+					return isJSONSchemaObject(providedDocument) ? providedDocument : String(providedDocument);
+				},
+			},
+		},
+	});
 
 	const entries = schemaEntries($refs.values()); // `$RefParser` registers a nested `$id` as its own entry whose value is a node
 	// inside another document. Preparing and linking both would normalize that
 	// node twice and report its dialect issues twice, so keep the entry that
 	// contains the others.
 	const documentEntries = outerEntries(entries);
-
-	const rootDialect = resolveDialect(schema, options).dialect.id;
 
 	let rootDialects: DialectMap | undefined;
 	const issues: DialectIssue[] = [];

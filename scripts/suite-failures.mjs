@@ -21,9 +21,9 @@ export type KnownFailuresByDialect = Record<
 	string[]
 >;
 
-export const knownFailuresByDialect = {
+export const knownFailuresByDialect: KnownFailuresByDialect = {
 ${body}
-} satisfies KnownFailuresByDialect;
+};
 `;
 }
 

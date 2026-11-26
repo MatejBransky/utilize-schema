@@ -1,5 +1,5 @@
 import { resolveDialect } from './dialect';
-import type { Dialect } from './dialect';
+import type { Dialect, DialectOptions } from './dialect';
 import { schemaChildren } from './identifiers';
 import { isJSONSchemaObject } from './model';
 import type { JSONSchema } from './model';
@@ -15,7 +15,10 @@ export type ExternalSchemas = Record<string, JSONSchema | boolean>;
  *
  * Explicit keys win over nested identifiers when both resolve to the same URI.
  */
-export function indexExternalSchemas(schemas: ExternalSchemas): Map<string, JSONSchema | boolean> {
+export function indexExternalSchemas(
+	schemas: ExternalSchemas,
+	options: DialectOptions = {}
+): Map<string, JSONSchema | boolean> {
 	const index = new Map<string, JSONSchema | boolean>();
 
 	// Parsing annotates documents in place, so clone them: the caller's map can
@@ -29,7 +32,7 @@ export function indexExternalSchemas(schemas: ExternalSchemas): Map<string, JSON
 	}
 
 	for (const [uri, schema] of documents) {
-		indexIdentifiers(uri, schema, index, new WeakSet(), resolveDialect(schema).dialect);
+		indexIdentifiers(uri, schema, index, new WeakSet(), resolveDialect(schema, options).dialect);
 	}
 
 	return index;

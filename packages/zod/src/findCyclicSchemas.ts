@@ -8,6 +8,7 @@ import { objectGenerator } from './generators/objectGenerator';
 import { recordGenerator } from './generators/recordGenerator';
 import { selectGenerator } from './generators/selectGenerator';
 import { tupleGenerator } from './generators/tupleGenerator';
+import { inferTypeKeywords } from './inferTypes';
 
 type SchemaNode = SchemaEdge[0];
 
@@ -52,15 +53,24 @@ export function findCyclicSchemas(
 
 /**
  * True when the schema itself produces an object, array, tuple or record.
- * Subschema branches do not count: a structural constructor in a sibling
- * `anyOf` branch does not anchor a cycle that bypasses it.
+ * Typed and keyword-only structural constraints both count: the refinement
+ * pipeline validates the latter behind a type guard. Subschema branches do not
+ * count: a structural constructor in a sibling `anyOf` branch does not anchor a
+ * cycle that bypasses it.
  */
 function isStructuralNode(schema: SchemaNode): boolean {
 	if (typeof schema !== 'object' || schema === null) {
 		return false;
 	}
 
-	const generator = selectGenerator(withoutAlwaysValidAnyOf(schema), dialectOf(schema));
+	const dialect = dialectOf(schema);
+	const implicitTypes = inferTypeKeywords(withoutAlwaysValidAnyOf(schema), dialect);
+
+	if (implicitTypes.some((type) => type === 'object' || type === 'array')) {
+		return true;
+	}
+
+	const generator = selectGenerator(withoutAlwaysValidAnyOf(schema), dialect);
 
 	if (
 		generator === objectGenerator ||

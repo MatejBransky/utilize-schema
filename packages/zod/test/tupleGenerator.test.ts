@@ -13,6 +13,7 @@ function contextFor(dialect: string): GeneratorContext {
 	return {
 		lazyRefs: new Set(),
 		nameOf: () => 'Tuple',
+		formatOf: () => 'formatValue',
 		dialect: resolveDialect({ $schema: dialect }).dialect,
 	};
 }

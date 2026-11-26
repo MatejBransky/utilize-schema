@@ -20,23 +20,23 @@ file imports `zod`.
   getter cannot defer the reference.
 - **Five dialects.** draft-04, draft-06, draft-07, 2019-09 and 2020-12;
   `$ref` siblings apply only where the dialect defines them.
-- **93% of the official suite.** 283 of 304 draft-07 cases; 96% line coverage.
+- **100% of the official draft-07 suite.** 304 of 304 cases; 96% line coverage.
 
 ```json
 {
   "type": "object",
   "properties": {
-    "email": {
+    "id": {
       "type": "string",
-      "format": "email"
+      "format": "uuid"
     }
   },
-  "required": ["email"]
+  "required": ["id"]
 }
 ```
 
 ```ts
-export const User = z.object({ email: z.email().meta({ format: 'email' }) });
+export const User = z.object({ id: z.uuid().meta({ format: 'uuid' }) });
 export type User = z.infer<typeof User>;
 ```
 
@@ -85,9 +85,11 @@ await compile({
 - `readOnlyKeyword` — map `readOnly: true` to `.readonly()`. Off by default,
   because it freezes values and changes the inferred type.
 - `formatMode` — what `format` becomes in the generated code. `'assert'`
-  (default) turns known formats into validation (`.email()`, `.uuid()`,
-  `.iso.datetime()`, …); `'annotate'` keeps `format` as `.meta({ format })`.
-  Unknown formats stay annotations in both modes.
+  (default) turns known formats into validation (`.uuid()`, `.iso.date()`,
+  RFC 3339 date-time and URI validators, …); `'annotate'` keeps `format` as
+  `.meta({ format })`. Unknown formats stay annotations in both modes. A format
+  that needs structural validation becomes one module-level validator reused by
+  every property that uses it.
 - `formatMap` — map `format` names to your own Zod string expressions. An entry
   applies in both modes, so it can validate a format that `formatMode` would
   leave as an annotation. Formats you do not list follow `formatMode`.
@@ -256,19 +258,19 @@ defaults to stdout. Every generated file starts with a "do not edit" banner
 The official JSON Schema Test Suite is pinned and run for all five dialects. The
 badges link here:
 
-| Dialect  | Cases passing | Where the gaps are                                                                                                                        |
-| -------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| draft-04 | 173 / 194     | [case list](test/suite/knownFailuresByDialect.ts)                                                                                         |
-| draft-06 | 251 / 263     | [case list](test/suite/knownFailuresByDialect.ts)                                                                                         |
-| draft-07 | 283 / 304     | [cases](test/suite/knownFailuresByDialect.ts) · [reasons](test/suite/knownFailures.ts) · [instances](test/suite/knownFailureInstances.ts) |
-| 2019-09  | 353 / 417     | [case list](test/suite/knownFailuresByDialect.ts)                                                                                         |
-| 2020-12  | 351 / 431     | [case list](test/suite/knownFailuresByDialect.ts)                                                                                         |
+| Dialect  | Cases passing | Where the gaps are                                |
+| -------- | ------------- | ------------------------------------------------- |
+| draft-04 | 186 / 194     | [case list](test/suite/knownFailuresByDialect.ts) |
+| draft-06 | 262 / 263     | [case list](test/suite/knownFailuresByDialect.ts) |
+| draft-07 | 304 / 304     | —                                                 |
+| 2019-09  | 375 / 417     | [case list](test/suite/knownFailuresByDialect.ts) |
+| 2020-12  | 374 / 431     | [case list](test/suite/knownFailuresByDialect.ts) |
 
 Which keywords are implemented, and which are only kept as annotations, is in
 [docs/keywords.md](../../docs/keywords.md#runtime-generators). Every dialect is
-pinned case by case in `knownFailuresByDialect.ts`; draft-07 also has a curated
-reason per case in `knownFailures.ts` and the failing instance descriptions in
-`knownFailureInstances.ts`.
+pinned case by case in `knownFailuresByDialect.ts`. Draft-07 has no known gaps;
+`knownFailures.ts` and `knownFailureInstances.ts` remain the place to record
+one.
 
 ## Testing
 
@@ -284,16 +286,15 @@ case is compiled to a Zod schema in memory and every instance from the suite is
 run through `safeParse`.
 
 All five dialects are measured: draft-04, draft-06, draft-07, 2019-09 and
-2020-12. Every dialect is pinned case by case in `knownFailuresByDialect.ts`;
-draft-07 also has a curated reason per case in `knownFailures.ts`.
+2020-12. Every dialect is pinned case by case in `knownFailuresByDialect.ts`.
 `test/suite/baseline.ts` records the counts the badges render.
 
-Today it passes **283 of 304 draft-07 cases (1,399 of 1,655 assertions)**. Format
+Today it passes **304 of 304 draft-07 cases (1,655 of 1,655 assertions)**. Format
 cases run in the mode they are tagged for, so both the annotation and the
 assertion cases are measured.
 
-Cases the generator does not handle yet are listed in
-`test/suite/knownFailures.ts`, together with the exact instances that fail in
+Draft-07 has no known gaps. A future gap is recorded in
+`test/suite/knownFailures.ts`, together with its exact failing instances in
 `test/suite/knownFailureInstances.ts`. A fix or a regression changes that set,
 so the suite fails and the baseline has to be refreshed:
 

@@ -40,8 +40,8 @@ types for every dialect from draft-04 to 2020-12.
   normalized. `$schema` is resolved per schema resource and `$ref` siblings are
   applied only where the dialect defines them. The per-dialect rules are in
   [docs/dialects.md](./docs/dialects.md).
-- **Proven on the official suite.** Draft-07 scores 283/304 cases for Zod,
-  286/304 for Effect Schema and 191/285 for TypeScript; five dialects are
+- **Proven on the official suite.** Draft-07 scores 304/304 cases for Zod,
+  304/304 for Effect Schema and 192/285 for TypeScript; five dialects are
   measured. See [supported features](#supported-features).
 - **Types without runtime.** `@utilize/typescript` emits interfaces and aliases
   only; the output imports nothing.
@@ -65,12 +65,12 @@ utilize-zod user.json user.zod.ts
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
-    "email": {
+    "id": {
       "type": "string",
-      "format": "email"
+      "format": "uuid"
     }
   },
-  "required": ["email"],
+  "required": ["id"],
   "additionalProperties": false
 }
 ```
@@ -81,7 +81,7 @@ utilize-zod user.json user.zod.ts
 import { z } from 'zod';
 
 export const User = z.strictObject({
-  email: z.email().meta({ format: 'email' }),
+  id: z.uuid().meta({ format: 'uuid' }),
 });
 export type User = z.infer<typeof User>;
 ```
@@ -231,9 +231,9 @@ ignored. Use Zod or Effect Schema when you need runtime validation.
 Draft-07 numbers from the official suite, with every measured dialect pinned in
 the package baselines:
 
-- **Zod:** 283 of 304 cases (1,399 of 1,655 assertions).
-- **Effect Schema:** 286 of 304 cases (1,400 of 1,655 assertions).
-- **TypeScript:** 191 of 285 cases at the type level (793 of 972 instances).
+- **Zod:** 304 of 304 cases (1,655 of 1,655 assertions).
+- **Effect Schema:** 304 of 304 cases (1,655 of 1,655 assertions).
+- **TypeScript:** 192 of 285 cases at the type level (795 of 972 instances).
 
 ---
 

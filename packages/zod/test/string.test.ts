@@ -1,7 +1,7 @@
 import type { JSONSchema } from '@utilize/json-schema';
 import { describe, test, expect } from 'vitest';
 
-import { generateCode, ts } from './test-utils';
+import { compileToZod, generateCode, ts } from './test-utils';
 
 import { generateName } from '../src/resolveName';
 
@@ -44,10 +44,8 @@ describe('string constraints', () => {
 	});
 
 	const formats = [
-		{ format: 'email', zod: '.email()' },
 		{ format: 'uuid', zod: '.uuid()' },
 		{ format: 'url', zod: '.url()' },
-		{ format: 'uri', zod: '.url()' },
 		{ format: 'emoji', zod: '.emoji()' },
 		{ format: 'base64', zod: '.base64()' },
 		{ format: 'base64url', zod: '.base64url()' },
@@ -60,8 +58,6 @@ describe('string constraints', () => {
 		{ format: 'cidrv4', zod: '.cidrv4()' },
 		{ format: 'cidrv6', zod: '.cidrv6()' },
 		{ format: 'date', zod: '.iso.date()' },
-		{ format: 'time', zod: '.iso.time()' },
-		{ format: 'date-time', zod: '.iso.datetime()' },
 		{ format: 'duration', zod: '.iso.duration()' },
 	];
 
@@ -90,10 +86,10 @@ describe('string constraints', () => {
 		});
 
 		test('validates a known format by default', async () => {
-			await expect(generateCode({ type: 'string', format: 'email' })).toMatchCode(ts`
-        export const Root = z.email().meta({ format: 'email' });
-        export type Root = z.infer<typeof Root>;
-      `);
+			const code = await generateCode({ type: 'string', format: 'email' });
+
+			expect(code).toContain('z\n\t.string()\n\t.refine(');
+			expect(code).toContain(".meta({ format: 'email' })");
 		});
 
 		test('keeps a known format as metadata in annotate mode', async () => {
@@ -104,11 +100,27 @@ describe('string constraints', () => {
       `);
 		});
 
+		test('emits one complex validator and reuses it', async () => {
+			const code = await generateCode({
+				type: 'object',
+				properties: {
+					email: { type: 'string', format: 'email' },
+					backup: { type: 'string', format: 'email' },
+				},
+			});
+
+			expect(code.match(/const formatEmail =/g)).toHaveLength(1);
+			expect(code.match(/\.refine\(formatEmail,/g)).toHaveLength(2);
+		});
+
 		test('keeps string constraints next to an asserted format', async () => {
-			await expect(generateCode({ type: 'string', format: 'email', minLength: 5 })).toMatchCode(ts`
-        export const Root = z.email().min(5).meta({ format: 'email' });
-        export type Root = z.infer<typeof Root>;
-      `);
+			const code = await generateCode({ type: 'string', format: 'email', minLength: 5 });
+			const Root = await compileToZod({ type: 'string', format: 'email', minLength: 5 });
+
+			expect(code).toContain('.min(5)');
+			expect(code).toContain(".meta({ format: 'email' })");
+			expect(Root.safeParse('a@b').success).toBe(false);
+			expect(Root.safeParse('user@example.com').success).toBe(true);
 		});
 
 		test('maps a custom format to a Zod expression', async () => {
@@ -141,6 +153,38 @@ describe('string constraints', () => {
 				);
 			}
 		);
+
+		test.each([
+			['email', '"joe bloggs"@example.com', 'te..st@example.com'],
+			['idn-email', '실례@실례.테스트', 'δοκιμή@-example.com'],
+			['hostname', 'xn--9n2bp8q.xn--9t4b11yi5a', 'ab--cd.example'],
+			['idn-hostname', 'a。b', 'a·l'],
+			['uri', 'mailto:John.Doe@example.com', 'http://example.com/%6G'],
+			['uri-reference', '//', '1:b'],
+			['iri', 'http://ƒøø.ßår/?∂éœ=πîx#πîüx', 'http://2001:db8::1'],
+			['iri-reference', '/âππ', 'â:b'],
+			['json-pointer', '/foo/bar~0', '/~2'],
+			['relative-json-pointer', '0#', '01/a'],
+			['regex', 'a|b', '*a'],
+			['uri-template', '{+var}', '{v:0}'],
+			['time', '08:30:06+00:20', '12:00:00'],
+			['date-time', '1998-12-31T15:59:60.123-08:00', '1998-12-31T22:59:60Z'],
+		])('asserts %s with structural validation', async (format, valid, invalid) => {
+			const Root = await compileToZod({ type: 'string', format }, { formatMode: 'assert' });
+
+			expect(Root.safeParse(valid).success, `${valid} should be valid`).toBe(true);
+			expect(Root.safeParse(invalid).success, `${invalid} should be invalid`).toBe(false);
+		});
+
+		test('keeps a custom format override independent of the built-in validators', async () => {
+			const Root = await compileToZod(
+				{ type: 'string', format: 'email' },
+				{ formatMap: { email: 'z.string().endsWith("@example.com")' } }
+			);
+
+			expect(Root.safeParse('not-an-email@example.com').success).toBe(true);
+			expect(Root.safeParse('user@example.org').success).toBe(false);
+		});
 
 		test('lets formatMap override a built-in format and keeps string constraints', async () => {
 			await expect(

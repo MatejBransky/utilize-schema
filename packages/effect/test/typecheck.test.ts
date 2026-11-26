@@ -211,6 +211,19 @@ describe('generated schemas type-check', () => {
 				'PatternPropertiesWithRequired.ts': patternPropertiesWithRequired,
 				'RecursivePatternRecord.ts': recursivePatternRecord,
 				'ClosedRecursivePatternObject.ts': closedRecursivePatternObject,
+				'UntypedTupleRef.ts': {
+					items: [{ type: 'integer' }, { $ref: '#/items/0' }],
+				},
+				'UrnNestedPointer.ts': {
+					allOf: [{ $ref: 'urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed' }],
+					definitions: {
+						foo: {
+							$id: 'urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed',
+							definitions: { bar: { type: 'string' } },
+							allOf: [{ $ref: '#/definitions/bar' }],
+						},
+					},
+				},
 			})
 		).resolves.toBeUndefined();
 	});

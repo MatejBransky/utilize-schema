@@ -18,7 +18,7 @@ metadata a generator needs; it emits no code and has no opinion about output.
   `@utilize/json-schema/node` entry — CLI runner, flags, JSON/YAML and
   file/glob input, `compilePaths` — are what the three generator packages build
   on.
-- **90% line coverage.**
+- **91% line coverage.**
 
 ```sh
 pnpm add -D @utilize/json-schema

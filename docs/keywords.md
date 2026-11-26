@@ -13,11 +13,9 @@ and is pinned in the package's baseline, so it cannot drift silently.
 All three generators are checked for draft-04, draft-06, draft-07, 2019-09 and
 2020-12. The numbers below are draft-07:
 
-- **Zod:** 283 of 304 cases (1,399 of 1,655 assertions) pass.
-  [Known gaps](../packages/zod/test/suite/knownFailures.ts)
-- **Effect Schema:** 286 of 304 cases (1,400 of 1,655 assertions) pass.
-  [Known gaps](../packages/effect/test/suite/knownFailures.ts)
-- **TypeScript:** 191 of 285 cases pass at the type level (793 of 972 instances),
+- **Zod:** 304 of 304 cases (1,655 of 1,655 assertions) pass.
+- **Effect Schema:** 304 of 304 cases (1,655 of 1,655 assertions) pass.
+- **TypeScript:** 192 of 285 cases pass at the type level (795 of 972 instances),
   with 81 type gaps.
   [Baseline](../packages/typescript/test/suite/baseline.ts) ·
   [Known gaps](../packages/typescript/test/suite/knownGaps.ts)
@@ -38,9 +36,9 @@ case when its `compatibility` allows draft-07, which leaves 304 of 613 cases
 | draft-07 cases in the suite | 304 | 304           | 304        |
 | − `format-assertion` cases  | —   | —             | 19         |
 | **= cases run**             | 304 | 304           | 285        |
-| − known gaps                | 21  | 18            | 13         |
+| − known gaps                | 0   | 0             | 12         |
 | − type-level gaps           | —   | —             | 81         |
-| **= cases passing**         | 283 | 286           | 191        |
+| **= cases passing**         | 304 | 304           | 192        |
 
 The runtime generators measure both format groups: `format-annotation` cases
 compile with `formatMode: 'annotate'` and `format-assertion` cases with

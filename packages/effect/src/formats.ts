@@ -10,19 +10,14 @@
  * so switching targets does not change which values pass.
  */
 
+import { formatBody, formatPattern } from '@utilize/json-schema';
+
 /** Calendar date with leap years. Same shape as Zod's `iso.date` regex, which
  * also accepts year 0000 that `Date` would map into 1900. */
 const dateSource = String.raw`(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))`;
 
-/** `hh:mm` with optional seconds, matching `z.iso.time()`: no time zone. */
-const timeSource = String.raw`(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?`;
-
-/** The qualified form `z.iso.datetime()` accepts: seconds plus `Z`. */
-const qualifiedTimeSource = String.raw`(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?Z`;
-
 /** Formats that are a single regular expression. */
 const patterns = new Map<string, string>([
-	['email', String.raw`^[^\s@]+@[^\s@]+\.[^\s@]+$`],
 	// The leading lookahead demands one anchor (a pictograph, a regional
 	// indicator or a keycap), because `\p{Emoji_Component}` alone covers ZWJ
 	// and modifiers, which are not emoji on their own.
@@ -41,8 +36,6 @@ const patterns = new Map<string, string>([
 		String.raw`^(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$`,
 	],
 	['date', `^${dateSource}$`],
-	['time', `^${timeSource}$`],
-	['date-time', `^${dateSource}T${qualifiedTimeSource}$`],
 	[
 		'duration',
 		String.raw`^P(?!$)(?:\d+Y)?(?:\d+M)?(?:\d+W)?(?:\d+D)?(?:T(?=\d)(?:\d+H)?(?:\d+M)?(?:\d+S)?)?$`,
@@ -57,8 +50,7 @@ export function formatCheck(format: string): string | undefined {
 		case 'uuid': {
 			return 'Schema.isUUID()';
 		}
-		case 'url':
-		case 'uri': {
+		case 'url': {
 			return filter(
 				`try {
 			new URL(value);
@@ -78,7 +70,13 @@ export function formatCheck(format: string): string | undefined {
 			return filter(cidrv6Body);
 		}
 		default: {
-			const pattern = patterns.get(format);
+			const body = formatBody(format);
+
+			if (body !== undefined) {
+				return filter(body);
+			}
+
+			const pattern = formatPattern(format) ?? patterns.get(format);
 
 			return pattern === undefined ? undefined : patternCheck(pattern);
 		}

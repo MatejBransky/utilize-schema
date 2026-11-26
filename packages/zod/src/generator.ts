@@ -1,4 +1,11 @@
-import { collectStandaloneSchemas, dialectOf, expectDefined, Meta } from '@utilize/json-schema';
+import {
+	collectStandaloneSchemas,
+	dialectOf,
+	expectDefined,
+	formatBody,
+	formatNameFor,
+	Meta,
+} from '@utilize/json-schema';
 import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 import toposort from 'toposort';
 
@@ -54,17 +61,7 @@ const RESERVED_NAMES = ['z'];
 
 export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}): string {
 	if (typeof root !== 'object' || root === null) {
-		return generateSchema(root, {
-			lazyRefs: new Set(),
-			readOnlyKeyword: options.readOnlyKeyword,
-			formatMap: options.formatMap,
-			formatMode: options.formatMode,
-			nameOf: () => {
-				throw new Error('A primitive schema cannot reference another schema.');
-			},
-			dialect: dialectOf(root),
-			customSchemaResolver: options.customSchemaResolver,
-		});
+		return generatePrimitive(root, options);
 	}
 
 	const { copies, hoisted } = findInlineCopies(collectStandaloneSchemas(root).schemas, (schema) =>
@@ -95,6 +92,8 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		options
 	);
 	const aliases = new Map<ParsedJSONSchemaObject, string>();
+	const formatNames = new Map<string, string>();
+	const usedNames = usedNamesFor(names.values(), typeNames);
 
 	function namesOf(schema: ParsedJSONSchemaObject): DeclarationNames {
 		const declarationNames = names.get(schema);
@@ -115,6 +114,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		declarationOf: (schema) => copies.get(schema),
 		dialect: dialectOf(root),
 		customSchemaResolver: options.customSchemaResolver,
+		formatOf: (format) => formatNameFor(format, formatNames, usedNames),
 	};
 
 	const valueTypeContext: ValueTypeContext = {
@@ -161,15 +161,70 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		code.push(ts`export type ${typeName} = z.infer<typeof ${schemaName}>;`, NEWLINE);
 	}
 
-	if (context.usesOneOf) {
-		const helper = options.runtimeImport
-			? ts`import { oneOfSchema } from ${singleQuoted(options.runtimeImport)};${NEWLINE}`
-			: ONE_OF_HELPER + NEWLINE;
+	const importIndex = importIndexFor(options);
 
-		code.splice((options.importZod ?? true) ? 1 : 0, 0, helper);
-	}
+	code.splice(importIndex, 0, ...formatConstantsFor(formatNames));
+	code.splice(importIndex, 0, ...oneOfLines(context.usesOneOf, options.runtimeImport));
 
 	return code.join(NEWLINE);
+}
+
+function generatePrimitive(
+	root: Exclude<ParsedJSONSchema, ParsedJSONSchemaObject>,
+	options: GenerateOptions
+) {
+	return generateSchema(root, {
+		lazyRefs: new Set(),
+		readOnlyKeyword: options.readOnlyKeyword,
+		formatMap: options.formatMap,
+		formatMode: options.formatMode,
+		nameOf: () => {
+			throw new Error('A primitive schema cannot reference another schema.');
+		},
+		dialect: dialectOf(root),
+		customSchemaResolver: options.customSchemaResolver,
+		formatOf: () => {
+			throw new Error('A primitive schema cannot reference a format constant.');
+		},
+	});
+}
+
+function usedNamesFor(declarations: Iterable<DeclarationNames>, typeNames: Iterable<string>) {
+	const usedNames = new Set(RESERVED_NAMES);
+
+	for (const declaration of declarations) {
+		usedNames.add(declaration.schema);
+		usedNames.add(declaration.type);
+	}
+
+	for (const typeName of typeNames) {
+		usedNames.add(typeName);
+	}
+
+	return usedNames;
+}
+
+function formatConstantsFor(formatNames: Map<string, string>) {
+	return [...formatNames].map(
+		([format, name]) =>
+			ts`const ${name} = (value: string) => {${expectDefined(formatBody(format))}};`
+	);
+}
+
+function oneOfLines(usesOneOf: boolean | undefined, runtimeImport: string | undefined): string[] {
+	if (!usesOneOf) {
+		return [];
+	}
+
+	return [
+		runtimeImport
+			? ts`import { oneOfSchema } from ${singleQuoted(runtimeImport)};${NEWLINE}`
+			: ONE_OF_HELPER + NEWLINE,
+	];
+}
+
+function importIndexFor(options: GenerateOptions) {
+	return (options.importZod ?? true) ? 1 : 0;
 }
 
 /**

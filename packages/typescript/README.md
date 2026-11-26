@@ -20,8 +20,8 @@ when you want types without a schema runtime.
   to narrow at the boundary.
 - **Recursive types are first-class.** Interfaces and deferred aliases; a cycle
   TypeScript cannot express fails with `UnsupportedCircularTypeError`.
-- **67% type-level score.** 191 of 285 draft-07 cases; the 81 gaps are keywords
-  a type cannot express, not bugs. 97% line coverage.
+- **67% type-level score.** 192 of 285 draft-07 cases; the 81 type gaps are
+  keywords a type cannot express, not bugs. 97% line coverage.
 - **The output imports nothing.** It compiles with `tsc --strict` as part of CI.
 
 ```json
@@ -168,11 +168,11 @@ The badges link here. Numbers for every measured dialect live in
 
 | Dialect  | Cases passing | Where the gaps are                                                                                                       |
 | -------- | ------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| draft-04 | 109 / 187     | [gaps](test/suite/knownGapCases.ts)                                                                                      |
-| draft-06 | 168 / 253     | [gaps](test/suite/knownGapCases.ts)                                                                                      |
-| draft-07 | 191 / 285     | [gaps](test/suite/knownGapCases.ts) · [reasons](test/suite/knownGaps.ts) · 81 type gaps (keywords a type cannot express) |
-| 2019-09  | 241 / 396     | [gaps](test/suite/knownGapCases.ts)                                                                                      |
-| 2020-12  | 235 / 409     | [gaps](test/suite/knownGapCases.ts)                                                                                      |
+| draft-04 | 115 / 187     | [gaps](test/suite/knownGapCases.ts)                                                                                      |
+| draft-06 | 169 / 253     | [gaps](test/suite/knownGapCases.ts)                                                                                      |
+| draft-07 | 192 / 285     | [gaps](test/suite/knownGapCases.ts) · [reasons](test/suite/knownGaps.ts) · 81 type gaps (keywords a type cannot express) |
+| 2019-09  | 243 / 396     | [gaps](test/suite/knownGapCases.ts)                                                                                      |
+| 2020-12  | 237 / 409     | [gaps](test/suite/knownGapCases.ts)                                                                                      |
 
 Which keywords become types is in
 [docs/keywords.md](../../docs/keywords.md#typescript). Every dialect is pinned
@@ -193,9 +193,9 @@ pnpm test:suite # official JSON Schema Test Suite
 
 Current baseline on suite commit `e2a68a1`:
 
-- **191 of 285 cases** pass in both directions.
-- **558 of 584** spec-valid instances are accepted.
-- **235 of 386** spec-invalid instances are rejected.
+- **192 of 285 cases** pass in both directions.
+- **559 of 585** spec-valid instances are accepted.
+- **236 of 387** spec-invalid instances are rejected.
 - **81 cases** differ only because an invalid instance is accepted. TypeScript
   cannot express `minimum`, `pattern`, `format`, `uniqueItems`, `dependencies`,
   `if`/`then`/`else`, and similar value constraints, so these are inherent to

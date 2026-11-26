@@ -47,4 +47,9 @@ export type GeneratorContext = {
 	formatMode?: FormatMode;
 	/** Emits a caller-provided expression before the built-in generator runs. */
 	customSchemaResolver?: CustomSchemaResolver;
+	/**
+	 * Name of the module-level validator constant for a format. Registered on
+	 * first use, so one format yields one constant per file.
+	 */
+	formatOf(format: string): string;
 };

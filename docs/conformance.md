@@ -16,7 +16,7 @@ Every project here runs the official
 passes when every spec-valid instance is accepted and every spec-invalid one is
 rejected. Draft-07 baseline on suite commit `e2a68a1`:
 
-- 283 of 304 cases (1,399 of 1,655 assertions).
+- 304 of 304 cases (1,655 of 1,655 assertions).
 - Cases that need external schemas are served from memory through
   `externalSchemas`. Format cases run in the mode they are tagged for:
   `format-annotation` with `formatMode: 'annotate'`, `format-assertion` with
@@ -28,14 +28,14 @@ emitted as a typed constant and one `tsc --strict` pass decides acceptance. This
 is the closest comparison on this page, although the suite revisions differ.
 Draft-07 baseline on suite commit `e2a68a1`:
 
-- 191 of 285 cases have no valid instance rejected and no invalid instance
+- 192 of 285 cases have no valid instance rejected and no invalid instance
   accepted.
 - 81 cases differ only because an invalid instance is accepted by a keyword a
   type cannot express (`minimum`, `pattern`, `format`, `uniqueItems`, …).
-- 13 cases are listed in `test/suite/knownGaps.ts`: 1 shared URN resolution gap
-  and 12 inference gaps.
-- Across instances it accepts 558 of 584 spec-valid instances and rejects 235 of
-  386 spec-invalid ones.
+- 12 cases are listed in `test/suite/knownGaps.ts`: inference gaps where an
+  untyped schema is rejected for a JSON type its keywords do not constrain.
+- Across instances it accepts 559 of 585 spec-valid instances and rejects 236 of
+  387 spec-invalid ones.
 
 See
 [`packages/typescript/README.md`](../packages/typescript/README.md#conformance)
@@ -65,10 +65,10 @@ one accepted, 24 crashes and 2 invalid TypeScript files. Its instance totals are
 and case selections differ (257 groups there, 285 runnable cases here; this
 runner serves `externalSchemas` from memory), so the numbers describe two
 different records rather than a score. On the same group metric the TypeScript
-generator is ahead (67.0% vs 54.9%), accepts more valid instances (95.5% vs
+generator is ahead (67.4% vs 54.9%), accepts more valid instances (95.6% vs
 95.0%), emits no invalid TypeScript and crashes on 2 cases the shared parser or
 `$ref` resolver cannot resolve (24 there). Instance-level invalid rejection is
-not comparable across the two revisions: this runner rejects 60.9% of 386
+not comparable across the two revisions: this runner rejects 61.0% of 387
 invalid instances, json-schema-to-typescript 57.9% of its 342, largely because
 the newer suite revision adds many more `format` cases that a type cannot
 reject.
