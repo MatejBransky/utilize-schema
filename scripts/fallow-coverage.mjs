@@ -18,7 +18,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const WORKSPACES = [
@@ -29,13 +29,13 @@ const WORKSPACES = [
 	'playground',
 ];
 const MERGED_COVERAGE = join(ROOT, 'coverage', 'merged', 'coverage-final.json');
-const REUSE_COVERAGE = process.argv.includes('--reuse-coverage');
-const FALLOW_ARGUMENTS = process.argv
-	.slice(2)
-	.filter((argument) => argument !== '--reuse-coverage');
 
-function readCoverage(workspace) {
-	const coveragePath = join(ROOT, workspace, 'coverage', 'coverage-final.json');
+export function splitFallowArguments(argv) {
+	return argv.filter((argument) => argument !== '--reuse-coverage');
+}
+
+export function readCoverage(workspace, root = ROOT) {
+	const coveragePath = join(root, workspace, 'coverage', 'coverage-final.json');
 
 	if (!existsSync(coveragePath)) {
 		throw new Error(
@@ -90,8 +90,9 @@ function mergeCoverage(coverageMaps) {
 }
 
 function run() {
+	const reuseCoverage = process.argv.includes('--reuse-coverage');
 	const coverageMaps = WORKSPACES.map((workspace) => {
-		if (REUSE_COVERAGE) {
+		if (reuseCoverage) {
 			console.error(`Reusing coverage: ${workspace}`);
 			return readCoverage(workspace);
 		}
@@ -105,10 +106,18 @@ function run() {
 
 	const fallow = spawnSync(
 		'pnpm',
-		['exec', 'fallow', '--coverage', MERGED_COVERAGE, ...FALLOW_ARGUMENTS],
+		[
+			'exec',
+			'fallow',
+			'--coverage',
+			MERGED_COVERAGE,
+			...splitFallowArguments(process.argv.slice(2)),
+		],
 		{ cwd: ROOT, stdio: 'inherit' }
 	);
 	process.exit(fallow.status ?? 1);
 }
 
-run();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+	run();
+}
