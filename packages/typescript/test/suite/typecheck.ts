@@ -35,7 +35,7 @@ const DIAGNOSTIC = /^(.*)\((\d+),(\d+)\): error (TS\d+): (.*)$/;
  * instance.
  */
 export async function typecheckCases(modules: TypecheckModule[]): Promise<TypecheckResults> {
-	const directory = await mkdtemp(join(__dirname, '__suite__-'));
+	const directory = await mkdtemp(join(import.meta.dirname, '__suite__-'));
 	const byPath = new Map<string, TypecheckModule>();
 	const files: string[] = [];
 	const results: TypecheckResults = {
