@@ -200,8 +200,8 @@ Current baseline on suite commit `e2a68a1`:
   cannot express `minimum`, `pattern`, `format`, `uniqueItems`, `dependencies`,
   `if`/`then`/`else`, and similar value constraints, so these are inherent to
   the target.
-- **13 cases** are listed in `test/suite/knownGaps.ts`: 1 needs URN resolution
-  from the shared parser and 12 are the inference trade-off described below.
+- **12 cases** are listed in `test/suite/knownGaps.ts`: the inference trade-off
+  described below.
 
 The numbers are recorded in `test/suite/baseline.ts` and the test fails when
 they change, so a regression cannot slip in and an improvement has to update the

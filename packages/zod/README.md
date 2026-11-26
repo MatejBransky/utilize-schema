@@ -40,6 +40,10 @@ export const User = z.object({ id: z.uuid().meta({ format: 'uuid' }) });
 export type User = z.infer<typeof User>;
 ```
 
+The UUID format keeps this example short. Formats that need structural
+validation, such as `email`, `hostname` and `uri`, emit one shared validator per
+generated module.
+
 ```sh
 pnpm add zod
 pnpm add -D @utilize/zod
@@ -89,7 +93,9 @@ await compile({
   RFC 3339 date-time and URI validators, …); `'annotate'` keeps `format` as
   `.meta({ format })`. Unknown formats stay annotations in both modes. A format
   that needs structural validation becomes one module-level validator reused by
-  every property that uses it.
+  every property that uses it. Validation follows the JSON Schema format
+  definitions, so `time` requires an RFC 3339 offset and `uri`, `email` and
+  `hostname` are stricter than their target helpers.
 - `formatMap` — map `format` names to your own Zod string expressions. An entry
   applies in both modes, so it can validate a format that `formatMode` would
   leave as an annotation. Formats you do not list follow `formatMode`.

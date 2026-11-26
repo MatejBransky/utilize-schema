@@ -102,7 +102,9 @@ Options:
   ipv4/ipv6, date, date-time, duration, …); `'annotate'` keeps `format` as
   `.annotate({ format })`. Unknown formats stay annotations in both modes. Each
   format becomes one module-level constant (`const formatEmail = …`) reused by
-  every property that uses it.
+  every property that uses it. Validation follows the JSON Schema format
+  definitions, so `time` requires an RFC 3339 offset and `uri`, `email` and
+  `hostname` are stricter than their target helpers.
 - `format(code)` — optional synchronous or asynchronous formatter (for example
   Prettier) applied to the generated code before the banner is prepended.
 - `importEffect` — emit `import { Schema } from 'effect';`; on by default.
