@@ -139,8 +139,8 @@ findings, publishes a check run and uploads SARIF, and fails on introduced
 findings. It fails on warnings too: the action treats an audit verdict of `warn`
 as a pass by design, so the job reads the recorded result with
 `scripts/fallow-gate.mjs --warn`. A rule that is `warn` is a finding to fix, not
-background noise. The strict full-repository gate runs next to it in the same
-workflow (see below), so a change cannot raise a measured score.
+background noise. The strict full-repository gate runs in the test job of the
+same workflow (see below), so a change cannot raise a measured score.
 
 Regenerate and check the health badge with:
 
@@ -149,14 +149,14 @@ pnpm fallow:badge
 pnpm check:fallow-badge
 ```
 
-In every pull request and on every push to `main`, the `Fallow full repository`
-job runs all unit tests with V8 coverage, merges their Istanbul data, and runs
-`fallow` in combined mode on it: dead code, duplication, maintainability and
-CRAP measured against real coverage, plus rule-pack policy and type-aware
-refinement from the configured tsconfigs. The run writes its JSON result,
-`scripts/fallow-gate.mjs --warn` fails the job when any gate in that result
-failed or warned (a machine format does not enforce its own exit code), and
-`fallow report` renders the same result as the job summary.
+In every pull request and on every push to `main`, the `Run code quality tools
+and tests` job runs all unit tests with V8 coverage, merges their Istanbul data,
+and runs `fallow` in combined mode on the same coverage: dead code, duplication,
+maintainability and CRAP measured against real coverage, plus rule-pack policy
+and type-aware refinement from the configured tsconfigs. The run writes its JSON
+result, `scripts/fallow-gate.mjs --warn` fails the job when any gate in that
+result failed or warned (a machine format does not enforce its own exit code),
+and `fallow report` renders the same result as the job summary.
 
 `rule-packs/utilize-policy.jsonc` keeps generator source browser-safe: `node:*`
 imports are errors in the generator packages outside `compile.ts` and `cli.ts`.
@@ -206,9 +206,10 @@ package's `src` folder, rounded down to a whole percent. The number includes
 the JSON Schema Test Suite run and the thin `cli.ts` entry points. The badges
 are SVG files in `.github/badges/`, committed to the repository.
 
-CI runs `pnpm check:coverage-badge` and fails when a committed badge no longer
-matches the measured value. To fix it, build the packages, regenerate the
-badges and commit the result:
+CI runs the tests once with coverage enabled (`pnpm ci:test:coverage`), checks
+`pnpm check:coverage-badge` against the `lcov.info` files from that run, and
+fails when a committed badge no longer matches. To fix it, build the packages,
+regenerate the badges and commit the result:
 
 ```sh
 pnpm build:dev

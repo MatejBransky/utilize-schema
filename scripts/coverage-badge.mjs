@@ -1,10 +1,12 @@
-// Measures unit test line coverage per package and writes one shields-style
-// SVG badge per package to .github/badges/. With `--check` it writes nothing
-// and fails when a committed badge no longer matches the measured value.
+// Reads the unit test line coverage per package from the `lcov.info` that the
+// coverage-enabled test run wrote, and renders one shields-style SVG badge per
+// package to .github/badges/. With `--measure` it runs those package tests
+// first, for local badge updates. With `--check` it writes nothing and fails
+// when a committed badge no longer matches the measured value.
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { pickColor, renderBadge } from './badge.mjs';
 
@@ -12,6 +14,7 @@ const PACKAGES = ['json-schema', 'zod', 'effect', 'typescript'];
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const BADGE_DIRECTORY = join(ROOT, '.github', 'badges');
 const IS_CHECK = process.argv.includes('--check');
+const IS_MEASURE = process.argv.includes('--measure');
 
 const LABEL = 'coverage';
 
@@ -26,15 +29,28 @@ function measureLineCoveragePercent(packageName) {
 			'--coverage.enabled',
 			'--coverage.provider=v8',
 			'--coverage.reporter=lcov',
+			'--coverage.reporter=json',
 			'--coverage.include=src/**',
 		],
 		{ cwd: packageDirectory, stdio: ['ignore', 'ignore', 'inherit'] }
 	);
-	const lcov = readFileSync(join(packageDirectory, 'coverage', 'lcov.info'), 'utf8');
-	return calculatePercent(lcov);
+
+	return readLineCoveragePercent(packageName);
 }
 
-function calculatePercent(lcov) {
+export function readLineCoveragePercent(packageName, root = ROOT) {
+	const lcovPath = join(root, 'packages', packageName, 'coverage', 'lcov.info');
+
+	if (!existsSync(lcovPath)) {
+		throw new Error(
+			`Missing ${lcovPath}. Run "pnpm ci:test:coverage" before reading the coverage badges.`
+		);
+	}
+
+	return calculatePercent(readFileSync(lcovPath, 'utf8'));
+}
+
+export function calculatePercent(lcov) {
 	const found = sumLcovField(lcov, 'LF');
 	const hit = sumLcovField(lcov, 'LH');
 	return Math.floor((hit / found) * 100);
@@ -94,11 +110,15 @@ function run() {
 	mkdirSync(BADGE_DIRECTORY, { recursive: true });
 
 	for (const packageName of PACKAGES) {
-		const update = badgeUpdate(packageName, measureLineCoveragePercent(packageName));
-		recordBadge(update, staleBadges);
+		const percent = IS_MEASURE
+			? measureLineCoveragePercent(packageName)
+			: readLineCoveragePercent(packageName);
+		recordBadge(badgeUpdate(packageName, percent), staleBadges);
 	}
 
 	reportStaleBadges(staleBadges);
 }
 
-run();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+	run();
+}
