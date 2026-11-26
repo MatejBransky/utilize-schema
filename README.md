@@ -90,7 +90,7 @@ dependency). See [Usage](#usage) for the API, options and CLI.
 
 ## 📦 Packages
 
-- **[@utilize/json-schema](./packages/json-schema)** — Resolves `$ref` and links nodes with metadata. The generator-agnostic pipeline the three targets build on.
+- **[@utilize/json-schema](./packages/json-schema)** — Resolves `$ref`, links nodes with metadata, and ships the CLI and compile helpers the three generators share.
 
   [![npm version](https://img.shields.io/npm/v/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
   [![weekly downloads](https://img.shields.io/npm/dw/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
