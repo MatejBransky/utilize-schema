@@ -188,7 +188,7 @@ the TypeScript target emits types only, so the pane says there is no runtime
 validator.
 
 - Hosted: <https://matejbransky.github.io/utilize-schema/>
-- Every pull request gets its own Vercel preview deployment.
+- Pull requests labeled `Preview` get a Vercel preview deployment.
 
 <details>
 <summary>Watch the demo (20 s)</summary>
