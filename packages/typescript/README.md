@@ -10,37 +10,50 @@
 [![2019-09 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-typescript-2019-09.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/typescript/README.md#conformance)
 [![2020-12 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-typescript-2020-12.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/typescript/README.md#conformance)
 
-TypeScript type generator for JSON Schema. Converts a JSON Schema (with
-references, `$defs` and `definitions`) into interfaces and type aliases — no
-runtime dependency, no `any`, just the types.
-
-It is the types-only sibling of [`@utilize/zod`](../zod) and
-[`@utilize/effect`](../effect): the same parser, linker and naming rules, but it
-emits a plain `.ts` module instead of a validation library. It is a drop-in
-alternative to
+TypeScript types from JSON Schema: no runtime dependency, no `any`, just the
+declarations. The types-only sibling of `@utilize/zod` and `@utilize/effect`, and
+a drop-in alternative to
 [`json-schema-to-typescript`](https://github.com/bcherny/json-schema-to-typescript)
-for the cases where you want types without a schema runtime.
+when you want types without a schema runtime.
 
-## Features
+- **No runtime, no `any`.** Permissive schemas become `unknown`, so callers have
+  to narrow at the boundary.
+- **Recursive types are first-class.** Interfaces and deferred aliases; a cycle
+  TypeScript cannot express fails with `UnsupportedCircularTypeError`.
+- **67% type-level score.** 191 of 285 draft-07 cases; the 81 gaps are keywords
+  a type cannot express, not bugs. 97% line coverage.
+- **The output imports nothing.** It compiles with `tsc --strict` as part of CI.
 
-- Emits an interface for every object and a type alias for everything else
-- One exported declaration per standalone schema (root, `$defs`, `definitions`,
-  referenced)
-- Reads `$defs` and `definitions` independently, including boolean definitions
-- Handles local, external, cyclic, `$id` and `$anchor` based `$ref`s — recursive
-  types come out as interfaces and deferred aliases that TypeScript accepts
-- Rejects cycles TypeScript cannot express with a clear error instead of
-  emitting code that does not compile
-- `allOf` becomes an intersection, `anyOf` and `oneOf` become unions that keep
-  the sibling keywords as constraints
-- `patternProperties` and `additionalProperties` become index signatures
-- JSDoc from `title`, `description`, `deprecated`, `default`, `format` and
-  `examples`, without repeating a title that only matches the declared name
-- `readOnly` becomes a `readonly` modifier
-- Permissive schemas map to `unknown`, not `any`
-- Schema names never shadow the globals the output uses (`Array`, `Record`)
-- Ships a `utilize-typescript` CLI that reads JSON or YAML from a file,
-  directory, glob or stdin
+```json
+{ "type": "object",
+  "properties": { "email": { "type": "string", "format": "email" } },
+  "required": ["email"] }
+```
+
+```ts
+export interface User {
+  /** @format email */
+  email: string;
+}
+```
+
+```sh
+pnpm add -D @utilize/typescript
+utilize-typescript user.json user.ts
+```
+
+<details>
+<summary>Table of contents</summary>
+
+- [Usage](#usage)
+- [CLI](#cli)
+- [Output](#output)
+- [Keyword coverage](#keyword-coverage)
+- [Conformance](#conformance)
+- [Differences from json-schema-to-typescript](#differences-from-json-schema-to-typescript)
+- [Notes](#notes)
+
+</details>
 
 ## Usage
 
@@ -138,6 +151,22 @@ full table is in [docs/keywords.md](../../docs/keywords.md#typescript).
 
 ## Conformance
 
+The badges link here. Numbers for every measured dialect live in
+[baseline.ts](test/suite/baseline.ts); the draft-07 gaps are listed case by case.
+
+| Dialect  | Cases passing | Where the gaps are                                                                    |
+| -------- | ------------- | ------------------------------------------------------------------------------------- |
+| draft-04 | 109 / 187     | [baseline](test/suite/baseline.ts)                                                    |
+| draft-06 | 168 / 253     | [baseline](test/suite/baseline.ts)                                                    |
+| draft-07 | 191 / 285     | [known gaps](test/suite/knownGaps.ts) · 81 type gaps (keywords a type cannot express) |
+| 2019-09  | 241 / 396     | [baseline](test/suite/baseline.ts)                                                    |
+| 2020-12  | 235 / 409     | [baseline](test/suite/baseline.ts)                                                    |
+
+Which keywords become types is in
+[docs/keywords.md](../../docs/keywords.md#typescript). Only draft-07 is pinned
+case by case; for the other dialects the baseline records case and instance
+counts, so their row is a rate rather than a list.
+
 The generator is checked against the official
 [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite)
 (draft-07). A type cannot validate a value, so the runner emits every suite
@@ -210,9 +239,3 @@ generator.
 - A required key that is not declared in `properties` is typed from the
   `patternProperties` schemas that match it, then from
   `additionalProperties`, or as `never` when the object is closed.
-
-## When to use
-
-Use this package when you want TypeScript types from JSON Schema without adding
-a schema runtime — for API clients, configuration files, generated domain
-models or migration from `json-schema-to-typescript`.

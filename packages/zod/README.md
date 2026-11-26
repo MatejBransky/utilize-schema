@@ -4,29 +4,54 @@
 [![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
 [![Unit test coverage](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/coverage-zod.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/CONTRIBUTING.md#coverage-badge)
 
-[![draft-04 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-zod-draft-04.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/zod/README.md#testing)
-[![draft-06 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-zod-draft-06.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/zod/README.md#testing)
-[![draft-07 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-zod-draft-07.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/zod/README.md#testing)
-[![2019-09 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-zod-2019-09.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/zod/README.md#testing)
-[![2020-12 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-zod-2020-12.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/zod/README.md#testing)
+[![draft-04 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-zod-draft-04.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/zod/README.md#conformance)
+[![draft-06 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-zod-draft-06.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/zod/README.md#conformance)
+[![draft-07 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-zod-draft-07.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/zod/README.md#conformance)
+[![2019-09 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-zod-2019-09.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/zod/README.md#conformance)
+[![2020-12 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-zod-2020-12.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/zod/README.md#conformance)
 
-TypeScript/Zod code generator for JSON Schema. Converts a JSON Schema (with
-references, `$defs` and `definitions`) into standalone Zod schemas and
-TypeScript types.
+Zod schemas and TypeScript types from JSON Schema, including `$ref`s, cycles and
+modular `$defs`. Every definition becomes a standalone schema, and the generated
+file imports nothing but `zod`.
 
-## Features
+- **Standalone output.** One schema per root, `$defs` and `definitions` entry,
+  topologically sorted, each with its `z.infer` type.
+- **Cycles handled.** Getters for object properties, typed `z.lazy()` where a
+  getter cannot defer the reference.
+- **Five dialects.** draft-04, draft-06, draft-07, 2019-09 and 2020-12;
+  `$ref` siblings apply only where the dialect defines them.
+- **93% of the official suite.** 283 of 304 draft-07 cases; 96% line coverage.
 
-- Generates standalone Zod schemas for the root and all definitions
-- Infers TypeScript types from Zod schemas, including recursive ones
-- Handles local, external, cyclic, `$id` and `$anchor` based `$ref`s
-- Applies `$ref` siblings only in dialects that define them: 2019-09 and newer
-  intersect them, draft-07 and older ignore them
-- Validates `patternProperties`, including overlapping patterns and their
-  interaction with `additionalProperties`
-- Emits getters or typed `z.lazy()` for recursive schemas
-- Topologically sorts schemas by dependency
-- Supports most of JSON Schema Draft 7 (see the root README for keyword
-  coverage)
+```json
+{ "type": "object",
+  "properties": { "email": { "type": "string", "format": "email" } },
+  "required": ["email"] }
+```
+
+```ts
+export const User = z.object({ email: z.email().meta({ format: 'email' }) });
+export type User = z.infer<typeof User>;
+```
+
+```sh
+pnpm add zod
+pnpm add -D @utilize/zod
+utilize-zod user.json user.zod.ts
+```
+
+<details>
+<summary>Table of contents</summary>
+
+- [Usage](#usage)
+- [Options](#options)
+- [Output](#output)
+- [Naming](#naming)
+- [How it works](#how-it-works)
+- [CLI](#cli)
+- [Conformance](#conformance)
+- [Testing](#testing)
+
+</details>
 
 ## Usage
 
@@ -220,6 +245,24 @@ defaults to stdout. Every generated file starts with a "do not edit" banner
 `.readonly()`, and `--runtime-import @utilize/zod/runtime` to import the
 `oneOf` helper instead of declaring it in every file.
 
+## Conformance
+
+The official JSON Schema Test Suite is pinned and run for all five dialects. The
+badges link here:
+
+| Dialect  | Cases passing | Exact failures                                                                                      |
+| -------- | ------------- | --------------------------------------------------------------------------------------------------- |
+| draft-04 | 173 / 194     | [baseline](test/suite/baseline.ts)                                                                  |
+| draft-06 | 251 / 263     | [baseline](test/suite/baseline.ts)                                                                  |
+| draft-07 | 283 / 304     | [case list](test/suite/knownFailures.ts) · [failing instances](test/suite/knownFailureInstances.ts) |
+| 2019-09  | 353 / 417     | [baseline](test/suite/baseline.ts)                                                                  |
+| 2020-12  | 351 / 431     | [baseline](test/suite/baseline.ts)                                                                  |
+
+Which keywords are implemented, and which are only kept as annotations, is in
+[docs/keywords.md](../../docs/keywords.md#runtime-generators). Only draft-07 is
+pinned case by case; for the other dialects the baseline records case and
+instance counts, so their row is a rate rather than a list.
+
 ## Testing
 
 ```sh
@@ -259,8 +302,3 @@ The runner prints the current totals at the end of every run.
 
 See [`docs/conformance.md`](../../docs/conformance.md) for how these numbers
 relate to json-schema-to-typescript.
-
-## When to use
-
-Use this package to automate Zod schema and TypeScript type generation from
-JSON Schema, including complex schemas with references and modular structure.

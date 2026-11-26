@@ -4,19 +4,32 @@
 [![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
 [![Unit test coverage](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/coverage-json-schema.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/CONTRIBUTING.md#coverage-badge)
 
-Generator-agnostic JSON Schema parser and linker. Resolves local and external
-`$ref`s and prepares the schema graph for code generators by annotating each
-node with metadata.
+The JSON Schema parser behind `@utilize/zod`, `@utilize/effect` and
+`@utilize/typescript`. It resolves `$ref`s and annotates every node with the
+metadata a generator needs; it emits no code and has no opinion about output.
 
-## Features
+- **Every reference shape.** Local, external, `$id`/`$anchor`, boolean targets
+  and recursive graphs.
+- **Linked, not expanded.** Cyclic schemas stay a graph, so traversal never
+  blows up.
+- **Metadata per node.** Parent, referenced schema, file name and dialect, under
+  a `Meta` symbol that never serializes.
+- **90% line coverage.**
 
-- Resolves local, external, `$id` and `$anchor` based `$ref` references, including
-  `$ref` to boolean schemas
-- Serves external documents from memory by retrieval URI (`externalSchemas`)
-  instead of reading them from disk or the network
-- Links recursive graphs without expanding them infinitely
-- Annotates every schema node with metadata for downstream generators
-- No code generation – just robust schema preparation
+```sh
+pnpm add -D @utilize/json-schema
+```
+
+<details>
+<summary>Table of contents</summary>
+
+- [Metadata](#metadata)
+- [Usage](#usage)
+- [External schemas by URI](#external-schemas-by-uri)
+- [Dialects](#dialects)
+- [Benchmarks](#benchmarks)
+
+</details>
 
 ## Metadata
 
@@ -134,8 +147,3 @@ It runs 20 timed iterations after two warm-ups and prints median, p95, min and
 max. On an Apple Silicon laptop the recorded medians were ~7.5 ms for the
 60-file template and ~13.4 ms for the 140-resource bundle. Treat the numbers as
 a relative baseline on your machine, not a budget.
-
-## When to use
-
-Use this package if you need to preprocess JSON Schema for code generation,
-validation, or analysis, and require robust `$ref` resolution and metadata.
