@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, normalize, relative, sep } from 'node:path';
 
-export function collectDeclarations(entry: string, root: string): Record<string, string> {
-	const files: Record<string, string> = {};
+export function collectDeclarations(entry: string, root: string) {
+	const files = new Map<string, string>();
 	const seen = new Set<string>();
 	const queue = [entry];
 
@@ -13,19 +13,23 @@ export function collectDeclarations(entry: string, root: string): Record<string,
 			continue;
 		}
 
-		files[relative(root, file).split(sep).join('/')] = content;
+		files.set(relative(root, file).split(sep).join('/'), content);
 
 		for (const match of content.matchAll(/(?:from|import)\s*\(?\s*["'](\.[^"']+)["']/g)) {
 			queue.push(normalize(join(dirname(file), match[1])));
 		}
 	}
 
-	return files;
+	return Object.fromEntries(files);
 }
 
 function nextUnseenFile(queue: string[], seen: Set<string>): string | null {
 	while (queue.length > 0) {
-		const file = queue.pop()!;
+		const file = queue.pop();
+
+		if (file === undefined) {
+			throw new Error('Expected a defined value');
+		}
 
 		if (!seen.has(file)) {
 			seen.add(file);

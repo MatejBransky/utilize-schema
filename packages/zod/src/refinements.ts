@@ -1,3 +1,4 @@
+import type { InferableType } from './inferTypes';
 import {
 	containsBounds,
 	isKeywordApplicable,
@@ -10,13 +11,13 @@ import type { GeneratorContext } from './generators/types';
 import { inferTypeKeywords } from './inferTypes';
 import { ts } from './utils';
 
-export type Generate = (schema: ParsedJSONSchema, context: GeneratorContext) => string;
+export type GenerateSubschema = (schema: ParsedJSONSchema, context: GeneratorContext) => string;
 
 /**
  * Guards for the types `inferTypeKeywords` can infer. Keywords on an untyped
  * schema must not reject values of other types.
  */
-const typeGuards: Record<string, string> = {
+const typeGuards: Record<InferableType, string> = {
 	object: `typeof value === 'object' && value !== null && !Array.isArray(value)`,
 	array: 'Array.isArray(value)',
 	string: `typeof value === 'string'`,
@@ -36,7 +37,7 @@ export function applyRefinements(
 	expression: string,
 	schema: ParsedJSONSchemaObject,
 	context: GeneratorContext,
-	generate: Generate
+	generate: GenerateSubschema
 ): string {
 	const checks: string[] = [];
 	const contextType = typeof schema.type === 'string' ? schema.type : undefined;
@@ -61,7 +62,7 @@ function appendImplicitTypeChecks(
 	checks: string[],
 	schema: ParsedJSONSchemaObject,
 	context: GeneratorContext,
-	generate: Generate
+	generate: GenerateSubschema
 ): void {
 	// Keywords on a schema without `type` only apply to their own type, so each
 	// constrained type gets a separate guarded check. A schema can constrain
@@ -102,7 +103,7 @@ function appendNotAndConditionalChecks(
 	schema: ParsedJSONSchemaObject,
 	contextType: Parameters<typeof narrowUntypedSchema>[1],
 	context: GeneratorContext,
-	generate: Generate
+	generate: GenerateSubschema
 ): void {
 	if (schema.not !== undefined) {
 		const not = generate(narrowUntypedSchema(schema.not, contextType, context.dialect), context);
@@ -122,11 +123,11 @@ function appendNotAndConditionalChecks(
 
 	if (schema.if !== undefined && isKeywordApplicable(context.dialect, 'if')) {
 		const condition = generate(
-			narrowUntypedSchema(schema.if as unknown as ParsedJSONSchema, contextType, context.dialect),
+			narrowUntypedSchema(schema.if as ParsedJSONSchema, contextType, context.dialect),
 			context
 		);
-		const thenSchema = schema.then as unknown as ParsedJSONSchema | undefined;
-		const elseSchema = schema.else as unknown as ParsedJSONSchema | undefined;
+		const thenSchema = schema.then as ParsedJSONSchema | undefined;
+		const elseSchema = schema.else as ParsedJSONSchema | undefined;
 		const thenBlock =
 			thenSchema !== undefined
 				? checkBlock(
@@ -154,7 +155,7 @@ function appendContainsCheck(
 	checks: string[],
 	schema: ParsedJSONSchemaObject,
 	context: GeneratorContext,
-	generate: Generate
+	generate: GenerateSubschema
 ): void {
 	if (schema.contains !== undefined && isKeywordApplicable(context.dialect, 'contains')) {
 		const contains = generate(schema.contains, context);
@@ -259,7 +260,7 @@ function appendPropertyNamesCheck(
 	checks: string[],
 	schema: ParsedJSONSchemaObject,
 	context: GeneratorContext,
-	generate: Generate
+	generate: GenerateSubschema
 ): void {
 	if (schema.propertyNames !== undefined && isKeywordApplicable(context.dialect, 'propertyNames')) {
 		const propertyNames = generate(
@@ -285,7 +286,7 @@ function appendDependencyChecks(
 	checks: string[],
 	schema: ParsedJSONSchemaObject,
 	context: GeneratorContext,
-	generate: Generate
+	generate: GenerateSubschema
 ): void {
 	// `dependencies` is either native to the dialect or merged from
 	// `dependentRequired` / `dependentSchemas` by the normalizer. A foreign

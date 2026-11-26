@@ -4,7 +4,7 @@ import type { FormatMap, FormatMode } from './types';
 import { unicodePattern } from '../regex';
 import { ts } from '../utils';
 
-export const generator = createGenerator(
+export const stringGenerator = createGenerator(
 	(schema) => {
 		if ('enum' in schema) {
 			return false;
@@ -93,7 +93,7 @@ function applyStringConstraints({ expression, schema }: StringConstraints) {
 	return expression;
 }
 
-const formatToZodMethod: Record<string, string> = {
+const formatToZodMethod = {
 	email: '.email()',
 	uuid: '.uuid()',
 	url: '.url()',
@@ -113,4 +113,4 @@ const formatToZodMethod: Record<string, string> = {
 	time: '.iso.time()',
 	'date-time': '.iso.datetime()',
 	duration: '.iso.duration()',
-};
+} satisfies Record<string, string>;

@@ -1,4 +1,4 @@
-import { isPlainObject, Meta } from '@utilize/json-schema';
+import { expectDefined, isPlainObject, Meta } from '@utilize/json-schema';
 import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 /**
@@ -12,7 +12,15 @@ import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-sch
 export function findUnsupportedCycles(
 	schemas: ParsedJSONSchemaObject[]
 ): ParsedJSONSchemaObject[][] {
-	return schemas.filter((schema) => reachesTransparently(schema, schema)).map((schema) => [schema]);
+	const cycles: ParsedJSONSchemaObject[][] = [];
+
+	for (const schema of schemas) {
+		if (reachesTransparently(schema, schema)) {
+			cycles.push([schema]);
+		}
+	}
+
+	return cycles;
 }
 
 /**
@@ -28,7 +36,7 @@ function reachesTransparently(
 	const stack = transparentChildren(start);
 
 	while (stack.length > 0) {
-		const node = stack.pop()!;
+		const node = expectDefined(stack.pop());
 
 		if (node === target) {
 			return true;
@@ -60,8 +68,8 @@ function transparentChildren(schema: ParsedJSONSchemaObject): ParsedJSONSchemaOb
 
 		if (Array.isArray(members)) {
 			children.push(
-				...(members as unknown as ParsedJSONSchema[]).filter(
-					(member): member is ParsedJSONSchemaObject => isPlainObject(member)
+				...(members as ParsedJSONSchema[]).filter((member): member is ParsedJSONSchemaObject =>
+					isPlainObject(member)
 				)
 			);
 		}

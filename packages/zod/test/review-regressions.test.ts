@@ -1,7 +1,7 @@
 import type { JSONSchema } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
-import { compile, compileToZod } from './test-utils';
+import { generateCode, compileToZod } from './test-utils';
 
 describe('review regressions', () => {
 	test('boolean false schemas reject all values', async () => {
@@ -50,7 +50,7 @@ describe('review regressions', () => {
 	});
 
 	test('quotes required keys that are not valid identifiers', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: {},
 			required: ['order-id'],
@@ -69,7 +69,7 @@ describe('review regressions', () => {
 			},
 		} as unknown as JSONSchema;
 
-		await expect(compile(schema)).resolves.toContain('export const Root');
+		await expect(generateCode(schema)).resolves.toContain('export const Root');
 	});
 
 	test('combines dependentRequired and dependentSchemas for the same key', async () => {

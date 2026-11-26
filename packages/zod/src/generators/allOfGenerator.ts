@@ -1,10 +1,11 @@
+import { expectDefined } from '@utilize/json-schema';
 import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
 
 import { NEWLINE, ts } from '../utils';
 
-export const generator = createGenerator<
+export const allOfGenerator = createGenerator<
 	ParsedJSONSchemaObject & {
 		allOf: ParsedJSONSchemaObject[];
 	}
@@ -23,7 +24,7 @@ export const generator = createGenerator<
 
 		return rest.reduce(
 			(expression, next) => ts`z.intersection(${expression},${NEWLINE}${next})`,
-			first!
+			expectDefined(first)
 		);
 	}
 );

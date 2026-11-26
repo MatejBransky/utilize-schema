@@ -17,14 +17,20 @@ export const nameRootSchema: CustomNameResolver = (schema) =>
  * `scope` (for example `{ z }`) in scope, which keeps the suite fast: hundreds
  * of schemas compile without touching the filesystem.
  */
+function evaluateModule<T>(names: string[], body: string, values: unknown[]): T {
+	// fallow-ignore-next-line security-sink -- the suite evaluates generated code in memory; no input comes from outside the test process
+	const evaluate = new Function(...names, body) as (...args: unknown[]) => T;
+
+	return evaluate(...values);
+}
+
 export function evaluateGeneratedCode<T>(code: string, scope: Record<string, unknown>): T {
 	const names = Object.keys(scope);
 	const values = Object.values(scope);
 
 	// A boolean root schema is emitted as a bare expression.
 	if (!code.includes('export ')) {
-		// fallow-ignore-next-line security-sink -- the suite evaluates generated code in memory; no input comes from outside the test process
-		return new Function(...names, `return ${code}`)(...values) as T;
+		return evaluateModule<T>(names, `return ${code}`, values);
 	}
 
 	// `stripTypeScriptTypes` removes type-only declarations but keeps the ESM
@@ -34,6 +40,5 @@ export function evaluateGeneratedCode<T>(code: string, scope: Record<string, unk
 		'const '
 	);
 
-	// fallow-ignore-next-line security-sink -- the suite evaluates generated code in memory; no input comes from outside the test process
-	return new Function(...names, `${javascript}\nreturn Root;`)(...values) as T;
+	return evaluateModule<T>(names, `${javascript}\nreturn Root;`, values);
 }

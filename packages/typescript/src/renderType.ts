@@ -1,4 +1,10 @@
-import { isPlainObject, Meta, toSafeString } from '@utilize/json-schema';
+import {
+	expectDefined,
+	isPlainObject,
+	Meta,
+	schemaRecord,
+	toSafeString,
+} from '@utilize/json-schema';
 import type {
 	JSONSchemaTypeName,
 	ParsedJSONSchema,
@@ -249,7 +255,7 @@ function isOfType(
 }
 
 function hasOnlyTypeKeyword(schema: ParsedJSONSchemaObject): boolean {
-	const record = schema as unknown as Record<string, unknown>;
+	const record = schemaRecord(schema);
 
 	for (const keyword of TYPE_KEYWORDS) {
 		if (keyword !== 'type' && record[keyword] !== undefined) {
@@ -310,7 +316,7 @@ function renderUntyped(
  * `unknown`.
  */
 function inferFamily(schema: ParsedJSONSchemaObject): 'object' | 'array' | undefined {
-	const record = schema as unknown as Record<string, unknown>;
+	const record = schemaRecord(schema);
 
 	if (OBJECT_KEYWORDS.some((keyword) => record[keyword] !== undefined)) {
 		return 'object';
@@ -338,7 +344,7 @@ function renderReference(
 		return renderType(resolved, context, level);
 	}
 
-	const name = context.nameOf(resolved as unknown as ParsedJSONSchemaObject, ref);
+	const name = context.nameOf(resolved as ParsedJSONSchemaObject, ref);
 	const siblings = referenceSiblings(schema);
 
 	if (siblings === undefined) {
@@ -355,7 +361,7 @@ function renderReference(
  * keywords. Those siblings are intersected with the referenced type.
  */
 function referenceSiblings(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject | undefined {
-	const record = schema as unknown as Record<string, unknown>;
+	const record = schemaRecord(schema);
 	const keys = Object.keys(schema).filter(
 		(keyword) => keyword !== '$ref' && TYPE_KEYWORDS.has(keyword) && record[keyword] !== undefined
 	);
@@ -364,12 +370,13 @@ function referenceSiblings(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObje
 		return undefined;
 	}
 
-	const sibling: Record<string, unknown> = {};
+	const sibling: Record<string, ParsedJSONSchema> = {};
 
 	for (const key of keys) {
-		sibling[key] = record[key];
+		sibling[key] = record[key] as ParsedJSONSchema;
 	}
 
+	// oxlint-disable-next-line quality/no-chained-type-assertions -- synthetic sibling; it has no Meta of its own
 	return sibling as unknown as ParsedJSONSchemaObject;
 }
 
@@ -406,7 +413,7 @@ function renderLiteral(value: unknown): string {
 }
 
 function renderArray(schema: ParsedJSONSchemaObject, context: TypeContext, level: number): string {
-	const items = schema.items as unknown as ParsedJSONSchema | ParsedJSONSchema[] | undefined;
+	const items = schema.items as ParsedJSONSchema | ParsedJSONSchema[] | undefined;
 	const prefixItems = Array.isArray(schema.prefixItems)
 		? (schema.prefixItems as ParsedJSONSchema[])
 		: Array.isArray(items)
@@ -452,7 +459,7 @@ function arrayRest(
 		return false;
 	}
 
-	return (schema.additionalItems as unknown as ParsedJSONSchema | undefined) ?? true;
+	return (schema.additionalItems as ParsedJSONSchema | undefined) ?? true;
 }
 
 function renderObject(schema: ParsedJSONSchemaObject, context: TypeContext, level: number): string {
@@ -740,7 +747,7 @@ function remainingSchema(
 }
 
 function hasRenderableKeywords(schema: ParsedJSONSchemaObject): boolean {
-	const record = schema as unknown as Record<string, unknown>;
+	const record = schemaRecord(schema);
 
 	for (const keyword of TYPE_KEYWORDS) {
 		if (keyword === '$ref') {
@@ -801,7 +808,7 @@ function intersection(types: string[]): string {
 	}
 
 	if (unique.length === 1) {
-		return unique[0]!;
+		return expectDefined(unique[0]);
 	}
 
 	return unique.map(parenthesize).join(' & ');

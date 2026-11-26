@@ -33,7 +33,12 @@ function output() {
 
 const compileSchema = vi.fn(async () => 'stdin-code');
 const compileFile = vi.fn(async (filePath: string) => `code:${path.basename(filePath)}`);
-const readOptions = vi.fn((): { ok: true; options: TestOptions } => ({
+interface ReadOptionsResult {
+	ok: true;
+	options: TestOptions;
+}
+
+const readOptions = vi.fn((): ReadOptionsResult => ({
 	ok: true,
 	options: { mode: 'assert' },
 }));

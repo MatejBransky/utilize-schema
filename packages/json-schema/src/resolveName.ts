@@ -155,8 +155,11 @@ export function resolveExplicitName({
 
 	// 1. Prefer $id or title if present
 	if (schema.$id) {
-		const id = schema.$id.split(/[/#]/).filter(Boolean).pop()!;
-		return generateName(id, usedNames);
+		const id = schema.$id.split(/[/#]/).filter(Boolean).pop();
+
+		if (id !== undefined) {
+			return generateName(id, usedNames);
+		}
 	}
 	if (schema.title) {
 		return generateName(schema.title, usedNames);

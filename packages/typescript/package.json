@@ -1,6 +1,6 @@
 {
 	"name": "@utilize/typescript",
-	"version": "0.4.1",
+	"version": "0.5.0",
 	"description": "TypeScript type generator for JSON Schema.",
 	"keywords": [
 		"codegen",
@@ -43,7 +43,8 @@
 		"test": "vitest",
 		"test:suite": "vitest run test/jsonSchemaTestSuite.test.ts",
 		"ci:test": "vitest run",
-		"dev": "tsdown --watch"
+		"dev": "tsdown --watch",
+		"update:suite-baseline": "node scripts/update-suite-baseline.mjs"
 	},
 	"dependencies": {
 		"@utilize/json-schema": "workspace:*"

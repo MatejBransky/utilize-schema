@@ -53,7 +53,7 @@ export function arrayRest(
 		return false;
 	}
 
-	return (schema.additionalItems as unknown as ParsedJSONSchema | undefined) ?? true;
+	return (schema.additionalItems as ParsedJSONSchema | undefined) ?? true;
 }
 
 export interface ObjectKeys {

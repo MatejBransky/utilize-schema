@@ -1,45 +1,45 @@
 import { describe, expect, test } from 'vitest';
 
-import { compile, ts } from './test-utils';
+import { generateCode, ts } from './test-utils';
 
 describe('type', () => {
 	test('unknown', async () => {
-		await expect(compile({})).toMatchCode(ts`
+		await expect(generateCode({})).toMatchCode(ts`
       export const Root = z.unknown()
       export type Root = z.infer<typeof Root>;
     `);
 	});
 
 	test('null', async () => {
-		await expect(compile({ type: 'null' })).toMatchCode(ts`
+		await expect(generateCode({ type: 'null' })).toMatchCode(ts`
       export const Root = z.null()
       export type Root = z.infer<typeof Root>;
     `);
 	});
 
 	test('boolean', async () => {
-		await expect(compile({ type: 'boolean' })).toMatchCode(ts`
+		await expect(generateCode({ type: 'boolean' })).toMatchCode(ts`
       export const Root = z.boolean()
       export type Root = z.infer<typeof Root>;
     `);
 	});
 
 	test('number', async () => {
-		await expect(compile({ type: 'number' })).toMatchCode(ts`
+		await expect(generateCode({ type: 'number' })).toMatchCode(ts`
       export const Root = z.number()
       export type Root = z.infer<typeof Root>;
     `);
 	});
 
 	test('integer', async () => {
-		await expect(compile({ type: 'integer' })).toMatchCode(ts`
+		await expect(generateCode({ type: 'integer' })).toMatchCode(ts`
       export const Root = z.int()
       export type Root = z.infer<typeof Root>;
     `);
 	});
 
 	test('string', async () => {
-		await expect(compile({ type: 'string' })).toMatchCode(ts`
+		await expect(generateCode({ type: 'string' })).toMatchCode(ts`
       export const Root = z.string()
       export type Root = z.infer<typeof Root>;
     `);
@@ -47,7 +47,7 @@ describe('type', () => {
 
 	test('record (= additionalProperties)', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'object',
 				additionalProperties: { type: 'boolean' },
 			})
@@ -79,7 +79,7 @@ describe('type', () => {
 	});
 
 	test('object without additional props', async () => {
-		await expect(compile({ type: 'object', properties: { field: { type: 'boolean' } } }))
+		await expect(generateCode({ type: 'object', properties: { field: { type: 'boolean' } } }))
 			.toMatchCode(ts`
       export const Root = z.object({
         field: z.boolean().optional(),
@@ -90,7 +90,7 @@ describe('type', () => {
 
 	test('object with additional props', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'object',
 				properties: { field: { type: 'boolean' } },
 				additionalProperties: { type: 'boolean' },
@@ -124,7 +124,7 @@ describe('type', () => {
 
 	test('object with any additional props', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'object',
 				properties: { field: { type: 'boolean' } },
 				additionalProperties: true,
@@ -139,7 +139,7 @@ describe('type', () => {
 
 	test('strict object', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'object',
 				properties: { field: { type: 'boolean' } },
 				additionalProperties: false,
@@ -153,7 +153,7 @@ describe('type', () => {
 	});
 
 	test('array', async () => {
-		await expect(compile({ type: 'array', items: { type: 'string' } })).toMatchCode(ts`
+		await expect(generateCode({ type: 'array', items: { type: 'string' } })).toMatchCode(ts`
         export const Root = z.array(z.string())
         export type Root = z.infer<typeof Root>;
       `);
@@ -161,7 +161,7 @@ describe('type', () => {
 
 	test('array with multiple items schemas (tuple)', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'array',
 				items: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
 			})
@@ -177,7 +177,7 @@ describe('type', () => {
 
 	test('fixed-length tuple from minItems and maxItems', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'array',
 				items: [
 					{ type: 'integer', minimum: 0 },
@@ -197,7 +197,7 @@ describe('type', () => {
 
 	test('array with multiple items schemas and additionalItems schema (typle with spread)', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'array',
 				items: [{ type: 'string' }, { type: 'number' }],
 				additionalItems: { type: 'boolean' },
@@ -212,14 +212,14 @@ describe('type', () => {
 	});
 
 	test('literal', async () => {
-		await expect(compile({ const: 'test' })).toMatchCode(ts`
+		await expect(generateCode({ const: 'test' })).toMatchCode(ts`
       export const Root = z.literal('test')
       export type Root = z.infer<typeof Root>;
     `);
 	});
 
 	test('literal null', async () => {
-		await expect(compile({ const: null })).toMatchCode(ts`
+		await expect(generateCode({ const: null })).toMatchCode(ts`
       export const Root = z.literal(null)
       export type Root = z.infer<typeof Root>;
     `);
@@ -227,7 +227,7 @@ describe('type', () => {
 
 	test('enum of strings (z.enum)', async () => {
 		await expect(
-			compile({
+			generateCode({
 				enum: ['option1', 'option2', 'option3'],
 			})
 		).toMatchCode(ts`
@@ -238,7 +238,7 @@ describe('type', () => {
 
 	test('enum of various types (z.literal)', async () => {
 		await expect(
-			compile({
+			generateCode({
 				enum: ['option1', 2, true, null],
 			})
 		).toMatchCode(ts`
@@ -253,21 +253,21 @@ describe('type', () => {
 	});
 
 	test('unknown with default number', async () => {
-		await expect(compile({ default: 0 })).toMatchCode(ts`
+		await expect(generateCode({ default: 0 })).toMatchCode(ts`
       export const Root = z.number().default(0)
       export type Root = z.infer<typeof Root>;
     `);
 	});
 
 	test('unknown with default string', async () => {
-		await expect(compile({ default: 'test' })).toMatchCode(ts`
+		await expect(generateCode({ default: 'test' })).toMatchCode(ts`
       export const Root = z.string().default('test')
       export type Root = z.infer<typeof Root>;
     `);
 	});
 
 	test('unknown with default boolean', async () => {
-		await expect(compile({ default: true })).toMatchCode(ts`
+		await expect(generateCode({ default: true })).toMatchCode(ts`
       export const Root = z.boolean().default(true)
       export type Root = z.infer<typeof Root>;
     `);
@@ -275,7 +275,7 @@ describe('type', () => {
 
 	test('multiple types', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: ['object', 'boolean'],
 				properties: { field: { type: 'string' } },
 				default: true,
@@ -292,7 +292,7 @@ describe('type', () => {
 	});
 
 	test("property with default value doesn't have optional part", async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: {
 				stringValue: { type: 'string', default: 'test' },
@@ -300,7 +300,7 @@ describe('type', () => {
 			},
 		});
 
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
       export const Root = z.object({
         stringValue: z.string().default('test'),
         booleanValue: z.boolean().default(false)

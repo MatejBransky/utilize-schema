@@ -7,7 +7,16 @@ import {
 	SCHEMA_MAP_KEYWORDS,
 	SINGLE_SCHEMA_KEYWORDS,
 } from '@utilize/json-schema';
-import type { DialectId, KeywordPolicy } from '@utilize/json-schema';
+import type { DialectId, JSONSchema, KeywordPolicy } from '@utilize/json-schema';
+
+/** A JSON value before schema parsing; the bundler rewrites it without validating it. */
+type UnparsedJson =
+	| null
+	| boolean
+	| number
+	| string
+	| UnparsedJson[]
+	| { [key: string]: UnparsedJson };
 
 export interface SchemaFile {
 	id: string;
@@ -30,7 +39,7 @@ export interface ParsedFile {
 }
 
 export interface BundleResult {
-	root: unknown;
+	root: JSONSchema | boolean | null;
 	rootFileName: string;
 	problems: Problem[];
 	keyByFile: Map<string, string>;
@@ -97,7 +106,7 @@ export function buildBundle(
 
 	const { keyByFile, definitionsKey } = allocateDefinitionKeys(rootParsed, parsedFiles);
 	const byName = indexFilesByName(parsedFiles, problems);
-	const rewritten = new Map<string, unknown>();
+	const rewritten = new Map<string, UnparsedJson>();
 	const context: RewriteContext = {
 		rootId: rootParsed.file.id,
 		keyByFile,
@@ -113,7 +122,7 @@ export function buildBundle(
 		}
 	}
 
-	const root = attachDefinitions({
+	const rootValue = attachDefinitions({
 		root: rewritten.get(rootParsed.file.id),
 		parsedFiles,
 		rewritten,
@@ -122,6 +131,11 @@ export function buildBundle(
 		rootFileId: rootParsed.file.id,
 		problems,
 	});
+
+	const root =
+		typeof rootValue === 'boolean' || isPlainObject(rootValue)
+			? (rootValue as JSONSchema | boolean)
+			: null;
 
 	return {
 		root,
@@ -181,10 +195,12 @@ function definitionsKeyFor(schema: unknown): '$defs' | 'definitions' {
 	return isPlainObject(schema.definitions) ? 'definitions' : '$defs';
 }
 
-function allocateDefinitionKeys(
-	rootParsed: ParsedFile,
-	parsedFiles: ParsedFile[]
-): { keyByFile: Map<string, string>; definitionsKey: '$defs' | 'definitions' } {
+interface DefinitionKeys {
+	keyByFile: Map<string, string>;
+	definitionsKey: '$defs' | 'definitions';
+}
+
+function allocateDefinitionKeys(rootParsed: ParsedFile, parsedFiles: ParsedFile[]): DefinitionKeys {
 	const keyByFile = new Map<string, string>();
 	const usedKeys = new Set<string>();
 	const definitionsKey = definitionsKeyFor(rootParsed.schema);
@@ -247,7 +263,7 @@ function indexFilesByName(parsedFiles: ParsedFile[], problems: Problem[]): Map<s
 interface DefinitionAssembly {
 	root: unknown;
 	parsedFiles: ParsedFile[];
-	rewritten: Map<string, unknown>;
+	rewritten: Map<string, UnparsedJson>;
 	keyByFile: Map<string, string>;
 	definitionsKey: '$defs' | 'definitions';
 	rootFileId: string;
@@ -262,7 +278,7 @@ function attachDefinitions({
 	definitionsKey,
 	rootFileId,
 	problems,
-}: DefinitionAssembly): unknown {
+}: DefinitionAssembly): UnparsedJson {
 	if (!isPlainObject(root)) {
 		if (keyByFile.size > 0) {
 			problems.push({
@@ -272,22 +288,29 @@ function attachDefinitions({
 			});
 		}
 
-		return root;
+		return root as UnparsedJson;
 	}
 
-	const definitions: Record<string, unknown> = {
-		...(root[definitionsKey] as Record<string, unknown> | undefined),
-	};
+	const definitions = new Map<string, UnparsedJson>();
+	const existing = root[definitionsKey];
+
+	if (isPlainObject(existing)) {
+		for (const [name, value] of Object.entries(existing)) {
+			definitions.set(name, value as UnparsedJson);
+		}
+	}
 
 	for (const parsed of parsedFiles) {
 		const key = keyByFile.get(parsed.file.id);
 
-		if (key) {
-			definitions[key] = rewritten.get(parsed.file.id);
+		const value = key ? rewritten.get(parsed.file.id) : undefined;
+
+		if (key && value !== undefined) {
+			definitions.set(key, value);
 		}
 	}
 
-	return { ...root, [definitionsKey]: definitions };
+	return { ...root, [definitionsKey]: Object.fromEntries(definitions) } as UnparsedJson;
 }
 
 const ROOT_FILE_NAMES = new Set(['index.json', 'schema.json', 'root.json']);
@@ -398,12 +421,12 @@ interface RewriteContext {
 	problems: Problem[];
 }
 
-function rewrite(value: unknown, file: SchemaFile, context: RewriteContext): unknown {
+function rewrite(value: unknown, file: SchemaFile, context: RewriteContext): UnparsedJson {
 	if (!isPlainObject(value)) {
-		return value;
+		return value as UnparsedJson;
 	}
 
-	const copy: Record<string, unknown> = {};
+	const copy: Record<string, UnparsedJson> = {};
 
 	for (const [key, child] of Object.entries(value)) {
 		copy[key] = rewriteProperty(key, child, file, context);
@@ -417,7 +440,7 @@ function rewriteProperty(
 	child: unknown,
 	file: SchemaFile,
 	context: RewriteContext
-): unknown {
+): UnparsedJson {
 	if (key === '$ref') {
 		return rewriteRef(child, file, context);
 	}
@@ -442,19 +465,19 @@ function rewriteProperty(
 		return rewriteDependencies(child, file, context);
 	}
 
-	return child;
+	return child as UnparsedJson;
 }
 
-function rewriteItems(child: unknown, file: SchemaFile, context: RewriteContext): unknown {
+function rewriteItems(child: unknown, file: SchemaFile, context: RewriteContext): UnparsedJson {
 	return Array.isArray(child) ? rewriteArray(child, file, context) : rewrite(child, file, context);
 }
 
-function rewriteMap(value: unknown, file: SchemaFile, context: RewriteContext): unknown {
+function rewriteMap(value: unknown, file: SchemaFile, context: RewriteContext): UnparsedJson {
 	if (!isPlainObject(value)) {
-		return value;
+		return value as UnparsedJson;
 	}
 
-	const map: Record<string, unknown> = {};
+	const map: Record<string, UnparsedJson> = {};
 
 	for (const [name, subschema] of Object.entries(value)) {
 		map[name] = rewrite(subschema, file, context);
@@ -463,20 +486,24 @@ function rewriteMap(value: unknown, file: SchemaFile, context: RewriteContext): 
 	return map;
 }
 
-function rewriteArray(value: unknown, file: SchemaFile, context: RewriteContext): unknown {
+function rewriteArray(value: unknown, file: SchemaFile, context: RewriteContext): UnparsedJson {
 	if (!Array.isArray(value)) {
-		return value;
+		return value as UnparsedJson;
 	}
 
-	return value.map((item) => rewrite(item, file, context));
+	return value.map((item) => rewrite(item, file, context)) as UnparsedJson;
 }
 
-function rewriteDependencies(value: unknown, file: SchemaFile, context: RewriteContext): unknown {
+function rewriteDependencies(
+	value: unknown,
+	file: SchemaFile,
+	context: RewriteContext
+): UnparsedJson {
 	if (!isPlainObject(value)) {
-		return value;
+		return value as UnparsedJson;
 	}
 
-	const dependencies: Record<string, unknown> = {};
+	const dependencies: Record<string, UnparsedJson> = {};
 
 	for (const [name, dependency] of Object.entries(value)) {
 		dependencies[name] = Array.isArray(dependency)
@@ -487,9 +514,9 @@ function rewriteDependencies(value: unknown, file: SchemaFile, context: RewriteC
 	return dependencies;
 }
 
-function rewriteRef(ref: unknown, file: SchemaFile, context: RewriteContext): unknown {
+function rewriteRef(ref: unknown, file: SchemaFile, context: RewriteContext): UnparsedJson {
 	if (typeof ref !== 'string') {
-		return ref;
+		return ref as UnparsedJson;
 	}
 
 	if (ref.startsWith('#')) {

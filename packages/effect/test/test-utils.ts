@@ -1,4 +1,4 @@
-import { parse } from '@utilize/json-schema';
+import { expectDefined, parse } from '@utilize/json-schema';
 import type { DialectOptions, JSONSchema, NameMapper } from '@utilize/json-schema';
 import { Schema } from 'effect';
 import { formatSource, ts } from '@utilize/test-utils/code';
@@ -6,8 +6,8 @@ import { formatSource, ts } from '@utilize/test-utils/code';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import type { CustomSchemaResolver, FormatMode } from '../src/context';
 import { generate } from '../src/generator';
-import type { CustomSchemaResolver, FormatMode } from '../src/generator';
 
 /** JSON Schema 2020-12 keywords that the draft-07 based `JSONSchema` type lacks. */
 export type TestSchema = JSONSchema & {
@@ -80,7 +80,7 @@ export async function compileToSchema(
 	options?: CompileOptions
 ): Promise<GeneratedSchema> {
 	const module = await compileModule(schema, options);
-	return module.Root!;
+	return expectDefined(module.Root);
 }
 
 /** Returns the decoded value, or `undefined` when decoding fails. */

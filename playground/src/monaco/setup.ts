@@ -9,7 +9,7 @@ interface MonacoEnvironment {
 	getWorker(moduleId: string, label: string): Worker;
 }
 
-(self as { MonacoEnvironment?: MonacoEnvironment }).MonacoEnvironment = {
+self.MonacoEnvironment = {
 	getWorker(_moduleId, label) {
 		if (label === 'json') {
 			return new jsonWorker();
@@ -37,6 +37,8 @@ typescript.typescriptDefaults.setCompilerOptions({
 	module: typescript.ModuleKind.ESNext,
 	moduleResolution: typescript.ModuleResolutionKind.NodeJs,
 	strict: true,
+	// Editor models do not emit. The dedicated transpile operation temporarily
+	// overrides this option only while it asks the worker for JavaScript.
 	noEmit: true,
 	skipLibCheck: true,
 	allowNonTsExtensions: true,
@@ -102,6 +104,7 @@ export { monaco };
 
 declare global {
 	interface Window {
+		MonacoEnvironment?: MonacoEnvironment;
 		monaco: typeof monaco;
 	}
 }

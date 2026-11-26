@@ -1,4 +1,4 @@
-import { readFile, mkdtemp, rm } from 'node:fs/promises';
+import { readFile, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
@@ -14,7 +14,7 @@ import { parse } from '../dist/index.mjs';
 
 const iterations = Number(process.env.BENCH_ITERATIONS ?? 20);
 
-async function measure(label: string, run: () => Promise<unknown>) {
+async function measure(label: string, run: () => Promise<object>) {
 	for (let index = 0; index < 2; index += 1) {
 		await run();
 	}
@@ -29,10 +29,16 @@ async function measure(label: string, run: () => Promise<unknown>) {
 
 	times.sort((left, right) => left - right);
 
+	const max = times.at(-1);
+
+	if (max === undefined) {
+		throw new Error('Expected at least one measurement');
+	}
+
 	const median = times[Math.floor(times.length / 2)];
 	const p95 = times[Math.min(times.length - 1, Math.floor(times.length * 0.95))];
 
-	return { label, median, p95, min: times[0], max: times.at(-1)! };
+	return { label, median, p95, min: times[0], max };
 }
 
 const directory = await mkdtemp(join(tmpdir(), 'utilize-schema-bench-'));
@@ -56,6 +62,16 @@ try {
 			})
 		),
 	];
+
+	const outputFile = process.env.BENCH_OUTPUT;
+
+	if (outputFile) {
+		await writeFile(
+			outputFile,
+			`${JSON.stringify({ iterations, unit: 'milliseconds', results }, null, 2)}\n`,
+			'utf8'
+		);
+	}
 
 	console.log(`\n${iterations} iterations, milliseconds\n`);
 	console.log(

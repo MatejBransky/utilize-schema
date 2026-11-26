@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { DragEvent as ReactDragEvent } from 'react';
 
+import { isElement } from './dom';
 import { hasFileDrag } from './drop';
 import type { DropMode } from './drop';
 
@@ -89,7 +90,7 @@ export function useFileDrop({ onDrop }: FileDropOptions) {
 }
 
 function dropModeAt(target: EventTarget | null): DropMode | null {
-	if (!(target instanceof Element)) {
+	if (!isElement(target)) {
 		return null;
 	}
 

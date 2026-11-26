@@ -3,6 +3,8 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 
+import { expectDefined } from '@utilize/json-schema';
+
 import type { CaseModule } from './generateCase';
 
 const require = createRequire(import.meta.url);
@@ -139,10 +141,10 @@ function compile(files: string[]): Diagnostic[] {
 			.map((line) => DIAGNOSTIC.exec(line.trim()))
 			.filter((match): match is RegExpExecArray => match !== null)
 			.map((match) => ({
-				file: match[1]!,
+				file: expectDefined(match[1]),
 				line: Number(match[2]),
-				code: match[4]!,
-				message: match[5]!,
+				code: expectDefined(match[4]),
+				message: expectDefined(match[5]),
 			}));
 	}
 }

@@ -1,9 +1,9 @@
-import type { ParsedJSONSchemaObject, SchemaEdge } from '@utilize/json-schema';
+import type { JSONSchema, ParsedJSONSchemaObject, SchemaEdge } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
 import { findCyclicSchemas } from '../src/findCyclicSchemas';
 
-function schemaNode(schema: object): ParsedJSONSchemaObject {
+function schemaNode(schema: JSONSchema): ParsedJSONSchemaObject {
 	return schema as ParsedJSONSchemaObject;
 }
 

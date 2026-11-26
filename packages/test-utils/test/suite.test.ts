@@ -4,6 +4,9 @@ import { formatSource, normalizeCode, ts } from '../src/code';
 import { renderKnownFailureInstances } from '../src/suite/baseline';
 import { evaluateGeneratedCode } from '../src/suite/evaluate';
 import { loadSuiteFiles, suiteCaseKey } from '../src/suite/loadSuite';
+import type { SuiteFile } from '../src/suite/loadSuite';
+import { measureDialect } from '../src/suite/measureDialect';
+import { DRAFT_7 } from '../src/suite/compatibility';
 
 describe('code', () => {
 	test('ts formats the expected code like formatSource', async () => {
@@ -41,6 +44,73 @@ describe('renderKnownFailureInstances', () => {
 				`\t],`,
 			].join('\n')
 		);
+	});
+});
+
+describe('measureDialect', () => {
+	test('counts compatible cases and instances, including compile failures', async () => {
+		const files: SuiteFile[] = [
+			{
+				name: 'sample.json',
+				description: '',
+				cases: [
+					{
+						description: 'passing',
+						schema: true,
+						tests: [
+							{ description: 'valid', data: 'accepted', valid: true },
+							{ description: 'invalid', data: 'rejected', valid: false },
+						],
+					},
+					{
+						description: 'validation gap',
+						schema: true,
+						compatibility: '=7',
+						tests: [
+							{ description: 'valid', data: 'accepted', valid: true },
+							{ description: 'invalid', data: 'rejected', valid: false },
+						],
+					},
+					{
+						description: 'compile gap',
+						schema: true,
+						tests: [{ description: 'valid', data: 'accepted', valid: true }],
+					},
+					{
+						description: 'other dialect',
+						schema: true,
+						compatibility: '=4',
+						tests: [{ description: 'valid', data: 'accepted', valid: true }],
+					},
+				],
+			},
+		];
+		const compiled: string[] = [];
+
+		const { counts, failing } = await measureDialect(
+			files,
+			DRAFT_7,
+			(testCase) => {
+				compiled.push(testCase.description);
+
+				if (testCase.description === 'compile gap') {
+					throw new Error('cannot compile');
+				}
+
+				return testCase.description;
+			},
+			(schema, data) =>
+				schema === 'passing'
+					? data === 'accepted'
+					: schema === 'validation gap' && data === 'rejected'
+		);
+
+		expect(compiled).toEqual(['passing', 'validation gap', 'compile gap']);
+		expect(counts).toEqual({ cases: 3, passing: 1, instances: 5, passingInstances: 2 });
+		expect(failing).toEqual([
+			'sample.json :: validation gap (2 failed)',
+			'sample.json :: compile gap (1 failed)',
+		]);
 	});
 });
 

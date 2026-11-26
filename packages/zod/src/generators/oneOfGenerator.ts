@@ -1,14 +1,14 @@
-import { dialectOf } from '@utilize/json-schema';
+import { dialectOf, expectDefined } from '@utilize/json-schema';
 import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
 import { areMutuallyExclusive } from './exclusiveBranches';
-import { generator as objectGenerator } from './objectGenerator';
+import { objectGenerator } from './objectGenerator';
 import { composedSchemaParts } from './schemaParts';
 
 import { isResolvedByCaller, ts } from '../utils';
 
-export const generator = createGenerator<
+export const oneOfGenerator = createGenerator<
 	ParsedJSONSchemaObject & {
 		oneOf: ParsedJSONSchemaObject[];
 		discriminator?: string;
@@ -35,7 +35,7 @@ export const generator = createGenerator<
 		}
 
 		if (subschemas.length === 1) {
-			return subschemas[0]!;
+			return expectDefined(subschemas[0]);
 		}
 
 		const exclusive = areMutuallyExclusive(schema.oneOf, {

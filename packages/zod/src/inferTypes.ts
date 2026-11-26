@@ -1,5 +1,5 @@
-import { isKeywordApplicable } from '@utilize/json-schema';
-import type { Dialect, JSONSchemaTypeName, ParsedJSONSchemaObject } from '@utilize/json-schema';
+import { isKeywordApplicable, schemaRecord } from '@utilize/json-schema';
+import type { Dialect, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 const objectKeywords = [
 	'properties',
@@ -33,10 +33,12 @@ const numberKeywords = ['minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaxi
  * check. A schema can constrain more than one type, e.g.
  * `{ minLength: 2, minimum: 5 }` constrains strings and numbers.
  */
+export type InferableType = 'object' | 'array' | 'string' | 'number';
+
 export function inferTypeKeywords(
 	schema: ParsedJSONSchemaObject,
 	dialect: Dialect
-): JSONSchemaTypeName[] {
+): InferableType[] {
 	if (
 		schema.type !== undefined ||
 		'$ref' in schema ||
@@ -49,7 +51,7 @@ export function inferTypeKeywords(
 		return [];
 	}
 
-	const record = schema as unknown as Record<string, unknown>;
+	const record = schemaRecord(schema);
 	const categories = [
 		['object', objectKeywords],
 		['array', arrayKeywords],
@@ -57,11 +59,11 @@ export function inferTypeKeywords(
 		['number', numberKeywords],
 	] as const;
 
-	return categories
-		.filter(([, keywords]) =>
-			keywords.some(
-				(keyword) => record[keyword] !== undefined && isKeywordApplicable(dialect, keyword)
-			)
+	return categories.flatMap(([type, keywords]) =>
+		keywords.some(
+			(keyword) => record[keyword] !== undefined && isKeywordApplicable(dialect, keyword)
 		)
-		.map(([type]) => type as JSONSchemaTypeName);
+			? [type]
+			: []
+	);
 }

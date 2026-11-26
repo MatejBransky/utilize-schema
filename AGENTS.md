@@ -11,6 +11,26 @@ Before using ui-sdk, follow the `ui-sdk` skill if it is installed, and read
 component, also search `node_modules/@ui-sdk/react/docs/core.md` by heading and
 read `rendering.md` next to it.
 
+## Fallow skills and gates
+
+The `fallow` and `fallow-setup` skills in `.agents/skills/` (and their pointers
+in `.claude/skills/`) are written by `pnpm exec fallow agent install` and
+follow the installed `fallow` version from the pnpm catalog. They are not
+listed in `skills-lock.json`, which only tracks skills installed with the
+`skills` CLI from a remote source (`ui-sdk`). Rerun `fallow agent install`
+after a fallow upgrade instead of editing them.
+
+`.mcp.json` registers the fallow MCP server (`pnpm exec fallow-mcp`), which
+exposes the same analyses as tools.
+
+The local gates (the Claude Code hook below and the optional Git pre-commit
+hook) block only a `fail` verdict. CI also fails on a `warn` verdict, through
+`scripts/fallow-gate.mjs --warn`. Run `pnpm fallow:audit:ci` before you hand off
+a pull request to run the same check as CI. `git commit --no-verify` skips the
+Git pre-commit hook for a WIP commit that will be squashed; it is not a way
+around a finding. Fix the code, or change `.fallowrc.jsonc` with a documented
+reason.
+
 ## Styling
 
 Do not add Tailwind CSS. Use CSS Modules (`*.module.css`) for app-specific

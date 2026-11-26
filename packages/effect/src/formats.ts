@@ -21,24 +21,33 @@ const timeSource = String.raw`(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?`;
 const qualifiedTimeSource = String.raw`(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?Z`;
 
 /** Formats that are a single regular expression. */
-const patterns: Record<string, string> = {
-	email: String.raw`^[^\s@]+@[^\s@]+\.[^\s@]+$`,
+const patterns = new Map<string, string>([
+	['email', String.raw`^[^\s@]+@[^\s@]+\.[^\s@]+$`],
 	// The leading lookahead demands one anchor (a pictograph, a regional
 	// indicator or a keycap), because `\p{Emoji_Component}` alone covers ZWJ
 	// and modifiers, which are not emoji on their own.
-	emoji: String.raw`^(?=[\s\S]*[\p{Extended_Pictographic}\p{Regional_Indicator}\u20E3])[\p{Extended_Pictographic}\p{Emoji_Component}]+$`,
-	base64: String.raw`^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$`,
-	base64url: String.raw`^(?:[A-Za-z0-9_-]{4})*(?:[A-Za-z0-9_-]{2,3})?$`,
-	nanoid: String.raw`^[A-Za-z0-9_-]{21}$`,
-	cuid: String.raw`^c[^\s-]{8,}$`,
-	cuid2: String.raw`^[a-z][a-z0-9]*$`,
-	ulid: String.raw`^[0-9A-HJKMNP-TV-Z]{26}$`,
-	ipv4: String.raw`^(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$`,
-	date: `^${dateSource}$`,
-	time: `^${timeSource}$`,
-	'date-time': `^${dateSource}T${qualifiedTimeSource}$`,
-	duration: String.raw`^P(?!$)(?:\d+Y)?(?:\d+M)?(?:\d+W)?(?:\d+D)?(?:T(?=\d)(?:\d+H)?(?:\d+M)?(?:\d+S)?)?$`,
-};
+	[
+		'emoji',
+		String.raw`^(?=[\s\S]*[\p{Extended_Pictographic}\p{Regional_Indicator}\u20E3])[\p{Extended_Pictographic}\p{Emoji_Component}]+$`,
+	],
+	['base64', String.raw`^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$`],
+	['base64url', String.raw`^(?:[A-Za-z0-9_-]{4})*(?:[A-Za-z0-9_-]{2,3})?$`],
+	['nanoid', String.raw`^[A-Za-z0-9_-]{21}$`],
+	['cuid', String.raw`^c[^\s-]{8,}$`],
+	['cuid2', String.raw`^[a-z][a-z0-9]*$`],
+	['ulid', String.raw`^[0-9A-HJKMNP-TV-Z]{26}$`],
+	[
+		'ipv4',
+		String.raw`^(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$`,
+	],
+	['date', `^${dateSource}$`],
+	['time', `^${timeSource}$`],
+	['date-time', `^${dateSource}T${qualifiedTimeSource}$`],
+	[
+		'duration',
+		String.raw`^P(?!$)(?:\d+Y)?(?:\d+M)?(?:\d+W)?(?:\d+D)?(?:T(?=\d)(?:\d+H)?(?:\d+M)?(?:\d+S)?)?$`,
+	],
+]);
 
 const cidrv4 = String.raw`^(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)/(?:3[0-2]|[12]?\d)$`;
 
@@ -69,11 +78,9 @@ export function formatCheck(format: string): string | undefined {
 			return filter(cidrv6Body);
 		}
 		default: {
-			if (!Object.hasOwn(patterns, format)) {
-				return undefined;
-			}
+			const pattern = patterns.get(format);
 
-			return patternCheck(patterns[format]!);
+			return pattern === undefined ? undefined : patternCheck(pattern);
 		}
 	}
 }

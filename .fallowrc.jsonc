@@ -32,17 +32,26 @@
 	// Repository policy that boundaries cannot express.
 	"rulePacks": ["rule-packs/utilize-policy.jsonc"],
 
-	// Every analysis asks the TypeScript checker before it reports an unused
-	// export, type or class member, so a declaration that an interface or an
-	// override requires is never reported. The projects are listed explicitly
-	// because a workspace root without a `tsconfig.json` gives the checker no
-	// project to load and every answer would be `no-project`.
+	// The TypeScript checker confirms an unused export, type or class member
+	// before it is reported, so a declaration that an interface or an override
+	// requires is never reported. The projects are listed explicitly because a
+	// workspace root without a `tsconfig.json` gives the checker no project to
+	// load and every answer would be `no-project`.
 	//
-	// `require` stays `best-effort`: with `fallow-type-aware@3.45.0` the
-	// TypeScript 7 backend reports two blocking diagnostics per project for these
-	// tsconfigs, so a `complete` requirement fails every run with exit code 2.
-	// Switch it to `complete` when the backend answers completely for all six
-	// projects (`fallow health --type-coupling` shows the status).
+	// The dead-code pass starts the checker only when the syntactic pass has
+	// candidates to confirm. With no unused export there is nothing to ask, so
+	// `fallow dead-code --type-aware --format json` reports `"executed": false`
+	// and no selected tsconfigs, and `--type-aware-require complete` passes
+	// there without proving anything. The health pass (`fallow health
+	// --type-coupling`) does load every listed project.
+	//
+	// `require` stays `best-effort`. A `complete` requirement makes the whole
+	// run (`pnpm exec fallow`) fail with "gate type-aware-require failed" as
+	// soon as one project reports blocking diagnostics, and the type-coupling
+	// proof is still `Partial` here. Switch to `complete` only after
+	// `pnpm exec fallow --type-aware-require complete` passes on a full install
+	// (`fallow health --type-coupling --format json` lists each project's
+	// status under `_meta.type_aware.projects`).
 	"typeAware": {
 		"enabled": true,
 		"require": "best-effort",
@@ -62,7 +71,7 @@
 	// pretending the guard is active.
 	//
 	// Commit hooks and PR CI judge only findings introduced by the change,
-	// while the `fallow-full` CI job gates the whole repository.
+	// while the full Fallow run in the test job gates the whole repository.
 	"audit": {
 		"gate": "new-only",
 		// A complexity finding that already exceeded a ceiling and grew counts
@@ -80,6 +89,11 @@
 	// are the API surface, and checking their exports would report every public
 	// name as unused. A stray export in a framework route is still caught through
 	// the plugin `usedExports` rule.
+	//
+	// The `exports` maps of the published packages list each built file by name
+	// (`./dist/index.mjs`, ...) instead of a `./dist/*` wildcard: fallow maps a
+	// wildcard onto every `src` file of the package, which made each of them an
+	// entry point whose unused exports were never reported.
 
 	"ignoreExports": [
 		// Every generator package exposes the same API shape on purpose, so a user
@@ -115,6 +129,18 @@
 		// copies.
 		"threshold": 0,
 
+		// `ignoreDefaults` stays `true`, so fallow's built-in duplicates ignores
+		// apply and every `*.test.*` file is left out of clone detection
+		// (`fallow dupes --explain-skipped` lists them). The zero-clone gate
+		// therefore covers production code and the non-test helpers under
+		// `test/`, not the test files themselves. This is on purpose: test
+		// files repeat the same arrange-and-assert shape for every case, and with
+		// `ignoreDefaults: false` fallow reports 98 clone groups, and every
+		// one of them involves a test file (mostly the per-target
+		// `schemaVersion`, `cli` and `parser` tests; two also include fixtures
+		// copied from `playground/src/examples.ts`).
+		// Shared test helpers belong in `packages/test-utils`, which is checked.
+
 		// Reviewed clone groups. A key holds the group's fingerprint and its
 		// number of copies, so a change to the code or a new copy makes the
 		// group reportable again.
@@ -140,7 +166,10 @@
 	// The layering promised in the README: the core knows no generator, each
 	// generator knows only the core, and the playground may use every target.
 	// Tests, scripts, benchmarks and the private test-helper package stay outside
-	// the production zones.
+	// the production zones. So do the build and test configs (`**/*.config.ts`:
+	// tsdown, Vite and Vitest run them in Node, and nothing in a zone imports
+	// them) and the playground's Vite HTML shell (`playground/*.html`), which
+	// only loads `src/main.tsx`.
 	"boundaries": {
 		"zones": [
 			{ "name": "core", "patterns": ["packages/json-schema/src/**"] },
@@ -175,20 +204,22 @@
 
 	"health": {
 		// The fallow defaults apply (cyclomatic 20, cognitive 15, CRAP 30, unit
-		// size 60) except for the two ceilings that this repository can ratchet
+		// size 60) except for two ceilings that this repository can ratchet
 		// without a refactor:
 		//
 		// - cyclomatic 12 is the worst function today, so any function that grows
 		//   past it is new risk. The default 20 would let a function almost double
 		//   before the gate noticed.
-		// - file length 900 is the longest hand-written file below the Effect
-		//   generator (873 lines); the generator itself carries a measured ceiling
-		//   in `thresholdOverrides`.
+		// - file length 900 is a generous cap rather than a measurement. The
+		//   longest hand-written file in the repository is the TypeScript renderer
+		//   at 881 lines; the largest module the Effect generator owns after its
+		//   split is `object.ts` at 241. No file needs a per-file exception today.
 		//
 		// Test code is left out of the complexity checks and the health score
 		// only. A table-driven test or a `describe` block with many cases is long
 		// on purpose, and splitting it would make it harder to read, not easier.
-		// Dead-code and duplication checks still cover every test file.
+		// Dead-code checks still cover every test file. Duplication checks do not
+		// cover `*.test.*` files; see `duplicates` for why.
 		// `packages/test-utils` is the private package of shared test helpers;
 		// nothing published imports it.
 		"maxCyclomatic": 12,
@@ -225,15 +256,6 @@
 				"functions": ["MonacoEditor"],
 				"maxCognitive": 16,
 				"reason": "Monaco lifecycle hook density, measured at cognitive 16; refactoring requires a browser lifecycle benchmark.",
-			},
-			{
-				// The Effect generator is the one file that renders the whole Effect
-				// target; splitting it would separate the renderer from the case it
-				// renders. The ceiling is the measured 1,781 lines after the top-level
-				// type imports require splitting, so the file may not grow at all.
-				"files": ["packages/effect/src/generator.ts"],
-				"maxFileLines": 1781,
-				"reason": "Measured ceiling for the Effect generator; it renders one target and does not split along a readable seam.",
 			},
 		],
 	},

@@ -83,7 +83,7 @@ function shapeOf(
 		types,
 		tags: types?.every((type) => type === 'object')
 			? requiredTags(schema, options, visiting)
-			: new Map(),
+			: new Map<string, unknown[]>(),
 	};
 }
 
@@ -171,8 +171,10 @@ function haveNoCommonType(left?: JSONSchemaTypeName[], right?: JSONSchemaTypeNam
 }
 
 /** `integer` is a subset of `number`, so the two overlap. */
-function typesOverlap(left: JSONSchemaTypeName, right: JSONSchemaTypeName): boolean {
-	const numeric = (type: JSONSchemaTypeName) => (type === 'integer' ? 'number' : type);
+function normalizeNumberType(type: JSONSchemaTypeName): JSONSchemaTypeName {
+	return type === 'integer' ? 'number' : type;
+}
 
-	return numeric(left) === numeric(right);
+function typesOverlap(left: JSONSchemaTypeName, right: JSONSchemaTypeName): boolean {
+	return normalizeNumberType(left) === normalizeNumberType(right);
 }

@@ -1,25 +1,25 @@
-import { dialectOf, isPlainObject, Meta } from '@utilize/json-schema';
+import { dialectOf, expectDefined, isPlainObject, Meta } from '@utilize/json-schema';
 import type { Dialect, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
-import { generator as allOfGenerator } from './generators/allOfGenerator';
+import { allOfGenerator } from './generators/allOfGenerator';
 import { withoutAlwaysValidAnyOf } from './generators/alwaysValidAnyOf';
-import { generator as anyGenerator } from './generators/anyGenerator';
-import { generator as anyOfGenerator } from './generators/anyOfGenerator';
-import { generator as arrayGenerator } from './generators/arrayGenerator';
-import { generator as booleanGenerator } from './generators/booleanGenerator';
-import { generator as enumGenerator } from './generators/enumGenerator';
-import { generator as literalGenerator } from './generators/literalGenerator';
-import { generator as multipleTypeGenerator } from './generators/multipleTypeGenerator';
-import { generator as nullGenerator } from './generators/nullGenerator';
-import { generator as numberGenerator } from './generators/numberGenerator';
-import { generator as objectGenerator } from './generators/objectGenerator';
-import { generator as oneOfGenerator } from './generators/oneOfGenerator';
-import { generator as recordGenerator } from './generators/recordGenerator';
+import { anyGenerator } from './generators/anyGenerator';
+import { anyOfGenerator } from './generators/anyOfGenerator';
+import { arrayGenerator } from './generators/arrayGenerator';
+import { booleanGenerator } from './generators/booleanGenerator';
+import { enumGenerator } from './generators/enumGenerator';
+import { literalGenerator } from './generators/literalGenerator';
+import { multipleTypeGenerator } from './generators/multipleTypeGenerator';
+import { nullGenerator } from './generators/nullGenerator';
+import { numberGenerator } from './generators/numberGenerator';
+import { objectGenerator } from './generators/objectGenerator';
+import { oneOfGenerator } from './generators/oneOfGenerator';
+import { recordGenerator } from './generators/recordGenerator';
 import { composedSchemaParts, refSiblingConstraints } from './generators/schemaParts';
 import { selectGenerator } from './generators/selectGenerator';
 import type { CustomSchemaResolver } from './generators/types';
-import { generator as stringGenerator } from './generators/stringGenerator';
-import { generator as tupleGenerator, tupleItems, tupleRest } from './generators/tupleGenerator';
+import { stringGenerator } from './generators/stringGenerator';
+import { tupleGenerator, tupleItems, tupleRest } from './generators/tupleGenerator';
 import { isRefNode, isResolvedByCaller } from './utils';
 
 export interface ValueTypeContext {
@@ -173,7 +173,7 @@ function renderAllOfType(schema: ParsedJSONSchemaObject, context: ValueTypeConte
 	}
 
 	if (subschemas.length === 1) {
-		return renderType(subschemas[0]!, context);
+		return renderType(expectDefined(subschemas[0]), context);
 	}
 
 	return subschemas.map((subschema) => parenthesize(renderType(subschema, context))).join(' & ');
@@ -277,7 +277,7 @@ function renderReferenceType(
 
 /** The union of a `type` list; each branch keeps `readOnly`, like `.readonly()` on the union. */
 function renderTypeList(schema: ParsedJSONSchemaObject, context: ValueTypeContext): string {
-	const types = schema.type as unknown as string[];
+	const types = schema.type as string[];
 
 	return union(
 		types.map((type) =>
@@ -344,10 +344,7 @@ function renderInterfaceBody(
 	return `{\n${members}\n\t[key: string]: ${index};\n}`;
 }
 
-function renderObjectMembers(
-	schema: ParsedJSONSchemaObject,
-	context: ValueTypeContext
-): { lines: string[]; index?: string } {
+function renderObjectMembers(schema: ParsedJSONSchemaObject, context: ValueTypeContext) {
 	const lines: string[] = [];
 	const propertyTypes: string[] = [];
 

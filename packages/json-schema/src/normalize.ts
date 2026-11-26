@@ -5,6 +5,7 @@ import type {
 	DialectIssue,
 	DialectOptions,
 	DialectSource,
+	KeywordPolicy,
 	ResolvedDialect,
 } from './dialect';
 import { SCHEMA_ARRAY_KEYWORDS, SCHEMA_MAP_KEYWORDS, SINGLE_SCHEMA_KEYWORDS } from './keywords';
@@ -43,45 +44,56 @@ const BOOLEAN_FORM_KEYWORDS = new Set(['additionalProperties', 'additionalItems'
  * `Meta`.
  */
 export function prepareSchema(schema: unknown, options: PrepareSchemaOptions = {}): DialectMap {
-	const map: DialectMap = new WeakMap();
-	const seen = new Set<unknown>();
-	const policy = options.keywordPolicy ?? 'warn';
-	const root = resolveDocumentDialect(schema, options);
+	return new SchemaNormalizer(options).normalize(schema);
+}
 
-	visit(schema, root, [], true);
+class SchemaNormalizer {
+	private readonly map: DialectMap = new WeakMap();
+	private readonly seen = new Set<unknown>();
+	private readonly policy: KeywordPolicy;
 
-	return map;
+	constructor(private readonly options: PrepareSchemaOptions) {
+		this.policy = options.keywordPolicy ?? 'warn';
+	}
 
-	function visit(
+	normalize(schema: unknown): DialectMap {
+		const root = resolveDocumentDialect(schema, this.options);
+
+		this.visit(schema, root, [], true);
+
+		return this.map;
+	}
+
+	private visit(
 		node: unknown,
 		inherited: ResolvedDialect,
 		path: Path,
 		isDocumentRoot: boolean
 	): void {
 		if (typeof node === 'boolean') {
-			visitBoolean(inherited, path);
+			this.visitBoolean(inherited, path);
 			return;
 		}
 
-		if (typeof node !== 'object' || node === null || seen.has(node)) {
+		if (typeof node !== 'object' || node === null || this.seen.has(node)) {
 			return;
 		}
 
-		seen.add(node);
+		this.seen.add(node);
 
 		if (Array.isArray(node)) {
-			visitArray(node, inherited, path);
+			this.visitArray(node, inherited, path);
 			return;
 		}
 
 		if (isPlainObject(node)) {
-			visitObject(node, inherited, path, isDocumentRoot);
+			this.visitObject(node, inherited, path, isDocumentRoot);
 		}
 	}
 
-	function visitBoolean(inherited: ResolvedDialect, path: Path): void {
+	private visitBoolean(inherited: ResolvedDialect, path: Path): void {
 		if (inherited.dialect.id === 'draft-04') {
-			report(
+			this.report(
 				{
 					kind: 'invalid-keyword',
 					message: `${inherited.dialect.id} does not allow boolean schemas.`,
@@ -92,26 +104,26 @@ export function prepareSchema(schema: unknown, options: PrepareSchemaOptions = {
 		}
 	}
 
-	function visitArray(node: unknown[], inherited: ResolvedDialect, path: Path): void {
-		map.set(node, inherited);
-		node.forEach((item, index) => visit(item, inherited, [...path, index], false));
+	private visitArray(node: unknown[], inherited: ResolvedDialect, path: Path): void {
+		this.map.set(node, inherited);
+		node.forEach((item, index) => this.visit(item, inherited, [...path, index], false));
 	}
 
-	function visitObject(
+	private visitObject(
 		node: Record<string, unknown>,
 		inherited: ResolvedDialect,
 		path: Path,
 		isDocumentRoot: boolean
 	): void {
-		const resolved = resolveNodeDialect(node, inherited, isDocumentRoot);
+		const resolved = this.resolveNodeDialect(node, inherited, isDocumentRoot);
 
-		map.set(node, resolved);
-		reportNodeIssues(node, resolved, path);
+		this.map.set(node, resolved);
+		this.reportNodeIssues(node, resolved, path);
 		normalizeNode(node, resolved.dialect, resolved.source);
-		visitChildren(node, resolved, path);
+		this.visitChildren(node, resolved, path);
 	}
 
-	function resolveNodeDialect(
+	private resolveNodeDialect(
 		node: Record<string, unknown>,
 		inherited: ResolvedDialect,
 		isDocumentRoot: boolean
@@ -123,14 +135,14 @@ export function prepareSchema(schema: unknown, options: PrepareSchemaOptions = {
 		// A bundled file keeps its `$schema` after being embedded under `$defs`,
 		// so a declared `$schema` starts a dialect scope even without `$id`.
 		const next = resolveDialect(node, {
-			...options,
+			...this.options,
 			fallbackDialect: inherited.dialect.id,
 		});
 
 		return next.source === 'fallback' ? { ...next, source: 'inherited' } : next;
 	}
 
-	function reportNodeIssues(
+	private reportNodeIssues(
 		node: Record<string, unknown>,
 		resolved: ResolvedDialect,
 		path: Path
@@ -143,69 +155,69 @@ export function prepareSchema(schema: unknown, options: PrepareSchemaOptions = {
 				(issue.keyword === 'unevaluatedProperties' || issue.keyword === 'unevaluatedItems');
 
 			if (!bestEffortUnevaluated) {
-				report({ ...issue, path }, resolved);
+				this.report({ ...issue, path }, resolved);
 			}
 		}
 	}
 
-	function visitChildren(
+	private visitChildren(
 		node: Record<string, unknown>,
 		resolved: ResolvedDialect,
 		path: Path
 	): void {
 		for (const [key, value] of Object.entries(node)) {
 			if (key !== '$schema') {
-				visitKeyword(key, value, resolved, path);
+				this.visitKeyword(key, value, resolved, path);
 			}
 		}
 	}
 
-	function visitKeyword(key: string, value: unknown, resolved: ResolvedDialect, path: Path): void {
+	private visitKeyword(key: string, value: unknown, resolved: ResolvedDialect, path: Path): void {
 		if (key === 'items') {
-			visitItems(value, resolved, [...path, key]);
+			this.visitItems(value, resolved, [...path, key]);
 			return;
 		}
 
 		if (SCHEMA_MAP_KEYWORDS.has(key) && isPlainObject(value)) {
-			visitMapKeyword(key, value, resolved, path);
+			this.visitMapKeyword(key, value, resolved, path);
 			return;
 		}
 
 		if (SINGLE_SCHEMA_KEYWORDS.has(key)) {
-			visitSingleKeyword(key, value, resolved, path);
+			this.visitSingleKeyword(key, value, resolved, path);
 			return;
 		}
 
 		if (SCHEMA_ARRAY_KEYWORDS.has(key) && Array.isArray(value)) {
-			visitArrayKeyword(key, value, resolved, path);
+			this.visitArrayKeyword(key, value, resolved, path);
 			return;
 		}
 
 		if (key === 'dependencies' && isPlainObject(value)) {
-			visitDependencies(value, resolved, path);
+			this.visitDependencies(value, resolved, path);
 		}
 	}
 
-	function visitItems(value: unknown, resolved: ResolvedDialect, path: Path): void {
+	private visitItems(value: unknown, resolved: ResolvedDialect, path: Path): void {
 		if (Array.isArray(value)) {
-			value.forEach((item, index) => visit(item, resolved, [...path, index], false));
+			value.forEach((item, index) => this.visit(item, resolved, [...path, index], false));
 		} else {
-			visit(value, resolved, path, false);
+			this.visit(value, resolved, path, false);
 		}
 	}
 
-	function visitMapKeyword(
+	private visitMapKeyword(
 		key: string,
 		value: Record<string, unknown>,
 		resolved: ResolvedDialect,
 		path: Path
 	): void {
 		for (const [name, subschema] of Object.entries(value)) {
-			visit(subschema, resolved, [...path, key, name], false);
+			this.visit(subschema, resolved, [...path, key, name], false);
 		}
 	}
 
-	function visitSingleKeyword(
+	private visitSingleKeyword(
 		key: string,
 		value: unknown,
 		resolved: ResolvedDialect,
@@ -213,32 +225,32 @@ export function prepareSchema(schema: unknown, options: PrepareSchemaOptions = {
 	): void {
 		// Every dialect accepts a boolean here, draft-04 included.
 		if (typeof value !== 'boolean' || !BOOLEAN_FORM_KEYWORDS.has(key)) {
-			visit(value, resolved, [...path, key], false);
+			this.visit(value, resolved, [...path, key], false);
 		}
 	}
 
-	function visitArrayKeyword(
+	private visitArrayKeyword(
 		key: string,
 		value: unknown[],
 		resolved: ResolvedDialect,
 		path: Path
 	): void {
-		value.forEach((item, index) => visit(item, resolved, [...path, key, index], false));
+		value.forEach((item, index) => this.visit(item, resolved, [...path, key, index], false));
 	}
 
-	function visitDependencies(
+	private visitDependencies(
 		value: Record<string, unknown>,
 		resolved: ResolvedDialect,
 		path: Path
 	): void {
 		for (const [name, dependency] of Object.entries(value)) {
 			if (!Array.isArray(dependency)) {
-				visit(dependency, resolved, [...path, 'dependencies', name], false);
+				this.visit(dependency, resolved, [...path, 'dependencies', name], false);
 			}
 		}
 	}
 
-	function report(
+	private report(
 		issue: Omit<DialectIssue, 'dialect' | 'dialectSource' | 'filePath'>,
 		resolved: ResolvedDialect
 	): void {
@@ -246,32 +258,32 @@ export function prepareSchema(schema: unknown, options: PrepareSchemaOptions = {
 			...issue,
 			dialect: resolved.dialect.id,
 			dialectSource: resolved.source,
-			filePath: options.filePath,
+			filePath: this.options.filePath,
 		};
 
 		// `$ref` siblings are valid; the specification only says they are
 		// ignored, so they are reported when warnings are requested.
 		if (issue.kind === 'ignored-ref-siblings') {
-			if (policy === 'warn') {
-				emit(full);
+			if (this.policy === 'warn') {
+				this.emit(full);
 			}
 
 			return;
 		}
 
-		if (policy === 'error') {
+		if (this.policy === 'error') {
 			throw new DialectError(full);
 		}
 
-		if (policy === 'warn') {
-			emit(full);
+		if (this.policy === 'warn') {
+			this.emit(full);
 		}
 	}
 
 	// The library never writes to the console; callers decide how to show
 	// issues (the CLIs print them, `parse` also returns them).
-	function emit(issue: DialectIssue): void {
-		options.onDialectIssue?.(issue);
+	private emit(issue: DialectIssue): void {
+		this.options.onDialectIssue?.(issue);
 	}
 }
 
@@ -415,7 +427,17 @@ function mergeDependency(dependencies: Record<string, unknown>, key: string, nex
 	}
 
 	if (Array.isArray(current) && Array.isArray(next)) {
-		dependencies[key] = [...new Set([...current, ...next])];
+		const merged = new Set<unknown>();
+
+		for (const item of current) {
+			merged.add(item);
+		}
+
+		for (const item of next) {
+			merged.add(item);
+		}
+
+		dependencies[key] = [...merged];
 		return;
 	}
 

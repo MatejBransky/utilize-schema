@@ -1,5 +1,7 @@
+import { expectDefined, isPlainObject } from '@utilize/json-schema';
+
 import type { SchemaFile } from './bundle';
-import { defaultExampleId, exampleById, examples } from './examples';
+import { defaultExampleId, exampleById, exampleData, examples } from './examples';
 import { defaultFormatMode, isFormatMode } from './formatMode';
 import { defaultTarget } from './targets';
 import {
@@ -30,11 +32,17 @@ export function loadState(): UrlState {
 
 	// The query parameters win over the settings stored in the shared `#data=`
 	// hash so they can be changed without editing the hash.
-	return {
-		...fromHash,
-		...(keywordPolicy ? { keywordPolicy } : {}),
-		...(formatMode ? { formatMode } : {}),
-	};
+	const state: UrlState = { ...fromHash };
+
+	if (keywordPolicy) {
+		state.keywordPolicy = keywordPolicy;
+	}
+
+	if (formatMode) {
+		state.formatMode = formatMode;
+	}
+
+	return state;
 }
 
 export function encodeState(state: UrlState): string {
@@ -94,13 +102,14 @@ export function uniqueName(base: string, files: SchemaFile[]): string {
 }
 
 function defaultState(): UrlState {
-	const example = exampleById(defaultExampleId)!;
+	const example = expectDefined(exampleById(defaultExampleId));
 
 	return {
 		files: example.files,
 		target: defaultTarget,
 		keywordPolicy: 'warn',
 		formatMode: defaultFormatMode,
+		data: exampleData(example),
 	};
 }
 
@@ -114,34 +123,45 @@ function loadSavedState(): UrlState | null {
 }
 
 function isSchemaFile(value: unknown): value is SchemaFile {
-	if (!value || typeof value !== 'object') {
+	if (!isPlainObject(value)) {
 		return false;
 	}
 
-	const file = value as SchemaFile;
-
 	return (
-		typeof file.id === 'string' && typeof file.name === 'string' && typeof file.content === 'string'
+		typeof value.id === 'string' &&
+		typeof value.name === 'string' &&
+		typeof value.content === 'string'
 	);
 }
 
 function normalizeState(value: unknown): UrlState | null {
-	if (!value || typeof value !== 'object') {
-		return null;
-	}
-
-	const state = value as Partial<UrlState>;
-
-	if (!Array.isArray(state.files) || state.files.length === 0 || !state.files.every(isSchemaFile)) {
+	if (!hasFiles(value)) {
 		return null;
 	}
 
 	return {
-		files: state.files,
-		target: isAvailableTarget(state.target) ? state.target : defaultTarget,
-		keywordPolicy: isKeywordPolicy(state.keywordPolicy) ? state.keywordPolicy : 'warn',
-		formatMode: isFormatMode(state.formatMode) ? state.formatMode : defaultFormatMode,
+		files: value.files,
+		target: isAvailableTarget(value.target) ? value.target : defaultTarget,
+		keywordPolicy: isKeywordPolicy(value.keywordPolicy) ? value.keywordPolicy : 'warn',
+		formatMode: isFormatMode(value.formatMode) ? value.formatMode : defaultFormatMode,
+		data: typeof value.data === 'string' ? value.data : dataForFiles(value.files),
 	};
+}
+
+function hasFiles(value: unknown): value is Partial<UrlState> & { files: SchemaFile[] } {
+	if (!value || typeof value !== 'object') {
+		return false;
+	}
+
+	const state = value as Partial<UrlState>;
+
+	return Array.isArray(state.files) && state.files.length > 0 && state.files.every(isSchemaFile);
+}
+
+function dataForFiles(files: SchemaFile[]): string {
+	const example = exampleById(resolveExampleId(files));
+
+	return example ? exampleData(example) : '{}';
 }
 
 function readHash(): UrlState | null {
@@ -153,7 +173,7 @@ function readHash(): UrlState | null {
 		const base64 = location.hash.slice('#data='.length).replaceAll('-', '+').replaceAll('_', '/');
 		const binary = atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '='));
 		const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-		const parsed = JSON.parse(new TextDecoder().decode(bytes));
+		const parsed = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
 
 		return normalizeState(parsed);
 	} catch {

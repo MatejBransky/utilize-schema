@@ -4,7 +4,7 @@ import { createGenerator } from './createGenerator';
 
 import { ts } from '../utils';
 
-export const generator = createGenerator<
+export const arrayGenerator = createGenerator<
 	ParsedJSONSchemaObject & { items: ParsedJSONSchemaObject }
 >(
 	(schema, dialect) => {

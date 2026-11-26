@@ -66,6 +66,18 @@ export function Header({ colorMode, onColorModeChange, onShare, shared, children
 				<Button onClick={onShare}>{shared ? 'Link copied' : 'Share'}</Button>
 
 				<Button
+					render={
+						<a
+							href="https://matejbransky.github.io/utilize-schema/reports/"
+							target="_blank"
+							rel="noreferrer"
+						/>
+					}
+				>
+					Reports
+				</Button>
+
+				<Button
 					className={styles.iconButton}
 					aria-label="GitHub"
 					title="GitHub"

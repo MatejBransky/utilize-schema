@@ -4,20 +4,66 @@
 [![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)
 [![Unit test coverage](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/coverage-effect.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/CONTRIBUTING.md#coverage-badge)
 
-TypeScript/Effect Schema code generator for JSON Schema. Converts a JSON Schema
-(with references, `$defs` and `definitions`) into standalone Effect Schema
-codecs and TypeScript types.
+[![draft-04 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-effect-draft-04.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/effect/README.md#conformance)
+[![draft-06 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-effect-draft-06.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/effect/README.md#conformance)
+[![draft-07 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-effect-draft-07.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/effect/README.md#conformance)
+[![2019-09 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-effect-2019-09.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/effect/README.md#conformance)
+[![2020-12 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-effect-2020-12.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/effect/README.md#conformance)
 
-## Features
+Effect Schema codecs and TypeScript types from JSON Schema. Every `$ref`,
+including cycles, goes through `Schema.suspend`, so the generated module needs no
+dependency ordering and imports `effect`.
 
-- Generates standalone Effect schemas for the root and all definitions
-- Emits one exported const and one exported `typeof X.Type` per schema
-- Handles local, external, cyclic, `$id` and `$anchor` based `$ref`s through
-  `Schema.suspend`, so no topological sort is needed
-- Maps scalar, array, object, pattern properties, and composition keywords to
-  Effect Schema constructs and checks
-- Rejects JSON Schema features that have no Effect Schema equivalent instead of
-  silently ignoring them
+- **Standalone codecs.** One exported const and one `typeof X.Type` per root,
+  `$defs` and `definitions` entry.
+- **Mapped or rejected, never ignored.** Unsupported constructs fail with
+  `UnsupportedEffectSchemaFeatureError` instead of disappearing.
+- **Five dialects.** draft-04, draft-06, draft-07, 2019-09 and 2020-12.
+- **94% of the official suite.** 286 of 304 draft-07 cases; 96% line coverage.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    }
+  },
+  "required": ["name"]
+}
+```
+
+```ts
+export const User = Schema.StructWithRest(
+  Schema.Struct({ name: Schema.String }),
+  [Schema.Record(Schema.String, Schema.Json)]
+);
+export type User = typeof User.Type;
+```
+
+```sh
+pnpm add effect
+pnpm add -D @utilize/effect
+utilize-effect user.json user.effect.ts
+```
+
+`effect` 4.x is required. Try it in the
+[playground](https://matejbransky.github.io/utilize-schema/?generator=effect):
+open an example, switch between the three generators, and check how a test
+document validates against the generated schema.
+
+<details>
+<summary>Table of contents</summary>
+
+- [Usage](#usage)
+- [CLI](#cli)
+- [Output](#output)
+- [Conformance](#conformance)
+- [Testing](#testing)
+- [Keyword coverage](#keyword-coverage)
+- [Notes](#notes)
+
+</details>
 
 ## Usage
 
@@ -150,15 +196,39 @@ never takes the name of another schema. Every `$ref` points at the renamed
 variable. The option belongs to the generator instead of the shared parser,
 because a target that emits only types has no schema variable to name.
 
+## Conformance
+
+The official JSON Schema Test Suite is pinned and run for all five dialects. The
+badges link here:
+
+| Dialect  | Cases passing | Where the gaps are                                                                                                                        |
+| -------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| draft-04 | 173 / 194     | [case list](test/suite/knownFailuresByDialect.ts)                                                                                         |
+| draft-06 | 254 / 263     | [case list](test/suite/knownFailuresByDialect.ts)                                                                                         |
+| draft-07 | 286 / 304     | [cases](test/suite/knownFailuresByDialect.ts) · [reasons](test/suite/knownFailures.ts) · [instances](test/suite/knownFailureInstances.ts) |
+| 2019-09  | 348 / 417     | [case list](test/suite/knownFailuresByDialect.ts)                                                                                         |
+| 2020-12  | 346 / 431     | [case list](test/suite/knownFailuresByDialect.ts)                                                                                         |
+
+Which keywords are implemented, and which are only kept as annotations, is in
+[docs/keywords.md](../../docs/keywords.md#runtime-generators). Every dialect is
+pinned case by case in `knownFailuresByDialect.ts`; draft-07 also has a curated
+reason per case in `knownFailures.ts` and the failing instance descriptions in
+`knownFailureInstances.ts`.
+
 ## Testing
 
 ```sh
 pnpm test          # unit tests
-pnpm test:suite    # official JSON Schema Test Suite (draft-07)
+pnpm test:suite    # official JSON Schema Test Suite (all dialects)
 ```
 
 The generator is checked against the official
 [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
+All five dialects are measured: draft-04, draft-06, draft-07, 2019-09 and
+2020-12. Every dialect is pinned case by case in `knownFailuresByDialect.ts`;
+draft-07 also has a curated reason per case in `knownFailures.ts`.
+`test/suite/baseline.ts` records the counts the badges render.
+
 Today it passes **286 of 304 draft-07 cases (1,400 of 1,655 assertions)**. Format
 cases run in the mode they are tagged for, so both the annotation and the
 assertion cases are measured; cases that need external schemas are served from
@@ -177,43 +247,10 @@ The script reads the built `dist/`, so build the package first.
 
 ## Keyword coverage
 
-Supported keywords:
-
-- `type` (including unions of types), `const`, `enum` (object and array values are compared as canonical JSON, ignoring key order)
-- `string`: `minLength`, `maxLength`, `pattern`, `format` (checked by default, annotation with `formatMode: 'annotate'`)
-- `number`/`integer`: `minimum`, `maximum`, `exclusiveMinimum`,
-  `exclusiveMaximum`, `multipleOf`
-- `array`: `items`, `prefixItems`, `additionalItems`, `minItems`, `maxItems`,
-  `uniqueItems`
-- `object`: `properties`, `patternProperties`, `required`,
-  `additionalProperties`, `propertyNames`, `minProperties`, `maxProperties`
-- `allOf` between disjoint object subschemas, `anyOf`, `oneOf`
-- `not`, `if`/`then`/`else`, `contains` with `minContains`/`maxContains`, `dependencies` (applied as filters)
-- `$ref`, `$defs`, `definitions`
-- `title`, `description`, `default`, `examples`, `$id`, `readOnly`,
-  `writeOnly`, `deprecated` as annotations
-
-Effect has no schema constructor for negation, conditionals or "contains", so
-`not`, `if`/`then`/`else`, `contains` and `dependencies` are emitted as
-`Schema.makeFilter` checks that evaluate the subschemas with `Schema.is`.
-`dependentRequired` and `dependentSchemas` are normalized to `dependencies`
-before generation.
-
-`unevaluatedProperties` and `unevaluatedItems` are normalized to
-`additionalProperties` and the items rest before generation, as a best effort
-for schemas that do not rely on properties evaluated by applicators.
-
-The generator throws `UnsupportedEffectSchemaFeatureError` only for a schema it
-cannot express: a `pattern` that is not valid in Unicode mode, and an `allOf`
-whose members can be neither merged nor checked as filters.
-
-`$ref` siblings follow the dialect: draft-07 and older ignore them, 2019-09 and
-newer merge disjoint object siblings into one struct. Other siblings (a
-non-object or recursive target, `not`, `if`, ...) are checked with a filter on
-the reference, which keeps the reference's type.
-
-Effect has no generic intersection, so `allOf` is limited to merging object
-subschemas that do not declare the same property.
+Effect Schema covers the same keywords as the Zod generator, with a few
+constructs emitted as `Schema.makeFilter` checks. The full table and the
+Effect-specific notes are in
+[docs/keywords.md](../../docs/keywords.md#effect-schema-specifics).
 
 ## Notes
 
@@ -225,8 +262,3 @@ subschemas that do not declare the same property.
   closed or declares a typed `additionalProperties`.
 - Metadata and defaults are attached with `.annotate(...)`, so they never
   change decoding.
-
-## When to use
-
-Use this package to generate Effect Schema codecs and TypeScript types from
-JSON Schema, including complex schemas with references and modular structure.

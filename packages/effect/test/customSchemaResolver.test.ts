@@ -9,6 +9,9 @@ import type { CustomSchemaResolver } from '../src';
 import { compile, ts } from './test-utils';
 import type { TestSchema } from './test-utils';
 
+const dateTimeResolver: CustomSchemaResolver = (schema) =>
+	schema.format === 'date-time' ? 'Schema.Finite' : undefined;
+
 describe('customSchemaResolver', () => {
 	test('replaces a matching schema node with a custom Effect Schema expression', async () => {
 		await expect(
@@ -129,8 +132,6 @@ describe('customSchemaResolver', () => {
 
 	test('is passed on by compile()', async () => {
 		// Typed with the package export, so dropping the export fails `check:types`.
-		const dateTimeResolver: CustomSchemaResolver = (schema) =>
-			schema.format === 'date-time' ? 'Schema.Finite' : undefined;
 		const directory = await mkdtemp(join(tmpdir(), 'utilize-effect-resolver-'));
 
 		try {

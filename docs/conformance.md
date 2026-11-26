@@ -39,7 +39,8 @@ Draft-07 baseline on suite commit `e2a68a1`:
 
 See
 [`packages/typescript/README.md`](../packages/typescript/README.md#conformance)
-for the methodology and a side-by-side record with json-schema-to-typescript.
+for the methodology; the side-by-side record is
+[below](#compared-with-json-schema-to-typescript).
 
 **json-schema-to-typescript** generates TypeScript types and checks them with
 the TypeScript compiler: each instance is emitted as a typed constant and the
@@ -54,6 +55,23 @@ commit `3c25e5f`):
   remote references) and 2 produce invalid TypeScript.
 - Across instances it rejects 26 of 516 spec-valid instances and accepts 144 of
   342 spec-invalid ones.
+
+## Compared with json-schema-to-typescript
+
+At its own pinned revision (`5caacfc`, suite `3c25e5f`) json-schema-to-typescript
+records 141 of 257 draft-07 groups with no valid instance rejected and no invalid
+one accepted, 24 crashes and 2 invalid TypeScript files. Its instance totals are
+490 of 516 valid accepted and 198 of 342 invalid rejected. The suite revisions
+and case selections differ (257 groups there, 285 runnable cases here; this
+runner serves `externalSchemas` from memory), so the numbers describe two
+different records rather than a score. On the same group metric the TypeScript
+generator is ahead (67.0% vs 54.9%), accepts more valid instances (95.5% vs
+95.0%), emits no invalid TypeScript and crashes on 2 cases the shared parser or
+`$ref` resolver cannot resolve (24 there). Instance-level invalid rejection is
+not comparable across the two revisions: this runner rejects 60.9% of 386
+invalid instances, json-schema-to-typescript 57.9% of its 342, largely because
+the newer suite revision adds many more `format` cases that a type cannot
+reject.
 
 ## Why the numbers are not directly comparable
 
@@ -77,7 +95,7 @@ commit `3c25e5f`):
 Run every tool against the same suite revision, keep only the cases whose
 outcome a TypeScript type can express, and compare the same metric.
 `@utilize/typescript` is that comparison for the type-level metric at its pinned
-revision; its README records both numbers. Until the revisions match, read the
+revision; this page records both numbers. Until the revisions match, read the
 numbers above as different records, not as a score.
 
 ## Reproducing

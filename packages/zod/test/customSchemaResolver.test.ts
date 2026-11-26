@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'vitest';
 
-import { compile, ts } from './test-utils';
+import { generateCode, ts } from './test-utils';
 
 describe('customSchemaResolver', () => {
 	test('replaces a matching schema node with a custom Zod expression', async () => {
-		const result = compile(
+		const result = generateCode(
 			{
 				type: 'object',
 				properties: { created: { type: 'string', format: 'date-time' } },
@@ -26,7 +26,7 @@ describe('customSchemaResolver', () => {
 
 	test('types a replaced node as unknown in the value type of a recursive schema', async () => {
 		await expect(
-			compile(
+			generateCode(
 				{
 					type: 'object',
 					title: 'Node',
@@ -57,7 +57,7 @@ describe('customSchemaResolver', () => {
 
 	test('leaves unmatched nodes to the generator', async () => {
 		await expect(
-			compile(
+			generateCode(
 				{ type: 'object', properties: { name: { type: 'string' } } },
 				{ customSchemaResolver: () => undefined }
 			)

@@ -1,4 +1,4 @@
-import { isPlainObject, Meta } from '@utilize/json-schema';
+import { isPlainObject, Meta, schemaRecord } from '@utilize/json-schema';
 import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { UnresolvedReferenceError } from './errors';
@@ -59,10 +59,13 @@ export function mergeObjectSchemas(schemas: ParsedJSONSchema[]): MergeResult {
 }
 
 function createMergeState(): MergeState {
+	// Without a prototype, `properties.__proto__ = ...` adds a property instead
+	// of replacing the prototype.
+	const properties: MergeState['properties'] = {};
+	Object.setPrototypeOf(properties, null);
+
 	return {
-		// Without a prototype, `properties.__proto__ = ...` adds a property instead
-		// of replacing the prototype.
-		properties: Object.create(null),
+		properties,
 		propertyOwners: new Map(),
 		required: new Set(),
 		additionalProperties: undefined,
@@ -193,8 +196,15 @@ function additionalValueConflict(
 	return undefined;
 }
 
+interface MergedSchema {
+	type: 'object';
+	properties: MergeState['properties'];
+	required: string[];
+	additionalProperties?: MergeState['additionalProperties'];
+}
+
 function mergedObject(state: MergeState): ParsedJSONSchemaObject {
-	const merged: Record<string, unknown> = {
+	const merged: MergedSchema = {
 		type: 'object',
 		properties: state.properties,
 		required: [...state.required],
@@ -204,6 +214,7 @@ function mergedObject(state: MergeState): ParsedJSONSchemaObject {
 		merged.additionalProperties = state.additionalProperties;
 	}
 
+	// oxlint-disable-next-line quality/no-chained-type-assertions -- synthetic node; it has no source Meta to copy
 	return merged as unknown as ParsedJSONSchemaObject;
 }
 
@@ -215,7 +226,7 @@ function unmergeableReason(schema: ParsedJSONSchemaObject): string | undefined {
 		return 'nested references cannot be merged';
 	}
 
-	const record = schema as unknown as Record<string, unknown>;
+	const record = schemaRecord(schema);
 	const keyword = Object.keys(schema).find(
 		(key) =>
 			record[key] !== undefined && !ANNOTATION_KEYWORDS.has(key) && !MERGEABLE_KEYWORDS.has(key)

@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'vitest';
 
-import { compile, compileToZod, ts } from './test-utils';
+import { generateCode, compileToZod, ts } from './test-utils';
 
 describe('schema combinations', () => {
 	describe('allOf (AND)', () => {
 		test('2 objects', async () => {
 			await expect(
-				compile({
+				generateCode({
 					allOf: [
 						{ type: 'object', properties: { field1: { type: 'string' } } },
 						{ type: 'object', properties: { field2: { type: 'number' } } },
@@ -26,8 +26,8 @@ describe('schema combinations', () => {
 		});
 
 		test('empty allOf -> never type', async () => {
-			const result = await compile({ allOf: [] });
-			expect(result).toMatchCode(ts`
+			const result = await generateCode({ allOf: [] });
+			await expect(result).toMatchCode(ts`
         export const Root = z.never();
         export type Root = z.infer<typeof Root>;
       `);
@@ -35,7 +35,7 @@ describe('schema combinations', () => {
 
 		test('allOf with non-object types', async () => {
 			await expect(
-				compile({
+				generateCode({
 					allOf: [{ type: 'string' }, { type: 'number' }],
 				})
 			).toMatchCode(ts`
@@ -46,7 +46,7 @@ describe('schema combinations', () => {
 
 		test('more than 2 objects', async () => {
 			await expect(
-				compile({
+				generateCode({
 					allOf: [
 						{ type: 'object', properties: { field1: { type: 'string' } } },
 						{ type: 'object', properties: { field2: { type: 'number' } } },
@@ -74,7 +74,7 @@ describe('schema combinations', () => {
 
 	test('anyOf (OR)', async () => {
 		await expect(
-			compile({
+			generateCode({
 				anyOf: [
 					{ type: 'object', properties: { field1: { type: 'string' } } },
 					{ type: 'object', properties: { field2: { type: 'number' } } },
@@ -97,7 +97,7 @@ describe('schema combinations', () => {
 	// https://datatracker.ietf.org/doc/html/draft-json-schema-language-00#section-5.3.7
 	test('oneOf (exclusive OR)', async () => {
 		await expect(
-			compile({
+			generateCode({
 				discriminator: 'name',
 				oneOf: [
 					{
@@ -128,7 +128,7 @@ describe('schema combinations', () => {
 	});
 
 	test('issue with duplicates', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			$id: 'http://json-schema.org/draft-07/schema#',
 			title: 'Core schema meta-schema',
 			type: ['object', 'boolean'],
