@@ -1,0 +1,49 @@
+import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
+
+import type { Context } from './context';
+import { patternExpression } from './expressions';
+import { formatCheck } from './formats';
+
+export function generateString(schema: ParsedJSONSchemaObject, context: Context): string {
+	const checks = stringChecks(schema);
+	const format = stringFormat(schema, context);
+
+	if (format !== undefined) {
+		checks.push(format);
+	}
+
+	return checks.length > 0 ? `Schema.String.check(${checks.join(', ')})` : 'Schema.String';
+}
+
+function stringChecks(schema: ParsedJSONSchemaObject): string[] {
+	const checks: string[] = [];
+
+	if (typeof schema.minLength === 'number') {
+		checks.push(`Schema.isMinCodePoints(${schema.minLength})`);
+	}
+	if (typeof schema.maxLength === 'number') {
+		checks.push(`Schema.isMaxCodePoints(${schema.maxLength})`);
+	}
+	if (typeof schema.pattern === 'string') {
+		checks.push(`Schema.isPattern(${patternExpression(schema.pattern)})`);
+	}
+
+	return checks;
+}
+
+function stringFormat(schema: ParsedJSONSchemaObject, context: Context): string | undefined {
+	if ((context.formatMode ?? 'assert') !== 'assert' || typeof schema.format !== 'string') {
+		return undefined;
+	}
+
+	return formatCheck(schema.format) === undefined ? undefined : context.formatOf(schema.format);
+}
+
+/** `date-time` becomes `formatDateTime`, so one constant covers a format. */
+export function formatConstantBase(format: string) {
+	const pascal = format.replaceAll(/[^a-zA-Z0-9]+(.)?/g, (_, next: string | undefined) =>
+		next === undefined ? '' : next.toUpperCase()
+	);
+
+	return `format${pascal.charAt(0).toUpperCase()}${pascal.slice(1)}`;
+}
