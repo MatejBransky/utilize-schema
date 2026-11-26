@@ -1,4 +1,5 @@
 import { Button } from '@ui-sdk/react/button';
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@ui-sdk/react/collapsible';
 import {
 	ScrollArea,
 	ScrollAreaContent,
@@ -10,6 +11,7 @@ import {
 import type { Problem, SchemaFile } from '../bundle';
 import { MonacoEditor } from '../monaco/MonacoEditor';
 import type { Playground } from '../playgroundHooks';
+import { ChevronDownIcon } from './icons';
 
 import styles from '../App.module.css';
 
@@ -25,6 +27,7 @@ export type OutputPaneModel = Pick<
 	| 'codeEditorRef'
 	| 'copyCode'
 	| 'selectProblem'
+	| 'layout'
 >;
 
 export interface OutputPaneProps {
@@ -43,9 +46,11 @@ export function OutputPane({ playground }: OutputPaneProps) {
 		codeEditorRef,
 		copyCode: onCopyCode,
 		selectProblem: onSelectProblem,
+		layout,
 	} = playground;
 	const errorCount = problems.filter((problem) => problem.severity === 'error').length;
 	const warningCount = problems.length - errorCount;
+
 	return (
 		<section className={`${styles.pane} ${styles.outputPane}`}>
 			<div className={styles.outputHeader}>
@@ -70,15 +75,26 @@ export function OutputPane({ playground }: OutputPaneProps) {
 				readOnly
 			/>
 
-			<div className={styles.problems} data-testid="problems">
-				<div className={styles.problemsHeader}>
-					<h2 className={styles.heading}>Validation</h2>
+			<Collapsible
+				aria-label="Validation section"
+				className={styles.problems}
+				data-testid="problems"
+				open={!layout.problemsCollapsed}
+				onOpenChange={(open) => layout.setProblemsCollapsed(!open)}
+			>
+				<CollapsibleTrigger className={styles.problemsHeader}>
+					<span className={styles.problemsTitle}>
+						<span className={styles.heading}>Validation</span>
+						<ChevronDownIcon />
+					</span>
 					<span className={styles.counts} data-severity={errorCount > 0 ? 'error' : 'ok'}>
 						{errorCount} errors, {warningCount} warnings
 					</span>
-				</div>
-				<ProblemList problems={problems} files={files} onSelect={onSelectProblem} />
-			</div>
+				</CollapsibleTrigger>
+				<CollapsiblePanel id="validation-problems" className={styles.problemsBody} keepMounted>
+					<ProblemList problems={problems} files={files} onSelect={onSelectProblem} />
+				</CollapsiblePanel>
+			</Collapsible>
 		</section>
 	);
 }

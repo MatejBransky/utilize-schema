@@ -1,5 +1,7 @@
-import { createAgent } from '@ui-sdk/react/agent';
 import type { Ref } from 'react';
+
+import { createAgent } from '@ui-sdk/react/agent';
+import { page } from 'vitest/browser';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 
@@ -20,7 +22,7 @@ vi.mock('./monaco/MonacoEditor', async () => {
 	const { forwardRef, useImperativeHandle } = await import('react');
 
 	const MonacoEditor = forwardRef(function MonacoEditorMock(
-		{ testId }: { testId?: string },
+		{ testId, value }: { testId?: string; value?: string },
 		ref: Ref<unknown>
 	) {
 		useImperativeHandle(ref, () => ({
@@ -28,10 +30,10 @@ vi.mock('./monaco/MonacoEditor', async () => {
 			autoFormat: async () => {},
 			focus() {},
 			focusAt() {},
-			getValue: () => '',
+			getValue: () => value ?? '',
 		}));
 
-		return <div data-testid={testId} />;
+		return <div data-testid={testId} data-value={value} />;
 	});
 
 	return { MonacoEditor };
@@ -95,11 +97,25 @@ async function dropFiles(mode: 'add' | 'replace', files: DropFile[]) {
 }
 
 function savedFiles(): SchemaFile[] {
+	const state = JSON.parse(localStorage.getItem('utilize-schema-playground') ?? '{"files":[]}') as {
+		files: SchemaFile[];
+	};
+
+	return state.files;
+}
+
+function savedData(): string {
+	const state = JSON.parse(localStorage.getItem('utilize-schema-playground') ?? '{"data":""}') as {
+		data: string;
+	};
+
+	return state.data;
+}
+
+function resultStatus(target: 'zod' | 'effect'): string | null {
 	return (
-		JSON.parse(localStorage.getItem('utilize-schema-playground') ?? '{"files":[]}') as {
-			files: SchemaFile[];
-		}
-	).files;
+		document.querySelector(`[data-testid="result-${target}"]`)?.getAttribute('data-status') ?? null
+	);
 }
 
 test('dragging JSON files over the editor shows the add and replace targets', async () => {
@@ -161,6 +177,23 @@ test('dropping files on the add target keeps the open files', async () => {
 	expect(tabNames().at(-1)).toContain('extra.json');
 });
 
+test('dropping a JSON file on the test data editor replaces the test data', async () => {
+	const screen = await render(<App />);
+	const editor = document.querySelector('[data-testid="data-editor"]')!;
+	const pane = editor.closest('section')!;
+	const content = JSON.stringify({ dropped: true }, null, 2);
+	const dropped = [{ name: 'payload.json', content }];
+
+	pane.dispatchEvent(fileDrag('dragenter', dropped));
+
+	await expect.element(screen.getByText('Drop a JSON document')).toBeVisible();
+
+	pane.dispatchEvent(fileDrag('drop', dropped));
+
+	await vi.waitFor(() => expect(editor.getAttribute('data-value')).toBe(content));
+	await expect.element(screen.getByText('Drop a JSON document')).not.toBeInTheDocument();
+});
+
 test('the copy button resets when the schema changes', async () => {
 	Object.defineProperty(navigator, 'clipboard', {
 		configurable: true,
@@ -196,6 +229,7 @@ test('an agent can find and change the playground controls', async () => {
 	}
 
 	const labels = components.map((entry) => entry.label);
+	expect(new Set(labels).size).toBe(labels.length);
 	for (const label of [
 		'Generator',
 		'Example',
@@ -205,12 +239,57 @@ test('an agent can find and change the playground controls', async () => {
 		'Schema files',
 		'Add file',
 		'Format schema',
+		'Format data',
+		'Example test data',
+		'Test data section',
+		'Validation section',
+		'Workspace layout',
 		'Copy code',
 		'Share',
 		'GitHub',
 	]) {
 		expect(labels, `${label} is missing from the snapshot`).toContain(label);
 	}
+
+	const cases = await agent.query({ within: 'Example test data' });
+	expect('error' in cases).toBe(false);
+	if ('error' in cases) {
+		throw new Error(cases.error);
+	}
+	const invalidCase = cases[0]?.items?.find((item) => item.label === 'Invalid');
+	expect(invalidCase?.value).toBe('invalid');
+	await expect
+		.element(screen.getByRole('separator', { name: 'Resize schema and test data sections' }))
+		.toBeVisible();
+
+	const controls = await agent.act({
+		steps: [
+			{ ref: 'Format data', action: 'press' },
+			{ ref: 'Example test data', action: 'setValue', args: [invalidCase!.value] },
+			{ ref: 'Test data section', action: 'setOpen', args: [false] },
+			{ ref: 'Test data section', action: 'setOpen', args: [true] },
+			{ ref: 'Validation section', action: 'setOpen', args: [false] },
+			{ ref: 'Validation section', action: 'setOpen', args: [true] },
+			{ ref: 'Workspace layout', action: 'setLayout', args: ['62,38'] },
+		],
+	});
+	expect(controls.ok, controls.error?.message).toBe(true);
+	await expect.element(screen.getByRole('radio', { name: 'Invalid' })).toBeChecked();
+	expect(
+		screen.getByRole('button', { name: 'Test data' }).element().getAttribute('aria-expanded')
+	).toBe('true');
+	expect(
+		screen
+			.getByRole('button', { name: /Validation/ })
+			.element()
+			.getAttribute('aria-expanded')
+	).toBe('true');
+
+	const separator = screen
+		.getByRole('separator', { name: 'Resize schema and test data sections' })
+		.element();
+	separator.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+	await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('60'));
 
 	const result = await agent.act({
 		steps: [
@@ -293,6 +372,45 @@ test('the color mode button cycles through auto, light and dark', async () => {
 	await vi.waitFor(() => expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('auto'));
 });
 
+test('the schema and test data sections can be resized by keyboard', async () => {
+	await page.viewport(1200, 800);
+
+	try {
+		const screen = await render(<App />);
+		const separator = screen
+			.getByRole('separator', { name: 'Resize schema and test data sections' })
+			.element();
+		const group = separator.closest('[data-slot="resizable"]')!;
+		const panelRatio = () => {
+			const [top, bottom] = Array.from(
+				group.querySelectorAll<HTMLElement>('[data-slot="resizable-panel"]')
+			).map((panel) => panel.getBoundingClientRect().height);
+
+			return top / (top + bottom);
+		};
+
+		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('60'));
+		await vi.waitFor(() => expect(panelRatio()).toBeCloseTo(0.6, 1));
+
+		separator.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('58'));
+		await vi.waitFor(() => expect(panelRatio()).toBeCloseTo(0.58, 1));
+
+		separator.dispatchEvent(
+			new KeyboardEvent('keydown', { key: 'ArrowDown', shiftKey: true, bubbles: true })
+		);
+		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('68'));
+
+		separator.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('20'));
+
+		separator.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('94'));
+	} finally {
+		await page.viewport(414, 896);
+	}
+});
+
 test('the generator select offers only implemented generators', async () => {
 	const screen = await render(<App />);
 
@@ -366,6 +484,133 @@ test('an agent can switch the generator', async () => {
 	await vi.waitFor(() =>
 		expect(new URL(location.href).searchParams.get('generator')).toBe('effect')
 	);
+});
+
+test('the validation panel can be collapsed', async () => {
+	const screen = await render(<App />);
+	const toggle = screen.getByRole('button', { name: /Validation/ });
+	const body = document.querySelector('#validation-problems');
+
+	expect(toggle.element().getAttribute('aria-expanded')).toBe('true');
+	expect(body?.hasAttribute('hidden')).toBe(false);
+
+	await toggle.click();
+
+	await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('false'));
+	expect(body?.hasAttribute('hidden')).toBe(true);
+
+	await toggle.click();
+
+	await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('true'));
+	expect(body?.hasAttribute('hidden')).toBe(false);
+});
+
+test('the schema editor fills its pane', async () => {
+	await page.viewport(1200, 800);
+
+	try {
+		const screen = await render(<App />);
+		const editor = screen.getByTestId('schema-editor').element();
+
+		await vi.waitFor(() => expect(editor.getBoundingClientRect().height).toBeGreaterThan(100));
+	} finally {
+		await page.viewport(414, 896);
+	}
+});
+
+test('the test data section collapses to its header', async () => {
+	await page.viewport(1200, 800);
+
+	try {
+		const screen = await render(<App />);
+		const toggle = screen.getByRole('button', { name: 'Test data' });
+		const editor = screen.getByTestId('data-editor').element();
+		const editorPanel = editor.closest('#test-data-editor');
+		const results = document.querySelector('#validator-results-panel');
+
+		expect(toggle.element().getAttribute('aria-expanded')).toBe('true');
+		expect(editorPanel?.hasAttribute('hidden')).toBe(false);
+		expect(results?.hasAttribute('hidden')).toBe(false);
+
+		await toggle.click();
+
+		await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('false'));
+		const collapsedRow = document.getElementById('test-data-row');
+		await vi.waitFor(() => expect(collapsedRow?.hasAttribute('data-collapsed')).toBe(true));
+		await vi.waitFor(() => expect(collapsedRow?.getBoundingClientRect().height).toBeLessThan(60));
+		expect(editorPanel?.hasAttribute('hidden')).toBe(true);
+		expect(results?.hasAttribute('hidden')).toBe(true);
+		expect(document.querySelector('[data-testid="data-editor"]')).toBe(editor);
+
+		await toggle.click();
+
+		await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('true'));
+		expect(editorPanel?.hasAttribute('hidden')).toBe(false);
+		expect(results?.hasAttribute('hidden')).toBe(false);
+		expect(collapsedRow?.getBoundingClientRect().height).toBeGreaterThan(60);
+		expect(document.querySelector('[data-testid="data-editor"]')).toBe(editor);
+	} finally {
+		await page.viewport(414, 896);
+	}
+});
+
+test('resize and collapse controls remain available on narrow screens', async () => {
+	await page.viewport(414, 896);
+
+	try {
+		const screen = await render(<App />);
+		const separator = screen
+			.getByRole('separator', { name: 'Resize schema and test data sections' })
+			.element();
+		const toggle = screen.getByRole('button', { name: 'Test data' });
+
+		await expect.element(separator).toBeVisible();
+		await expect.element(toggle).toBeVisible();
+		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('60'));
+
+		separator.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('62'));
+
+		await toggle.click();
+		await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('false'));
+		expect(document.querySelector('#test-data-editor')?.hasAttribute('hidden')).toBe(true);
+		await expect.element(separator).toBeVisible();
+
+		await toggle.click();
+		await vi.waitFor(() => expect(toggle.element().getAttribute('aria-expanded')).toBe('true'));
+		await vi.waitFor(() => expect(separator.getAttribute('aria-valuenow')).toBe('62'));
+		expect(document.querySelector('#test-data-editor')?.hasAttribute('hidden')).toBe(false);
+	} finally {
+		await page.viewport(414, 896);
+	}
+});
+
+test('dropping a JSON file on a collapsed test data header is ignored', async () => {
+	await page.viewport(1200, 800);
+
+	try {
+		const screen = await render(<App />);
+		const editor = document.querySelector('[data-testid="data-editor"]')!;
+		const pane = editor.closest('section')!;
+		const before = editor.getAttribute('data-value');
+
+		await screen.getByRole('button', { name: 'Test data' }).click();
+		await vi.waitFor(() =>
+			expect(document.querySelector('#test-data-editor')?.hasAttribute('hidden')).toBe(true)
+		);
+
+		pane.dispatchEvent(
+			fileDrag('dragenter', [{ name: 'payload.json', content: '{"changed":true}' }])
+		);
+		pane.dispatchEvent(fileDrag('drop', [{ name: 'payload.json', content: '{"changed":true}' }]));
+		await new Promise<void>((resolve) => {
+			setTimeout(resolve, 250);
+		});
+
+		expect(editor.getAttribute('data-value')).toBe(before);
+	} finally {
+		await page.viewport(414, 896);
+	}
 });
 
 test('the keyword policy shows foreign keywords as errors or warnings', async () => {
@@ -532,4 +777,92 @@ test('rejects renaming to an existing file name', async () => {
 
 	await expect.element(screen.getByText('A file with this name already exists.')).toBeVisible();
 	expect(screen.getByLabelText('File name')).toBeInTheDocument();
+});
+
+test('the test data is validated by the generated Zod schema', async () => {
+	const screen = await render(<App />);
+
+	await expect.element(screen.getByTestId('data-editor')).toBeVisible();
+	await expect.element(screen.getByTestId('validator-results')).toBeVisible();
+	expect(document.querySelector('[data-testid="result-effect"]')).toBeNull();
+
+	await vi.waitFor(() => expect(resultStatus('zod')).toBe('valid'), { timeout: 15_000 });
+	expect(savedData()).toContain('"firstName": "Ada"');
+
+	await screen.getByRole('radio', { name: 'Invalid' }).click();
+
+	await vi.waitFor(() => expect(resultStatus('zod')).toBe('invalid'), { timeout: 15_000 });
+
+	const zodCard = document.querySelector('[data-testid="result-zod"]');
+
+	expect(zodCard?.textContent).toContain('$.address.zip');
+	expect(savedData()).toContain('"zip": "12"');
+});
+
+test('the result pane follows the selected generator', async () => {
+	const screen = await render(<App />);
+
+	await vi.waitFor(() => expect(resultStatus('zod')).toBe('valid'), { timeout: 15_000 });
+
+	await screen.getByRole('combobox', { name: 'Generator' }).click();
+	await screen.getByRole('option', { name: /Effect Schema/ }).click();
+
+	await vi.waitFor(() => expect(resultStatus('effect')).toBe('valid'), { timeout: 15_000 });
+	expect(document.querySelector('[data-testid="result-zod"]')).toBeNull();
+
+	await screen.getByRole('radio', { name: 'Invalid' }).click();
+	await vi.waitFor(() => expect(resultStatus('effect')).toBe('invalid'), { timeout: 15_000 });
+	expect(document.querySelector('[data-testid="result-zod"]')).toBeNull();
+
+	await screen.getByRole('combobox', { name: 'Generator' }).click();
+	await screen.getByRole('option', { name: /TypeScript/ }).click();
+
+	await expect.element(screen.getByText(/emits types only/)).toBeVisible();
+	expect(document.querySelector('[data-testid="result-effect"]')).toBeNull();
+});
+
+const booleanRootCases = [
+	{ target: 'zod', schema: true, status: 'valid' },
+	{ target: 'zod', schema: false, status: 'invalid' },
+	{ target: 'effect', schema: true, status: 'valid' },
+	{ target: 'effect', schema: false, status: 'invalid' },
+] as const;
+
+test.each(booleanRootCases)(
+	'$target runs a $schema root through its validator',
+	async (testCase) => {
+		localStorage.setItem(
+			'utilize-schema-playground',
+			JSON.stringify({
+				files: [{ id: 'root', name: 'root.json', content: JSON.stringify(testCase.schema) }],
+				target: testCase.target,
+				data: '{"value":1}',
+			})
+		);
+		await render(<App />);
+
+		await vi.waitFor(() => expect(resultStatus(testCase.target)).toBe(testCase.status), {
+			timeout: 15_000,
+		});
+		const card = document.querySelector(`[data-testid="result-${testCase.target}"]`);
+		expect(card?.textContent).not.toContain('The validator could not run');
+		expect(card?.textContent).not.toContain('The validator rejected the data.');
+	}
+);
+
+test('switching examples loads their test data', async () => {
+	const screen = await render(<App />);
+
+	await screen.getByRole('combobox', { name: 'Example' }).click();
+	await screen.getByRole('option', { name: /Enum/ }).click();
+
+	await vi.waitFor(() => expect(savedData()).toBe('"green"'));
+	await vi.waitFor(() => expect(resultStatus('zod')).toBe('valid'), { timeout: 15_000 });
+	await vi.waitFor(() => expect(new URL(location.href).searchParams.get('example')).toBe('enum'));
+
+	await screen.getByRole('radio', { name: 'Invalid' }).click();
+
+	await vi.waitFor(() => expect(resultStatus('zod')).toBe('invalid'), { timeout: 15_000 });
+	expect(savedData()).toBe('"purple"');
+	await vi.waitFor(() => expect(new URL(location.href).searchParams.has('example')).toBe(false));
 });

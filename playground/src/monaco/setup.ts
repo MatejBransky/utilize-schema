@@ -37,6 +37,8 @@ typescript.typescriptDefaults.setCompilerOptions({
 	module: typescript.ModuleKind.ESNext,
 	moduleResolution: typescript.ModuleResolutionKind.NodeJs,
 	strict: true,
+	// Editor models do not emit. The dedicated transpile operation temporarily
+	// overrides this option only while it asks the worker for JavaScript.
 	noEmit: true,
 	skipLibCheck: true,
 	allowNonTsExtensions: true,

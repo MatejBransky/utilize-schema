@@ -76,6 +76,17 @@ function effectTypesPlugin(): Plugin {
 export default defineConfig({
 	// Relative assets so the same build works on GitHub Pages under /utilize-schema/.
 	base: './',
+	// Keep worker code splitting so the validator can load only the selected
+	// Zod or Effect runtime instead of inlining both into an IIFE worker bundle.
+	worker: { format: 'es' },
+	optimizeDeps: {
+		include: [
+			'@ui-sdk/react/collapsible',
+			'@ui-sdk/react/resizable',
+			'@ui-sdk/react/segmented-control',
+			'react-dom/client',
+		],
+	},
 	plugins: [react(), zodTypesPlugin(), effectTypesPlugin()],
 	resolve: {
 		alias: {
