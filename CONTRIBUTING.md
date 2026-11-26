@@ -87,8 +87,9 @@ To set this up on a fork or a new repository:
 
 ## What Fallow enforces here
 
-Fallow checks unused code, dependency hygiene, duplication, import cycles,
-complexity and package boundaries from one repository graph.
+[Fallow](https://fallow.tools) checks unused code, dependency hygiene,
+duplication, import cycles, complexity and package boundaries from one
+repository graph.
 
 Run the changed-file audit before opening a PR:
 

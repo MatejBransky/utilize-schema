@@ -80,13 +80,6 @@ export const User = z.strictObject({
 export type User = z.infer<typeof User>;
 ```
 
-The `$ref` becomes a standalone `Address` schema emitted before the schema that
-uses it. Names come from `$id`/`title`, the definition key, or the file name.
-Constraints survive the trip: `format: "email"` becomes
-`z.email().meta({ format: 'email' })` by default and
-`z.string().meta({ format: 'email' })` with `formatMode: 'annotate'`, `default` →
-`.default()`, `additionalProperties: false` → `z.strictObject`.
-
 <details>
 <summary>Same schema, Effect Schema and TypeScript</summary>
 
@@ -194,31 +187,41 @@ conformance badge per dialect.
 
 ## 📦 Packages
 
-| Package                                          | Version                                                                                                         | Downloads                                                                                                              | Coverage                                                                               | Conformance                                                                                              | What it does                                                                                               |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| [`@utilize/json-schema`](./packages/json-schema) | [![npm](https://img.shields.io/npm/v/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema) | [![downloads](https://img.shields.io/npm/dw/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema) | [![coverage](.github/badges/coverage-json-schema.svg)](CONTRIBUTING.md#coverage-badge) | —                                                                                                        | Resolves `$ref` and links nodes with metadata. The generator-agnostic pipeline the three targets build on. |
-| [`@utilize/zod`](./packages/zod)                 | [![npm](https://img.shields.io/npm/v/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)                 | [![downloads](https://img.shields.io/npm/dw/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)                 | [![coverage](.github/badges/coverage-zod.svg)](CONTRIBUTING.md#coverage-badge)         | [![draft-07](.github/badges/suite-zod-draft-07.svg)](./packages/zod/README.md#testing)                   | Emits Zod schemas and `z.infer` types.                                                                     |
-| [`@utilize/effect`](./packages/effect)           | [![npm](https://img.shields.io/npm/v/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)           | [![downloads](https://img.shields.io/npm/dw/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)           | [![coverage](.github/badges/coverage-effect.svg)](CONTRIBUTING.md#coverage-badge)      | [![draft-07](.github/badges/suite-effect-draft-07.svg)](./packages/effect/README.md#testing)             | Emits Effect Schema codecs and types, with every `$ref` going through `Schema.suspend`.                    |
-| [`@utilize/typescript`](./packages/typescript)   | [![npm](https://img.shields.io/npm/v/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)   | [![downloads](https://img.shields.io/npm/dw/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)   | [![coverage](.github/badges/coverage-typescript.svg)](CONTRIBUTING.md#coverage-badge)  | [![draft-07](.github/badges/suite-typescript-draft-07.svg)](./packages/typescript/README.md#conformance) | Emits interfaces and type aliases. No runtime dependency.                                                  |
+- **[@utilize/json-schema](./packages/json-schema)** — Resolves `$ref` and links nodes with metadata. The generator-agnostic pipeline the three targets build on.
 
-The coverage badge is the unit test line coverage of that package's `src`,
-including the JSON Schema Test Suite and the CLI entry points. It is committed
-to `.github/badges/`, regenerated with `pnpm badge:coverage` and checked in CI;
-see [CONTRIBUTING.md](./CONTRIBUTING.md#coverage-badge).
+  [![npm version](https://img.shields.io/npm/v/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
+  [![weekly downloads](https://img.shields.io/npm/dw/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
+  [![coverage](.github/badges/coverage-json-schema.svg)](CONTRIBUTING.md#coverage-badge)
 
-The package badge table above shows draft-07 conformance: the share of compatible
-JSON Schema Test Suite cases where every expected result matches. Each package
-README shows a badge for every measured dialect — draft-04, draft-06, draft-07,
-2019-09 and 2020-12 — with known gaps left in the denominator. The badges are
-committed to `.github/badges/`, regenerated with `pnpm badge:suite` and checked in
-CI; see [CONTRIBUTING.md](./CONTRIBUTING.md#conformance-badges).
+- **[@utilize/zod](./packages/zod)** — Emits Zod schemas and `z.infer` types.
 
-The runtime generators need their runtime as a peer dependency: `zod`
-(`>=4.5.0 <5`) and `effect` (`>=4.0.0 <5`).
+  [![npm version](https://img.shields.io/npm/v/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
+  [![weekly downloads](https://img.shields.io/npm/dw/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
+  [![coverage](.github/badges/coverage-zod.svg)](CONTRIBUTING.md#coverage-badge)
+  [![draft-07 conformance](.github/badges/suite-zod-draft-07.svg)](./packages/zod/README.md#testing)
 
-```sh
-pnpm add zod effect
-```
+- **[@utilize/effect](./packages/effect)** — Emits Effect Schema codecs and types, with every `$ref` going through `Schema.suspend`.
+
+  [![npm version](https://img.shields.io/npm/v/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)
+  [![weekly downloads](https://img.shields.io/npm/dw/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)
+  [![coverage](.github/badges/coverage-effect.svg)](CONTRIBUTING.md#coverage-badge)
+  [![draft-07 conformance](.github/badges/suite-effect-draft-07.svg)](./packages/effect/README.md#testing)
+
+- **[@utilize/typescript](./packages/typescript)** — Emits interfaces and type aliases. No runtime dependency.
+
+  [![npm version](https://img.shields.io/npm/v/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)
+  [![weekly downloads](https://img.shields.io/npm/dw/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)
+  [![coverage](.github/badges/coverage-typescript.svg)](CONTRIBUTING.md#coverage-badge)
+  [![draft-07 conformance](.github/badges/suite-typescript-draft-07.svg)](./packages/typescript/README.md#conformance)
+
+The badges are committed to `.github/badges/` and checked in CI. Coverage is the
+line coverage of each package's `src`, including the JSON Schema Test Suite and
+the CLI entry points ([coverage badges](./CONTRIBUTING.md#coverage-badge)). The
+conformance badge counts draft-07 suite cases where every expected result
+matches; each package README shows every measured dialect — draft-04, draft-06,
+draft-07, 2019-09 and 2020-12 — with known gaps left in the denominator
+([conformance badges](./CONTRIBUTING.md#conformance-badges)). Regenerate both
+with `pnpm badge:coverage` and `pnpm badge:suite`.
 
 ---
 

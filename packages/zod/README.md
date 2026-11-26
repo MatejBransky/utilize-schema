@@ -3,6 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
 [![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
 [![Unit test coverage](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/coverage-zod.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/CONTRIBUTING.md#coverage-badge)
+
 [![draft-04 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-zod-draft-04.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/zod/README.md#testing)
 [![draft-06 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-zod-draft-06.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/zod/README.md#testing)
 [![draft-07 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-zod-draft-07.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/zod/README.md#testing)
