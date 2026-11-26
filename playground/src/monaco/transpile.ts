@@ -1,6 +1,7 @@
 import { monaco } from './setup';
 
 let modelCounter = 0;
+let emitQueue: Promise<void> = Promise.resolve();
 
 /**
  * Uses the TypeScript worker that already powers the generated-code editor to
@@ -16,9 +17,11 @@ export async function emitJavaScript(source: string): Promise<string> {
 		// The TypeScript worker is created when the language is first activated.
 		monaco.editor.tokenize('const value = 1;', 'typescript');
 
-		const worker = await getWorker();
-		const client = await worker(uri);
-		const output = await client.getEmitOutput(uri.toString());
+		const output = await withEmitOptions(async () => {
+			const worker = await getWorker();
+			const client = await worker(uri);
+			return client.getEmitOutput(uri.toString());
+		});
 		const javascript = output.outputFiles.find((file) => file.name.endsWith('.js'))?.text ?? '';
 
 		if (!javascript) {
@@ -33,6 +36,31 @@ export async function emitJavaScript(source: string): Promise<string> {
 	} finally {
 		model.dispose();
 	}
+}
+
+/**
+ * Monaco's TypeScript worker has one compiler-options set, not per-model emit
+ * options. Serialize transpiles and restore the editor defaults immediately
+ * after each operation, including when worker startup or emit fails.
+ */
+function withEmitOptions<T>(operation: () => Promise<T>): Promise<T> {
+	const result = emitQueue.then(async () => {
+		const defaults = monaco.typescript.typescriptDefaults;
+		const editorOptions = defaults.getCompilerOptions();
+		defaults.setCompilerOptions({ ...editorOptions, noEmit: false });
+
+		try {
+			return await operation();
+		} finally {
+			defaults.setCompilerOptions(editorOptions);
+		}
+	});
+
+	emitQueue = result.then(
+		() => undefined,
+		() => undefined
+	);
+	return result;
 }
 
 /**

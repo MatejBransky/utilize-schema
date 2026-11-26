@@ -37,10 +37,9 @@ typescript.typescriptDefaults.setCompilerOptions({
 	module: typescript.ModuleKind.ESNext,
 	moduleResolution: typescript.ModuleResolutionKind.NodeJs,
 	strict: true,
-	// The editor never writes files, but the worker's `getEmitOutput` skips
-	// emitting when `noEmit` is true. The playground uses that emit to run the
-	// generated validators against the test data.
-	noEmit: false,
+	// Editor models do not emit. The dedicated transpile operation temporarily
+	// overrides this option only while it asks the worker for JavaScript.
+	noEmit: true,
 	skipLibCheck: true,
 	allowNonTsExtensions: true,
 	types: [],

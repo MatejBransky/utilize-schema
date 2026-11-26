@@ -8,6 +8,7 @@ import { buildBundle, parseJsonFile } from '../bundle';
 import { exampleById } from '../examples';
 import { rootDeclarationName } from '../generateCode';
 import { loadModule, rootValidator, validateWithZod } from '../runtime';
+import { monaco } from './setup';
 import { emitJavaScript } from './transpile';
 
 test('the TypeScript worker emits runnable JavaScript for generated code', async () => {
@@ -27,10 +28,21 @@ test('the TypeScript worker emits runnable JavaScript for generated code', async
 	expect(javascript).toContain('z.strictObject(');
 
 	const module = await loadModule(javascript);
-	const result = validateWithZod(
+	const result = await validateWithZod(
 		rootValidator(module, rootDeclarationName(root)!),
 		example.cases[0].data
 	);
 
 	expect(result).toMatchObject({ ok: true, issues: [] });
+});
+
+test('transpiling restores the editor compiler options', async () => {
+	const defaults = monaco.typescript.typescriptDefaults;
+
+	expect(defaults.getCompilerOptions().noEmit).toBe(true);
+
+	const javascript = await emitJavaScript('export const value: number = 1;');
+
+	expect(javascript).toContain('value = 1');
+	expect(defaults.getCompilerOptions().noEmit).toBe(true);
 });
