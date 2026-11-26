@@ -5,6 +5,7 @@ import type { RuntimeSource } from '../generateCode';
 import { emitJavaScript } from '../monaco/transpile';
 import { isRuntimeTarget, targets } from '../targets';
 import type { RuntimeTargetId, TargetId } from '../targets';
+import { booleanRootReport } from './booleanRoot';
 import type { ValidatorReport, ValidatorSource } from './protocol';
 import { createValidatorClient } from './ValidatorClient';
 import type { ValidatorClient } from './ValidatorClient';
@@ -19,12 +20,14 @@ export type ValidationState =
 
 type EmitCache = Map<RuntimeTargetId, { code: string; javascript: Promise<string> }>;
 
-/** The generated validator to run, once the selected target produces one. */
-interface RunnableValidator {
+interface GeneratedValidator {
 	target: RuntimeTargetId;
 	code: string;
 	rootName: string;
 }
+
+/** The generated validator to run, once the selected target produces one. */
+type RunnableValidator = GeneratedValidator | { target: RuntimeTargetId; booleanRoot: boolean };
 
 interface RunContext {
 	clientRef: RefObject<ValidatorClient | null>;
@@ -66,7 +69,7 @@ export function useValidatorResults(
 
 		const runnable = runnableValidator(target, runtime);
 
-		if (!('code' in runnable)) {
+		if ('status' in runnable) {
 			setState(runnable);
 			return;
 		}
@@ -77,6 +80,11 @@ export function useValidatorResults(
 			parsed = JSON.parse(data);
 		} catch (error) {
 			setState({ status: 'invalid-json', message: messageOf(error) });
+			return;
+		}
+
+		if ('booleanRoot' in runnable) {
+			setState({ status: 'ready', result: booleanRootReport(runnable.booleanRoot, parsed) });
 			return;
 		}
 
@@ -113,23 +121,27 @@ function runnableValidator(
 		return { status: 'unavailable', reason: runtime.error.message };
 	}
 
-	if (!runtime.rootName) {
-		return {
-			status: 'unavailable',
-			reason: 'A boolean root schema has no declaration to run.',
-		};
+	if (runtime.rootName) {
+		return { target, code: runtime.code, rootName: runtime.rootName };
 	}
 
-	return { target, code: runtime.code, rootName: runtime.rootName };
+	if (typeof runtime.booleanRoot === 'boolean') {
+		return { target, booleanRoot: runtime.booleanRoot };
+	}
+
+	return {
+		status: 'unavailable',
+		reason: 'The schema does not expose a runtime declaration to run.',
+	};
 }
 
 /** Debounces a run and cancels it when the inputs change first. */
-function scheduleRun(runnable: RunnableValidator, parsed: unknown, context: RunContext) {
+function scheduleRun(runnable: GeneratedValidator, parsed: unknown, context: RunContext) {
 	let cancelled = false;
 
 	async function run() {
 		try {
-			const report = await runValidator(runnable, parsed, context);
+			const report = await runValidator(runnable, parsed, context, () => cancelled);
 
 			if (!cancelled) {
 				context.setState(
@@ -158,15 +170,24 @@ function scheduleRun(runnable: RunnableValidator, parsed: unknown, context: RunC
 	return () => {
 		cancelled = true;
 		clearTimeout(timer);
+		context.clientRef.current?.cancel(runnable.target);
 	};
 }
 
 async function runValidator(
-	runnable: RunnableValidator,
+	runnable: GeneratedValidator,
 	parsed: unknown,
-	context: RunContext
+	context: RunContext,
+	cancelled: () => boolean
 ): Promise<ValidatorReport | undefined> {
 	const source = await emitSource(runnable.target, runnable.code, runnable.rootName, context.cache);
+
+	// Transpiling can finish after newer input has scheduled its own run. Do not
+	// post stale work to the worker in that window.
+	if (cancelled()) {
+		return undefined;
+	}
+
 	const client = (context.clientRef.current ??= createValidatorClient());
 	const reports = await client.run(parsed, { [runnable.target]: source });
 

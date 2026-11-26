@@ -13,8 +13,10 @@ export type RuntimeSource =
 	| {
 			status: 'generated';
 			code: string;
-			/** Export that holds the root schema. Missing for a boolean root schema. */
+			/** Export that holds an object root schema. */
 			rootName?: string;
+			/** The root itself when the JSON Schema is boolean. */
+			booleanRoot?: boolean;
 	  }
 	| { status: 'failed'; error: Error };
 
@@ -68,7 +70,9 @@ function generateRuntimeSource(
 	try {
 		const code = runtimeGenerators[target](root, formatMode, options);
 
-		return { status: 'generated', code, rootName: rootDeclarationName(root) };
+		return typeof root === 'boolean'
+			? { status: 'generated', code, booleanRoot: root }
+			: { status: 'generated', code, rootName: rootDeclarationName(root) };
 	} catch (error) {
 		return { status: 'failed', error: error instanceof Error ? error : new Error(String(error)) };
 	}
