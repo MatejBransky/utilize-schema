@@ -1,8 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, normalize, relative, sep } from 'node:path';
 
-import { expectDefined } from '@utilize/json-schema';
-
 export function collectDeclarations(entry: string, root: string) {
 	const files = new Map<string, string>();
 	const seen = new Set<string>();
@@ -27,7 +25,11 @@ export function collectDeclarations(entry: string, root: string) {
 
 function nextUnseenFile(queue: string[], seen: Set<string>): string | null {
 	while (queue.length > 0) {
-		const file = expectDefined(queue.pop());
+		const file = queue.pop();
+
+		if (file === undefined) {
+			throw new Error('Expected a defined value');
+		}
 
 		if (!seen.has(file)) {
 			seen.add(file);
