@@ -305,9 +305,9 @@ describe('JSON Schema Test Suite (draft-07, type level)', () => {
 		}
 
 		expect(results.unattributed).toEqual([]);
+		expect([...failures.keys()].sort()).toEqual(Object.keys(knownGaps).sort());
 
 		if (!UPDATE_BASELINE) {
-			expect([...failures.keys()].sort()).toEqual(Object.keys(knownGaps).sort());
 			expect(
 				dialectGaps['draft-07'].gaps.map(({ key, reason }) => `${key}: ${reason}`).sort()
 			).toEqual(gapsForDialect('draft-07'));
