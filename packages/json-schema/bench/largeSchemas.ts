@@ -1,4 +1,4 @@
-import { readFile, mkdtemp, rm } from 'node:fs/promises';
+import { readFile, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
@@ -62,6 +62,16 @@ try {
 			})
 		),
 	];
+
+	const outputFile = process.env.BENCH_OUTPUT;
+
+	if (outputFile) {
+		await writeFile(
+			outputFile,
+			`${JSON.stringify({ iterations, unit: 'milliseconds', results }, null, 2)}\n`,
+			'utf8'
+		);
+	}
 
 	console.log(`\n${iterations} iterations, milliseconds\n`);
 	console.log(

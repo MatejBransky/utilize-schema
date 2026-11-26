@@ -2,8 +2,7 @@ import { playwright } from '@vitest/browser-playwright';
 import { defineConfig, mergeConfig } from 'vitest/config';
 
 import viteConfig from './vite.config.ts';
-
-const isGitHubActions = process.env.GITHUB_ACTIONS === 'true';
+import { createReporters } from '../scripts/vitest-reporters.mjs';
 
 /**
  * Tests that need a real browser: React rendering with `vitest-browser-react`,
@@ -22,9 +21,7 @@ export default mergeConfig(
 	viteConfig,
 	defineConfig({
 		test: {
-			reporters: isGitHubActions
-				? ['default', ['github-actions', { jobSummary: { title: 'playground browser tests' } }]]
-				: ['default'],
+			reporters: createReporters('playground browser tests', 'playground'),
 			coverage: {
 				include: ['src/**'],
 				reporter: ['lcov', 'json'],

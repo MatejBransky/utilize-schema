@@ -199,6 +199,7 @@ the TypeScript target emits types only, so the pane says there is no runtime
 validator.
 
 - Hosted: <https://matejbransky.github.io/utilize-schema/>
+- Reports: <https://matejbransky.github.io/utilize-schema/reports/>
 - Pull requests from this repository labeled `Preview` get a Vercel preview
   deployment.
 
@@ -257,6 +258,7 @@ the package baselines:
 - Clone the repo, run `pnpm install`
 - Run tests: `pnpm test`
 - Run the full check: `pnpm verify`
+- Rebuild the hosted reports locally: `pnpm build:dev && pnpm --filter playground build && pnpm reports`
 
 Tooling: pnpm workspaces, [tsdown](https://tsdown.dev/) for builds,
 [Vitest](https://vitest.dev/) for tests, [oxlint](https://oxc.rs/docs/guide/usage/linter)

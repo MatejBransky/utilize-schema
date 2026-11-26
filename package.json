@@ -50,12 +50,15 @@
 		"check:fallow-badge": "node scripts/fallow-badge.mjs --check",
 		"fallow:coverage": "node scripts/fallow-coverage.mjs",
 		"hooks:install": "fallow hooks install --target git",
+		"reports": "node scripts/pages-reports.mjs",
+		"reports:render": "node scripts/pages-reports.mjs --render-only",
 		"example": "pnpm --filter playground dev"
 	},
 	"devDependencies": {
 		"@changesets/cli": "3.0.3",
 		"@cloudflare/oxlint-config": "catalog:",
 		"@vitest/coverage-v8": "catalog:",
+		"@vitest/ui": "catalog:",
 		"fallow": "catalog:",
 		"fallow-type-aware": "catalog:",
 		"oxfmt": "catalog:",
