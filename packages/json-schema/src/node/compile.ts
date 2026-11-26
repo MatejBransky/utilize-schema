@@ -125,10 +125,6 @@ export function bindCompileFile<Options extends SchemaFileLocation>(
  * issues are printed as warnings unless `onDialectIssue` handles them, so
  * programmatic builds still see them.
  */
-/** Parses a schema for a generator's `compileSchema`. Unlike `parse`, dialect
- * issues are printed as warnings unless `onDialectIssue` handles them, so
- * programmatic builds still see them.
- */
 export function parseForCompile(
 	schema: JSONSchema | boolean,
 	options: ParseOptions

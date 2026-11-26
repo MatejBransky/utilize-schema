@@ -7,6 +7,7 @@ import { afterEach, describe, expect, test } from 'vitest';
 
 import { isEntrypoint, run } from '../src/cli';
 import type { CliIo } from '../src/cli';
+import { compileSchema } from '../src';
 
 const temporaryDirectories: string[] = [];
 
@@ -37,6 +38,15 @@ afterEach(async () => {
 });
 
 describe('CLI', () => {
+	test('compiles a boolean schema document', async () => {
+		await expect(
+			compileSchema(true, {
+				cwd: join(tmpdir(), 'utilize-typescript-boolean'),
+				fileName: 'Root.json',
+			})
+		).resolves.toContain('export type Root = unknown;');
+	});
+
 	test('reads a schema from stdin and writes to stdout', async () => {
 		const { io, stdout } = createIo(JSON.stringify({ type: 'string' }));
 

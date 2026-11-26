@@ -72,6 +72,7 @@ export const DEFAULT_BANNER = generatedFileBanner('@utilize/zod');
 /** Compiles a Zod schema source file to generated code without writing anything. */
 export const compileFile = bindCompileFile(compileSchema);
 
+/** Reads a JSON or YAML schema file, follows its references and writes the generated Zod module next to it. */
 export async function compile(userOptions: CompileOptions) {
 	const { inputPath, outputPath } = compilePaths(userOptions, defaultCwd);
 

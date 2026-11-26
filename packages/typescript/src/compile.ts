@@ -48,13 +48,13 @@ export { type CodeFormatter, readSchema };
 
 export const DEFAULT_BANNER = generatedFileBanner('@utilize/typescript');
 
+/** Compiles a JSON or YAML schema source file to generated types without writing anything. */
+export const compileFile = bindCompileFile(compileSchema);
+
 /**
  * Reads a JSON or YAML schema file, follows its references and writes the
  * generated TypeScript type module next to it.
  */
-/** Compiles a JSON or YAML schema source file to generated types without writing anything. */
-export const compileFile = bindCompileFile(compileSchema);
-
 export async function compile(options: CompileOptions): Promise<void> {
 	const { inputPath, outputPath } = compilePaths(options);
 

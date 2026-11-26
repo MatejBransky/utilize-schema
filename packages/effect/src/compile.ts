@@ -68,13 +68,13 @@ export { type CodeFormatter, readSchema };
 
 export const DEFAULT_BANNER = generatedFileBanner('@utilize/effect');
 
+/** Compiles an Effect Schema source file to generated code without writing anything. */
+export const compileFile = bindCompileFile(compileSchema);
+
 /**
  * Reads a JSON or YAML schema file, follows its references and writes the
  * generated Effect Schema module next to it.
  */
-/** Compiles an Effect Schema source file to generated code without writing anything. */
-export const compileFile = bindCompileFile(compileSchema);
-
 export async function compile(options: CompileOptions): Promise<void> {
 	const { inputPath, outputPath } = compilePaths(options);
 
