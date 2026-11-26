@@ -4,6 +4,12 @@ import { describe, expect, test } from 'vitest';
 
 import { generateCode, compileToZod, ts } from './test-utils';
 
+const tag = (value: string, valueType: 'integer' | 'string'): JSONSchema => ({
+	type: 'object',
+	properties: { type: { type: 'string', const: value }, value: { type: valueType } },
+	required: ['type', 'value'],
+});
+
 describe('const and enum next to a type they already satisfy', () => {
 	test('a string const with "type": "string" is only a literal', async () => {
 		await expect(generateCode({ type: 'string', const: 'circle' })).toMatchCode(ts`
@@ -168,12 +174,6 @@ describe('an anyOf with a branch that accepts every value', () => {
 });
 
 describe('a oneOf whose branches cannot match the same value', () => {
-	const tag = (value: string, valueType: 'integer' | 'string'): JSONSchema => ({
-		type: 'object',
-		properties: { type: { type: 'string', const: value }, value: { type: valueType } },
-		required: ['type', 'value'],
-	});
-
 	test('different consts become a plain union', async () => {
 		await expect(
 			generateCode({

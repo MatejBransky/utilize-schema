@@ -25,6 +25,10 @@ function withMeta(schema: JSONSchema, meta: Partial<Meta> = {}) {
 	return schema as ParsedJSONSchemaObject;
 }
 
+function stripSchemaSuffix(candidate: ParsedJSONSchemaObject) {
+	candidate[Meta].fileName = candidate[Meta].fileName.replace(/\.schema$/, '');
+}
+
 describe('resolveName', () => {
 	it('prefers $id if present', () => {
 		const schema = withMeta({ $id: 'FooBar' });
@@ -70,11 +74,8 @@ describe('resolveName', () => {
 
 	it('uses custom resolver if provided', () => {
 		const schema = withMeta({}, { parent: null, fileName: 'kebab-case.schema' });
-		const customResolver = (candidate: ParsedJSONSchemaObject) => {
-			candidate[Meta].fileName = candidate[Meta].fileName.replace(/\.schema$/, '');
-		};
 
-		expect(resolveName({ schema, customResolver })).toBe('KebabCase');
+		expect(resolveName({ schema, customResolver: stripSchemaSuffix })).toBe('KebabCase');
 	});
 
 	it('returns a custom name as it is, without reserving it', () => {

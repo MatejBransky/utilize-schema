@@ -77,12 +77,6 @@ export default defineConfig({
 			rules: { 'import/no-namespace': 'off' },
 		},
 		{
-			// The suite evaluates generated code in memory, so every call goes
-			// through `new Function`.
-			files: ['packages/test-utils/src/suite/evaluate.ts'],
-			rules: { 'typescript/no-unsafe-call': 'off' },
-		},
-		{
 			// Tests build deliberately malformed schemas to exercise the parser, so
 			// their fixtures narrow literals the production code never sees.
 			files: ['**/*.{test,spec}.{ts,tsx}', '**/test/**'],
@@ -182,14 +176,11 @@ export default defineConfig({
 	rules: {
 		// Project-specific tuning carried over from the previous configuration.
 		'@typescript-eslint/array-type': ['error', { default: 'array' }],
+		'import/no-unassigned-import': [
+			'error',
+			{ allow: ['**/*.css', '**/polyfills', '**/monaco/setup', '@utilize/test-utils/setup'] },
+		],
 		'no-underscore-dangle': ['warn', { allow: ['__UI_SDK_STRICT__'] }],
-		'unicorn/consistent-function-scoping': 'off',
-		'unicorn/no-array-reverse': 'off',
 		'unicorn/no-thenable': 'off',
-		'import/no-unassigned-import': 'off',
-
-		// `instanceof` is idiomatic for DOM nodes and for the constructor-identity
-		// check in `isPlainObject`; the rule rejects both.
-		'@nkzw/no-instanceof': 'off',
 	},
 });
