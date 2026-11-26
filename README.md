@@ -121,6 +121,12 @@ lists the options.
   [![weekly downloads](https://img.shields.io/npm/dw/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)
   [![coverage](.github/badges/coverage-typescript.svg)](CONTRIBUTING.md#coverage-badge)
 
+- **[@utilize/content-mapper](./packages/content-mapper)** — Imports `.jsonschema` files as generated Zod, Effect Schema or TypeScript modules through a TypeScript 7.1 content mapper, a Node loader and a Vite plugin.
+
+  [![npm version](https://img.shields.io/npm/v/@utilize/content-mapper)](https://www.npmjs.com/package/@utilize/content-mapper)
+  [![weekly downloads](https://img.shields.io/npm/dw/@utilize/content-mapper)](https://www.npmjs.com/package/@utilize/content-mapper)
+  [![coverage](.github/badges/coverage-content-mapper.svg)](CONTRIBUTING.md#coverage-badge)
+
 The badges are committed to `.github/badges/` and checked in CI. Coverage is the
 line coverage of each package's `src`, including the JSON Schema Test Suite and
 the CLI entry points ([coverage badges](./CONTRIBUTING.md#coverage-badge)).

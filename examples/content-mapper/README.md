@@ -79,4 +79,4 @@ Select the TypeScript version from `examples/content-mapper/node_modules/typescr
 
 Then restart the TS server. Without that, VS Code uses the repo's TypeScript 7.0.2 and reports the same missing-module error.
 
-If the editor's TypeScript client does not support content mappers yet, the CLI commands above are the supported way to try the PoC. Editor integration and span-mapped diagnostics are not implemented yet.
+If the editor's TypeScript client does not support content mappers yet, the CLI commands above are the supported way to try the content mapper. Editor integration and span-mapped diagnostics are not implemented yet.

@@ -31,7 +31,7 @@ pinned in `package.json#packageManager`; Corepack can install it for you.
 - `packages/zod`: Zod code generator and related logic.
 - `packages/effect`: Effect Schema code generator and related logic.
 - `packages/typescript`: TypeScript type generator (no runtime dependency).
-- `packages/content-mapper`: Proof of concept that imports `.jsonschema` files as generated Zod or Effect Schema modules through a TypeScript content mapper, a Node loader and a Vite plugin.
+- `packages/content-mapper`: Imports `.jsonschema` files as generated Zod, Effect Schema or TypeScript modules through a TypeScript 7.1 content mapper, a Node loader and a Vite plugin.
 - `examples/content-mapper`: Demo project for `@utilize/content-mapper`.
 - `playground`: Browser app for editing multi-file schemas and previewing the generated Zod, Effect Schema or TypeScript code.
 

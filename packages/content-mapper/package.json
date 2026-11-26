@@ -1,8 +1,18 @@
 {
 	"name": "@utilize/content-mapper",
 	"version": "0.0.0",
-	"private": true,
 	"description": "Import .jsonschema files as Zod or Effect Schema modules in TypeScript.",
+	"keywords": [
+		"codegen",
+		"content-mapper",
+		"effect",
+		"json-schema",
+		"json-schema-to-effect",
+		"json-schema-to-zod",
+		"schema",
+		"typescript",
+		"zod"
+	],
 	"license": "MIT",
 	"author": {
 		"name": "Matej Bransky",
@@ -25,6 +35,10 @@
 			"types": "./dist/index.d.ts",
 			"default": "./dist/index.mjs"
 		},
+		"./loader": {
+			"types": "./dist/loader.d.ts",
+			"default": "./dist/loader.mjs"
+		},
 		"./mapper": {
 			"types": "./dist/mapper.d.ts",
 			"default": "./dist/mapper.mjs"
@@ -36,9 +50,24 @@
 		"./vite": {
 			"types": "./dist/vite.d.ts",
 			"default": "./dist/vite.mjs"
-		}
+		},
+		"./dist/index.mjs": "./dist/index.mjs",
+		"./dist/index.d.ts": "./dist/index.d.ts",
+		"./dist/loader.mjs": "./dist/loader.mjs",
+		"./dist/loader.d.ts": "./dist/loader.d.ts",
+		"./dist/mapper.mjs": "./dist/mapper.mjs",
+		"./dist/mapper.d.ts": "./dist/mapper.d.ts",
+		"./dist/register.mjs": "./dist/register.mjs",
+		"./dist/register.d.ts": "./dist/register.d.ts",
+		"./dist/vite.mjs": "./dist/vite.mjs",
+		"./dist/vite.d.ts": "./dist/vite.d.ts",
+		"./package.json": "./package.json"
+	},
+	"publishConfig": {
+		"access": "public"
 	},
 	"scripts": {
+		"prepublishOnly": "pnpm build",
 		"build": "tsdown",
 		"build:dev": "tsdown",
 		"check:types": "tsc --noEmit",
@@ -57,9 +86,9 @@
 		"@total-typescript/tsconfig": "catalog:",
 		"@types/node": "catalog:",
 		"effect": "catalog:",
-		"oxfmt": "catalog:",
 		"tsdown": "catalog:",
-		"typescript": "7.1.0-beta",
+		"typescript": "catalog:typescript71",
+		"vite": "catalog:",
 		"vitest": "catalog:",
 		"zod": "catalog:"
 	},
@@ -82,6 +111,7 @@
 	"typescript": {
 		"contentMapper": {
 			"compilerOptions": [],
+			"dynamicConfig": true,
 			"exec": [
 				"node",
 				"dist/mapper.mjs"

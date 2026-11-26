@@ -13,6 +13,6 @@
 	},
 	"devDependencies": {
 		"@types/node": "catalog:",
-		"typescript": "7.1.0-beta"
+		"typescript": "catalog:typescript71"
 	}
 }
