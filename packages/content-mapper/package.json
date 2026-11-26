@@ -1,0 +1,124 @@
+{
+	"name": "@utilize/content-mapper",
+	"version": "0.0.0",
+	"description": "Import .jsonschema files as Zod or Effect Schema modules in TypeScript.",
+	"keywords": [
+		"codegen",
+		"content-mapper",
+		"effect",
+		"json-schema",
+		"json-schema-to-effect",
+		"json-schema-to-zod",
+		"schema",
+		"typescript",
+		"zod"
+	],
+	"license": "MIT",
+	"author": {
+		"name": "Matej Bransky",
+		"email": "matej.bransky@gmail.com"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/MatejBransky/utilize-schema.git",
+		"directory": "packages/content-mapper"
+	},
+	"files": [
+		"dist"
+	],
+	"type": "module",
+	"main": "./dist/index.mjs",
+	"module": "./dist/index.mjs",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.mjs"
+		},
+		"./loader": {
+			"types": "./dist/loader.d.ts",
+			"default": "./dist/loader.mjs"
+		},
+		"./mapper": {
+			"types": "./dist/mapper.d.ts",
+			"default": "./dist/mapper.mjs"
+		},
+		"./register": {
+			"types": "./dist/register.d.ts",
+			"default": "./dist/register.mjs"
+		},
+		"./vite": {
+			"types": "./dist/vite.d.ts",
+			"default": "./dist/vite.mjs"
+		},
+		"./dist/index.mjs": "./dist/index.mjs",
+		"./dist/index.d.ts": "./dist/index.d.ts",
+		"./dist/loader.mjs": "./dist/loader.mjs",
+		"./dist/loader.d.ts": "./dist/loader.d.ts",
+		"./dist/mapper.mjs": "./dist/mapper.mjs",
+		"./dist/mapper.d.ts": "./dist/mapper.d.ts",
+		"./dist/register.mjs": "./dist/register.mjs",
+		"./dist/register.d.ts": "./dist/register.d.ts",
+		"./dist/vite.mjs": "./dist/vite.mjs",
+		"./dist/vite.d.ts": "./dist/vite.d.ts",
+		"./package.json": "./package.json"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"prepublishOnly": "pnpm build",
+		"build": "tsdown",
+		"build:dev": "tsdown",
+		"check:types": "tsc --noEmit",
+		"pretest": "pnpm build",
+		"test": "vitest",
+		"ci:test": "pnpm build && vitest run",
+		"dev": "tsdown --watch"
+	},
+	"dependencies": {
+		"@utilize/effect": "workspace:*",
+		"@utilize/json-schema": "workspace:*",
+		"@utilize/typescript": "workspace:*",
+		"@utilize/zod": "workspace:*"
+	},
+	"devDependencies": {
+		"@total-typescript/tsconfig": "catalog:",
+		"@types/node": "catalog:",
+		"effect": "catalog:",
+		"tsdown": "catalog:",
+		"typescript": "catalog:typescript71",
+		"vite": "catalog:",
+		"vitest": "catalog:",
+		"zod": "catalog:"
+	},
+	"peerDependencies": {
+		"effect": ">=4.0.0 <5",
+		"typescript": ">=7.1.0-beta <8",
+		"zod": ">=4.5.0 <5"
+	},
+	"peerDependenciesMeta": {
+		"effect": {
+			"optional": true
+		},
+		"typescript": {
+			"optional": true
+		},
+		"zod": {
+			"optional": true
+		}
+	},
+	"typescript": {
+		"contentMapper": {
+			"compilerOptions": [],
+			"dynamicConfig": true,
+			"exec": [
+				"node",
+				"dist/mapper.mjs"
+			]
+		}
+	},
+	"engines": {
+		"node": ">=24"
+	}
+}

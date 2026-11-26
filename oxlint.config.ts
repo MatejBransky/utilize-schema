@@ -44,6 +44,10 @@ export default defineConfig({
 		'**/dist/**',
 		'.agents/**',
 		'packages/zod/test/snapshots/**',
+		// Fixture programs are compiled or imported by the tests, and the TS 7.1
+		// content-mapper tsconfig needs --runExternalCode, which the parser cannot
+		// see. They are test inputs rather than linted sources.
+		'packages/content-mapper/test/fixtures/**',
 	],
 	overrides: [
 		{
@@ -131,6 +135,18 @@ export default defineConfig({
 			// Tests and benchmarks build deliberately malformed inputs.
 			files: ['**/*.{test,spec}.{ts,tsx}', '**/test/**', '**/bench/**'],
 			rules: { 'typescript/no-unsafe-type-assertion': 'off' },
+		},
+		{
+			// The content mapper protocol parses untrusted JSON-RPC payloads at
+			// its boundary. The values are validated before dispatch, but the
+			// wire shape is inherently open, so the dictionary and dynamic-read
+			// rules would force an unsafe cast anyway.
+			files: ['packages/content-mapper/src/mapper-server.ts', 'packages/content-mapper/src/rpc.ts'],
+			rules: {
+				'quality/no-unsafe-dictionary-type': 'off',
+				'quality/no-reflect-get': 'off',
+				'quality/no-unknown-returns': 'off',
+			},
 		},
 		{
 			// The parser and linker are where untrusted JSON becomes the parsed

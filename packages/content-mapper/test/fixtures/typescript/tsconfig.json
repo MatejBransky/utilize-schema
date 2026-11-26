@@ -1,0 +1,18 @@
+{
+	"compilerOptions": {
+		"strict": true,
+		"noEmit": true,
+		"target": "ES2022",
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"skipLibCheck": true
+	},
+	"contentMappers": [
+		{
+			"package": "@utilize/content-mapper",
+			"extensions": [".jsonschema"],
+			"options": { "target": "typescript" }
+		}
+	],
+	"include": ["main.ts"]
+}

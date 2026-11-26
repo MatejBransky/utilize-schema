@@ -10,7 +10,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { pickColor, renderBadge } from './badge.mjs';
 
-const PACKAGES = ['json-schema', 'zod', 'effect', 'typescript'];
+const PACKAGES = ['json-schema', 'zod', 'effect', 'typescript', 'content-mapper'];
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const BADGE_DIRECTORY = join(ROOT, '.github', 'badges');
 const IS_CHECK = process.argv.includes('--check');

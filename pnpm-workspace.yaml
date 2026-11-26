@@ -1,5 +1,10 @@
 packages:
   - packages/*
+  # Examples join the recursive scripts on purpose, so CI type-checks the demo.
+  # Like every package, they need `pnpm build:dev` first: the content-mapper
+  # demo's `check:types` runs the built `@utilize/content-mapper` mapper and
+  # passes `--runExternalCode` itself.
+  - examples/*
   - playground
 
 # Pin every install to an exact version (no ^ / ~ ranges) when adding a dependency.
@@ -21,8 +26,16 @@ catalog:
   tsdown: 0.23.7
   tsrs: 7.1.0-beta.tsrs5
   typescript: 7.0.2
+  vite: 8.3.8
   vitest: 5.1.1
   zod: 4.6.7
+
+# Named catalogs hold a second version of a package that only some workspaces
+# use. The content mapper needs the TypeScript 7.1 language-server feature while
+# the rest of the repository stays on the stable catalog version.
+catalogs:
+  typescript71:
+    typescript: 7.1.0-beta
 
 # Supply-chain guardrails for registry dependencies.
 minimumReleaseAge: 1440

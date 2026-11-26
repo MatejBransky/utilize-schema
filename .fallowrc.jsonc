@@ -60,6 +60,11 @@
 			"packages/zod/tsconfig.json",
 			"packages/effect/tsconfig.json",
 			"packages/typescript/tsconfig.json",
+			// The package tsconfig is a normal project. The example's tsconfig
+			// sets the TypeScript 7.1 `contentMappers` option, which the stable
+			// checker cannot load; its own `check:types` runs with TypeScript
+			// 7.1 beta instead.
+			"packages/content-mapper/tsconfig.json",
 			"packages/test-utils/tsconfig.json",
 			"playground/tsconfig.json",
 		],
@@ -177,6 +182,8 @@
 			{ "name": "effect", "patterns": ["packages/effect/src/**"] },
 			{ "name": "typescript", "patterns": ["packages/typescript/src/**"] },
 			{ "name": "playground", "patterns": ["playground/src/**"] },
+			{ "name": "content-mapper", "patterns": ["packages/content-mapper/src/**"] },
+			{ "name": "content-mapper-example", "patterns": ["examples/content-mapper/src/**"] },
 		],
 		"rules": [
 			{ "from": "core", "allow": [] },
@@ -184,6 +191,8 @@
 			{ "from": "effect", "allow": ["core"] },
 			{ "from": "typescript", "allow": ["core"] },
 			{ "from": "playground", "allow": ["core", "zod", "effect", "typescript"] },
+			{ "from": "content-mapper", "allow": ["core", "zod", "effect", "typescript"] },
+			{ "from": "content-mapper-example", "allow": [] },
 		],
 		"coverage": {
 			"requireAllFiles": true,

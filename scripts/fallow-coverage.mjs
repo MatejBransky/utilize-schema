@@ -26,6 +26,7 @@ const WORKSPACES = [
 	'packages/zod',
 	'packages/effect',
 	'packages/typescript',
+	'packages/content-mapper',
 	'playground',
 ];
 const MERGED_COVERAGE = join(ROOT, 'coverage', 'merged', 'coverage-final.json');
