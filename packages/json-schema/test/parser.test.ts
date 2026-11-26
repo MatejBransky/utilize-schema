@@ -2,7 +2,7 @@ import { assert, expect, test } from 'vitest';
 
 import RefProperties from './RefProperties.json';
 
-import { Meta, parse } from '../src';
+import { isParsedJSONSchemaObject, Meta, parse } from '../src';
 import type { JSONSchema } from '../src';
 
 test('parser', async () => {
@@ -276,11 +276,16 @@ test('resolves an in-document URN before attempting an external read', async () 
 	const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Unknown' });
 
 	assert(typeof parsed.root === 'object' && parsed.root !== null);
-	const rootReference = parsed.root.allOf?.[0] as ParsedJSONSchemaObject;
-	const resource = rootReference[Meta].reference as ParsedJSONSchemaObject;
-	const pointerReference = resource.allOf?.[0] as ParsedJSONSchemaObject;
+	const rootReference = parsed.root.allOf?.[0];
 
-	expect(resource).toBe((parsed.root.definitions as Record<string, ParsedJSONSchemaObject>).foo);
+	assert(isParsedJSONSchemaObject(rootReference));
+	const resource = rootReference[Meta].reference;
+
+	assert(isParsedJSONSchemaObject(resource));
+	const pointerReference = resource.allOf?.[0];
+
+	assert(isParsedJSONSchemaObject(pointerReference));
+	expect(resource).toBe(parsed.root.definitions?.foo);
 	expect(pointerReference[Meta].reference).toMatchObject({ type: 'string' });
 });
 
