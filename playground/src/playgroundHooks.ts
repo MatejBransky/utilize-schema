@@ -517,11 +517,15 @@ async function generateOutput(
 
 			nextRuntime = generated.runtime;
 
-			const formatCode =
-				generatorOptions?.format ??
-				((source: string) => formatTypeScript(source).catch(() => source));
+			if (generated.runtime?.status === 'failed') {
+				nextProblems.push({ severity: 'error', message: generated.runtime.error.message });
+			} else {
+				const formatCode =
+					generatorOptions?.format ??
+					((source: string) => formatTypeScript(source).catch(() => source));
 
-			nextCode = await formatCode(generated.code);
+				nextCode = await formatCode(generated.code);
+			}
 		} catch (error) {
 			nextProblems.push({
 				severity: 'error',

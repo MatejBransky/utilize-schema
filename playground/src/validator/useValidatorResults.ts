@@ -8,6 +8,9 @@ import type { RuntimeTargetId, TargetId } from '../targets';
 import type { ValidatorReport, ValidatorSource } from './protocol';
 import { createValidatorClient } from './ValidatorClient';
 import type { ValidatorClient } from './ValidatorClient';
+import { withTimeout } from './withTimeout';
+
+const COMPILE_TIMEOUT_MS = 10_000;
 
 export type ValidationState =
 	| { status: 'running' }
@@ -37,8 +40,16 @@ export function useValidatorResults(
 	busy: boolean
 ): ValidationState {
 	const [state, setState] = useState<ValidationState>({ status: 'running' });
+	const [inputs, setInputs] = useState({ target, data, busy });
 	const clientRef = useRef<ValidatorClient | null>(null);
 	const emitCacheRef = useRef<EmitCache>(new Map());
+
+	// Reset during the render that receives new inputs. Waiting for the effect
+	// would paint the previous generator's report under the new label once.
+	if (inputs.target !== target || inputs.data !== data || inputs.busy !== busy) {
+		setInputs({ target, data, busy });
+		setState({ status: 'running' });
+	}
 
 	useEffect(
 		() => () => {
@@ -99,7 +110,7 @@ function runnableValidator(
 	}
 
 	if (runtime.status === 'failed') {
-		return { status: 'unavailable', reason: runtime.error.message };
+		return { status: 'error', message: runtime.error.message };
 	}
 
 	if (runtime.rootName) {
@@ -156,7 +167,20 @@ async function runValidator(
 	context: RunContext,
 	cancelled: () => boolean
 ): Promise<ValidatorReport | undefined> {
-	const source = await emitSource(runnable.target, runnable.code, runnable.rootName, context.cache);
+	const source = await withTimeout(
+		emitSource(runnable.target, runnable.code, runnable.rootName, context.cache),
+		COMPILE_TIMEOUT_MS,
+		() =>
+			new Error(
+				`Compiling the generated ${targetLabel(runnable.target)} validator took longer than ${COMPILE_TIMEOUT_MS / 1000} seconds.`
+			)
+	).catch((error: unknown) => {
+		// Drop the hung compile so the next run starts a fresh emit instead of
+		// awaiting the same promise again.
+		context.cache.delete(runnable.target);
+
+		throw error;
+	});
 
 	// Transpiling can finish after newer input has scheduled its own run. Do not
 	// post stale work to the worker in that window.
