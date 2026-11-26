@@ -20,11 +20,18 @@ function state(): UrlState {
 		target: 'effect',
 		keywordPolicy: 'ignore',
 		formatMode: 'annotate',
+		data: '{"saved":true}',
 	};
 }
 
 function example(): Example {
-	return { id: 'const', name: 'Const', group: 'Basics', files: [file('const')] };
+	return {
+		id: 'const',
+		name: 'Const',
+		group: 'Basics',
+		files: [file('const')],
+		cases: [{ value: 'valid', label: 'Valid', expect: 'valid', data: 'green' }],
+	};
 }
 
 test('returns null when the URL has no recognized playground parameters', () => {
@@ -65,6 +72,7 @@ test('loads an example even when it is the only recognized URL parameter', () =>
 		target: 'zod',
 		keywordPolicy: 'ignore',
 		formatMode: 'annotate',
+		data: '"green"',
 	});
 });
 
@@ -77,6 +85,7 @@ test('URL settings override an example while the saved policy and format remain 
 		target: 'typescript',
 		keywordPolicy: 'warn',
 		formatMode: 'annotate',
+		data: '"green"',
 	});
 });
 

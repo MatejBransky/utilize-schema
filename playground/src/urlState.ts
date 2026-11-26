@@ -1,9 +1,10 @@
 import type { KeywordPolicy } from '@utilize/json-schema';
 
 import type { SchemaFile } from './bundle';
+import { exampleData } from './examples';
+import type { Example } from './examples';
 import { isFormatMode } from './formatMode';
 import type { FormatMode } from './formatMode';
-import type { Example } from './examples';
 import { defaultTarget, isTargetId, targets } from './targets';
 import type { TargetId } from './targets';
 
@@ -16,6 +17,7 @@ export interface UrlState {
 	target: TargetId;
 	keywordPolicy: KeywordPolicy;
 	formatMode: FormatMode;
+	data: string;
 }
 
 export function isAvailableTarget(value: unknown): value is TargetId {
@@ -55,6 +57,7 @@ export function readUrlState(url: URL, base: UrlState, example?: Example): UrlSt
 			target: target ?? defaultTarget,
 			keywordPolicy: keywordPolicy ?? base.keywordPolicy,
 			formatMode: formatMode ?? base.formatMode,
+			data: exampleData(example),
 		};
 	}
 
@@ -67,5 +70,6 @@ export function readUrlState(url: URL, base: UrlState, example?: Example): UrlSt
 		target: target ?? base.target,
 		keywordPolicy: keywordPolicy ?? base.keywordPolicy,
 		formatMode: formatMode ?? base.formatMode,
+		data: base.data,
 	};
 }

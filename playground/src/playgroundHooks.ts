@@ -1,9 +1,6 @@
-import { generate as generateEffect } from '@utilize/effect';
 import { parse } from '@utilize/json-schema';
-import type { KeywordPolicy, ParsedJSONSchema } from '@utilize/json-schema';
-import { generate as generateTypeScript } from '@utilize/typescript';
-import { generate as generateZod } from '@utilize/zod';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import type { KeywordPolicy } from '@utilize/json-schema';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { RefObject } from 'react';
 
 import { buildBundle, detectRootId, normalizeName, parseJsonFile } from './bundle';
@@ -11,9 +8,10 @@ import type { Problem, SchemaFile } from './bundle';
 import { collectDroppedFiles, readDroppedSchemas } from './drop';
 import type { DropMode } from './drop';
 import { generatorOptionsFor } from './exampleOptions';
-import type { ExampleGeneratorOptions } from './exampleOptions';
-import { examples } from './examples';
+import { exampleById, exampleCaseForData, exampleData, examples } from './examples';
 import type { FormatMode } from './formatMode';
+import { generateCodeFor } from './generateCode';
+import type { RuntimeSource } from './generateCode';
 import { formatTypeScript } from './monaco/format';
 import type { MonacoEditorHandle } from './monaco/MonacoEditor';
 import { collectProblems } from './problems';
@@ -32,8 +30,11 @@ import { loadColorMode, THEME_STORAGE_KEY } from './theme';
 import type { ColorMode } from './theme';
 import { isElement } from './dom';
 import { useFileDrop } from './useFileDrop';
+import { useDataDrop } from './useDataDrop';
+import { useWorkspaceLayout } from './useWorkspaceLayout';
 import type { UrlState } from './urlState';
 import { validateSchemas } from './validation';
+import { useValidatorResults } from './validator/useValidatorResults';
 
 const targetOptions = targets.map((option) => ({
 	value: option.value,
@@ -49,15 +50,17 @@ const exampleOptions = examples.map((example) => ({
 }));
 
 interface SettingsSetters {
-	setTarget: (target: TargetId) => void;
-	setKeywordPolicy: (policy: KeywordPolicy) => void;
-	setFormatMode: (mode: FormatMode) => void;
+	setTarget(target: TargetId): void;
+	setKeywordPolicy(policy: KeywordPolicy): void;
+	setFormatMode(mode: FormatMode): void;
+	setData(data: string): void;
 }
 
 export function usePlayground() {
 	const [initial] = useState(loadState);
 	const settings = useGeneratorSettings(initial);
-	const workspace = useSchemaFiles(initial.files, settings);
+	const testData = useTestData(initial.data);
+	const workspace = useSchemaFiles(initial.files, { ...settings, setData: testData.setData });
 	const generation = useGeneration(
 		workspace.files,
 		settings.target,
@@ -66,41 +69,40 @@ export function usePlayground() {
 	);
 	const theme = useTheme();
 	const editors = useEditorNavigation(workspace.setActiveId);
+	const layout = useWorkspaceLayout();
+	const dataDrop = useDataDrop({
+		collapsed: layout.dataCollapsed,
+		onData: testData.updateData,
+	});
+	const validation = useValidatorResults(
+		settings.target,
+		generation.runtime,
+		testData.data,
+		generation.busy
+	);
 	const feedback = useFeedback(
 		workspace.files,
 		settings.target,
 		settings.keywordPolicy,
 		settings.formatMode,
 		generation.code,
+		testData.data,
 		editors.codeEditorRef
 	);
+	const { activeExample, activeCase, applyExample } = useExampleSelection(
+		generation.exampleId,
+		testData.data,
+		(files) => workspace.applyExample(files),
+		testData.setData
+	);
 
-	function applyExample(id: string) {
-		const example = examples.find((candidate) => candidate.id === id);
-
-		if (!example) {
-			return;
-		}
-
-		workspace.applyExample(example.files);
-		setExampleUrl(example.id, 'push');
-	}
-
-	useEffect(() => {
-		try {
-			localStorage.setItem(
-				PLAYGROUND_STORAGE_KEY,
-				JSON.stringify({
-					files: workspace.files,
-					target: settings.target,
-					keywordPolicy: settings.keywordPolicy,
-					formatMode: settings.formatMode,
-				})
-			);
-		} catch {
-			// Storage can be full or denied. Keep the workspace in memory.
-		}
-	}, [workspace.files, settings.target, settings.keywordPolicy, settings.formatMode]);
+	useWorkspacePersistence({
+		files: workspace.files,
+		target: settings.target,
+		keywordPolicy: settings.keywordPolicy,
+		formatMode: settings.formatMode,
+		data: testData.data,
+	});
 
 	return {
 		...settings,
@@ -109,6 +111,12 @@ export function usePlayground() {
 		...theme,
 		...editors,
 		...feedback,
+		...testData,
+		validation,
+		layout,
+		dataDrop,
+		activeExample,
+		activeCase,
 		applyExample,
 		targetOptions,
 		exampleOptions,
@@ -116,6 +124,63 @@ export function usePlayground() {
 }
 
 export type Playground = ReturnType<typeof usePlayground>;
+
+interface PersistedWorkspace {
+	files: SchemaFile[];
+	target: TargetId;
+	keywordPolicy: KeywordPolicy;
+	formatMode: FormatMode;
+	data: string;
+}
+
+function useWorkspacePersistence({
+	files,
+	target,
+	keywordPolicy,
+	formatMode,
+	data,
+}: PersistedWorkspace) {
+	useEffect(() => {
+		try {
+			localStorage.setItem(
+				PLAYGROUND_STORAGE_KEY,
+				JSON.stringify({ files, target, keywordPolicy, formatMode, data })
+			);
+		} catch {
+			// Storage can be full or denied. Keep the workspace in memory.
+		}
+	}, [files, target, keywordPolicy, formatMode, data]);
+}
+
+interface ExampleSelection {
+	activeExample: ReturnType<typeof exampleById>;
+	activeCase: ReturnType<typeof exampleCaseForData>;
+	applyExample: (id: string) => void;
+}
+
+function useExampleSelection(
+	exampleId: string | null,
+	data: string,
+	applyFiles: (files: SchemaFile[]) => void,
+	setData: (data: string) => void
+): ExampleSelection {
+	const activeExample = exampleById(exampleId);
+	const activeCase = activeExample ? exampleCaseForData(activeExample, data) : undefined;
+
+	function applyExample(id: string) {
+		const example = examples.find((candidate) => candidate.id === id);
+
+		if (!example) {
+			return;
+		}
+
+		applyFiles(example.files);
+		setData(exampleData(example));
+		setExampleUrl(example.id, 'push');
+	}
+
+	return { activeExample, activeCase, applyExample };
+}
 
 function useGeneratorSettings(initial: UrlState) {
 	const [target, setTarget] = useState<TargetId>(initial.target);
@@ -125,26 +190,24 @@ function useGeneratorSettings(initial: UrlState) {
 	useEffect(() => {
 		const url = new URL(location.href);
 
-		if (!url.hash && url.searchParams.get(playgroundParams.generator) !== target) {
-			updateUrl({ [playgroundParams.generator]: target }, 'replace');
+		if (
+			url.hash ||
+			(url.searchParams.get(playgroundParams.generator) === target &&
+				url.searchParams.get(playgroundParams.keywordPolicy) === keywordPolicy &&
+				url.searchParams.get(playgroundParams.formatMode) === formatMode)
+		) {
+			return;
 		}
-	}, [target]);
 
-	useEffect(() => {
-		const url = new URL(location.href);
-
-		if (!url.hash && url.searchParams.get(playgroundParams.keywordPolicy) !== keywordPolicy) {
-			updateUrl({ [playgroundParams.keywordPolicy]: keywordPolicy }, 'replace');
-		}
-	}, [keywordPolicy]);
-
-	useEffect(() => {
-		const url = new URL(location.href);
-
-		if (!url.hash && url.searchParams.get(playgroundParams.formatMode) !== formatMode) {
-			updateUrl({ [playgroundParams.formatMode]: formatMode }, 'replace');
-		}
-	}, [formatMode]);
+		updateUrl(
+			{
+				[playgroundParams.generator]: target,
+				[playgroundParams.keywordPolicy]: keywordPolicy,
+				[playgroundParams.formatMode]: formatMode,
+			},
+			'replace'
+		);
+	}, [target, keywordPolicy, formatMode]);
 
 	function applyGenerator(id: TargetId) {
 		setTarget(id);
@@ -174,6 +237,23 @@ function useGeneratorSettings(initial: UrlState) {
 	};
 }
 
+function useTestData(initial: string) {
+	const [data, setData] = useState(initial);
+
+	function updateData(content: string) {
+		// The editor also reports programmatic value changes (for example when an
+		// example loads); those must keep the example URL intact.
+		if (content === data) {
+			return;
+		}
+
+		clearExampleUrl();
+		setData(content);
+	}
+
+	return { data, setData, updateData };
+}
+
 function useSchemaFiles(initialFiles: SchemaFile[], settings: SettingsSetters) {
 	const [files, setFiles] = useState<SchemaFile[]>(initialFiles);
 	const [activeId, setActiveId] = useState(initialFiles[0]?.id ?? '');
@@ -186,11 +266,10 @@ function useSchemaFiles(initialFiles: SchemaFile[], settings: SettingsSetters) {
 		},
 	});
 
-	useEffect(() => {
-		if (!files.some((file) => file.id === activeId) && files[0]) {
-			setActiveId(files[0].id);
-		}
-	}, [files, activeId]);
+	// A restored or dropped workspace can remove the selected file. Derive a
+	// usable id during render instead of repairing the state in an effect.
+	const activeFile = files.find((file) => file.id === activeId) ?? files[0];
+	const currentId = activeFile?.id ?? '';
 
 	useEffect(() => {
 		const onPopState = () => {
@@ -199,6 +278,7 @@ function useSchemaFiles(initialFiles: SchemaFile[], settings: SettingsSetters) {
 			settings.setTarget(next.target);
 			settings.setKeywordPolicy(next.keywordPolicy);
 			settings.setFormatMode(next.formatMode);
+			settings.setData(next.data);
 			setActiveId(next.files[0]?.id ?? '');
 			setEditingId(null);
 		};
@@ -337,7 +417,7 @@ function useSchemaFiles(initialFiles: SchemaFile[], settings: SettingsSetters) {
 
 	return {
 		files,
-		activeId,
+		activeId: currentId,
 		setActiveId,
 		editingId,
 		setEditingId,
@@ -363,6 +443,7 @@ function useGeneration(
 	formatMode: FormatMode
 ) {
 	const [code, setCode] = useState('');
+	const [runtime, setRuntime] = useState<RuntimeSource | null>(null);
 	const [busy, setBusy] = useState(false);
 	const [generationProblems, setGenerationProblems] = useState<Problem[]>([]);
 	const rootId = files[0]?.id ?? '';
@@ -383,36 +464,12 @@ function useGeneration(
 		setBusy(true);
 
 		async function generate() {
-			let nextCode = '';
-			const nextProblems: Problem[] = [];
-
-			if (bundle.root !== null) {
-				try {
-					const { root } = await parse(bundle.root, {
-						cwd: '/',
-						fileName: bundle.rootFileName,
-						keywordPolicy,
-						onDialectIssue: () => {},
-					});
-
-					const generatorOptions = exampleId ? generatorOptionsFor(exampleId) : undefined;
-					const rawCode = generateCodeFor(target, root, generatorOptions, formatMode);
-					const formatCode =
-						generatorOptions?.format ??
-						((source: string) => formatTypeScript(source).catch(() => source));
-
-					nextCode = cancelled ? nextCode : await formatCode(rawCode);
-				} catch (error) {
-					nextProblems.push({
-						severity: 'error',
-						message: error instanceof Error ? error.message : String(error),
-					});
-				}
-			}
+			const next = await generateOutput(bundle, target, keywordPolicy, formatMode, exampleId);
 
 			if (!cancelled) {
-				setCode(nextCode);
-				setGenerationProblems(nextProblems);
+				setCode(next.code);
+				setRuntime(next.runtime);
+				setGenerationProblems(next.problems);
 				setBusy(false);
 			}
 		}
@@ -427,26 +484,73 @@ function useGeneration(
 		};
 	}, [bundle, exampleId, target, keywordPolicy, formatMode]);
 
-	return { exampleId, problems, code, busy };
+	return { exampleId, problems, code, runtime, busy };
+}
+
+async function generateOutput(
+	bundle: ReturnType<typeof buildBundle>,
+	target: TargetId,
+	keywordPolicy: KeywordPolicy,
+	formatMode: FormatMode,
+	exampleId: string | null
+): Promise<{ code: string; runtime: RuntimeSource | null; problems: Problem[] }> {
+	let nextCode = '';
+	const nextProblems: Problem[] = [];
+	let nextRuntime: RuntimeSource | null = null;
+
+	if (bundle.root !== null) {
+		try {
+			// `parse` resolves the schema in place, so every run gets a copy;
+			// otherwise switching targets reuses names chosen for the previous one.
+			const { root } = await parse(structuredClone(bundle.root), {
+				cwd: '/',
+				fileName: bundle.rootFileName,
+				keywordPolicy,
+				onDialectIssue: () => {},
+			});
+
+			const generatorOptions = exampleId ? generatorOptionsFor(exampleId) : undefined;
+			const generated = generateCodeFor(target, root, formatMode, generatorOptions);
+
+			nextRuntime = generated.runtime;
+
+			if (generated.runtime?.status === 'failed') {
+				nextProblems.push({ severity: 'error', message: generated.runtime.error.message });
+			} else {
+				const formatCode =
+					generatorOptions?.format ??
+					((source: string) => formatTypeScript(source).catch(() => source));
+
+				nextCode = await formatCode(generated.code);
+			}
+		} catch (error) {
+			nextProblems.push({
+				severity: 'error',
+				message: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	return { code: nextCode, runtime: nextRuntime, problems: nextProblems };
+}
+
+function subscribeSystemDark(onChange: () => void): () => void {
+	const query = window.matchMedia('(prefers-color-scheme: dark)');
+
+	query.addEventListener('change', onChange);
+
+	return () => query.removeEventListener('change', onChange);
+}
+
+function systemDarkSnapshot(): boolean {
+	return window.matchMedia('(prefers-color-scheme: dark)').matches;
 }
 
 function useTheme() {
 	const [colorMode, setColorMode] = useState<ColorMode>(loadColorMode);
-	const [systemDark, setSystemDark] = useState(
-		() => window.matchMedia('(prefers-color-scheme: dark)').matches
-	);
+	const systemDark = useSyncExternalStore(subscribeSystemDark, systemDarkSnapshot, () => false);
 	const resolvedTheme = colorMode === 'auto' ? (systemDark ? 'dark' : 'light') : colorMode;
 	const monacoTheme = resolvedTheme === 'dark' ? 'utilize-dark' : 'utilize-light';
-
-	useEffect(() => {
-		const query = window.matchMedia('(prefers-color-scheme: dark)');
-		const onChange = (event: MediaQueryListEvent) => setSystemDark(event.matches);
-
-		query.addEventListener('change', onChange);
-		setSystemDark(query.matches);
-
-		return () => query.removeEventListener('change', onChange);
-	}, []);
 
 	useEffect(() => {
 		document.documentElement.dataset.theme = resolvedTheme;
@@ -463,6 +567,7 @@ function useTheme() {
 
 function useEditorNavigation(setActiveId: (id: string) => void) {
 	const schemaEditorRef = useRef<MonacoEditorHandle>(null);
+	const dataEditorRef = useRef<MonacoEditorHandle>(null);
 	const codeEditorRef = useRef<MonacoEditorHandle>(null);
 	const [cursor, setCursor] = useState({ line: 1, column: 1 });
 	const [pendingPosition, setPendingPosition] = useState<{ line: number; column: number }>();
@@ -489,11 +594,20 @@ function useEditorNavigation(setActiveId: (id: string) => void) {
 
 	return {
 		schemaEditorRef,
+		dataEditorRef,
 		codeEditorRef,
 		cursor,
 		setCursor,
 		selectProblem,
 	};
+}
+
+interface FeedbackSnapshot {
+	files: SchemaFile[];
+	target: TargetId;
+	keywordPolicy: KeywordPolicy;
+	formatMode: FormatMode;
+	data: string;
 }
 
 function useFeedback(
@@ -502,39 +616,47 @@ function useFeedback(
 	keywordPolicy: KeywordPolicy,
 	formatMode: FormatMode,
 	code: string,
+	data: string,
 	codeEditorRef: RefObject<MonacoEditorHandle | null>
 ) {
-	const [copied, setCopied] = useState(false);
-	const [shared, setShared] = useState(false);
+	const [sharedSnapshot, setSharedSnapshot] = useState<FeedbackSnapshot | null>(null);
+	const [copy, setCopy] = useState<{ value: string; id: number } | null>(null);
 
-	useEffect(() => {
-		setShared(false);
-		setCopied(false);
-	}, [files, target, keywordPolicy]);
+	// Both flags describe the input they were produced from, so they expire by
+	// derivation instead of being reset by an effect on every edit.
+	const shared =
+		sharedSnapshot !== null &&
+		sharedSnapshot.files === files &&
+		sharedSnapshot.target === target &&
+		sharedSnapshot.keywordPolicy === keywordPolicy &&
+		sharedSnapshot.formatMode === formatMode &&
+		sharedSnapshot.data === data;
+	const copied = copy !== null && copy.value === code;
 
+	// Timers are a real side effect; the flag itself is derived above.
 	useEffect(() => {
-		if (!copied) {
+		if (copy === null) {
 			return;
 		}
 
-		const timer = setTimeout(() => setCopied(false), 2000);
+		const timer = setTimeout(() => setCopy(null), 2000);
 
 		return () => clearTimeout(timer);
-	}, [copied]);
+	}, [copy]);
 
 	async function copyCode() {
 		const text = codeEditorRef.current?.getValue() ?? code;
 
 		try {
 			await navigator.clipboard.writeText(text);
-			setCopied(true);
+			setCopy((current) => ({ value: text, id: (current?.id ?? 0) + 1 }));
 		} catch {
-			setCopied(false);
+			setCopy(null);
 		}
 	}
 
 	async function share() {
-		const encoded = encodeState({ files, target, keywordPolicy, formatMode });
+		const encoded = encodeState({ files, target, keywordPolicy, formatMode, data });
 		const url = new URL(location.href);
 
 		url.searchParams.delete(playgroundParams.example);
@@ -543,7 +665,7 @@ function useFeedback(
 		url.searchParams.set(playgroundParams.formatMode, formatMode);
 		url.hash = `data=${encoded}`;
 		history.replaceState(null, '', url);
-		setShared(true);
+		setSharedSnapshot({ files, target, keywordPolicy, formatMode, data });
 
 		try {
 			await navigator.clipboard.writeText(url.href);
@@ -553,23 +675,4 @@ function useFeedback(
 	}
 
 	return { copied, shared, copyCode, share };
-}
-
-function generateCodeFor(
-	target: TargetId,
-	root: ParsedJSONSchema,
-	options: ExampleGeneratorOptions | undefined,
-	formatMode: FormatMode
-): string {
-	switch (target) {
-		case 'effect':
-			return generateEffect(root, { importEffect: true, formatMode, ...options?.effect });
-		case 'typescript':
-			// A type cannot check a format, so the option does not apply here.
-			return generateTypeScript(root, { ...options?.typescript });
-		case 'zod':
-			return generateZod(root, { importZod: true, formatMode, ...options?.zod });
-		default:
-			throw new Error(`The ${target} generator is not available yet.`);
-	}
 }

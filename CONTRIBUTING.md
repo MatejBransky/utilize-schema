@@ -56,7 +56,9 @@ repository root and then builds only the playground (`playground/dist`).
 `git.deploymentEnabled: false` disables all automatic Vercel Git deployments,
 including production, so they do not consume the Hobby plan's daily limit.
 `.github/workflows/vercel-preview.yml` deploys labeled pull requests from the
-same repository through the Vercel CLI instead.
+same repository through the Vercel CLI instead. The workflow runs the CLI from
+the repository root, so the linked project's Root Directory still decides what
+is built; do not add a second `vercel.json` at the root.
 
 Keep `vercel.json` inside the Root Directory: Vercel resolves its paths relative
 to it, so a `vercel.json` at the repository root would point at

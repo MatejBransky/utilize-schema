@@ -1,7 +1,7 @@
 import { expectDefined, isPlainObject } from '@utilize/json-schema';
 
 import type { SchemaFile } from './bundle';
-import { defaultExampleId, exampleById, examples } from './examples';
+import { defaultExampleId, exampleById, exampleData, examples } from './examples';
 import { defaultFormatMode, isFormatMode } from './formatMode';
 import { defaultTarget } from './targets';
 import {
@@ -109,6 +109,7 @@ function defaultState(): UrlState {
 		target: defaultTarget,
 		keywordPolicy: 'warn',
 		formatMode: defaultFormatMode,
+		data: exampleData(example),
 	};
 }
 
@@ -134,22 +135,33 @@ function isSchemaFile(value: unknown): value is SchemaFile {
 }
 
 function normalizeState(value: unknown): UrlState | null {
-	if (!value || typeof value !== 'object') {
-		return null;
-	}
-
-	const state = value as Partial<UrlState>;
-
-	if (!Array.isArray(state.files) || state.files.length === 0 || !state.files.every(isSchemaFile)) {
+	if (!hasFiles(value)) {
 		return null;
 	}
 
 	return {
-		files: state.files,
-		target: isAvailableTarget(state.target) ? state.target : defaultTarget,
-		keywordPolicy: isKeywordPolicy(state.keywordPolicy) ? state.keywordPolicy : 'warn',
-		formatMode: isFormatMode(state.formatMode) ? state.formatMode : defaultFormatMode,
+		files: value.files,
+		target: isAvailableTarget(value.target) ? value.target : defaultTarget,
+		keywordPolicy: isKeywordPolicy(value.keywordPolicy) ? value.keywordPolicy : 'warn',
+		formatMode: isFormatMode(value.formatMode) ? value.formatMode : defaultFormatMode,
+		data: typeof value.data === 'string' ? value.data : dataForFiles(value.files),
 	};
+}
+
+function hasFiles(value: unknown): value is Partial<UrlState> & { files: SchemaFile[] } {
+	if (!value || typeof value !== 'object') {
+		return false;
+	}
+
+	const state = value as Partial<UrlState>;
+
+	return Array.isArray(state.files) && state.files.length > 0 && state.files.every(isSchemaFile);
+}
+
+function dataForFiles(files: SchemaFile[]): string {
+	const example = exampleById(resolveExampleId(files));
+
+	return example ? exampleData(example) : '{}';
 }
 
 function readHash(): UrlState | null {
