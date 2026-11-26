@@ -40,7 +40,7 @@ function formatModeFor(testCase) {
 
 async function compileForDialect(testCase, dialect) {
 	const { root: parsedRoot } = await parse(testCase.schema, {
-		cwd: suiteDirectory + '/',
+		cwd: `${join(root, 'packages/zod/test/suite')}/`,
 		fileName: 'Root.json',
 		externalSchemas: testCase.externalSchemas,
 		dialect,

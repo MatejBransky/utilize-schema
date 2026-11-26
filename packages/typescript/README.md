@@ -164,7 +164,7 @@ full table is in [docs/keywords.md](../../docs/keywords.md#typescript).
 ## Conformance
 
 The badges link here. Numbers for every measured dialect live in
-[baseline.ts](test/suite/baseline.ts); the draft-07 gaps are listed case by case.
+[baseline.ts](test/suite/baseline.ts); every dialect is listed case by case.
 
 | Dialect  | Cases passing | Where the gaps are                                                                                                       |
 | -------- | ------------- | ------------------------------------------------------------------------------------------------------------------------ |

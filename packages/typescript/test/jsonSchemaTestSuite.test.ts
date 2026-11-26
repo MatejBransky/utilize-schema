@@ -60,6 +60,12 @@ afterAll(() => {
 		return;
 	}
 
+	if (Object.keys(dialectGaps).length !== 1 + Object.keys(OTHER_DIALECTS).length) {
+		console.error('Not writing test/suite/knownGapCases.ts: not every dialect was measured.');
+		process.exitCode = 1;
+		return;
+	}
+
 	writeFileSync(join(__dirname, 'suite/knownGapCases.ts'), renderKnownGapCases(dialectGaps));
 	console.log('wrote test/suite/knownGapCases.ts');
 });
@@ -299,31 +305,30 @@ describe('JSON Schema Test Suite (draft-07, type level)', () => {
 		}
 
 		expect(results.unattributed).toEqual([]);
-		const recorded = baseline['draft-07'];
-		expect([...failures.keys()].sort()).toEqual(Object.keys(knownGaps).sort());
 
 		if (!UPDATE_BASELINE) {
+			expect([...failures.keys()].sort()).toEqual(Object.keys(knownGaps).sort());
 			expect(
 				dialectGaps['draft-07'].gaps.map(({ key, reason }) => `${key}: ${reason}`).sort()
 			).toEqual(gapsForDialect('draft-07'));
 			expect(dialectGaps['draft-07'].typeGaps).toEqual(typeGapsForDialect('draft-07'));
+			expect(
+				{
+					cases: runnable.length,
+					passing: stats.conformant,
+					typeGaps: stats.typeGaps,
+					gaps: stats.known,
+					instances: stats.assertions,
+					passingInstances: stats.passedAssertions,
+				},
+				[
+					`Known gap cases (${failures.size}):`,
+					...[...failures.keys()].sort(),
+					`Type gap cases (${typeGapKeys.length}):`,
+					...typeGapKeys.sort(),
+				].join('\n')
+			).toEqual(baseline['draft-07']);
 		}
-		expect(
-			{
-				cases: runnable.length,
-				passing: stats.conformant,
-				typeGaps: stats.typeGaps,
-				gaps: stats.known,
-				instances: stats.assertions,
-				passingInstances: stats.passedAssertions,
-			},
-			[
-				`Known gap cases (${failures.size}):`,
-				...[...failures.keys()].sort(),
-				`Type gap cases (${typeGapKeys.length}):`,
-				...typeGapKeys.sort(),
-			].join('\n')
-		).toEqual(recorded);
 	}, 120_000);
 });
 
