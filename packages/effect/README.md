@@ -203,16 +203,16 @@ badges link here:
 
 | Dialect  | Cases passing | Where the gaps are                                                                                  |
 | -------- | ------------- | --------------------------------------------------------------------------------------------------- |
-| draft-04 | 173 / 194     | [baseline](test/suite/baseline.ts)                                                                  |
-| draft-06 | 254 / 263     | [baseline](test/suite/baseline.ts)                                                                  |
+| draft-04 | 173 / 194     | [case list](test/suite/knownFailuresByDialect.ts)                                                   |
+| draft-06 | 254 / 263     | [case list](test/suite/knownFailuresByDialect.ts)                                                   |
 | draft-07 | 286 / 304     | [case list](test/suite/knownFailures.ts) · [failing instances](test/suite/knownFailureInstances.ts) |
-| 2019-09  | 348 / 417     | [baseline](test/suite/baseline.ts)                                                                  |
-| 2020-12  | 346 / 431     | [baseline](test/suite/baseline.ts)                                                                  |
+| 2019-09  | 348 / 417     | [case list](test/suite/knownFailuresByDialect.ts)                                                   |
+| 2020-12  | 346 / 431     | [case list](test/suite/knownFailuresByDialect.ts)                                                   |
 
 Which keywords are implemented, and which are only kept as annotations, is in
-[docs/keywords.md](../../docs/keywords.md#runtime-generators). Only draft-07 is
-pinned case by case; for the other dialects the baseline records case and
-instance counts, so their row is a rate rather than a list.
+[docs/keywords.md](../../docs/keywords.md#runtime-generators). Every dialect is
+pinned case by case: draft-07 in `knownFailures.ts`, the other four in
+`knownFailuresByDialect.ts`.
 
 ## Testing
 
@@ -224,9 +224,9 @@ pnpm test:suite    # official JSON Schema Test Suite (all dialects)
 The generator is checked against the official
 [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
 All five dialects are measured: draft-04, draft-06, draft-07, 2019-09 and
-2020-12. Draft-07 is pinned case by case; the other dialects are pinned by the
-case and instance counts recorded in `test/suite/baseline.ts`. The badges at the
-top of this README show the case rate of each dialect.
+2020-12. Every dialect is pinned case by case: draft-07 in `knownFailures.ts`,
+the other four in `knownFailuresByDialect.ts`. `test/suite/baseline.ts` records
+the counts the badges render.
 
 Today it passes **286 of 304 draft-07 cases (1,400 of 1,655 assertions)**. Format
 cases run in the mode they are tagged for, so both the annotation and the
