@@ -16,14 +16,7 @@ export function isPlainObject(value: unknown): value is Record<string, unknown> 
 		return true;
 	}
 
-	const Ctor = Object.hasOwn(proto, 'constructor')
-		? (proto as { constructor?: unknown }).constructor
-		: undefined;
-	return (
-		typeof Ctor === 'function' &&
-		Ctor instanceof Ctor &&
-		Function.prototype.call(Ctor) === Function.prototype.call(value)
-	);
+	return Reflect.getPrototypeOf(proto) === null;
 }
 
 export function assert(condition: unknown, message?: string): asserts condition {

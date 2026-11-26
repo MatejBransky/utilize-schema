@@ -8,6 +8,10 @@ import type { SchemaFile } from './bundle';
 import './polyfills';
 import { THEME_STORAGE_KEY } from './theme';
 
+function problemsText() {
+	return document.querySelector('[data-testid="problems"]')?.textContent ?? '';
+}
+
 vi.mock('./monaco/format', () => ({
 	formatTypeScript: async (source: string) => source,
 }));
@@ -386,8 +390,6 @@ test('the keyword policy shows foreign keywords as errors or warnings', async ()
 	const agent = createAgent({ allow: () => true });
 	await render(<App />);
 
-	const problemsText = () => document.querySelector('[data-testid="problems"]')?.textContent ?? '';
-
 	await vi.waitFor(() => expect(problemsText()).toContain('"prefixItems" is not part of draft-07'));
 	expect(problemsText()).toContain('1 errors, 0 warnings');
 	expect(problemsText()).toContain('Error');
@@ -428,8 +430,6 @@ test('foreign keywords show as warnings by default', async () => {
 	);
 	await render(<App />);
 
-	const problemsText = () => document.querySelector('[data-testid="problems"]')?.textContent ?? '';
-
 	await vi.waitFor(() => expect(problemsText()).toContain('"prefixItems" is not part of draft-07'));
 	expect(problemsText()).toContain('0 errors, 1 warnings');
 	expect(problemsText()).toContain('Warning');
@@ -455,8 +455,6 @@ test('the keyword-policy URL parameter sets the policy', async () => {
 		})
 	);
 	await render(<App />);
-
-	const problemsText = () => document.querySelector('[data-testid="problems"]')?.textContent ?? '';
 
 	await vi.waitFor(() => expect(problemsText()).toContain('"prefixItems" is not part of draft-07'));
 	expect(problemsText()).toContain('1 errors, 0 warnings');
@@ -485,8 +483,6 @@ test('the keyword-policy query parameter overrides the hash state', async () => 
 		.replace(/=+$/, '');
 	history.replaceState(null, '', `/?keyword-policy=error#data=${encoded}`);
 	await render(<App />);
-
-	const problemsText = () => document.querySelector('[data-testid="problems"]')?.textContent ?? '';
 
 	await vi.waitFor(() => expect(problemsText()).toContain('"prefixItems" is not part of draft-07'));
 	expect(problemsText()).toContain('1 errors, 0 warnings');

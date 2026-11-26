@@ -30,6 +30,7 @@ import { targets } from './targets';
 import type { TargetId } from './targets';
 import { loadColorMode, THEME_STORAGE_KEY } from './theme';
 import type { ColorMode } from './theme';
+import { isElement } from './dom';
 import { useFileDrop } from './useFileDrop';
 import type { UrlState } from './urlState';
 import { validateSchemas } from './validation';
@@ -216,7 +217,7 @@ function useSchemaFiles(initialFiles: SchemaFile[], settings: SettingsSetters) {
 			const clickTarget = event.target;
 
 			if (
-				clickTarget instanceof Element &&
+				isElement(clickTarget) &&
 				(clickTarget.closest('[data-rename-input]') || clickTarget.closest('[data-confirm-rename]'))
 			) {
 				return;
