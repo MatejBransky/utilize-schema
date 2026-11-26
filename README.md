@@ -101,30 +101,37 @@ dependency). See [Usage](#usage) for the API, options and CLI.
   [![npm version](https://img.shields.io/npm/v/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
   [![weekly downloads](https://img.shields.io/npm/dw/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
   [![coverage](.github/badges/coverage-zod.svg)](CONTRIBUTING.md#coverage-badge)
-  [![draft-07 conformance](.github/badges/suite-zod-draft-07.svg)](./packages/zod/README.md#testing)
 
 - **[@utilize/effect](./packages/effect)** — Emits Effect Schema codecs and types, with every `$ref` going through `Schema.suspend`.
 
   [![npm version](https://img.shields.io/npm/v/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)
   [![weekly downloads](https://img.shields.io/npm/dw/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)
   [![coverage](.github/badges/coverage-effect.svg)](CONTRIBUTING.md#coverage-badge)
-  [![draft-07 conformance](.github/badges/suite-effect-draft-07.svg)](./packages/effect/README.md#testing)
 
 - **[@utilize/typescript](./packages/typescript)** — Emits interfaces and type aliases. No runtime dependency.
 
   [![npm version](https://img.shields.io/npm/v/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)
   [![weekly downloads](https://img.shields.io/npm/dw/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)
   [![coverage](.github/badges/coverage-typescript.svg)](CONTRIBUTING.md#coverage-badge)
-  [![draft-07 conformance](.github/badges/suite-typescript-draft-07.svg)](./packages/typescript/README.md#conformance)
 
 The badges are committed to `.github/badges/` and checked in CI. Coverage is the
 line coverage of each package's `src`, including the JSON Schema Test Suite and
-the CLI entry points ([coverage badges](./CONTRIBUTING.md#coverage-badge)). The
-conformance badge counts draft-07 suite cases where every expected result
-matches; each package README shows every measured dialect — draft-04, draft-06,
-draft-07, 2019-09 and 2020-12 — with known gaps left in the denominator
+the CLI entry points ([coverage badges](./CONTRIBUTING.md#coverage-badge)).
+Conformance is the share of compatible JSON Schema Test Suite cases where every
+expected result matches, with known gaps left in the denominator
 ([conformance badges](./CONTRIBUTING.md#conformance-badges)). Regenerate both
 with `pnpm badge:coverage` and `pnpm badge:suite`.
+
+<details>
+<summary>Conformance badges for all five dialects</summary>
+
+| Package                                        | draft-04                                                                                                             | draft-06                                                                                                             | draft-07                                                                                                             | 2019-09                                                                                                            | 2020-12                                                                                                            |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| [`@utilize/zod`](./packages/zod)               | [![draft-04 conformance](.github/badges/suite-zod-draft-04.svg)](./packages/zod/README.md#testing)                   | [![draft-06 conformance](.github/badges/suite-zod-draft-06.svg)](./packages/zod/README.md#testing)                   | [![draft-07 conformance](.github/badges/suite-zod-draft-07.svg)](./packages/zod/README.md#testing)                   | [![2019-09 conformance](.github/badges/suite-zod-2019-09.svg)](./packages/zod/README.md#testing)                   | [![2020-12 conformance](.github/badges/suite-zod-2020-12.svg)](./packages/zod/README.md#testing)                   |
+| [`@utilize/effect`](./packages/effect)         | [![draft-04 conformance](.github/badges/suite-effect-draft-04.svg)](./packages/effect/README.md#testing)             | [![draft-06 conformance](.github/badges/suite-effect-draft-06.svg)](./packages/effect/README.md#testing)             | [![draft-07 conformance](.github/badges/suite-effect-draft-07.svg)](./packages/effect/README.md#testing)             | [![2019-09 conformance](.github/badges/suite-effect-2019-09.svg)](./packages/effect/README.md#testing)             | [![2020-12 conformance](.github/badges/suite-effect-2020-12.svg)](./packages/effect/README.md#testing)             |
+| [`@utilize/typescript`](./packages/typescript) | [![draft-04 conformance](.github/badges/suite-typescript-draft-04.svg)](./packages/typescript/README.md#conformance) | [![draft-06 conformance](.github/badges/suite-typescript-draft-06.svg)](./packages/typescript/README.md#conformance) | [![draft-07 conformance](.github/badges/suite-typescript-draft-07.svg)](./packages/typescript/README.md#conformance) | [![2019-09 conformance](.github/badges/suite-typescript-2019-09.svg)](./packages/typescript/README.md#conformance) | [![2020-12 conformance](.github/badges/suite-typescript-2020-12.svg)](./packages/typescript/README.md#conformance) |
+
+</details>
 
 ---
 
