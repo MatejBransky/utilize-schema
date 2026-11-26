@@ -25,6 +25,10 @@ export default mergeConfig(
 			reporters: isGitHubActions
 				? ['default', ['github-actions', { jobSummary: { title: 'playground browser tests' } }]]
 				: ['default'],
+			coverage: {
+				include: ['src/**'],
+				reporter: ['lcov', 'json'],
+			},
 			projects: [
 				{
 					extends: true,

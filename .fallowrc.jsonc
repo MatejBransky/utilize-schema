@@ -71,7 +71,7 @@
 	// pretending the guard is active.
 	//
 	// Commit hooks and PR CI judge only findings introduced by the change,
-	// while the `fallow-full` CI job gates the whole repository.
+	// while the full Fallow run in the test job gates the whole repository.
 	"audit": {
 		"gate": "new-only",
 		// A complexity finding that already exceeded a ceiling and grew counts

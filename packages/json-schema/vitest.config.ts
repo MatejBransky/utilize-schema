@@ -7,5 +7,9 @@ export default defineConfig({
 		reporters: isGitHubActions
 			? ['default', ['github-actions', { jobSummary: { title: '@utilize/json-schema tests' } }]]
 			: ['default'],
+		coverage: {
+			include: ['src/**'],
+			reporter: ['lcov', 'json'],
+		},
 	},
 });
