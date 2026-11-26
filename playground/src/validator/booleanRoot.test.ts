@@ -11,7 +11,8 @@ test('a true root accepts every JSON value without a runtime module', () => {
 });
 
 test('a true root still accepts deeply nested JSON when formatting overflows', () => {
-	let data: unknown = 'leaf';
+	type NestedJson = string | NestedJson[];
+	let data: NestedJson = 'leaf';
 
 	for (let depth = 0; depth < 50_000; depth += 1) {
 		data = [data];

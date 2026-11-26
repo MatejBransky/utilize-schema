@@ -13,12 +13,13 @@ import { afterAll, expect, test } from 'vitest';
 import './polyfills';
 
 import { buildBundle, parseJsonFile } from './bundle';
-import { exampleGeneratorOptions } from './exampleOptions';
+import { generatorOptionsFor } from './exampleOptions';
 import type { ExampleGeneratorOptions } from './exampleOptions';
 import { examples } from './examples';
 import type { Example } from './examples';
 import { defaultFormatMode } from './formatMode';
 import { generateCodeFor } from './generateCode';
+import type { GeneratedModule } from './runtime';
 import {
 	loadModule,
 	rootValidator,
@@ -84,7 +85,7 @@ async function parseExample(example: Example) {
 }
 
 /** Runs generated code the same way a consumer would import it. */
-async function importModule(code: string): Promise<Record<string, unknown>> {
+async function importModule(code: string): Promise<GeneratedModule> {
 	const directory = await mkdtemp(join(__dirname, '__generated__-'));
 
 	directories.push(directory);
@@ -94,7 +95,13 @@ async function importModule(code: string): Promise<Record<string, unknown>> {
 
 		await writeFile(filePath, code);
 
-		return (await import(/* @vite-ignore */ filePath)) as Record<string, unknown>;
+		const namespace: unknown = await import(/* @vite-ignore */ filePath);
+
+		if (typeof namespace !== 'object' || namespace === null) {
+			throw new Error('The generated module did not produce an export object.');
+		}
+
+		return { namespace };
 	} finally {
 		await rm(directory, { recursive: true, force: true });
 	}
@@ -104,7 +111,7 @@ for (const example of examples) {
 	for (const generator of generators) {
 		test(`example "${example.name}" generates ${generator.name} code`, async () => {
 			const root = await parseExample(example);
-			const code = generator.generate(root, exampleGeneratorOptions[example.id]);
+			const code = generator.generate(root, generatorOptionsFor(example.id));
 
 			expect(code).toContain(generator.marker);
 		});
@@ -120,7 +127,7 @@ for (const example of examples) {
 					target,
 					await parseExample(example),
 					defaultFormatMode,
-					exampleGeneratorOptions[example.id]
+					generatorOptionsFor(example.id)
 				);
 
 				if (!runtime || runtime.status !== 'generated' || !runtime.rootName) {
@@ -148,7 +155,7 @@ for (const example of examples) {
 				target,
 				await parseExample(example),
 				defaultFormatMode,
-				exampleGeneratorOptions[example.id]
+				generatorOptionsFor(example.id)
 			);
 
 			if (!source || source.status !== 'generated' || !source.rootName) {

@@ -7,7 +7,7 @@ import { generateCodeFor } from './generateCode';
 for (const target of ['zod', 'effect'] as const) {
 	for (const schema of [true, false]) {
 		test(`${target} preserves a ${schema} root for direct validation`, async () => {
-			const { root } = await parse(schema as never, { cwd: '/', fileName: 'schema.json' });
+			const { root } = await parse(schema, { cwd: '/', fileName: 'schema.json' });
 			const { runtime } = generateCodeFor(target, root, defaultFormatMode);
 
 			expect(runtime).toMatchObject({ status: 'generated', booleanRoot: schema });

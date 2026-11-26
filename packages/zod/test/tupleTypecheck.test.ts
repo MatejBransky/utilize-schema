@@ -6,7 +6,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 
-import { compile } from './test-utils';
+import { generateCode } from './test-utils';
 
 const require = createRequire(import.meta.url);
 const tsc = join(dirname(require.resolve('typescript/package.json')), 'bin/tsc');
@@ -33,7 +33,7 @@ describe('fixed-length tuples', () => {
 		const file = join(directory, 'Point.ts');
 
 		try {
-			const code = await compile(pointSchema, { importZod: true });
+			const code = await generateCode(pointSchema, { importZod: true });
 			await writeFile(
 				file,
 				`${code}

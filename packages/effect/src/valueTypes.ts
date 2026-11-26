@@ -1,4 +1,11 @@
-import { dialectOf, isKeywordApplicable, isPlainObject, Meta } from '@utilize/json-schema';
+import {
+	dialectOf,
+	expectDefined,
+	isKeywordApplicable,
+	isPlainObject,
+	Meta,
+	schemaRecord,
+} from '@utilize/json-schema';
 import type { Dialect, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { typedAlternatives } from './alternatives';
@@ -21,18 +28,18 @@ export interface ValueTypeContext {
 	customSchemaResolver?: CustomSchemaResolver;
 }
 
-const VALUE_TYPE_GENERATORS: Record<
+const VALUE_TYPE_GENERATORS = new Map<
 	string,
 	(schema: ParsedJSONSchemaObject, context: ValueTypeContext, self: string | undefined) => string
-> = {
-	string: () => 'string',
-	number: () => 'number',
-	integer: () => 'number',
-	boolean: () => 'boolean',
-	null: () => 'null',
-	array: renderArray,
-	object: renderObject,
-};
+>([
+	['string', () => 'string'],
+	['number', () => 'number'],
+	['integer', () => 'number'],
+	['boolean', () => 'boolean'],
+	['null', () => 'null'],
+	['array', renderArray],
+	['object', renderObject],
+]);
 
 /**
  * Renders the TypeScript type of a schema that takes part in a reference cycle.
@@ -152,7 +159,7 @@ function renderValueType(
 
 	const type = object.type as string | undefined;
 
-	return VALUE_TYPE_GENERATORS[type ?? '']?.(object, context, self) ?? 'Schema.Json';
+	return VALUE_TYPE_GENERATORS.get(type ?? '')?.(object, context, self) ?? 'Schema.Json';
 }
 
 function simpleValueType(schema: ParsedJSONSchema): string | undefined {
@@ -274,7 +281,7 @@ function renderCombinatorValueType(
 		return undefined;
 	}
 
-	const { members } = typedAlternatives(schema, schema[keyword]!);
+	const { members } = typedAlternatives(schema, expectDefined(schema[keyword]));
 
 	return union(members.map((subschema) => renderValueType(subschema, context)));
 }
@@ -306,7 +313,7 @@ function renderArray(
 	self: string | undefined
 ): string {
 	const dialect = dialectOf(schema, context.dialect);
-	const items = schema.items as unknown as ParsedJSONSchema | ParsedJSONSchema[] | undefined;
+	const items = schema.items as ParsedJSONSchema | ParsedJSONSchema[] | undefined;
 	const prefixItems = prefixItemsOf(schema, dialect);
 	const singleItem = Array.isArray(items) ? undefined : items;
 
@@ -402,7 +409,7 @@ export function literalType(value: unknown): string {
 		return `readonly [${value.map((entry) => parenthesize(literalType(entry))).join(', ')}]`;
 	}
 	if (typeof value === 'object') {
-		const members = Object.entries(value as Record<string, unknown>).map(
+		const members = Object.entries(schemaRecord(value)).map(
 			([key, entry]) => `${propertyKey(key)}: ${literalType(entry)}`
 		);
 

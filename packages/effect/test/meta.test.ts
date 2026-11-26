@@ -29,7 +29,7 @@ describe('annotations', () => {
 			properties: { theme: { type: 'string', default: 'auto' } },
 		});
 
-		await expect(decode(module.Root!, {})).toEqual({});
+		expect(decode(module.Root!, {})).toEqual({});
 		expect(decode(module.Root!, { theme: 'dark' })).toEqual({ theme: 'dark' });
 	});
 

@@ -1,4 +1,4 @@
-import { parse } from '@utilize/json-schema';
+import { expectDefined, parse } from '@utilize/json-schema';
 import type { DialectOptions, JSONSchema, NameMapper } from '@utilize/json-schema';
 import { Schema } from 'effect';
 import { formatSource, ts } from '@utilize/test-utils/code';
@@ -80,7 +80,7 @@ export async function compileToSchema(
 	options?: CompileOptions
 ): Promise<GeneratedSchema> {
 	const module = await compileModule(schema, options);
-	return module.Root!;
+	return expectDefined(module.Root);
 }
 
 /** Returns the decoded value, or `undefined` when decoding fails. */

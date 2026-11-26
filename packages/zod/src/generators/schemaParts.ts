@@ -1,5 +1,6 @@
 import {
 	ANNOTATION_KEYWORDS,
+	schemaRecord,
 	dialectOf,
 	isKeywordApplicable,
 	withSourceMeta,
@@ -44,13 +45,15 @@ export function composedSchemaParts(
 		return undefined;
 	}
 
-	return {
-		main: {
-			[keyword]: schema[keyword],
-			discriminator: schema.discriminator,
-		} as unknown as ParsedJSONSchemaObject,
-		rest,
-	};
+	const value: unknown = schema[keyword];
+
+	// oxlint-disable-next-line quality/no-chained-type-assertions -- synthetic node; it has no source Meta to copy
+	const main = {
+		[keyword]: value,
+		discriminator: schema.discriminator,
+	} as unknown as ParsedJSONSchemaObject;
+
+	return { main, rest };
 }
 
 /**
@@ -152,7 +155,7 @@ const structuralKeywords = new Set<string>([
  * need an intersection: the outer schema already applies those.
  */
 function hasStructuralKeywords(schema: ParsedJSONSchemaObject): boolean {
-	const record = schema as unknown as Record<string, unknown>;
+	const record = schemaRecord(schema);
 
 	for (const keyword of structuralKeywords) {
 		if (record[keyword] !== undefined) {
@@ -167,13 +170,9 @@ function withoutKeys(
 	schema: ParsedJSONSchemaObject,
 	keys: readonly string[]
 ): ParsedJSONSchemaObject {
-	const clone = withSourceMeta(schema, { ...schema }) as unknown as Record<string, unknown>;
+	const entries = Object.entries(schema).filter(([key]) => !keys.includes(key));
 
-	for (const key of keys) {
-		delete clone[key];
-	}
-
-	return clone as unknown as ParsedJSONSchemaObject;
+	return withSourceMeta(schema, Object.fromEntries(entries));
 }
 
 /** Keywords handled by `applyRefinements` on the whole schema. */

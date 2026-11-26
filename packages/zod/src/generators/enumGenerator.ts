@@ -5,7 +5,7 @@ import { renderLiteral } from './renderLiteral';
 
 import { NEWLINE, ts } from '../utils';
 
-export const generator = createGenerator<
+export const enumGenerator = createGenerator<
 	ParsedJSONSchemaObject & {
 		enum: unknown[];
 	}

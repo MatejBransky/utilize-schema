@@ -31,6 +31,11 @@ interface WorkspaceSplitter {
 	handlers: SplitterHandlers;
 }
 
+interface WorkspaceStyle extends CSSProperties {
+	'--workspace-top': string;
+	'--workspace-bottom': string;
+}
+
 /**
  * The workspace layout: the split between the schema row and the test data
  * row, and the two independently collapsible sections. The test data row only
@@ -60,10 +65,10 @@ export function useWorkspaceLayout() {
 		return () => query.removeEventListener('change', syncLayout);
 	}, []);
 
-	const style = {
+	const style: WorkspaceStyle = {
 		'--workspace-top': `${split * 100}%`,
 		'--workspace-bottom': `${(1 - split) * 100}%`,
-	} as CSSProperties;
+	};
 
 	return {
 		split,

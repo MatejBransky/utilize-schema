@@ -7,20 +7,19 @@
  * API, BroadcastChannel and credentialed same-origin fetch.
  */
 import { loadModule, validateModule } from '../runtime';
-import type { RuntimeResult } from '../runtime';
+import type { GeneratedModule, RuntimeResult } from '../runtime';
+import { runtimeTargetIds } from '../targets';
 import type { RuntimeTargetId } from '../targets';
 import type {
 	ValidationRequest,
 	ValidationResponse,
 	ValidatorReport,
+	ValidatorReports,
 	ValidatorSource,
 } from './protocol';
 
 /** The latest module of each target, so editing the test data does not load it again. */
-const loaded = new Map<
-	RuntimeTargetId,
-	{ javascript: string; module: Promise<Record<string, unknown>> }
->();
+const loaded = new Map<RuntimeTargetId, { javascript: string; module: Promise<GeneratedModule> }>();
 
 addEventListener('message', (event: MessageEvent<ValidationRequest>) => {
 	void handleMessage(event.data);
@@ -32,12 +31,19 @@ async function handleMessage({ id, data, sources }: ValidationRequest) {
 	let response: ValidationResponse;
 
 	try {
-		const targets = Object.keys(sources) as RuntimeTargetId[];
-		const reports = await Promise.all(
-			targets.map(async (target) => [target, await check(target, sources[target]!, data)] as const)
+		const reports: ValidatorReports = {};
+
+		await Promise.all(
+			runtimeTargetIds.map(async (target) => {
+				const source = sources[target];
+
+				if (source) {
+					reports[target] = await check(target, source, data);
+				}
+			})
 		);
 
-		response = { id, reports: Object.fromEntries(reports) };
+		response = { id, reports };
 	} catch (error) {
 		response = { id, error: messageOf(error) };
 	}
@@ -59,7 +65,7 @@ async function check(
 	}
 }
 
-function moduleFor(target: RuntimeTargetId, javascript: string): Promise<Record<string, unknown>> {
+function moduleFor(target: RuntimeTargetId, javascript: string): Promise<GeneratedModule> {
 	const cached = loaded.get(target);
 
 	if (cached?.javascript === javascript) {

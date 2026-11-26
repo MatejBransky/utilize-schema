@@ -2,6 +2,7 @@ import {
 	allocateName,
 	collectStandaloneSchemas,
 	dialectOf,
+	expectDefined,
 	containsBounds,
 	isKeywordApplicable,
 	isPlainObject,
@@ -9,6 +10,7 @@ import {
 	Meta,
 	narrowUntypedSchema,
 	resolveName,
+	schemaRecord,
 } from '@utilize/json-schema';
 import type {
 	Dialect,
@@ -101,18 +103,18 @@ const FALLBACK_ROOT_NAME = 'Root';
 const JSON_VALUE_TYPES = ['string', 'number', 'object', 'array'] as const;
 type JSONValueType = (typeof JSON_VALUE_TYPES)[number];
 
-const TYPE_GENERATORS: Record<
+const TYPE_GENERATORS = new Map<
 	string,
 	(schema: ParsedJSONSchemaObject, context: Context) => string
-> = {
-	string: generateString,
-	number: (schema) => generateNumber(schema, false),
-	integer: (schema) => generateNumber(schema, true),
-	boolean: () => 'Schema.Boolean',
-	null: () => 'Schema.Null',
-	array: generateArray,
-	object: generateObject,
-};
+>([
+	['string', generateString],
+	['number', (schema) => generateNumber(schema, false)],
+	['integer', (schema) => generateNumber(schema, true)],
+	['boolean', () => 'Schema.Boolean'],
+	['null', () => 'Schema.Null'],
+	['array', generateArray],
+	['object', generateObject],
+]);
 
 /**
  * Generates Effect Schema (v4) code from a linked JSON Schema.
@@ -142,7 +144,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 			return cyclic.has(schema) || hasStructuredLiteral(schema) ? aliasOf(schema) : undefined;
 		},
 		typeNameFor(schema) {
-			return namesOf(schema)!.type;
+			return expectDefined(namesOf(schema)).type;
 		},
 	};
 
@@ -194,7 +196,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 	const declarations: string[] = [];
 
 	for (const schema of standalone) {
-		declarations.push(renderDeclaration(definitionNames.get(schema)!, schema));
+		declarations.push(renderDeclaration(expectDefined(definitionNames.get(schema)), schema));
 	}
 
 	declarations.push(renderDeclaration(rootNames, root));
@@ -208,7 +210,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 	// Declarations rendered above registered the formats they use, so the
 	// constants can be emitted once, before any schema that references them.
 	for (const [format, name] of formatNames) {
-		parts.push(`const ${name} = ${formatCheck(format)!};`);
+		parts.push(`const ${name} = ${expectDefined(formatCheck(format))};`);
 	}
 
 	if (jsonLiteralName !== undefined) {
@@ -249,7 +251,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 			return existing;
 		}
 
-		const alias = allocateName(`${namesOf(schema)!.schema}Value`, typeNames);
+		const alias = allocateName(`${expectDefined(namesOf(schema)).schema}Value`, typeNames);
 
 		valueAliases.set(schema, alias);
 		return alias;
@@ -292,8 +294,10 @@ function nameDeclarations(
 	const [rootNames, ...standaloneNames] = mapped.names;
 
 	return {
-		rootNames: rootNames!,
-		definitionNames: new Map(standalone.map((schema, index) => [schema, standaloneNames[index]!])),
+		rootNames: expectDefined(rootNames),
+		definitionNames: new Map(
+			standalone.map((schema, index) => [schema, expectDefined(standaloneNames[index])])
+		),
 		typeNames: mapped.typeNames,
 	};
 }
@@ -383,7 +387,7 @@ function generateAlternativeExpression(
 		return undefined;
 	}
 
-	const alternatives = schema[keyword]!;
+	const alternatives = expectDefined(schema[keyword]);
 	// When both are present, each is applied on its own: `anyOf` becomes the
 	// union and `oneOf` stays in the base, which counts its own matches.
 	const { members, allTyped } = typedAlternatives(schema, alternatives);
@@ -500,7 +504,7 @@ function generateUnion(
 	}
 
 	if (members.length === 1) {
-		return members[0]!;
+		return expectDefined(members[0]);
 	}
 
 	const options = exclusive ? ", { mode: 'oneOf' }" : '';
@@ -517,7 +521,7 @@ function generateType(schema: ParsedJSONSchemaObject, context: Context): string 
 
 	const type = schema.type as string | undefined;
 
-	return TYPE_GENERATORS[type ?? '']?.(schema, context) ?? generateUntyped(schema, context);
+	return TYPE_GENERATORS.get(type ?? '')?.(schema, context) ?? generateUntyped(schema, context);
 }
 
 function generateTypeUnion(schema: ParsedJSONSchemaObject, context: Context): string | undefined {
@@ -535,7 +539,7 @@ function generateTypeUnion(schema: ParsedJSONSchemaObject, context: Context): st
 		return 'Schema.Never';
 	}
 
-	return members.length === 1 ? members[0]! : `Schema.Union([${members.join(', ')}])`;
+	return members.length === 1 ? expectDefined(members[0]) : `Schema.Union([${members.join(', ')}])`;
 }
 
 function generateTypeMember(schema: ParsedJSONSchemaObject, context: Context): string {
@@ -641,7 +645,7 @@ function generateNumber(schema: ParsedJSONSchemaObject, integer: boolean): strin
 
 function generateArray(schema: ParsedJSONSchemaObject, context: Context): string {
 	const dialect = context.dialect;
-	const items = schema.items as unknown as ParsedJSONSchema | ParsedJSONSchema[] | undefined;
+	const items = schema.items as ParsedJSONSchema | ParsedJSONSchema[] | undefined;
 	const prefixItems = prefixItemsOf(schema, dialect);
 	const checks = arrayChecks(schema, context);
 	const singleItem = Array.isArray(items) ? undefined : items;
@@ -918,7 +922,9 @@ function dependencyChecks(schema: ParsedJSONSchemaObject, context: Context): str
 			const required = dependency.filter((item): item is string => typeof item === 'string');
 
 			if (required.length === 1) {
-				conditions.push(`(!${present} || Object.hasOwn(value, ${JSON.stringify(required[0]!)}))`);
+				conditions.push(
+					`(!${present} || Object.hasOwn(value, ${JSON.stringify(expectDefined(required[0]))}))`
+				);
 			} else if (required.length > 1) {
 				conditions.push(
 					`(!${present} || ${JSON.stringify(required)}.every((key) => Object.hasOwn(value, key)))`
@@ -1037,7 +1043,7 @@ function appliesTo(
 	dialect: Dialect,
 	assertFormats: boolean
 ): boolean {
-	const record = schema as unknown as Record<string, unknown>;
+	const record = schemaRecord(schema);
 	const anyKeyword = (keywords: string[]) =>
 		keywords.some(
 			(keyword) => record[keyword] !== undefined && isKeywordApplicable(dialect, keyword)
@@ -1100,7 +1106,7 @@ function generateIntersection(schemas: ParsedJSONSchema[], context: Context): st
 
 	const members = flattened.filter(
 		(schema): schema is ParsedJSONSchemaObject =>
-			isPlainObject(schema) && !isEmptySchema(schema as unknown as ParsedJSONSchemaObject)
+			isPlainObject(schema) && !isEmptySchema(schema as ParsedJSONSchemaObject)
 	);
 
 	if (members.length === 0) {
@@ -1108,7 +1114,7 @@ function generateIntersection(schemas: ParsedJSONSchema[], context: Context): st
 	}
 
 	if (members.length === 1) {
-		return generateSchema(members[0]!, context);
+		return generateSchema(expectDefined(members[0]), context);
 	}
 
 	const result = mergeObjectSchemas(members);
@@ -1158,11 +1164,11 @@ function generateConjunction(
 
 			// `anyOf` and `oneOf` both constrain the value, so they stay separate.
 			if (Array.isArray(anyOf)) {
-				parts.push({ anyOf } as unknown as ParsedJSONSchemaObject);
+				parts.push({ anyOf } as ParsedJSONSchemaObject);
 			}
 
 			if (Array.isArray(oneOf)) {
-				parts.push({ oneOf } as unknown as ParsedJSONSchemaObject);
+				parts.push({ oneOf } as ParsedJSONSchemaObject);
 			}
 
 			continue;
@@ -1178,7 +1184,7 @@ function generateConjunction(
 	const [base, ...constraints] = parts;
 
 	return applyChecks(
-		generateSchema(base!, context),
+		generateSchema(expectDefined(base), context),
 		constraints.map(
 			(part) =>
 				`Schema.makeFilter((value) => Schema.is(${generateSchema(part, context)})(value) ? undefined : 'Value does not match every schema in "allOf"')`
@@ -1196,14 +1202,14 @@ const MERGEABLE_KEYWORDS: Record<'number' | 'string' | 'array', ReadonlySet<stri
 	array: new Set(['minItems', 'maxItems', 'uniqueItems']),
 };
 
-const MERGE_TYPE_RESULTS: Record<string, MergeableType | undefined> = {
-	'number:number': 'number',
-	'number:integer': 'integer',
-	'integer:number': 'integer',
-	'integer:integer': 'integer',
-	'string:string': 'string',
-	'array:array': 'array',
-};
+const MERGE_TYPE_RESULTS = new Map<string, MergeableType>([
+	['number:number', 'number'],
+	['number:integer', 'integer'],
+	['integer:number', 'integer'],
+	['integer:integer', 'integer'],
+	['string:string', 'string'],
+	['array:array', 'array'],
+]);
 
 const TYPED_CONSTRAINT_KEYWORDS = [
 	'minimum',
@@ -1352,7 +1358,7 @@ function combineMergeTypes(
 	previous: MergeableType | undefined,
 	next: MergeableType
 ): MergeableType | undefined {
-	return previous === undefined ? next : MERGE_TYPE_RESULTS[`${previous}:${next}`];
+	return previous === undefined ? next : MERGE_TYPE_RESULTS.get(`${previous}:${next}`);
 }
 
 function hasOnlyMergeableKeywords(
@@ -1568,6 +1574,7 @@ function renderTypedSchema(
 		}
 	}
 
+	// oxlint-disable-next-line quality/no-chained-type-assertions -- synthetic node; it has no source Meta to copy
 	return merged as unknown as ParsedJSONSchemaObject;
 }
 
@@ -1589,7 +1596,7 @@ function mergeableType(schema: ParsedJSONSchemaObject): MergeableType | undefine
 }
 
 function mergeTypeCandidates(schema: ParsedJSONSchemaObject): MergeableType[] {
-	const record = schema as unknown as Record<string, unknown>;
+	const record = schemaRecord(schema);
 	const has = (keywords: string[]) => keywords.some((keyword) => record[keyword] !== undefined);
 	const candidates: MergeableType[] = [];
 
@@ -1648,7 +1655,7 @@ function literals(values: unknown[], context: Context): string {
 
 	const members = [...new Set(values.map((value) => literal(value, context)))];
 
-	return members.length === 1 ? members[0]! : `Schema.Union([${members.join(', ')}])`;
+	return members.length === 1 ? expectDefined(members[0]) : `Schema.Union([${members.join(', ')}])`;
 }
 
 function literalValue(value: unknown): string {
@@ -1686,7 +1693,7 @@ function jsonLiteralHelper(): string {
  * same way. Integer-like keys keep their JSON.stringify order, which both sides
  * share.
  */
-function canonicalReplacer(_key: string, entry: unknown): unknown {
+function canonicalReplacer(_key: string, entry: unknown) {
 	if (entry !== null && typeof entry === 'object' && !Array.isArray(entry)) {
 		return Object.fromEntries(
 			Object.entries(entry).sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))

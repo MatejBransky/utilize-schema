@@ -12,7 +12,7 @@ describe('unsupported keywords', () => {
 			properties: { value: { $ref: '#/$defs/A', required: ['a'] } },
 		});
 
-		await expect(result).not.toContain('a: Schema.Json');
+		expect(result).not.toContain('a: Schema.Json');
 	});
 
 	test('applies $ref siblings in 2020-12', async () => {
@@ -23,6 +23,6 @@ describe('unsupported keywords', () => {
 			properties: { value: { $ref: '#/$defs/A', required: ['a'] } },
 		});
 
-		await expect(result).toContain('a: Schema.Json');
+		expect(result).toContain('a: Schema.Json');
 	});
 });

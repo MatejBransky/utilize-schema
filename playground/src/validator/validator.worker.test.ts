@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import { loadModule, validateModule } from '../runtime';
+import type { GeneratedModule } from '../runtime';
 import type { ValidationRequest } from './protocol';
 
 vi.mock('../runtime', () => ({
@@ -29,9 +30,9 @@ afterEach(() => {
 });
 
 test('acknowledges execution before waiting for a generated module', async () => {
-	let resolveModule!: (module: Record<string, unknown>) => void;
+	let resolveModule!: (module: GeneratedModule) => void;
 	vi.mocked(loadModule).mockReturnValue(
-		new Promise((resolve) => {
+		new Promise<GeneratedModule>((resolve) => {
 			resolveModule = resolve;
 		})
 	);
@@ -47,7 +48,7 @@ test('acknowledges execution before waiting for a generated module', async () =>
 	expect(postMessage).toHaveBeenCalledTimes(1);
 	expect(postMessage).toHaveBeenCalledWith({ id: 7, type: 'started' });
 
-	resolveModule({});
+	resolveModule({ namespace: {} });
 	await vi.waitFor(() => {
 		expect(postMessage).toHaveBeenLastCalledWith({
 			id: 7,

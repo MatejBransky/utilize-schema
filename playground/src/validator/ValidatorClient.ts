@@ -1,9 +1,12 @@
+import { expectDefined } from '@utilize/json-schema';
+
 import type {
 	ValidationRequest,
 	ValidationResponse,
 	ValidatorReports,
 	ValidatorSource,
 } from './protocol';
+import { runtimeTargetIds } from '../targets';
 import type { RuntimeTargetId } from '../targets';
 
 /** Long enough for the first run, which loads the selected runtime into the worker. */
@@ -49,14 +52,14 @@ export function createValidatorClient(): ValidatorClient {
 		sources: Partial<Record<RuntimeTargetId, ValidatorSource>>
 	): Promise<ValidatorReports> {
 		const id = (nextId += 1);
-		const targets = new Set(Object.keys(sources) as RuntimeTargetId[]);
+		const targets = new Set(runtimeTargetIds.filter((target) => sources[target] !== undefined));
 
 		return new Promise((resolve, reject) => {
 			const superseded = supersedePending(targets);
 			let sourceChanged = false;
 
 			for (const target of targets) {
-				if (loadedSources.get(target) !== sources[target]!.javascript) {
+				if (loadedSources.get(target) !== expectDefined(sources[target]).javascript) {
 					sourceChanged = true;
 					break;
 				}
@@ -191,8 +194,8 @@ export function createValidatorClient(): ValidatorClient {
 			return;
 		}
 
-		for (const [target, source] of Object.entries(request.sources)) {
-			loadedSources.set(target as RuntimeTargetId, source.javascript);
+		for (const target of request.targets) {
+			loadedSources.set(target, expectDefined(request.sources[target]).javascript);
 		}
 	}
 

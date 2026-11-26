@@ -7,7 +7,7 @@ import { buildBundle, detectRootId, normalizeName, parseJsonFile } from './bundl
 import type { Problem, SchemaFile } from './bundle';
 import { collectDroppedFiles, readDroppedSchemas } from './drop';
 import type { DropMode } from './drop';
-import { exampleGeneratorOptions } from './exampleOptions';
+import { generatorOptionsFor } from './exampleOptions';
 import { exampleById, exampleCaseForData, exampleData, examples } from './examples';
 import type { FormatMode } from './formatMode';
 import { generateCodeFor } from './generateCode';
@@ -510,14 +510,14 @@ async function generateOutput(
 		try {
 			// `parse` resolves the schema in place, so every run gets a copy;
 			// otherwise switching targets reuses names chosen for the previous one.
-			const { root } = await parse(structuredClone(bundle.root) as never, {
+			const { root } = await parse(structuredClone(bundle.root), {
 				cwd: '/',
 				fileName: bundle.rootFileName,
 				keywordPolicy,
 				onDialectIssue: () => {},
 			});
 
-			const generatorOptions = exampleId ? exampleGeneratorOptions[exampleId] : undefined;
+			const generatorOptions = exampleId ? generatorOptionsFor(exampleId) : undefined;
 			const generated = generateCodeFor(target, root, formatMode, generatorOptions);
 
 			nextRuntime = generated.runtime;

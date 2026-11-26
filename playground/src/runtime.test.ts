@@ -3,7 +3,7 @@ import { expect, test } from 'vitest';
 
 import './polyfills';
 
-import { loadModule, validateWithEffect, validateWithZod } from './runtime';
+import { loadModule, rootValidator, validateWithEffect, validateWithZod } from './runtime';
 
 const person = Schema.Struct({
 	firstName: Schema.String,
@@ -54,7 +54,7 @@ test('generated code cannot replace the runtime package bridge', async () => {
 	).rejects.toThrow();
 
 	const module = await loadModule("import { z } from 'zod'; export const schema = z.string();");
-	const result = await validateWithZod(module.schema, 'still works');
+	const result = await validateWithZod(rootValidator(module, 'schema'), 'still works');
 
 	expect(result).toMatchObject({ ok: true, value: 'still works', issues: [] });
 });

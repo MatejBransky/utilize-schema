@@ -1,11 +1,11 @@
 import { describe, expect, test } from 'vitest';
 
-import { compile, ts } from './test-utils';
+import { generateCode, ts } from './test-utils';
 
 describe('meta', () => {
 	test('title (inferred schema name)', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'string',
 				title: 'Test Title',
 			})
@@ -17,7 +17,7 @@ describe('meta', () => {
 
 	test('description', async () => {
 		await expect(
-			compile({
+			generateCode({
 				description: 'This is a test description',
 			})
 		).toMatchCode(ts`
@@ -28,7 +28,7 @@ describe('meta', () => {
 
 	test('default', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'string',
 				default: 'default value',
 			})
@@ -42,7 +42,7 @@ describe('meta', () => {
 describe('annotations', () => {
 	test('deprecated', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'string',
 				deprecated: true,
 			})
@@ -55,12 +55,12 @@ describe('annotations', () => {
 	test('readOnly is emitted only when the option is enabled', async () => {
 		const schema = { type: 'string', readOnly: true } as const;
 
-		await expect(compile(schema)).toMatchCode(ts`
+		await expect(generateCode(schema)).toMatchCode(ts`
       export const Root = z.string()
       export type Root = z.infer<typeof Root>;
     `);
 
-		await expect(compile(schema, { readOnlyKeyword: true })).toMatchCode(ts`
+		await expect(generateCode(schema, { readOnlyKeyword: true })).toMatchCode(ts`
       export const Root = z.string().readonly()
       export type Root = z.infer<typeof Root>;
     `);

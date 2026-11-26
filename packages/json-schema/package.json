@@ -35,7 +35,10 @@
 			"types": "./dist/node.d.ts",
 			"default": "./dist/node.mjs"
 		},
-		"./dist/*": "./dist/*",
+		"./dist/index.mjs": "./dist/index.mjs",
+		"./dist/index.d.ts": "./dist/index.d.ts",
+		"./dist/node.mjs": "./dist/node.mjs",
+		"./dist/node.d.ts": "./dist/node.d.ts",
 		"./package.json": "./package.json"
 	},
 	"publishConfig": {
