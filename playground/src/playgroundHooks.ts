@@ -1,6 +1,6 @@
 import { parse } from '@utilize/json-schema';
 import type { KeywordPolicy } from '@utilize/json-schema';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { RefObject } from 'react';
 
 import { buildBundle, detectRootId, normalizeName, parseJsonFile } from './bundle';
@@ -190,26 +190,24 @@ function useGeneratorSettings(initial: UrlState) {
 	useEffect(() => {
 		const url = new URL(location.href);
 
-		if (!url.hash && url.searchParams.get(playgroundParams.generator) !== target) {
-			updateUrl({ [playgroundParams.generator]: target }, 'replace');
+		if (
+			url.hash ||
+			(url.searchParams.get(playgroundParams.generator) === target &&
+				url.searchParams.get(playgroundParams.keywordPolicy) === keywordPolicy &&
+				url.searchParams.get(playgroundParams.formatMode) === formatMode)
+		) {
+			return;
 		}
-	}, [target]);
 
-	useEffect(() => {
-		const url = new URL(location.href);
-
-		if (!url.hash && url.searchParams.get(playgroundParams.keywordPolicy) !== keywordPolicy) {
-			updateUrl({ [playgroundParams.keywordPolicy]: keywordPolicy }, 'replace');
-		}
-	}, [keywordPolicy]);
-
-	useEffect(() => {
-		const url = new URL(location.href);
-
-		if (!url.hash && url.searchParams.get(playgroundParams.formatMode) !== formatMode) {
-			updateUrl({ [playgroundParams.formatMode]: formatMode }, 'replace');
-		}
-	}, [formatMode]);
+		updateUrl(
+			{
+				[playgroundParams.generator]: target,
+				[playgroundParams.keywordPolicy]: keywordPolicy,
+				[playgroundParams.formatMode]: formatMode,
+			},
+			'replace'
+		);
+	}, [target, keywordPolicy, formatMode]);
 
 	function applyGenerator(id: TargetId) {
 		setTarget(id);
@@ -268,11 +266,10 @@ function useSchemaFiles(initialFiles: SchemaFile[], settings: SettingsSetters) {
 		},
 	});
 
-	useEffect(() => {
-		if (!files.some((file) => file.id === activeId) && files[0]) {
-			setActiveId(files[0].id);
-		}
-	}, [files, activeId]);
+	// A restored or dropped workspace can remove the selected file. Derive a
+	// usable id during render instead of repairing the state in an effect.
+	const activeFile = files.find((file) => file.id === activeId) ?? files[0];
+	const currentId = activeFile?.id ?? '';
 
 	useEffect(() => {
 		const onPopState = () => {
@@ -420,7 +417,7 @@ function useSchemaFiles(initialFiles: SchemaFile[], settings: SettingsSetters) {
 
 	return {
 		files,
-		activeId,
+		activeId: currentId,
 		setActiveId,
 		editingId,
 		setEditingId,
@@ -537,23 +534,23 @@ async function generateOutput(
 	return { code: nextCode, runtime: nextRuntime, problems: nextProblems };
 }
 
+function subscribeSystemDark(onChange: () => void): () => void {
+	const query = window.matchMedia('(prefers-color-scheme: dark)');
+
+	query.addEventListener('change', onChange);
+
+	return () => query.removeEventListener('change', onChange);
+}
+
+function systemDarkSnapshot(): boolean {
+	return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
 function useTheme() {
 	const [colorMode, setColorMode] = useState<ColorMode>(loadColorMode);
-	const [systemDark, setSystemDark] = useState(
-		() => window.matchMedia('(prefers-color-scheme: dark)').matches
-	);
+	const systemDark = useSyncExternalStore(subscribeSystemDark, systemDarkSnapshot, () => false);
 	const resolvedTheme = colorMode === 'auto' ? (systemDark ? 'dark' : 'light') : colorMode;
 	const monacoTheme = resolvedTheme === 'dark' ? 'utilize-dark' : 'utilize-light';
-
-	useEffect(() => {
-		const query = window.matchMedia('(prefers-color-scheme: dark)');
-		const onChange = (event: MediaQueryListEvent) => setSystemDark(event.matches);
-
-		query.addEventListener('change', onChange);
-		setSystemDark(query.matches);
-
-		return () => query.removeEventListener('change', onChange);
-	}, []);
 
 	useEffect(() => {
 		document.documentElement.dataset.theme = resolvedTheme;
@@ -605,6 +602,14 @@ function useEditorNavigation(setActiveId: (id: string) => void) {
 	};
 }
 
+interface FeedbackSnapshot {
+	files: SchemaFile[];
+	target: TargetId;
+	keywordPolicy: KeywordPolicy;
+	formatMode: FormatMode;
+	data: string;
+}
+
 function useFeedback(
 	files: SchemaFile[],
 	target: TargetId,
@@ -614,32 +619,39 @@ function useFeedback(
 	data: string,
 	codeEditorRef: RefObject<MonacoEditorHandle | null>
 ) {
-	const [copied, setCopied] = useState(false);
-	const [shared, setShared] = useState(false);
+	const [sharedSnapshot, setSharedSnapshot] = useState<FeedbackSnapshot | null>(null);
+	const [copy, setCopy] = useState<{ value: string; id: number } | null>(null);
 
-	useEffect(() => {
-		setShared(false);
-		setCopied(false);
-	}, [files, target, keywordPolicy, data]);
+	// Both flags describe the input they were produced from, so they expire by
+	// derivation instead of being reset by an effect on every edit.
+	const shared =
+		sharedSnapshot !== null &&
+		sharedSnapshot.files === files &&
+		sharedSnapshot.target === target &&
+		sharedSnapshot.keywordPolicy === keywordPolicy &&
+		sharedSnapshot.formatMode === formatMode &&
+		sharedSnapshot.data === data;
+	const copied = copy !== null && copy.value === code;
 
+	// Timers are a real side effect; the flag itself is derived above.
 	useEffect(() => {
-		if (!copied) {
+		if (copy === null) {
 			return;
 		}
 
-		const timer = setTimeout(() => setCopied(false), 2000);
+		const timer = setTimeout(() => setCopy(null), 2000);
 
 		return () => clearTimeout(timer);
-	}, [copied]);
+	}, [copy]);
 
 	async function copyCode() {
 		const text = codeEditorRef.current?.getValue() ?? code;
 
 		try {
 			await navigator.clipboard.writeText(text);
-			setCopied(true);
+			setCopy((current) => ({ value: text, id: (current?.id ?? 0) + 1 }));
 		} catch {
-			setCopied(false);
+			setCopy(null);
 		}
 	}
 
@@ -653,7 +665,7 @@ function useFeedback(
 		url.searchParams.set(playgroundParams.formatMode, formatMode);
 		url.hash = `data=${encoded}`;
 		history.replaceState(null, '', url);
-		setShared(true);
+		setSharedSnapshot({ files, target, keywordPolicy, formatMode, data });
 
 		try {
 			await navigator.clipboard.writeText(url.href);
