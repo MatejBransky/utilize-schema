@@ -120,7 +120,8 @@ interface Frame {
 /**
  * Reads one `Content-Length` frame from the front of `buffer`. Returns
  * `undefined` while the frame is still incomplete. A header without a
- * `Content-Length` cannot be skipped reliably, so the whole buffer is dropped.
+ * `Content-Length` cannot be measured, so the buffer is resynced at the next
+ * header instead of dropping every frame that followed it.
  */
 function readFrame(buffer: Buffer): Frame | undefined {
 	const headerEnd = buffer.indexOf('\r\n\r\n');
@@ -134,7 +135,7 @@ function readFrame(buffer: Buffer): Frame | undefined {
 
 	if (!match) {
 		process.stderr.write(`utilize-schema: dropping bad content mapper header: ${header}\n`);
-		return { rest: Buffer.alloc(0) };
+		return { rest: nextHeader(buffer, headerEnd + 4) };
 	}
 
 	const bodyStart = headerEnd + 4;
@@ -144,7 +145,12 @@ function readFrame(buffer: Buffer): Frame | undefined {
 		process.stderr.write(
 			`utilize-schema: dropping content mapper frame of ${match[1]} bytes; the limit is ${MAX_FRAME_LENGTH}\n`
 		);
-		return { rest: Buffer.alloc(0) };
+		send({
+			jsonrpc: '2.0',
+			id: null,
+			error: { code: INVALID_REQUEST, message: 'Request too large' },
+		});
+		return { rest: nextHeader(buffer, headerEnd + 4) };
 	}
 
 	const bodyEnd = bodyStart + length;
@@ -157,6 +163,13 @@ function readFrame(buffer: Buffer): Frame | undefined {
 		body: buffer.subarray(bodyStart, bodyEnd).toString('utf8'),
 		rest: buffer.subarray(bodyEnd),
 	};
+}
+
+/** The next `Content-Length` header, or an empty buffer when there is none. */
+function nextHeader(buffer: Buffer, from: number): Buffer {
+	const index = buffer.indexOf('Content-Length:', from, 'ascii');
+
+	return index === -1 ? Buffer.alloc(0) : buffer.subarray(index);
 }
 
 function isRequest(value: unknown): value is Request {

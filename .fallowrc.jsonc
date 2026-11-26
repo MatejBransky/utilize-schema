@@ -60,9 +60,10 @@
 			"packages/zod/tsconfig.json",
 			"packages/effect/tsconfig.json",
 			"packages/typescript/tsconfig.json",
-			// The example's tsconfig sets the TypeScript 7.1 `contentMappers`
-			// option, which the stable checker cannot load. Its own
-			// `check:types` runs with TypeScript 7.1 beta instead.
+			// The package tsconfig is a normal project. The example's tsconfig
+			// sets the TypeScript 7.1 `contentMappers` option, which the stable
+			// checker cannot load; its own `check:types` runs with TypeScript
+			// 7.1 beta instead.
 			"packages/content-mapper/tsconfig.json",
 			"packages/test-utils/tsconfig.json",
 			"playground/tsconfig.json",

@@ -137,6 +137,15 @@ reporting `Cannot find module './person.jsonschema'`.
 - Diagnostics report JSON and generation errors at the start of the file;
   span-mapped diagnostics are not implemented.
 - Only the Node loader and one Vite/Rollup/Rolldown plugin are included. Other
-  bundlers and test runners are not integrated.
+  bundlers and test runners are not integrated. The plugin relies on Node 24's
+  experimental `stripTypeScriptTypes`, which prints one `ExperimentalWarning`
+  per process.
 - The content mapper does not infer project options; `tsconfig.json` and
   `UTILIZE_SCHEMA_TARGET` must agree.
+- The transform returns `$ref` files in `watchedFiles` and the Vite plugin
+  watches them. TypeScript 7.1 beta's own watch/editor refresh for those files
+  is still limited; touching the importing `.jsonschema` is the reliable
+  refresh.
+- The coverage badge measures the in-process API (`module.ts`, `vite.ts`). The
+  loader, mapper server and JSON-RPC server run in the child process TypeScript
+  or Node spawns and are covered by the integration tests instead.

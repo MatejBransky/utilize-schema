@@ -42,7 +42,9 @@ export function mapperHandlers() {
 				protocolVersion,
 				// oxlint-disable-next-line unicorn/text-encoding-identifier-case -- the LSP protocol value is "utf-8"
 				positionEncoding: 'utf-8' as const,
-				diagnosticSource: 'utilize-schema',
+				// tsc concatenates the numeric code to this label; the trailing
+				// space keeps `utilize-schema 1:` readable.
+				diagnosticSource: 'utilize-schema ',
 			};
 		},
 		openProject(params: unknown) {

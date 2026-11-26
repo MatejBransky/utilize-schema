@@ -121,6 +121,16 @@ test('TypeScript 7.1 type-checks an import through the content mapper', () => {
 	).not.toThrow();
 }, 30_000);
 
+test('TypeScript 7.1 type-checks the typescript target', () => {
+	expect(() =>
+		execFileSync(tsc, ['--noEmit', '--runExternalCode'], {
+			cwd: join(fixtures, 'typescript'),
+			encoding: 'utf8',
+			stdio: 'pipe',
+		})
+	).not.toThrow();
+}, 30_000);
+
 test('the mapper survives malformed frames and keeps stacks out of responses', () => {
 	const related = join(fixtures, 'related.jsonschema');
 	const relatedContent = readFileSync(related, 'utf8');
@@ -168,18 +178,43 @@ mapper.on('exit', (code) => { process.exitCode = code ?? 1; });
 		.filter(Boolean)
 		.map((body) => JSON.parse(body) as MapperResponse);
 
-	expect(responses.map((response) => response.id)).toEqual([null, 1, null, 2, 3, 4, 5]);
+	expect(responses.map((response) => response.id)).toEqual([null, 1, null, null, 2, 3, 4, 5]);
 	expect(responseAt(responses, 0).error?.code).toBe(-32_700);
 	expect(responseAt(responses, 1).error?.message).toBe('Unknown content mapper method nope');
 	expect(responseAt(responses, 2).error?.code).toBe(-32_600);
-	expect((responseAt(responses, 4).result as { configIdentity?: string }).configIdentity).toBe(
+	expect(responseAt(responses, 3).error?.message).toBe('Request too large');
+	expect((responseAt(responses, 5).result as { configIdentity?: string }).configIdentity).toBe(
 		'{"target":"zod"}'
 	);
-	expect((responseAt(responses, 5).result as { watchedFiles?: string[] }).watchedFiles).toContain(
+	expect((responseAt(responses, 6).result as { watchedFiles?: string[] }).watchedFiles).toContain(
 		fixture
 	);
 	expect(
-		(responseAt(responses, 6).result as { optionDiagnostics?: { messageText: string }[] })
+		(responseAt(responses, 7).result as { optionDiagnostics?: { messageText: string }[] })
 			.optionDiagnostics?.[0]?.messageText
 	).toContain('Unknown content mapper option "nope"');
+});
+
+test('resyncs after a bad header in the same chunk', () => {
+	const input = `Bad-Header: 1\r\n\r\n${frame(
+		JSON.stringify({ jsonrpc: '2.0', id: 7, method: 'initialize', params: {} })
+	)}`;
+	const child = spawnSync(process.execPath, [join(packageRoot, 'dist', 'mapper.mjs')], {
+		input,
+		encoding: 'utf8',
+	});
+
+	expect(child.status).toBe(0);
+	expect(child.stdout).toContain('"id":7');
+});
+
+test('answers oversized frames instead of hanging the transform', () => {
+	const child = spawnSync(process.execPath, [join(packageRoot, 'dist', 'mapper.mjs')], {
+		input: 'Content-Length: 16777217\r\n\r\n',
+		encoding: 'utf8',
+	});
+
+	expect(child.status).toBe(0);
+	expect(child.stderr).toContain('the limit is 16777216');
+	expect(child.stdout).toContain('Request too large');
 });

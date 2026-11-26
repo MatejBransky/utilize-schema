@@ -7,6 +7,17 @@ import { afterAll, expect, test } from 'vitest';
 
 import utilizeSchema from '../src/vite';
 
+type TestContext = {
+	error: (message: string) => never;
+	addWatchFile?: (id: string) => void;
+};
+
+type TestLoad = (this: TestContext, id: string) => Promise<{ code: string } | null>;
+
+function loadOf(plugin: ReturnType<typeof utilizeSchema>): TestLoad {
+	return plugin.load;
+}
+
 const fixture = join(__dirname, 'fixtures', 'person.jsonschema');
 const relatedFixture = join(__dirname, 'fixtures', 'related.jsonschema');
 const temp = join(__dirname, '.vite-output');
@@ -15,7 +26,7 @@ afterAll(() => rm(temp, { recursive: true, force: true }));
 
 test('the Vite plugin returns JavaScript without type syntax', async () => {
 	const plugin = utilizeSchema();
-	const result = await plugin.load.call(
+	const result = await loadOf(plugin).call(
 		{
 			error: (message) => {
 				throw new Error(message);
@@ -43,7 +54,7 @@ test('watches the schemas it pulls in through $ref', async () => {
 	const watched: string[] = [];
 	const plugin = utilizeSchema();
 
-	await plugin.load.call(
+	await loadOf(plugin).call(
 		{
 			error: (message) => {
 				throw new Error(message);
@@ -60,7 +71,7 @@ test('watches the schemas it pulls in through $ref', async () => {
 
 test('maps the timestamped request Vite sends after a change', async () => {
 	const plugin = utilizeSchema();
-	const result = await plugin.load.call(
+	const result = await loadOf(plugin).call(
 		{
 			error: (message) => {
 				throw new Error(message);
@@ -76,7 +87,7 @@ test('maps the module requests Vite tags with a query', async () => {
 	const plugin = utilizeSchema();
 
 	for (const query of ['?v=0a1b2c3d', '?import', '?import&t=1730000000000']) {
-		const result = await plugin.load.call(
+		const result = await loadOf(plugin).call(
 			{
 				error: (message) => {
 					throw new Error(message);
@@ -93,7 +104,7 @@ test('leaves the queries Vite answers itself to Vite', async () => {
 	const plugin = utilizeSchema();
 
 	for (const query of ['?raw', '?url', '?inline', '?import&raw']) {
-		const result = await plugin.load.call(
+		const result = await loadOf(plugin).call(
 			{
 				error: (message) => {
 					throw new Error(message);
@@ -140,7 +151,7 @@ test('every runtime target emits only type syntax that can be erased', async () 
 		const plugin = utilizeSchema({ target });
 
 		for (const file of [fixture, relatedFixture, choice]) {
-			const result = await plugin.load.call(
+			const result = await loadOf(plugin).call(
 				{
 					error: (message) => {
 						throw new Error(message);
