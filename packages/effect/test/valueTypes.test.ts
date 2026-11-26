@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest';
 import { dialectOf, Meta, parse } from '@utilize/json-schema';
 import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
-import type { CustomSchemaResolver } from '../src/generator';
+import type { CustomSchemaResolver } from '../src/context';
 import { renderValueTypeDeclaration } from '../src/valueTypes';
 import type { ValueTypeContext } from '../src/valueTypes';
 

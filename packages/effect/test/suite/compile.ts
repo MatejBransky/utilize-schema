@@ -3,8 +3,8 @@ import type { DialectId, ExternalSchemas, JSONSchema } from '@utilize/json-schem
 import { evaluateGeneratedCode, nameRootSchema } from '@utilize/test-utils/suite/evaluate';
 import { Schema } from 'effect';
 
+import type { FormatMode } from '../../src/context';
 import { generate } from '../../src/generator';
-import type { FormatMode } from '../../src/generator';
 
 export type SuiteGeneratedSchema = Parameters<typeof Schema.decodeUnknownSync>[0];
 

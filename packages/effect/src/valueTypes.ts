@@ -9,7 +9,7 @@ import {
 import type { Dialect, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { typedAlternatives } from './alternatives';
-import type { CustomSchemaResolver } from './generator';
+import type { CustomSchemaResolver } from './context';
 import { planReferenceSiblings } from './refSiblings';
 import { arrayRest, objectKeys, parentSchema, prefixItemsOf } from './schemaParts';
 

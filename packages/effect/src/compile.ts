@@ -12,8 +12,8 @@ import {
 } from '@utilize/json-schema/node';
 import type { CodeFormatter } from '@utilize/json-schema/node';
 
+import type { FormatMode, GenerateOptions } from './context';
 import { generate } from './generator';
-import type { FormatMode, GenerateOptions } from './generator';
 
 export interface CompileOptions
 	extends
