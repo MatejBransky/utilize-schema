@@ -539,7 +539,7 @@ export function renderHealthPage(report, commit) {
       ${highFanInTable(report.highFanIn, commit)}
     </section>
     <section class="section">
-      <div class="section-head"><div><h2>How to read this</h2><p>The score and its penalties come from the same Fallow result as the badge and the CI gate. The long-function list is a focused Fallow query because Fallow omits it below 3% of functions. File length is not part of the score: <code>maxFileLines</code> (900 here) reports a long-file finding, but the size penalty counts only functions over 60 lines.</p></div></div>
+      <div class="section-head"><div><h2>How to read this</h2><p>The score and its penalties come from the combined CI Fallow result, the same result that feeds the gate. The health badge is the standalone <code>fallow health</code> run, so it can differ by a tenth from the score above. The long-function list is a focused Fallow query because Fallow omits it below 3% of functions. File length is not part of the score: <code>maxFileLines</code> (900 here) reports a long-file finding, but the size penalty counts only functions over 60 lines.</p></div></div>
       <p class="note"><a href="../index.html">Open the interactive Fallow map</a> · <a href="../health.json">Raw health JSON</a> · <a href="https://fallow.tools/docs/cli/health/#health-score-formula">Fallow score formula</a></p>
     </section>`;
 }
