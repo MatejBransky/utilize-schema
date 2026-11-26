@@ -106,7 +106,7 @@ test('renders the Fallow health detail page with formulas and drivers', () => {
 	assert.match(html, /16\.6 × 0\.5 = 8\.3/);
 	assert.match(html, /Functions longer than 60 lines/);
 	assert.match(html, /a\.ts:10/);
-	assert.match(html, /File length does not deduct points/);
+	assert.match(html, /File length is not part of the score/);
 });
 
 test('renders the long-function fallback when the list is unavailable', () => {

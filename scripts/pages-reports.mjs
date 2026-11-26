@@ -511,9 +511,10 @@ function longFunctionSummary(report) {
 				? 'The function below'
 				: 'The functions below'
 			: 'The per-function list is unavailable';
-	const noun = report.counts.longFunctionCount === 1 ? 'function' : 'functions';
+	const plural = report.counts.longFunctionCount === 1 ? '' : 's';
+	const verb = report.counts.longFunctionCount === 1 ? 's' : '';
 
-	return `${list} cover${report.counts.longFunctionCount === 1 ? 's' : ''} ${report.counts.longFunctionCount} ${noun} (${share}) and drive the function-size penalty.`;
+	return `${list} cover${verb} ${report.counts.longFunctionCount} function${plural} (${share}) and drive${verb} the function-size penalty.`;
 }
 
 export function renderHealthPage(report, commit) {
@@ -534,11 +535,11 @@ export function renderHealthPage(report, commit) {
       ${longFunctionTable(report.longFunctions, commit, report.counts.longFunctionCount)}
     </section>
     <section class="section">
-      <div class="section-head"><div><h2>Files imported by more than ${report.fanInThreshold} files</h2><p>${escapeHtml(formatNumber(report.counts.couplingPct))}% of scored files are above the fan-in threshold; ${escapeHtml(report.counts.highFanInCount.toString())} are listed below.</p></div><span class="badge skip">${report.highFanIn.length}</span></div>
+      <div class="section-head"><div><h2>Files imported by more than ${report.fanInThreshold} files</h2><p>Fallow uses the larger of the 95th-percentile fan-in and 10 as the threshold. ${escapeHtml(formatNumber(report.counts.couplingPct))}% of scored files are above it; ${escapeHtml(report.counts.highFanInCount.toString())} ${report.counts.highFanInCount === 1 ? 'is' : 'are'} listed below.</p></div><span class="badge skip">${report.highFanIn.length}</span></div>
       ${highFanInTable(report.highFanIn, commit)}
     </section>
     <section class="section">
-      <div class="section-head"><div><h2>How to read this</h2><p>The score and its penalties come from the same Fallow result as the badge and the CI gate. The long-function list is a focused Fallow query because Fallow omits it below 3% of functions. File length does not deduct points: Fallow keeps <code>maxFileLines</code> off, so the size penalty counts only functions over 60 lines.</p></div></div>
+      <div class="section-head"><div><h2>How to read this</h2><p>The score and its penalties come from the same Fallow result as the badge and the CI gate. The long-function list is a focused Fallow query because Fallow omits it below 3% of functions. File length is not part of the score: <code>maxFileLines</code> (900 here) reports a long-file finding, but the size penalty counts only functions over 60 lines.</p></div></div>
       <p class="note"><a href="../index.html">Open the interactive Fallow map</a> · <a href="../health.json">Raw health JSON</a> · <a href="https://fallow.tools/docs/cli/health/#health-score-formula">Fallow score formula</a></p>
     </section>`;
 }

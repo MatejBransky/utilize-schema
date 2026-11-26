@@ -116,6 +116,46 @@ test('renders a zero-deduction report without an empty deduction table', () => {
 	assert.doesNotMatch(markdown, /What moves it/);
 });
 
+test('uses the larger of p95 fan-in and 10 for the coupling list', () => {
+	const report = describeHealth({
+		...health,
+		vital_signs: { ...health.vital_signs, p95_fan_in: 15, coupling_high_pct: 1 },
+		file_scores: [
+			{ path: 'a.ts', fan_in: 16, fan_out: 2, maintainability_index: 92, lines: 38 },
+			{ path: 'b.ts', fan_in: 12, fan_out: 1, maintainability_index: 90, lines: 20 },
+		],
+	});
+
+	assert.equal(report.fanInThreshold, 15);
+	assert.deepEqual(
+		report.highFanIn.map((file) => file.path),
+		['a.ts']
+	);
+});
+
+test('uses the documented hot-spot denominator and duplication floor', () => {
+	const report = describeHealth({
+		health_score: {
+			formula_version: 3,
+			score: 80,
+			grade: 'B',
+			penalties: { hotspots: 10, duplication: 10 },
+		},
+		summary: { functions_analyzed: 100 },
+		vital_signs: {
+			hotspot_count: 2,
+			duplication_pct: 15,
+			counts: { total_files: 250, files_scored: 200 },
+		},
+		file_scores: [],
+	});
+	const hotspot = report.deducted.find((penalty) => penalty.key === 'hotspots');
+	const duplication = report.deducted.find((penalty) => penalty.key === 'duplication');
+
+	assert.equal(hotspot.formula, '2 ÷ 3 × 10 = 10');
+	assert.equal(duplication.formula, '15 − 5 = 10');
+});
+
 test('reads file scores from an array or a map', () => {
 	const scores = [{ path: 'a.ts', fan_in: 3 }];
 

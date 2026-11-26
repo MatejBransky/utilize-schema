@@ -39,6 +39,9 @@ function weightedFormula(rate, weight, points) {
 	return `${formatNumber(rate)} × ${weight} = ${formatNumber(points)}`;
 }
 
+// Each formula mirrors the table at
+// https://fallow.tools/docs/cli/health/#health-score-formula. `PENALTY_LIMITS`
+// is the maximum deduction for that area.
 const PENALTY_DEFINITIONS = {
 	unit_size: {
 		label: 'Function size',
@@ -224,13 +227,15 @@ function healthInputs(health) {
 	const scores = fileScores(health);
 	const functions = health.summary?.functions_analyzed ?? 0;
 	const files = counts.files_scored ?? scores.length;
+	const totalFiles = counts.total_files ?? files;
 	const propDrillingCount = health.prop_drilling_chains?.length ?? 0;
 
-	return { vital, counts, scores, functions, files, propDrillingCount };
+	return { vital, counts, scores, functions, files, totalFiles, propDrillingCount };
 }
 
 function buildContext(health, longFunctions) {
-	const { vital, counts, scores, functions, files, propDrillingCount } = healthInputs(health);
+	const { vital, counts, scores, functions, files, totalFiles, propDrillingCount } =
+		healthInputs(health);
 	const metrics = vitalMetrics(vital);
 	const longFunctionCount =
 		longFunctions.length || Math.round((metrics.perKLongFunctions * functions) / 1000);
@@ -244,7 +249,7 @@ function buildContext(health, longFunctions) {
 		: files > 0
 			? (highFanIn.length / files) * 100
 			: 0;
-	const hotspotDenominator = Math.max(1, Math.ceil(files / 100));
+	const hotspotDenominator = Math.max(1, Math.ceil(totalFiles / 100));
 
 	return {
 		...metrics,
@@ -482,7 +487,7 @@ export function renderHealthMarkdown(report, { repository, commit } = {}) {
 		...longFunctionLines(report, { repository, commit }),
 		...highFanInLines(report, { repository, commit }),
 		'',
-		'File length does not deduct points: Fallow keeps `health.maxFileLines` off by default. The size penalty counts only functions longer than 60 lines.'
+		'File length does not deduct points: `health.maxFileLines` (900 here) reports a long-file finding, but the health score’s size penalty counts only functions longer than 60 lines.'
 	);
 
 	return `${lines.join('\n')}\n`;
@@ -546,7 +551,10 @@ function readInputs(options) {
 		try {
 			return { result, longFunctions: readJson(options.longFunctions) };
 		} catch (error) {
-			throw new Error(`Could not read ${options.longFunctions}: ${error.message}`);
+			// The summary still explains the score from the penalty data. The
+			// page falls back to the derived count and says the list is missing.
+			console.error(`Could not read ${options.longFunctions}: ${error.message}`);
+			return { result, longFunctions: [] };
 		}
 	}
 
@@ -574,7 +582,14 @@ function main() {
 	}
 
 	if (options.writeLongFunctions) {
-		const longFunctions = measureLongFunctions();
+		let longFunctions = [];
+
+		try {
+			longFunctions = measureLongFunctions();
+		} catch (error) {
+			console.error(`Could not measure long functions: ${error.message}`);
+		}
+
 		writeFileSync(options.writeLongFunctions, `${JSON.stringify(longFunctions, null, 2)}\n`);
 		console.log(
 			`Wrote ${longFunctions.length} functions over 60 lines to ${options.writeLongFunctions}.`

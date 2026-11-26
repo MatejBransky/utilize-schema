@@ -224,7 +224,6 @@
 			"**/test/**",
 			"**/*.test.ts",
 			"**/*.test.tsx",
-			"**/*.test.mjs",
 			"packages/test-utils/**",
 			// The barrel is the published API surface: it re-exports declarations
 			// that live in another module, and the tests import the module under
