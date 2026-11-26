@@ -4,9 +4,10 @@
 [![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
 [![Unit test coverage](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/coverage-json-schema.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/CONTRIBUTING.md#coverage-badge)
 
-The JSON Schema parser behind `@utilize/zod`, `@utilize/effect` and
-`@utilize/typescript`. It resolves `$ref`s and annotates every node with the
-metadata a generator needs; it emits no code and has no opinion about output.
+The shared foundation behind `@utilize/zod`, `@utilize/effect` and
+`@utilize/typescript`. It resolves `$ref`s, annotates every node with the metadata
+a generator needs, and provides the target-neutral format validators used by both
+runtime generators. It never emits a target schema.
 
 - **Every reference shape.** Local, external, `$id`/`$anchor`, boolean targets
   and recursive graphs.
@@ -14,11 +15,11 @@ metadata a generator needs; it emits no code and has no opinion about output.
   blows up.
 - **Metadata per node.** Parent, referenced schema, file name and dialect, under
   a `Meta` symbol that never serializes.
-- **Shared generator plumbing.** `collectStandaloneSchemas` and the
-  `@utilize/json-schema/node` entry — CLI runner, flags, JSON/YAML and
-  file/glob input, `compilePaths` — are what the three generator packages build
-  on.
-- **90% line coverage.**
+- **Shared generator plumbing.** `collectStandaloneSchemas`, the format
+  validators and the `@utilize/json-schema/node` entry — CLI runner, flags,
+  JSON/YAML and file/glob input, `compilePaths` — are what the three generator
+  packages build on.
+- **88% line coverage.**
 
 ```sh
 pnpm add -D @utilize/json-schema

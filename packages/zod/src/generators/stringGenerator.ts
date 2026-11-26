@@ -1,7 +1,8 @@
 import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
+import { formatBody, formatPattern } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
-import type { FormatMap, FormatMode } from './types';
+import type { GeneratorContext } from './types';
 
 import { unicodePattern } from '../regex';
 import { ts } from '../utils';
@@ -43,20 +44,29 @@ export const stringGenerator = createGenerator(
  * otherwise `assert` uses the built-in mapping and `annotate` leaves the
  * expression as `z.string()` so `format` stays metadata.
  */
-function resolveFormat(
-	format: string,
-	{ formatMap, formatMode }: { formatMap?: FormatMap; formatMode?: FormatMode }
-) {
-	const mapped = ownValue(formatMap, format);
+function resolveFormat(format: string, context: GeneratorContext) {
+	const mapped = ownValue(context.formatMap, format);
 
 	if (mapped) {
 		return mapped;
 	}
 
-	return (formatMode ?? 'assert') === 'assert' ? formatExpression(format) : undefined;
+	return (context.formatMode ?? 'assert') === 'assert'
+		? formatExpression(format, context)
+		: undefined;
 }
 
-function formatExpression(format: string) {
+function formatExpression(format: string, context: GeneratorContext) {
+	const pattern = formatPattern(format);
+
+	if (pattern !== undefined) {
+		return `z.string().regex(new RegExp(${JSON.stringify(pattern)}, 'u'))`;
+	}
+
+	if (formatBody(format) !== undefined) {
+		return `z.string().refine(${context.formatOf(format)}, { message: ${JSON.stringify(`Invalid ${format}`)} })`;
+	}
+
 	const method = ownValue(formatToZodMethod, format);
 
 	return method ? ts`z${method}` : undefined;
@@ -96,10 +106,8 @@ function applyStringConstraints({ expression, schema }: StringConstraints) {
 }
 
 const formatToZodMethod = {
-	email: '.email()',
 	uuid: '.uuid()',
 	url: '.url()',
-	uri: '.url()',
 	emoji: '.emoji()',
 	base64: '.base64()',
 	base64url: '.base64url()',
@@ -112,7 +120,5 @@ const formatToZodMethod = {
 	cidrv4: '.cidrv4()',
 	cidrv6: '.cidrv6()',
 	date: '.iso.date()',
-	time: '.iso.time()',
-	'date-time': '.iso.datetime()',
 	duration: '.iso.duration()',
 } satisfies Record<string, string>;

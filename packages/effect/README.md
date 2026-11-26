@@ -19,7 +19,7 @@ dependency ordering and imports `effect`.
 - **Mapped or rejected, never ignored.** Unsupported constructs fail with
   `UnsupportedEffectSchemaFeatureError` instead of disappearing.
 - **Five dialects.** draft-04, draft-06, draft-07, 2019-09 and 2020-12.
-- **94% of the official suite.** 286 of 304 draft-07 cases; 96% line coverage.
+- **100% of the official draft-07 suite.** 304 of 304 cases; 95% line coverage.
 
 ```json
 {
@@ -102,7 +102,9 @@ Options:
   ipv4/ipv6, date, date-time, duration, …); `'annotate'` keeps `format` as
   `.annotate({ format })`. Unknown formats stay annotations in both modes. Each
   format becomes one module-level constant (`const formatEmail = …`) reused by
-  every property that uses it.
+  every property that uses it. Validation follows the JSON Schema format
+  definitions, so `time` requires an RFC 3339 offset and `uri`, `email` and
+  `hostname` are stricter than their target helpers.
 - `format(code)` — optional synchronous or asynchronous formatter (for example
   Prettier) applied to the generated code before the banner is prepended.
 - `importEffect` — emit `import { Schema } from 'effect';`; on by default.
@@ -201,19 +203,19 @@ because a target that emits only types has no schema variable to name.
 The official JSON Schema Test Suite is pinned and run for all five dialects. The
 badges link here:
 
-| Dialect  | Cases passing | Where the gaps are                                                                                                                        |
-| -------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| draft-04 | 173 / 194     | [case list](test/suite/knownFailuresByDialect.ts)                                                                                         |
-| draft-06 | 254 / 263     | [case list](test/suite/knownFailuresByDialect.ts)                                                                                         |
-| draft-07 | 286 / 304     | [cases](test/suite/knownFailuresByDialect.ts) · [reasons](test/suite/knownFailures.ts) · [instances](test/suite/knownFailureInstances.ts) |
-| 2019-09  | 348 / 417     | [case list](test/suite/knownFailuresByDialect.ts)                                                                                         |
-| 2020-12  | 346 / 431     | [case list](test/suite/knownFailuresByDialect.ts)                                                                                         |
+| Dialect  | Cases passing | Where the gaps are                                |
+| -------- | ------------- | ------------------------------------------------- |
+| draft-04 | 186 / 194     | [case list](test/suite/knownFailuresByDialect.ts) |
+| draft-06 | 262 / 263     | [case list](test/suite/knownFailuresByDialect.ts) |
+| draft-07 | 304 / 304     | —                                                 |
+| 2019-09  | 367 / 417     | [case list](test/suite/knownFailuresByDialect.ts) |
+| 2020-12  | 366 / 431     | [case list](test/suite/knownFailuresByDialect.ts) |
 
 Which keywords are implemented, and which are only kept as annotations, is in
 [docs/keywords.md](../../docs/keywords.md#runtime-generators). Every dialect is
-pinned case by case in `knownFailuresByDialect.ts`; draft-07 also has a curated
-reason per case in `knownFailures.ts` and the failing instance descriptions in
-`knownFailureInstances.ts`.
+pinned case by case in `knownFailuresByDialect.ts`. Draft-07 has no known gaps;
+`knownFailures.ts` and `knownFailureInstances.ts` remain the place to record
+one.
 
 ## Testing
 
@@ -225,18 +227,17 @@ pnpm test:suite    # official JSON Schema Test Suite (all dialects)
 The generator is checked against the official
 [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
 All five dialects are measured: draft-04, draft-06, draft-07, 2019-09 and
-2020-12. Every dialect is pinned case by case in `knownFailuresByDialect.ts`;
-draft-07 also has a curated reason per case in `knownFailures.ts`.
+2020-12. Every dialect is pinned case by case in `knownFailuresByDialect.ts`.
 `test/suite/baseline.ts` records the counts the badges render.
 
-Today it passes **286 of 304 draft-07 cases (1,400 of 1,655 assertions)**. Format
+Today it passes **304 of 304 draft-07 cases (1,655 of 1,655 assertions)**. Format
 cases run in the mode they are tagged for, so both the annotation and the
 assertion cases are measured; cases that need external schemas are served from
 `externalSchemas`.
 
-Known gaps live in `test/suite/knownFailures.ts` and
-`test/suite/knownFailureInstances.ts`. Refresh the baseline after a fix or a
-regression:
+Draft-07 has no known gaps. A future gap is recorded in
+`test/suite/knownFailures.ts` and `test/suite/knownFailureInstances.ts`. Refresh
+the baseline after a fix or a regression:
 
 ```sh
 pnpm --filter @utilize/effect build

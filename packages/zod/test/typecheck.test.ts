@@ -315,6 +315,15 @@ describe('generated recursive schemas type-check', () => {
 				'RefWithAppliedCombinator.ts': refWithAppliedCombinatorSchema,
 				'HoistedCycle.ts': hoistedCycleSchema,
 				'HoistedLazyCycle.ts': hoistedLazyCycleSchema,
+				'TypelessRootPointer.ts': {
+					properties: { foo: { $ref: '#' } },
+					additionalProperties: false,
+				},
+				'TypelessUrn.ts': {
+					$id: 'urn:uuid:deadbeef-1234-ffff-ffff-4321feebdaed',
+					minimum: 30,
+					properties: { foo: { $ref: 'urn:uuid:deadbeef-1234-ffff-ffff-4321feebdaed' } },
+				},
 			})
 		).resolves.toBeUndefined();
 	});

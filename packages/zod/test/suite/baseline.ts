@@ -14,9 +14,9 @@
  * `.github/badges/suite-zod-<dialect>.svg`.
  */
 export const baseline = {
-	'draft-04': { cases: 194, passing: 173, instances: 911, passingInstances: 820 },
-	'draft-06': { cases: 263, passing: 251, instances: 1218, passingInstances: 1106 },
-	'draft-07': { cases: 304, passing: 283, instances: 1655, passingInstances: 1399 },
-	'2019-09': { cases: 417, passing: 353, instances: 2043, passingInstances: 1695 },
-	'2020-12': { cases: 431, passing: 351, instances: 2082, passingInstances: 1719 },
+	'draft-04': { cases: 194, passing: 186, instances: 911, passingInstances: 894 },
+	'draft-06': { cases: 263, passing: 262, instances: 1218, passingInstances: 1217 },
+	'draft-07': { cases: 304, passing: 304, instances: 1655, passingInstances: 1655 },
+	'2019-09': { cases: 417, passing: 375, instances: 2043, passingInstances: 1953 },
+	'2020-12': { cases: 431, passing: 374, instances: 2082, passingInstances: 1978 },
 } as const;

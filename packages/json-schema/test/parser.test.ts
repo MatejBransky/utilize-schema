@@ -2,7 +2,7 @@ import { assert, expect, test } from 'vitest';
 
 import RefProperties from './RefProperties.json';
 
-import { Meta, parse } from '../src';
+import { isParsedJSONSchemaObject, Meta, parse } from '../src';
 import type { JSONSchema } from '../src';
 
 test('parser', async () => {
@@ -260,6 +260,45 @@ test('resolves a $ref against the nearest $id', async () => {
 
 	assert(typeof reference === 'object' && reference !== null);
 	expect(reference.type).toBe('string');
+});
+
+test('parses a root whose working directory is rewritten by URI normalization', async () => {
+	// `indexExternalSchemas` normalizes its keys, so the root has to be looked up
+	// under the normalized form. A `file://` base and a Windows drive letter both
+	// change under `new URL`.
+	const parsed = await parse(
+		{ type: 'string' },
+		{ cwd: 'FILE:///nonexistent-project/', fileName: 'schema.json' }
+	);
+
+	expect(parsed.root).toMatchObject({ type: 'string' });
+});
+
+test('resolves an in-document URN before attempting an external read', async () => {
+	const schema: JSONSchema = {
+		allOf: [{ $ref: 'urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed' }],
+		definitions: {
+			foo: {
+				$id: 'urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed',
+				definitions: { bar: { type: 'string' } },
+				allOf: [{ $ref: '#/definitions/bar' }],
+			},
+		},
+	};
+	const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Unknown' });
+
+	assert(typeof parsed.root === 'object' && parsed.root !== null);
+	const rootReference = parsed.root.allOf?.[0];
+
+	assert(isParsedJSONSchemaObject(rootReference));
+	const resource = rootReference[Meta].reference;
+
+	assert(isParsedJSONSchemaObject(resource));
+	const pointerReference = resource.allOf?.[0];
+
+	assert(isParsedJSONSchemaObject(pointerReference));
+	expect(resource).toBe(parsed.root.definitions?.foo);
+	expect(pointerReference[Meta].reference).toMatchObject({ type: 'string' });
 });
 
 test('resolves a $ref to an $anchor', async () => {

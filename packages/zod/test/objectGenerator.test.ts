@@ -9,6 +9,7 @@ import { parsedSchema } from './test-utils';
 const context: GeneratorContext = {
 	lazyRefs: new Set(),
 	nameOf: () => 'Object',
+	formatOf: () => 'formatValue',
 	dialect: resolveDialect({ $schema: 'http://json-schema.org/draft-07/schema#' }).dialect,
 };
 

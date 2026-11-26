@@ -1,7 +1,8 @@
+import { expectDefined } from '@utilize/json-schema';
 import type { JSONSchema } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
-import { generateCode, compileToZod, ts } from './test-utils';
+import { generateCode, compileModule, compileToZod, ts } from './test-utils';
 
 describe('reference', () => {
 	test('local $refs', async () => {
@@ -234,6 +235,54 @@ describe('reference', () => {
       });
       export type Root = z.infer<typeof Root>;
     `);
+	});
+});
+
+describe('typeless recursive references', () => {
+	test.each([
+		'urn:uuid:deadbeef-1234-ffff-ffff-4321feebdaed',
+		'foo:bar/baz',
+		'tag:foo.example,2025:bar/baz',
+	])('resolves a self-reference through %s', async ($id) => {
+		const module = await compileModule({
+			$id,
+			minimum: 30,
+			properties: { foo: { $ref: $id } },
+		});
+		const Root = expectDefined(Object.values(module)[0]);
+
+		expect(Root.safeParse({ foo: 37 }).success).toBe(true);
+		expect(Root.safeParse({ foo: 12 }).success).toBe(false);
+		expect(Root.safeParse(37).success).toBe(true);
+		expect(Root.safeParse(12).success).toBe(false);
+	});
+
+	test('validates a root pointer reference recursively without a declared type', async () => {
+		const Root = await compileToZod({
+			properties: { foo: { $ref: '#' } },
+			additionalProperties: false,
+		});
+
+		expect(Root.safeParse({ foo: false }).success).toBe(true);
+		expect(Root.safeParse({ foo: { foo: false } }).success).toBe(true);
+		expect(Root.safeParse({ bar: false }).success).toBe(false);
+		expect(Root.safeParse({ foo: { bar: false } }).success).toBe(false);
+	});
+
+	test('resolves a URN resource with a nested pointer reference', async () => {
+		const Root = await compileToZod({
+			allOf: [{ $ref: 'urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed' }],
+			definitions: {
+				foo: {
+					$id: 'urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed',
+					definitions: { bar: { type: 'string' } },
+					allOf: [{ $ref: '#/definitions/bar' }],
+				},
+			},
+		});
+
+		expect(Root.safeParse('bar').success).toBe(true);
+		expect(Root.safeParse(12).success).toBe(false);
 	});
 });
 

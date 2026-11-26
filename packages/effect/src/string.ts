@@ -38,12 +38,3 @@ function stringFormat(schema: ParsedJSONSchemaObject, context: Context): string 
 
 	return formatCheck(schema.format) === undefined ? undefined : context.formatOf(schema.format);
 }
-
-/** `date-time` becomes `formatDateTime`, so one constant covers a format. */
-export function formatConstantBase(format: string) {
-	const pascal = format.replaceAll(/[^a-zA-Z0-9]+(.)?/g, (_, next: string | undefined) =>
-		next === undefined ? '' : next.toUpperCase()
-	);
-
-	return `format${pascal.charAt(0).toUpperCase()}${pascal.slice(1)}`;
-}

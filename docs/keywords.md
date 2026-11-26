@@ -13,11 +13,9 @@ and is pinned in the package's baseline, so it cannot drift silently.
 All three generators are checked for draft-04, draft-06, draft-07, 2019-09 and
 2020-12. The numbers below are draft-07:
 
-- **Zod:** 283 of 304 cases (1,399 of 1,655 assertions) pass.
-  [Known gaps](../packages/zod/test/suite/knownFailures.ts)
-- **Effect Schema:** 286 of 304 cases (1,400 of 1,655 assertions) pass.
-  [Known gaps](../packages/effect/test/suite/knownFailures.ts)
-- **TypeScript:** 191 of 285 cases pass at the type level (793 of 972 instances),
+- **Zod:** 304 of 304 cases (1,655 of 1,655 assertions) pass.
+- **Effect Schema:** 304 of 304 cases (1,655 of 1,655 assertions) pass.
+- **TypeScript:** 192 of 285 cases pass at the type level (795 of 972 instances),
   with 81 type gaps.
   [Baseline](../packages/typescript/test/suite/baseline.ts) ·
   [Known gaps](../packages/typescript/test/suite/knownGaps.ts)
@@ -25,53 +23,11 @@ All three generators are checked for draft-04, draft-06, draft-07, 2019-09 and
 [docs/conformance.md](./conformance.md) compares these numbers with
 json-schema-to-typescript.
 
-<details>
-<summary>How the three numbers add up</summary>
-
-All three generators start from the same draft-07 subset. [The loader](../packages/test-utils/src/suite/loadSuite.ts)
-reads the top-level `validation/tests` files of the pinned suite and keeps a
-case when its `compatibility` allows draft-07, which leaves 304 of 613 cases
-(`optional/` and `proposals/` are not loaded).
-
-| Step                        | Zod | Effect Schema | TypeScript |
-| --------------------------- | --- | ------------- | ---------- |
-| draft-07 cases in the suite | 304 | 304           | 304        |
-| − `format-assertion` cases  | —   | —             | 19         |
-| **= cases run**             | 304 | 304           | 285        |
-| − known gaps                | 21  | 18            | 13         |
-| − type-level gaps           | —   | —             | 81         |
-| **= cases passing**         | 283 | 286           | 191        |
-
-The runtime generators measure both format groups: `format-annotation` cases
-compile with `formatMode: 'annotate'` and `format-assertion` cases with
-`formatMode: 'assert'`, so all 304 draft-07 cases run. A type cannot check a
-format either way, so the TypeScript generator skips the 19 `format-assertion`
-cases instead. The 16 cases that need `externalSchemas` run against the
-documents the suite provides. The skip rule for each target is in its suite
-runner
-([Zod](../packages/zod/test/jsonSchemaTestSuite.test.ts),
-[Effect Schema](../packages/effect/test/jsonSchemaTestSuite.test.ts),
-[TypeScript](../packages/typescript/test/jsonSchemaTestSuite.test.ts)).
-
-The 81 type gaps are cases where an invalid instance is rejected only by a
-keyword a type cannot express (`minimum`, `pattern`, `format`, …);
-[`baseline.ts`](../packages/typescript/test/suite/baseline.ts) records that count
-next to the 191 conformant cases. Every other gap is an explicit entry with a
-reason, so fixing one or introducing a regression changes the count and fails
-the suite instead of drifting silently.
-
-Assertions add up the same way, because one instance is one assertion:
-
-| Step                        | Zod   | Effect Schema |
-| --------------------------- | ----- | ------------- |
-| instances in draft-07 cases | 1,655 | 1,655         |
-| − failing                   | 256   | 255           |
-| **= passing**               | 1,399 | 1,400         |
-
-The type-level runner prints both the pass count and the accepted/rejected
-split; the current numbers are in [docs/conformance.md](./conformance.md).
-
-</details>
+The runtime generators run every draft-07 case, including both format groups and
+the cases that need external schemas. A type cannot validate a value, so the
+TypeScript runner skips the 19 `format-assertion` cases and records its remaining
+gaps explicitly. Every count is asserted in the package baseline, so a
+regression fails the suite instead of drifting silently.
 
 ## Runtime generators
 

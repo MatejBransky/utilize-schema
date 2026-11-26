@@ -30,29 +30,6 @@ export const knownGapCases = {
 	'allOf.json :: allOf simple types': {
 		typeGaps: ['2019-09', '2020-12', 'draft-04', 'draft-06', 'draft-07'],
 	},
-	'anchor-legacy.json :: Location-independent identifier with base URI change in subschema (id)': {
-		gaps: {
-			'draft-04': 'crashes: Unable to resolve $ref pointer "http://localhost:1234/nested.json"',
-		},
-	},
-	'anchor-legacy.json :: Reference an anchor with a non-relative URI (id)': {
-		gaps: {
-			'draft-04':
-				'crashes: Error downloading https://example.com/schema-with-anchor: HTTP ERROR 404',
-		},
-	},
-	'anchor-legacy.json :: URN base URI with URN and anchor ref (id)': {
-		gaps: {
-			'draft-04':
-				"crashes: Error opening file urn:uuid:deadbeef-1234-ff00-00ff-4321feebdaed: ENOENT: no such file or directory, open 'urn:uuid:deadbeef-1234-ff00-00ff-4321feebdaed'",
-		},
-	},
-	'anchor.json :: Location-independent identifier with absolute URI': {
-		gaps: {
-			'2019-09': 'crashes: Unable to resolve $ref pointer "http://localhost:1234/bar"',
-			'2020-12': 'crashes: Unable to resolve $ref pointer "http://localhost:1234/bar"',
-		},
-	},
 	'anyOf.json :: anyOf': {
 		typeGaps: ['2019-09', '2020-12', 'draft-04', 'draft-06', 'draft-07'],
 	},
@@ -294,26 +271,6 @@ export const knownGapCases = {
 				"crashes: Error opening file foo.json: ENOENT: no such file or directory, open 'foo.json'",
 		},
 	},
-	'id-legacy.json :: URN base URI with URN and JSON pointer ref (id)': {
-		gaps: {
-			'draft-04':
-				"crashes: Error opening file urn:uuid:deadbeef-1234-0000-0000-4321feebdaed: ENOENT: no such file or directory, open 'urn:uuid:deadbeef-1234-0000-0000-4321feebdaed'",
-		},
-	},
-	'id-legacy.json :: URN ref with nested pointer ref': {
-		gaps: {
-			'draft-07':
-				"crashes: Error opening file urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed: ENOENT: no such file or directory, open 'urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed'",
-			'draft-06':
-				"crashes: Error opening file urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed: ENOENT: no such file or directory, open 'urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed'",
-		},
-	},
-	'id-legacy.json :: URN ref with nested pointer ref (id)': {
-		gaps: {
-			'draft-04':
-				"crashes: Error opening file urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed: ENOENT: no such file or directory, open 'urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed'",
-		},
-	},
 	'id-legacy.json :: base URI change': {
 		gaps: {
 			'draft-04':
@@ -330,11 +287,6 @@ export const knownGapCases = {
 		gaps: {
 			'draft-04':
 				"crashes: Error opening file folderInteger.json: ENOENT: no such file or directory, open 'folderInteger.json'",
-		},
-	},
-	'id-legacy.json :: id must be resolved against nearest parent, not just immediate parent': {
-		gaps: {
-			'draft-04': 'crashes: Error downloading http://example.com/b/d.json: HTTP ERROR 404',
 		},
 	},
 	'id-legacy.json :: ref with absolute-path-reference (id)': {
@@ -357,28 +309,17 @@ export const knownGapCases = {
 	},
 	'id-legacy.json :: simple URN base URI with $ref via the URN (id)': {
 		gaps: {
-			'draft-04':
-				"crashes: Error opening file urn:uuid:deadbeef-1234-ffff-ffff-4321feebdaed: ENOENT: no such file or directory, open 'urn:uuid:deadbeef-1234-ffff-ffff-4321feebdaed'",
+			'draft-04': 'rejects valid instance 0',
 		},
 	},
 	'id-legacy.json :: simple base URI using an arbitrary URI scheme with $ref to that URI (id)': {
 		gaps: {
-			'draft-04':
-				"crashes: Error opening file foo:bar/baz: ENOENT: no such file or directory, open 'foo:bar/baz'",
+			'draft-04': 'rejects valid instance 0',
 		},
 	},
 	'id-legacy.json :: simple tag URI base URI with $ref via the tag URI (id)': {
 		gaps: {
-			'draft-04':
-				"crashes: Error opening file tag:foo.example,2025:bar/baz: ENOENT: no such file or directory, open 'tag:foo.example,2025:bar/baz'",
-		},
-	},
-	'id.json :: URN ref with nested pointer ref': {
-		gaps: {
-			'2019-09':
-				"crashes: Error opening file urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed: ENOENT: no such file or directory, open 'urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed'",
-			'2020-12':
-				"crashes: Error opening file urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed: ENOENT: no such file or directory, open 'urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed'",
+			'draft-04': 'rejects valid instance 0',
 		},
 	},
 	'id.json :: order of evaluation: $id and $anchor and $ref': {

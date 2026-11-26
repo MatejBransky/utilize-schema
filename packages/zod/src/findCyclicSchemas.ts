@@ -8,6 +8,7 @@ import { objectGenerator } from './generators/objectGenerator';
 import { recordGenerator } from './generators/recordGenerator';
 import { selectGenerator } from './generators/selectGenerator';
 import { tupleGenerator } from './generators/tupleGenerator';
+import { inferTypeKeywords } from './inferTypes';
 
 type SchemaNode = SchemaEdge[0];
 
@@ -52,32 +53,44 @@ export function findCyclicSchemas(
 
 /**
  * True when the schema itself produces an object, array, tuple or record.
- * Subschema branches do not count: a structural constructor in a sibling
- * `anyOf` branch does not anchor a cycle that bypasses it.
+ * Typed and keyword-only structural constraints both count: the refinement
+ * pipeline validates the latter behind a type guard. Subschema branches do not
+ * count: a structural constructor in a sibling `anyOf` branch does not anchor a
+ * cycle that bypasses it.
  */
 function isStructuralNode(schema: SchemaNode): boolean {
 	if (typeof schema !== 'object' || schema === null) {
 		return false;
 	}
 
-	const generator = selectGenerator(withoutAlwaysValidAnyOf(schema), dialectOf(schema));
+	const candidate = withoutAlwaysValidAnyOf(schema);
+	const dialect = dialectOf(schema);
 
-	if (
-		generator === objectGenerator ||
-		generator === recordGenerator ||
-		generator === arrayGenerator ||
-		generator === tupleGenerator
-	) {
+	if (hasStructuralType(inferTypeKeywords(candidate, dialect))) {
 		return true;
 	}
 
-	if (generator === multipleTypeGenerator) {
-		const types = Array.isArray(schema.type) ? schema.type : [schema.type];
+	const generator = selectGenerator(candidate, dialect);
 
-		return types.some((type) => type === 'object' || type === 'array');
+	if (STRUCTURAL_GENERATORS.has(generator)) {
+		return true;
 	}
 
-	return false;
+	return (
+		generator === multipleTypeGenerator &&
+		hasStructuralType(Array.isArray(schema.type) ? schema.type : [schema.type])
+	);
+}
+
+const STRUCTURAL_GENERATORS = new Set([
+	objectGenerator,
+	recordGenerator,
+	arrayGenerator,
+	tupleGenerator,
+]);
+
+function hasStructuralType(types: readonly (string | undefined)[]): boolean {
+	return types.some((type) => type === 'object' || type === 'array');
 }
 
 function findCyclicNodes(edges: SchemaEdge[]): Set<SchemaNode>[] {

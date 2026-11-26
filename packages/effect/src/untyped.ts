@@ -7,6 +7,7 @@ import { JSON_VALUE_TYPES } from './context';
 import { formatCheck } from './formats';
 import { generateNumber } from './number';
 import { generateObject } from './object';
+import { arrayRest, prefixItemsOf } from './schemaParts';
 import { generateString } from './string';
 
 /**
@@ -30,10 +31,25 @@ export function generateUntyped(schema: ParsedJSONSchemaObject, context: Context
 		constrained.includes('string') ? generateString(schema, context) : 'Schema.String',
 		constrained.includes('number') ? generateNumber(schema, false) : 'Schema.Finite',
 		constrained.includes('object') ? generateObject(schema, context) : 'Schema.JsonObject',
-		constrained.includes('array') ? generateArray(schema, context) : 'Schema.Array(Schema.Json)',
+		constrained.includes('array')
+			? generateArrayBranch(schema, context)
+			: 'Schema.Array(Schema.Json)',
 	];
 
 	return `Schema.Union([${[...new Set(members)].join(', ')}])`;
+}
+
+function generateArrayBranch(schema: ParsedJSONSchemaObject, context: Context): string {
+	const expression = generateArray(schema, context);
+	const prefixItems = prefixItemsOf(schema, context.dialect);
+	const minItems = typeof schema.minItems === 'number' ? schema.minItems : 0;
+	const hasOptionalPrefix = prefixItems !== undefined && prefixItems.length > minItems;
+	const hasRest = arrayRest(schema, schema.items, context.dialect) !== false;
+
+	// Effect v4 cannot infer a union member whose tuple has optional elements
+	// followed by a rest element. Deferring the branch keeps the tuple's type out
+	// of the surrounding union without changing its runtime validation.
+	return hasOptionalPrefix && hasRest ? `Schema.suspend(() => ${expression})` : expression;
 }
 
 function appliesTo(

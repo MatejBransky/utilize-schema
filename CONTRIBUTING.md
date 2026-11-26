@@ -33,9 +33,9 @@ pinned in `package.json#packageManager`; Corepack can install it for you.
 - `packages/typescript`: TypeScript type generator (no runtime dependency).
 - `playground`: Browser app for editing multi-file schemas and previewing the generated Zod, Effect Schema or TypeScript code.
 
-Generators are pluggable: `packages/json-schema` owns parsing, linking and
-normalization, and each target package only maps the parsed tree to its own
-schema API. A new target follows the shape of `packages/typescript` — a
+Generators are pluggable: `packages/json-schema` owns parsing, linking,
+normalization and the target-neutral format validators, and each target package
+only maps the parsed tree to its own schema API. A new target follows the shape of `packages/typescript` — a
 `generate` function that returns a module with one declaration per standalone
 schema, plus a `compile` helper that reads a schema file and writes the
 generated module. See the
@@ -232,11 +232,12 @@ which a type cannot check, so its denominator is smaller.
 
 The numbers live in `packages/*/test/suite/baseline.ts` and each package's suite
 test asserts them. Every dialect is also pinned case by case: the runtime
-generators record the failing cases in `knownFailuresByDialect.ts`, TypeScript
-in `knownGapCases.ts`, and draft-07 keeps its curated reasons in
-`knownFailures.ts` and `knownGaps.ts`. When a count or a case changes, the test
-prints the measured numbers and the failing keys; update the baseline and
-regenerate the list on purpose in the same pull request:
+generators record failing cases in `knownFailuresByDialect.ts`, and TypeScript
+uses `knownGapCases.ts` with curated reasons in `knownGaps.ts`. The runtime
+generators have no draft-07 gaps; their `knownFailures.ts` files stay as the
+place to record one. When a count or a case changes, the test prints the measured
+numbers and failing keys; update the baseline and regenerate the list on purpose
+in the same pull request:
 
 ```sh
 pnpm --filter @utilize/zod update:suite-baseline

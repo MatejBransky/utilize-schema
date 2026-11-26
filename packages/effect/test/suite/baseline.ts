@@ -14,9 +14,9 @@
  * `.github/badges/suite-effect-<dialect>.svg`.
  */
 export const baseline = {
-	'draft-04': { cases: 194, passing: 173, instances: 911, passingInstances: 815 },
-	'draft-06': { cases: 263, passing: 254, instances: 1218, passingInstances: 1107 },
-	'draft-07': { cases: 304, passing: 286, instances: 1655, passingInstances: 1400 },
-	'2019-09': { cases: 417, passing: 348, instances: 2043, passingInstances: 1678 },
-	'2020-12': { cases: 431, passing: 346, instances: 2082, passingInstances: 1694 },
+	'draft-04': { cases: 194, passing: 186, instances: 911, passingInstances: 894 },
+	'draft-06': { cases: 263, passing: 262, instances: 1218, passingInstances: 1217 },
+	'draft-07': { cases: 304, passing: 304, instances: 1655, passingInstances: 1655 },
+	'2019-09': { cases: 417, passing: 367, instances: 2043, passingInstances: 1935 },
+	'2020-12': { cases: 431, passing: 366, instances: 2082, passingInstances: 1959 },
 } as const;
