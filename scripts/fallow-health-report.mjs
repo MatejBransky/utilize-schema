@@ -566,37 +566,20 @@ function readInputs(options) {
 	}
 }
 
-function main() {
-	let options;
+function writeLongFunctionFile(path) {
+	let longFunctions = [];
 
 	try {
-		options = parseArguments(process.argv.slice(2));
+		longFunctions = measureLongFunctions();
 	} catch (error) {
-		console.error(`${error.message}\n\n${usage()}`);
-		process.exit(2);
+		console.error(`Could not measure long functions: ${error.message}`);
 	}
 
-	if (options.help) {
-		console.log(usage());
-		return;
-	}
+	writeFileSync(path, `${JSON.stringify(longFunctions, null, 2)}\n`);
+	console.log(`Wrote ${longFunctions.length} functions over 60 lines to ${path}.`);
+}
 
-	if (options.writeLongFunctions) {
-		let longFunctions = [];
-
-		try {
-			longFunctions = measureLongFunctions();
-		} catch (error) {
-			console.error(`Could not measure long functions: ${error.message}`);
-		}
-
-		writeFileSync(options.writeLongFunctions, `${JSON.stringify(longFunctions, null, 2)}\n`);
-		console.log(
-			`Wrote ${longFunctions.length} functions over 60 lines to ${options.writeLongFunctions}.`
-		);
-		return;
-	}
-
+function printSummary(options) {
 	if (!options.from) {
 		console.error(usage());
 		process.exit(2);
@@ -626,6 +609,29 @@ function main() {
 			commit: options.commit,
 		})
 	);
+}
+
+function main() {
+	let options;
+
+	try {
+		options = parseArguments(process.argv.slice(2));
+	} catch (error) {
+		console.error(`${error.message}\n\n${usage()}`);
+		process.exit(2);
+	}
+
+	if (options.help) {
+		console.log(usage());
+		return;
+	}
+
+	if (options.writeLongFunctions) {
+		writeLongFunctionFile(options.writeLongFunctions);
+		return;
+	}
+
+	printSummary(options);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
