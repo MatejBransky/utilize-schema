@@ -132,7 +132,7 @@ for (const example of examples) {
 				const validate = target === 'zod' ? validateWithZod : validateWithEffect;
 
 				for (const item of example.cases) {
-					const result = validate(schema, item.data);
+					const result = await validate(schema, item.data);
 					const expected = item.expect === 'valid';
 
 					expect(result.ok, `${example.name} / ${item.label} (${target})`).toBe(expected);
@@ -161,7 +161,7 @@ for (const example of examples) {
 			const module = await loadModule(javascript);
 
 			for (const item of example.cases) {
-				const result = validateModule(target, module, source.rootName, item.data);
+				const result = await validateModule(target, module, source.rootName, item.data);
 
 				expect(result.error, `${example.name} / ${item.label} (${target})`).toBeUndefined();
 				expect(result.ok, `${example.name} / ${item.label} (${target})`).toBe(

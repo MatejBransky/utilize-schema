@@ -47,7 +47,7 @@ for (const target of ['zod', 'effect'] as const) {
 
 		const { code: javascript } = await transformWithOxc(runtime.code, 'schema.ts');
 		const module = await loadModule(javascript);
-		const result = validateModule(target, module, runtime.rootName, data);
+		const result = await validateModule(target, module, runtime.rootName, data);
 
 		expect(result.error).toBeUndefined();
 		expect(result.ok).toBe(false);

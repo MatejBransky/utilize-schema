@@ -3,7 +3,7 @@ import { expect, test } from 'vitest';
 
 import './polyfills';
 
-import { validateWithEffect } from './runtime';
+import { loadModule, validateWithEffect, validateWithZod } from './runtime';
 
 const person = Schema.Struct({
 	firstName: Schema.String,
@@ -14,8 +14,8 @@ const person = Schema.Struct({
 	}),
 });
 
-test('Effect reports every invalid field instead of stopping at the first', () => {
-	const result = validateWithEffect(person, {
+test('Effect reports every invalid field instead of stopping at the first', async () => {
+	const result = await validateWithEffect(person, {
 		firstName: 'Ada',
 		age: '36',
 		address: { zip: '1245' },
@@ -27,4 +27,34 @@ test('Effect reports every invalid field instead of stopping at the first', () =
 		'$.age',
 		'$.address.zip',
 	]);
+});
+
+test('generated code cannot replace the runtime package bridge', async () => {
+	await loadModule("import { z } from 'zod'; export const schema = z.string();");
+	await loadModule("import { Schema } from 'effect'; export const schema = Schema.String;");
+	const bridge = (globalThis as unknown as Record<string, unknown>)[
+		'__utilizePlaygroundPackages'
+	] as {
+		zod: { z: object };
+		effect: { Schema: object };
+	};
+
+	expect(Object.isFrozen(bridge)).toBe(true);
+	expect(Object.isFrozen(bridge.zod)).toBe(true);
+	expect(Object.isFrozen(bridge.effect)).toBe(true);
+	expect(Reflect.set(bridge, 'zod', { z: {} })).toBe(false);
+	expect(Reflect.set(bridge.zod, 'z', {})).toBe(false);
+
+	await expect(
+		loadModule(`
+			import { z } from 'zod';
+			globalThis.__utilizePlaygroundPackages = { zod: { z: {} } };
+			export const schema = z.string();
+		`)
+	).rejects.toThrow();
+
+	const module = await loadModule("import { z } from 'zod'; export const schema = z.string();");
+	const result = await validateWithZod(module.schema, 'still works');
+
+	expect(result).toMatchObject({ ok: true, value: 'still works', issues: [] });
 });
