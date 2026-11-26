@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Page not found · Utilize Schema</title>
+		<script>
+			(() => {
+				if (location.pathname.endsWith('/reports')) {
+					location.replace(`${location.pathname}/${location.search}${location.hash}`);
+				}
+			})();
+		</script>
+		<style>
+			body {
+				margin: 0;
+				min-height: 100vh;
+				display: grid;
+				place-items: center;
+				padding: 24px;
+				background: #f5f5f2;
+				color: #1d1d1b;
+				font:
+					16px/1.5 ui-sans-serif,
+					system-ui,
+					sans-serif;
+			}
+			main {
+				max-width: 520px;
+			}
+			h1 {
+				margin: 0 0 8px;
+				font-size: 2rem;
+			}
+			p {
+				margin: 0 0 20px;
+				color: #66665f;
+			}
+			a {
+				color: #3157d5;
+			}
+			@media (prefers-color-scheme: dark) {
+				body {
+					background: #111210;
+					color: #f0f0e9;
+				}
+				p {
+					color: #a5a69c;
+				}
+				a {
+					color: #8da7ff;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<h1>Page not found</h1>
+			<p>The page you requested does not exist.</p>
+			<a href="../">Back to the playground</a>
+		</main>
+	</body>
+</html>

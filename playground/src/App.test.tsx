@@ -246,6 +246,7 @@ test('an agent can find and change the playground controls', async () => {
 		'Workspace layout',
 		'Copy code',
 		'Share',
+		'Reports',
 		'GitHub',
 	]) {
 		expect(labels, `${label} is missing from the snapshot`).toContain(label);

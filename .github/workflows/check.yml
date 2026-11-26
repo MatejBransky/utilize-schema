@@ -5,6 +5,7 @@ on:
     branches:
       - main
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -17,11 +18,13 @@ jobs:
   test:
     name: Run code quality tools and tests
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Checkout code repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
@@ -61,8 +64,15 @@ jobs:
       - name: Check types
         run: pnpm run check:types
 
+      # The only test run in this workflow. Pages consumes these artifacts later
+      # instead of starting a second suite in a separate workflow.
       - name: Test
-        run: pnpm run ci:test:coverage
+        env:
+          TEST_REPORT_DIR: ${{ github.workspace }}/.fallow/reports/tests
+        run: |
+          mkdir -p .fallow/reports
+          pnpm run --recursive --aggregate-output --reporter-hide-prefix --if-present ci:test --coverage.enabled
+          pnpm test:scripts 2>&1 | tee .fallow/reports/script-tests.txt
 
       - name: Check coverage badges
         run: pnpm run check:coverage-badge
@@ -81,10 +91,11 @@ jobs:
       # code on findings), and the step summary is rendered from the same file.
       #
       # `--reuse-coverage` merges the coverage the test step just measured
-      # instead of running the whole suite a second time.
+      # instead of running the whole suite a second time. `--score` keeps the
+      # health score in the JSON that the hosted report renders.
       - name: Full Fallow run with measured coverage
         run: |
-          pnpm fallow:coverage --reuse-coverage --format json --quiet --output-file .fallow/full.json
+          pnpm fallow:coverage --reuse-coverage --score --format json --quiet --output-file .fallow/full.json
 
       # `--warn` makes a warning fail too: this repository treats a `warn` rule
       # as something to fix, not as background noise.
@@ -97,6 +108,16 @@ jobs:
         if: always() && hashFiles('.fallow/full.json') != ''
         run: |
           pnpm exec fallow report --from .fallow/full.json --format github-summary >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload test report artifacts
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: test-reports
+          path: |
+            .fallow/reports
+            .fallow/full.json
+          retention-days: 1
 
   fallow:
     name: Fallow audit
@@ -250,3 +271,58 @@ jobs:
           fail-on-severity: high
           comment-summary-in-pr: never
           show-openssf-scorecard: false
+
+  pages:
+    name: Build and deploy Pages
+    needs: [test, security]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download completed test reports
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: test-reports
+          path: .fallow
+
+      - name: Build playground
+        run: pnpm --filter playground build
+
+      - name: Build reports without rerunning tests
+        run: pnpm reports:render
+
+      - name: Configure Pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: playground/dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
