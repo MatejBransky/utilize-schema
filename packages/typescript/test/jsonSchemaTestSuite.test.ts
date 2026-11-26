@@ -235,7 +235,11 @@ describe('other dialects', () => {
 				try {
 					modules.push({ key, module: await renderCaseModule(testCase, dialect) });
 				} catch (error) {
-					crashes.set(key, error instanceof Error ? error.message : String(error));
+					const message = error instanceof Error ? error.message : String(error);
+
+					// Paths under the suite directory would make the recorded list
+					// depend on the machine that generated it.
+					crashes.set(key, message.replaceAll(`${__dirname}/`, ''));
 				}
 			}
 

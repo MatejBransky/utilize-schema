@@ -46,7 +46,9 @@ for (const [dialect, token] of Object.entries(OTHER_DIALECTS)) {
 				module: await renderCaseModule(testCase, dialect, generate, `${suiteDirectory}/`),
 			});
 		} catch (error) {
-			crashes.set(key, error instanceof Error ? error.message : String(error));
+			const message = error instanceof Error ? error.message : String(error);
+
+			crashes.set(key, message.replaceAll(`${suiteDirectory}/`, ''));
 		}
 	}
 
