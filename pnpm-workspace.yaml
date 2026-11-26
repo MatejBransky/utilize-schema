@@ -26,6 +26,10 @@ catalog:
 # Supply-chain guardrails for registry dependencies.
 minimumReleaseAge: 1440
 minimumReleaseAgeStrict: true
+# vercel@67.0.0 restored trusted-publisher evidence; the preview workflow pins it
+# so deployments do not wait for the release-age cutoff.
+minimumReleaseAgeExclude:
+  - vercel@67.0.0
 trustPolicy: no-downgrade
 # tsrs switched from staged publish to a trusted publisher in 7.1.0-beta.*. Both
 # are the same oxc maintainer, but pnpm treats the switch as a trust downgrade.
