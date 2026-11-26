@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 
 import { pickColor, renderBadge } from './badge.mjs';
-import { badgePathFor, describeBadge, isBadgeStale } from './suite-badge.mjs';
+import { badgePathFor, describeBadge, findOrphanBadges, isBadgeStale } from './suite-badge.mjs';
 
 test('pickColor uses inclusive thresholds', () => {
 	assert.equal(pickColor(100), '#4c1');
@@ -67,6 +67,23 @@ test('isBadgeStale detects missing, matching and changed badges', () => {
 
 		writeFileSync(path, '<svg>stale</svg>');
 		assert.equal(isBadgeStale(path, '<svg />'), true);
+	} finally {
+		rmSync(directory, { recursive: true, force: true });
+	}
+});
+
+test('findOrphanBadges reports committed conformance badges without a baseline', () => {
+	const directory = mkdtempSync(join(tmpdir(), 'utilize-badge-'));
+	const expected = join(directory, 'suite-zod-draft-07.svg');
+
+	try {
+		writeFileSync(expected, '<svg />');
+		writeFileSync(join(directory, 'suite-zod-draft-03.svg'), '<svg />');
+		writeFileSync(join(directory, 'coverage-zod.svg'), '<svg />');
+
+		assert.deepEqual(findOrphanBadges(directory, new Set([expected])), [
+			join(directory, 'suite-zod-draft-03.svg'),
+		]);
 	} finally {
 		rmSync(directory, { recursive: true, force: true });
 	}
