@@ -43,14 +43,16 @@ export async function parse(
 
 	const parser = new $RefParser();
 	const rootDialect = resolveDialect(schema, options).dialect.id;
-	// Pre-index cloned documents so opaque in-document IDs resolve before $RefParser reads them as paths.
-	// Indexing clones each document, so parsing can normalize and link in place
-	// without leaving leftovers on the caller's schema.
+	// Pre-index cloned documents so opaque in-document IDs resolve before
+	// `$RefParser` reads them as paths. Indexing clones each document, so parsing
+	// can normalize and link in place without leaving leftovers on the caller's
+	// schema.
 	const provided = indexExternalSchemas(
 		{ ...options.externalSchemas, [cwd]: schema },
 		{ ...options, fallbackDialect: rootDialect }
 	);
-	const input = provided.get(cwd);
+	// `indexExternalSchemas` normalizes its keys, so look the root up the same way.
+	const input = provided.get(normalizeUri(cwd));
 
 	if (input === undefined) {
 		throw new Error(`Provided schema is missing its root document: ${cwd}`);

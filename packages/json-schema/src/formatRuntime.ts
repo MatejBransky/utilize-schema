@@ -9,10 +9,6 @@ const exactEnd = String.raw`(?![\s\S])`;
 const dateSource = String.raw`(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))`;
 
 const patterns = new Map<string, string>([
-	[
-		'time',
-		String.raw`^(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d|23:59:60)(?:\.\d+)?(?:[zZ]|[+-](?:[01]\d|2[0-3]):[0-5]\d)${exactEnd}`,
-	],
 	['json-pointer', String.raw`^(?:\/(?:[^~]|~[01])*)?${exactEnd}`],
 	['relative-json-pointer', String.raw`^(?:0|[1-9][0-9]*)(?:#|\/(?:[^~]|~[01])*)?${exactEnd}`],
 ]);
@@ -336,7 +332,7 @@ const ucschar = '\\u{00A0}-\\u{D7FF}\\u{F900}-\\u{FDCF}\\u{FDF0}-\\u{FFEF}\\u{10
 const iprivate = '\\u{E000}-\\u{F8FF}\\u{F0000}-\\u{FFFFD}\\u{100000}-\\u{10FFFD}';
 const literalToken = '[' + unreserved + subDelims + ':@/\\-]|' + pct + '|[' + ucschar + iprivate + ']';
 const literalPattern = new RegExp('^(?:' + literalToken + ')*' + ${JSON.stringify(exactEnd)}, 'u');
-const varcharToken = '[A-Za-z0-9_\\-]|' + pct + '|\\.';
+const varcharToken = '[A-Za-z0-9_]|' + pct + '|\\.';
 function isUriTemplate(value: string) {
 	let index = 0;
 	while (index < value.length) {
@@ -372,14 +368,30 @@ function isTemplateExpression(expression: string) {
 
 const dateTimePattern = String.raw`^(${dateSource})[Tt]((?:[01]\d|2[0-3]):[0-5]\d):([0-5]\d|60)(?:\.\d+)?([zZ]|[+-](?:[01]\d|2[0-3]):[0-5]\d)${exactEnd}`;
 
+const timePattern = String.raw`^((?:[01]\d|2[0-3]):[0-5]\d):([0-5]\d|60)(?:\.\d+)?([zZ]|[+-](?:[01]\d|2[0-3]):[0-5]\d)${exactEnd}`;
+
+/**
+ * Emitted check for the RFC 3339 leap second. `60` names the second that is
+ * `23:59:60` in UTC, so the value's own offset decides whether a local time
+ * spells it: `15:59:60-08:00` does, `23:59:60+01:00` does not.
+ */
+function leapSecondCheck(hourMinute: number, seconds: number, zone: number): string {
+	return `if (match[${seconds}] !== '60') return true;
+const [hour, minute] = match[${hourMinute}].split(':').map(Number);
+const rawOffset = match[${zone}];
+const offset = rawOffset.toLowerCase() === 'z' ? 0 : (rawOffset[0] === '-' ? -1 : 1) * (Number(rawOffset.slice(1, 3)) * 60 + Number(rawOffset.slice(4, 6)));
+return (hour * 60 + minute - offset + 1440) % 1440 === 23 * 60 + 59;`;
+}
+
 const dateTimeBody = `
 const match = new RegExp(${JSON.stringify(dateTimePattern)}, 'u').exec(value);
 if (match === null) return false;
-if (match[3] !== '60') return true;
-const [hour, minute] = match[2].split(':').map(Number);
-const zone = match[4];
-const offset = zone.toLowerCase() === 'z' ? 0 : (zone[0] === '-' ? -1 : 1) * (Number(zone.slice(1, 3)) * 60 + Number(zone.slice(4, 6)));
-return (hour * 60 + minute - offset + 1440) % 1440 === 23 * 60 + 59;`;
+${leapSecondCheck(2, 3, 4)}`;
+
+const timeBody = `
+const match = new RegExp(${JSON.stringify(timePattern)}, 'u').exec(value);
+if (match === null) return false;
+${leapSecondCheck(1, 2, 3)}`;
 
 const regexBody = String.raw`
 try {
@@ -393,6 +405,8 @@ export function formatBody(format: string): string | undefined {
 	switch (format) {
 		case 'date-time':
 			return dateTimeBody;
+		case 'time':
+			return timeBody;
 		case 'email':
 		case 'idn-email':
 			return `${emailRuntime}\n${ipRuntime}\n${hostnameRuntime}\nreturn isEmail(value, ${format === 'idn-email'});`;

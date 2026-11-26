@@ -8,7 +8,8 @@
 Reach full draft-07 conformance in both runtime generators. Zod and Effect now
 validate every `format-assertion` case, including RFC 3339 date-time, email and
 IDNA hostnames, URI and IRI references, JSON Pointers, regular expressions and
-URI Templates. Complex validators are emitted once per generated module.
+URI Templates. Complex validators are emitted once per format and shared by
+every schema in the module that uses them.
 
 Format assertions now follow the JSON Schema definitions rather than the target's
 looser helpers. Values such as a bare `time` without an RFC 3339 offset, or a

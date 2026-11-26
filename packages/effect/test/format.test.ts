@@ -112,6 +112,16 @@ describe('formatMode', () => {
 		expect(Schema.is(Root)(invalid), `${invalid} should be invalid`).toBe(false);
 	});
 
+	test.each([
+		['time', '15:59:60-08:00', '23:59:60+01:00'],
+		['uri-template', '{a.b}', '{a-b}'],
+	])('keeps %s inside its RFC grammar', async (format, valid, invalid) => {
+		const Root = await compileToSchema({ type: 'string', format }, { formatMode: 'assert' });
+
+		expect(Schema.is(Root)(valid), `${valid} should be valid`).toBe(true);
+		expect(Schema.is(Root)(invalid), `${invalid} should be invalid`).toBe(false);
+	});
+
 	test('asserts a format on an untyped schema by default', async () => {
 		const Root = await compileToSchema({ format: 'email' });
 

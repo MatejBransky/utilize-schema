@@ -64,9 +64,11 @@ pass/fail gate. Draft-07 numbers derived from its committed
 The results are not directly comparable. Runtime generators validate values,
 while TypeScript can only express types and cannot reject an invalid `minimum`,
 `pattern`, `format`, `uniqueItems`, `dependencies` or `if`/`then`/`else`. The
-suite revisions also differ: this repository pins 257 upstream groups and 304
-runnable draft-07 cases for the runtime generators, while the type-level runner
-skips the 19 `format-assertion` cases and runs 285 cases. Remote references are
+suite revisions also differ: this repository pins suite commit `e2a68a1` with
+304 runnable draft-07 cases for the runtime generators, while the type-level
+runner skips the 19 `format-assertion` cases and runs 285 cases. The
+json-schema-to-typescript numbers come from a different revision of the suite
+(`3c25e5f`, 257 groups). Remote references are
 served from memory here and from the suite's `remotes/` directory upstream.
 
 Within those limits, the type-level record is explicit: 67.4% of draft-07 cases

@@ -3,12 +3,9 @@ import { describe, expect, test } from 'vitest';
 import { formatBody, formatConstantBase, formatNameFor, formatPattern } from '../src/formatRuntime';
 
 describe('formatPattern', () => {
-	test.each(['time', 'json-pointer', 'relative-json-pointer'])(
-		'returns a pattern for %s',
-		(format) => {
-			expect(formatPattern(format)).toMatch(/^\^/);
-		}
-	);
+	test.each(['json-pointer', 'relative-json-pointer'])('returns a pattern for %s', (format) => {
+		expect(formatPattern(format)).toMatch(/^\^/);
+	});
 
 	test('returns nothing for a structural format', () => {
 		expect(formatPattern('email')).toBeUndefined();
@@ -18,6 +15,7 @@ describe('formatPattern', () => {
 describe('formatBody', () => {
 	test.each([
 		['date-time', 'const match = new RegExp('],
+		['time', 'const match = new RegExp('],
 		['email', 'return isEmail(value, false);'],
 		['hostname', 'return isHost(value, false);'],
 		['idn-email', 'return isEmail(value, true);'],
@@ -33,7 +31,7 @@ describe('formatBody', () => {
 	});
 
 	test('returns nothing for a pattern format', () => {
-		expect(formatBody('time')).toBeUndefined();
+		expect(formatBody('json-pointer')).toBeUndefined();
 	});
 });
 

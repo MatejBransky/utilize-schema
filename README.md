@@ -87,8 +87,8 @@ export type User = z.infer<typeof User>;
 ```
 
 The UUID format keeps this example short. Formats that need structural
-validation, such as `email`, `hostname` and `uri`, emit one shared validator per
-generated module.
+validation, such as `email`, `hostname` and `uri`, emit one validator constant
+per format, shared by every schema that uses it.
 
 The same three steps work for the other targets: `@utilize/effect` with
 `utilize-effect`, and `@utilize/typescript` with `utilize-typescript` (no runtime

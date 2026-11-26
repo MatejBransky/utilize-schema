@@ -19,7 +19,7 @@ dependency ordering and imports `effect`.
 - **Mapped or rejected, never ignored.** Unsupported constructs fail with
   `UnsupportedEffectSchemaFeatureError` instead of disappearing.
 - **Five dialects.** draft-04, draft-06, draft-07, 2019-09 and 2020-12.
-- **100% of the official draft-07 suite.** 304 of 304 cases; 96% line coverage.
+- **100% of the official draft-07 suite.** 304 of 304 cases; 95% line coverage.
 
 ```json
 {

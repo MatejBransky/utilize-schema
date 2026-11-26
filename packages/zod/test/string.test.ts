@@ -176,6 +176,16 @@ describe('string constraints', () => {
 			expect(Root.safeParse(invalid).success, `${invalid} should be invalid`).toBe(false);
 		});
 
+		test.each([
+			['time', '15:59:60-08:00', '23:59:60+01:00'],
+			['uri-template', '{a.b}', '{a-b}'],
+		])('keeps %s inside its RFC grammar', async (format, valid, invalid) => {
+			const Root = await compileToZod({ type: 'string', format }, { formatMode: 'assert' });
+
+			expect(Root.safeParse(valid).success, `${valid} should be valid`).toBe(true);
+			expect(Root.safeParse(invalid).success, `${invalid} should be invalid`).toBe(false);
+		});
+
 		test('keeps a custom format override independent of the built-in validators', async () => {
 			const Root = await compileToZod(
 				{ type: 'string', format: 'email' },
