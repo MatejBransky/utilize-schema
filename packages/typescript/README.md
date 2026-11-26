@@ -131,29 +131,10 @@ reference correctly.
 
 ## Keyword coverage
 
-| JSON Schema keyword                           | TypeScript                                                        |
-| --------------------------------------------- | ----------------------------------------------------------------- |
-| `type`                                        | Primitive types, unions of types                                  |
-| `const`, `enum`                               | Literal types (objects and arrays too), intersected with siblings |
-| `properties`, `required`                      | Interface members, optional members                               |
-| `additionalProperties`                        | Index signature (`unknown` when open)                             |
-| `patternProperties`                           | Index signature union with the pattern schemas                    |
-| `items`, `prefixItems`, `additionalItems`     | `Array<T>`, tuples with optional and rest elements                |
-| `allOf`                                       | Intersection                                                      |
-| `anyOf`, `oneOf`                              | Union, intersected with the sibling keywords                      |
-| `$ref`, `$defs`, `definitions`                | Named declarations, including cycles                              |
-| `title`, `description`                        | JSDoc, skipping a title that only repeats the name                |
-| `deprecated`, `default`, `format`, `examples` | JSDoc tags                                                        |
-| `readOnly`                                    | `readonly` modifier                                               |
-
-Validation-only keywords (`minLength`, `pattern`, `minimum`, `uniqueItems`,
-`minItems`, `not`, `if`/`then`/`else`, `dependencies`, …) have no equivalent in
-a TypeScript type and are ignored. They are not silently dropped from a schema:
-use [`@utilize/zod`](../zod) or [`@utilize/effect`](../effect) when you need
-runtime validation.
-
-`$ref` siblings are resolved by the parser before generation, so a reference
-with sibling keywords becomes one merged schema.
+Types cover `type`, `const`/`enum`, object members, arrays and tuples,
+`allOf`/`anyOf`/`oneOf`, references and JSDoc annotations. Validation-only
+keywords such as `minLength` or `pattern` have no type-level equivalent; the
+full table is in [docs/keywords.md](../../docs/keywords.md#typescript).
 
 ## Conformance
 
@@ -203,23 +184,6 @@ spec-valid instance. A schema that only bounds values therefore stays `unknown`,
 which is why the valid-instance rate is above 96% while the object/array shape
 inference remains the only source of rejected valid instances in this
 generator.
-
-### Compared with json-schema-to-typescript
-
-At its own pinned revision (`5caacfc`, suite `3c25e5f`) json-schema-to-typescript
-records 141 of 257 draft-07 groups with no valid instance rejected and no invalid
-one accepted, 24 crashes and 2 invalid TypeScript files. Its instance totals are
-490 of 516 valid accepted and 198 of 342 invalid rejected. The suite revisions
-and case selections differ (257 groups there, 285 runnable cases here; this
-runner serves `externalSchemas` from memory), so the numbers describe two
-different records rather than a score. On the same group metric the TypeScript
-generator is ahead (67.0% vs 54.9%), accepts more valid instances (95.5% vs
-95.0%), emits no invalid TypeScript and crashes on 2 cases the shared parser or
-`$ref` resolver cannot resolve (24 there). Instance-level invalid rejection is
-not comparable across the two revisions: this runner rejects 60.9% of 386
-invalid instances, json-schema-to-typescript 57.9% of its 342, largely because
-the newer suite revision adds many more `format` cases that a type cannot
-reject.
 
 ## Differences from json-schema-to-typescript
 

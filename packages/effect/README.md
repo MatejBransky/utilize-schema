@@ -188,43 +188,10 @@ The script reads the built `dist/`, so build the package first.
 
 ## Keyword coverage
 
-Supported keywords:
-
-- `type` (including unions of types), `const`, `enum` (object and array values are compared as canonical JSON, ignoring key order)
-- `string`: `minLength`, `maxLength`, `pattern`, `format` (checked by default, annotation with `formatMode: 'annotate'`)
-- `number`/`integer`: `minimum`, `maximum`, `exclusiveMinimum`,
-  `exclusiveMaximum`, `multipleOf`
-- `array`: `items`, `prefixItems`, `additionalItems`, `minItems`, `maxItems`,
-  `uniqueItems`
-- `object`: `properties`, `patternProperties`, `required`,
-  `additionalProperties`, `propertyNames`, `minProperties`, `maxProperties`
-- `allOf` between disjoint object subschemas, `anyOf`, `oneOf`
-- `not`, `if`/`then`/`else`, `contains` with `minContains`/`maxContains`, `dependencies` (applied as filters)
-- `$ref`, `$defs`, `definitions`
-- `title`, `description`, `default`, `examples`, `$id`, `readOnly`,
-  `writeOnly`, `deprecated` as annotations
-
-Effect has no schema constructor for negation, conditionals or "contains", so
-`not`, `if`/`then`/`else`, `contains` and `dependencies` are emitted as
-`Schema.makeFilter` checks that evaluate the subschemas with `Schema.is`.
-`dependentRequired` and `dependentSchemas` are normalized to `dependencies`
-before generation.
-
-`unevaluatedProperties` and `unevaluatedItems` are normalized to
-`additionalProperties` and the items rest before generation, as a best effort
-for schemas that do not rely on properties evaluated by applicators.
-
-The generator throws `UnsupportedEffectSchemaFeatureError` only for a schema it
-cannot express: a `pattern` that is not valid in Unicode mode, and an `allOf`
-whose members can be neither merged nor checked as filters.
-
-`$ref` siblings follow the dialect: draft-07 and older ignore them, 2019-09 and
-newer merge disjoint object siblings into one struct. Other siblings (a
-non-object or recursive target, `not`, `if`, ...) are checked with a filter on
-the reference, which keeps the reference's type.
-
-Effect has no generic intersection, so `allOf` is limited to merging object
-subschemas that do not declare the same property.
+Effect Schema covers the same keywords as the Zod generator, with a few
+constructs emitted as `Schema.makeFilter` checks. The full table and the
+Effect-specific notes are in
+[docs/keywords.md](../../docs/keywords.md#effect-schema-specifics).
 
 ## Notes
 
