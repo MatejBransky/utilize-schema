@@ -183,9 +183,10 @@ export interface User {
 - **Types without runtime.** `@utilize/typescript` emits interfaces and aliases
   only, with no dependency to install.
 
-Conformance is measured against the official JSON Schema Test Suite for
-draft-07. Numbers and remaining gaps are in
-[Supported features](#supported-features).
+Conformance is measured against the official JSON Schema Test Suite for every
+supported dialect. Numbers and remaining gaps are in
+[Supported features](#supported-features), and each package README shows a
+conformance badge per dialect.
 
 ---
 
@@ -193,17 +194,24 @@ draft-07. Numbers and remaining gaps are in
 
 ## 📦 Packages
 
-| Package                                          | Version                                                                                                         | Downloads                                                                                                              | Coverage                                                                               | What it does                                                                                               |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| [`@utilize/json-schema`](./packages/json-schema) | [![npm](https://img.shields.io/npm/v/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema) | [![downloads](https://img.shields.io/npm/dw/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema) | [![coverage](.github/badges/coverage-json-schema.svg)](CONTRIBUTING.md#coverage-badge) | Resolves `$ref` and links nodes with metadata. The generator-agnostic pipeline the three targets build on. |
-| [`@utilize/zod`](./packages/zod)                 | [![npm](https://img.shields.io/npm/v/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)                 | [![downloads](https://img.shields.io/npm/dw/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)                 | [![coverage](.github/badges/coverage-zod.svg)](CONTRIBUTING.md#coverage-badge)         | Emits Zod schemas and `z.infer` types.                                                                     |
-| [`@utilize/effect`](./packages/effect)           | [![npm](https://img.shields.io/npm/v/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)           | [![downloads](https://img.shields.io/npm/dw/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)           | [![coverage](.github/badges/coverage-effect.svg)](CONTRIBUTING.md#coverage-badge)      | Emits Effect Schema codecs and types, with every `$ref` going through `Schema.suspend`.                    |
-| [`@utilize/typescript`](./packages/typescript)   | [![npm](https://img.shields.io/npm/v/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)   | [![downloads](https://img.shields.io/npm/dw/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)   | [![coverage](.github/badges/coverage-typescript.svg)](CONTRIBUTING.md#coverage-badge)  | Emits interfaces and type aliases. No runtime dependency.                                                  |
+| Package                                          | Version                                                                                                         | Downloads                                                                                                              | Coverage                                                                               | Conformance                                                                                              | What it does                                                                                               |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| [`@utilize/json-schema`](./packages/json-schema) | [![npm](https://img.shields.io/npm/v/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema) | [![downloads](https://img.shields.io/npm/dw/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema) | [![coverage](.github/badges/coverage-json-schema.svg)](CONTRIBUTING.md#coverage-badge) | —                                                                                                        | Resolves `$ref` and links nodes with metadata. The generator-agnostic pipeline the three targets build on. |
+| [`@utilize/zod`](./packages/zod)                 | [![npm](https://img.shields.io/npm/v/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)                 | [![downloads](https://img.shields.io/npm/dw/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)                 | [![coverage](.github/badges/coverage-zod.svg)](CONTRIBUTING.md#coverage-badge)         | [![draft-07](.github/badges/suite-zod-draft-07.svg)](./packages/zod/README.md#testing)                   | Emits Zod schemas and `z.infer` types.                                                                     |
+| [`@utilize/effect`](./packages/effect)           | [![npm](https://img.shields.io/npm/v/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)           | [![downloads](https://img.shields.io/npm/dw/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)           | [![coverage](.github/badges/coverage-effect.svg)](CONTRIBUTING.md#coverage-badge)      | [![draft-07](.github/badges/suite-effect-draft-07.svg)](./packages/effect/README.md#testing)             | Emits Effect Schema codecs and types, with every `$ref` going through `Schema.suspend`.                    |
+| [`@utilize/typescript`](./packages/typescript)   | [![npm](https://img.shields.io/npm/v/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)   | [![downloads](https://img.shields.io/npm/dw/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)   | [![coverage](.github/badges/coverage-typescript.svg)](CONTRIBUTING.md#coverage-badge)  | [![draft-07](.github/badges/suite-typescript-draft-07.svg)](./packages/typescript/README.md#conformance) | Emits interfaces and type aliases. No runtime dependency.                                                  |
 
 The coverage badge is the unit test line coverage of that package's `src`,
 including the JSON Schema Test Suite and the CLI entry points. It is committed
 to `.github/badges/`, regenerated with `pnpm badge:coverage` and checked in CI;
 see [CONTRIBUTING.md](./CONTRIBUTING.md#coverage-badge).
+
+The package badge table above shows draft-07 conformance: the share of compatible
+JSON Schema Test Suite cases where every expected result matches. Each package
+README shows a badge for every measured dialect — draft-04, draft-06, draft-07,
+2019-09 and 2020-12 — with known gaps left in the denominator. The badges are
+committed to `.github/badges/`, regenerated with `pnpm badge:suite` and checked in
+CI; see [CONTRIBUTING.md](./CONTRIBUTING.md#conformance-badges).
 
 The runtime generators need their runtime as a peer dependency: `zod`
 (`>=4.5.0 <5`) and `effect` (`>=4.0.0 <5`).
@@ -352,13 +360,15 @@ The Zod and Effect Schema generators accept the same input and are checked
 against each other by a differential test suite
 (`packages/effect/test/parity.test.ts`), so the table below is kept honest by
 CI. All three generators are also checked against the official JSON Schema Test
-Suite for draft-07:
+Suite for every measured dialect — draft-04, draft-06, draft-07, 2019-09 and
+2020-12; the numbers below are draft-07:
 
 - **Zod:** 283 of 304 cases (1,399 of 1,655 assertions) pass.
   [Known gaps](./packages/zod/test/suite/knownFailures.ts)
 - **Effect Schema:** 286 of 304 cases (1,400 of 1,655 assertions) pass.
   [Known gaps](./packages/effect/test/suite/knownFailures.ts)
-- **TypeScript:** 191 of 285 cases pass at the type level, with 81 type gaps.
+- **TypeScript:** 191 of 285 cases pass at the type level (793 of 972 instances),
+  with 81 type gaps.
   [Baseline](./packages/typescript/test/suite/baseline.ts) ·
   [Known gaps](./packages/typescript/test/suite/knownGaps.ts)
 
@@ -405,8 +415,8 @@ Assertions add up the same way, because one instance is one assertion:
 | − failing                   | 256   | 255           |
 | **= passing**               | 1,399 | 1,400         |
 
-The type-level runner reports accepted and rejected instances separately instead
-of a pass count; those numbers are in [docs/conformance.md](./docs/conformance.md).
+The type-level runner prints both the pass count and the accepted/rejected
+split; the current numbers are in [docs/conformance.md](./docs/conformance.md).
 
 </details>
 

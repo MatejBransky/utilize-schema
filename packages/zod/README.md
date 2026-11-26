@@ -3,6 +3,11 @@
 [![npm version](https://img.shields.io/npm/v/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
 [![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
 [![Unit test coverage](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/coverage-zod.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/CONTRIBUTING.md#coverage-badge)
+[![draft-04 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-zod-draft-04.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/zod/README.md#testing)
+[![draft-06 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-zod-draft-06.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/zod/README.md#testing)
+[![draft-07 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-zod-draft-07.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/zod/README.md#testing)
+[![2019-09 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-zod-2019-09.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/zod/README.md#testing)
+[![2020-12 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-zod-2020-12.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/zod/README.md#testing)
 
 TypeScript/Zod code generator for JSON Schema. Converts a JSON Schema (with
 references, `$defs` and `definitions`) into standalone Zod schemas and
@@ -218,7 +223,7 @@ defaults to stdout. Every generated file starts with a "do not edit" banner
 
 ```sh
 pnpm test          # unit tests
-pnpm test:suite    # official JSON Schema Test Suite (draft-07)
+pnpm test:suite    # official JSON Schema Test Suite (all dialects)
 ```
 
 The generator is checked against the official
@@ -226,6 +231,11 @@ The generator is checked against the official
 The suite is pinned to a commit and installed as a dev dependency. Each test
 case is compiled to a Zod schema in memory and every instance from the suite is
 run through `safeParse`.
+
+All five dialects are measured: draft-04, draft-06, draft-07, 2019-09 and
+2020-12. Draft-07 is pinned case by case; the other dialects are pinned by the
+case and instance counts recorded in `test/suite/baseline.ts`. The badges at the
+top of this README show the case rate of each dialect.
 
 Today it passes **283 of 304 draft-07 cases (1,399 of 1,655 assertions)**. Format
 cases run in the mode they are tagged for, so both the annotation and the

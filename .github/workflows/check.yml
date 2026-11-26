@@ -67,6 +67,9 @@ jobs:
       - name: Check coverage badges
         run: pnpm run check:coverage-badge
 
+      - name: Check conformance badges
+        run: pnpm run check:suite-badge
+
       - name: Check Fallow health badge
         run: pnpm run check:fallow-badge
 

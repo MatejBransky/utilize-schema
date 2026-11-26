@@ -214,6 +214,27 @@ pnpm build:dev
 pnpm badge:coverage
 ```
 
+## Conformance badges
+
+`@utilize/zod`, `@utilize/effect` and `@utilize/typescript` each show one badge
+per JSON Schema dialect: draft-04, draft-06, draft-07, 2019-09 and 2020-12.
+The value is the share of compatible JSON Schema Test Suite cases where every
+expected result matches, rounded down. Known gaps stay in the denominator, so a
+badge cannot hide them. The TypeScript runner skips `format-assertion` cases,
+which a type cannot check, so its denominator is smaller.
+
+The numbers live in `packages/*/test/suite/baseline.ts` and each package's suite
+test asserts them. `draft-07` is additionally pinned case by case in
+`knownFailures.ts` for the runtime generators and `knownGaps.ts` for TypeScript.
+When a count changes, the test prints the measured numbers and the failing case
+keys; update `baseline.ts` on purpose in the same pull request. CI runs
+`pnpm check:suite-badge` and fails when a committed badge no longer matches the
+baseline. Regenerate after a baseline change:
+
+```sh
+pnpm badge:suite
+```
+
 ## Refactor benchmarks
 
 Performance-sensitive refactors in `packages/json-schema` must include an A/B

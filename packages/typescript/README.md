@@ -3,6 +3,11 @@
 [![npm version](https://img.shields.io/npm/v/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)
 [![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)
 [![Unit test coverage](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/coverage-typescript.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/CONTRIBUTING.md#coverage-badge)
+[![draft-04 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-typescript-draft-04.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/typescript/README.md#conformance)
+[![draft-06 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-typescript-draft-06.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/typescript/README.md#conformance)
+[![draft-07 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-typescript-draft-07.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/typescript/README.md#conformance)
+[![2019-09 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-typescript-2019-09.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/typescript/README.md#conformance)
+[![2020-12 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-typescript-2020-12.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/typescript/README.md#conformance)
 
 TypeScript type generator for JSON Schema. Converts a JSON Schema (with
 references, `$defs` and `definitions`) into interfaces and type aliases — no
@@ -177,7 +182,9 @@ Current baseline on suite commit `e2a68a1`:
 
 The numbers are recorded in `test/suite/baseline.ts` and the test fails when
 they change, so a regression cannot slip in and an improvement has to update the
-baseline on purpose.
+baseline on purpose. All five dialects are measured there; the badges at the top
+of this README show the conformant case rate per dialect. Only draft-07 is
+pinned case by case, in `test/suite/knownGaps.ts`.
 
 ### Inference trade-off
 

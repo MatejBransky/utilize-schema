@@ -1,4 +1,5 @@
 import { Meta, parse } from '@utilize/json-schema';
+import type { DialectId } from '@utilize/json-schema';
 
 import { generate } from '../../src/generator';
 
@@ -29,11 +30,15 @@ export interface CaseModule {
  * The root is always named `Root`, because suite schemas often have a `title` or
  * `$id` that would otherwise become the declaration name.
  */
-export async function renderCaseModule(testCase: SuiteCase): Promise<CaseModule> {
+export async function renderCaseModule(
+	testCase: SuiteCase,
+	dialect?: DialectId
+): Promise<CaseModule> {
 	const { root } = await parse(testCase.schema, {
 		cwd: __dirname + '/',
 		fileName: 'Root.json',
 		externalSchemas: testCase.externalSchemas,
+		dialect,
 	});
 
 	const code = generate(root, {

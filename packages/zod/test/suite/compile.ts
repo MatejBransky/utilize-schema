@@ -1,5 +1,5 @@
 import { parse } from '@utilize/json-schema';
-import type { ExternalSchemas, JSONSchema } from '@utilize/json-schema';
+import type { DialectId, ExternalSchemas, JSONSchema } from '@utilize/json-schema';
 import { evaluateGeneratedCode, nameRootSchema } from '@utilize/test-utils/suite/evaluate';
 
 import { z } from 'zod';
@@ -17,12 +17,14 @@ import type { FormatMode } from '../../src/generator';
 export async function compileToZodSchema(
 	schema: JSONSchema | boolean,
 	externalSchemas?: ExternalSchemas,
-	formatMode?: FormatMode
+	formatMode?: FormatMode,
+	dialect?: DialectId
 ): Promise<z.ZodType> {
 	const { root } = await parse(schema, {
 		cwd: __dirname + '/',
 		fileName: 'Root.json',
 		externalSchemas,
+		dialect,
 	});
 
 	const code = generate(root, {

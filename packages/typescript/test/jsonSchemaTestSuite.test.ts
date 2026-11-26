@@ -1,11 +1,12 @@
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 
-import { baseline } from './suite/baseline';
-import { DRAFT_7, isCompatible } from '@utilize/test-utils/suite/compatibility';
-import { renderCaseModule } from './suite/generateCase';
-import { knownGaps } from './suite/knownGaps';
+import { DRAFT_7, isCompatible, OTHER_DIALECTS } from '@utilize/test-utils/suite/compatibility';
 import { loadSuiteFiles, suiteCaseKey } from '@utilize/test-utils/suite/loadSuite';
 import type { SuiteCase } from '@utilize/test-utils/suite/loadSuite';
+
+import { baseline } from './suite/baseline';
+import { renderCaseModule } from './suite/generateCase';
+import { knownGaps } from './suite/knownGaps';
 import { typecheckCases } from './suite/typecheck';
 import type { TypecheckModule } from './suite/typecheck';
 
@@ -107,6 +108,7 @@ describe('JSON Schema Test Suite (draft-07, type level)', () => {
 
 		const results = await typecheckCases(modules);
 		const failures = new Map<string, string[]>();
+		const typeGapKeys: string[] = [];
 
 		for (const { key } of runnable) {
 			const reasons: string[] = [];
@@ -131,13 +133,14 @@ describe('JSON Schema Test Suite (draft-07, type level)', () => {
 
 			if ((results.invalidAccepted.get(key) ?? []).length > 0) {
 				stats.typeGaps++;
+				typeGapKeys.push(key);
 				continue;
 			}
 
 			stats.conformant++;
 		}
 
-		stats.assertions = modules.reduce((total, entry) => total + entry.module.instances.length, 0);
+		stats.assertions = runnable.reduce((total, entry) => total + entry.testCase.tests.length, 0);
 		stats.known = failures.size;
 
 		for (const entry of modules) {
@@ -170,7 +173,7 @@ describe('JSON Schema Test Suite (draft-07, type level)', () => {
 				`${stats.typeGaps} type gaps`,
 				`${stats.known} known gaps`,
 				`${stats.skippedFormat} skipped (format assertion)`,
-				`${stats.skippedDialect} filtered out (other dialects)`,
+				`${stats.skippedDialect} outside this dialect (measured in the baseline)`,
 			].join(' · '),
 		];
 
@@ -182,10 +185,131 @@ describe('JSON Schema Test Suite (draft-07, type level)', () => {
 		}
 
 		expect(results.unattributed).toEqual([]);
+		const recorded = baseline['draft-07'];
 		expect([...failures.keys()].sort()).toEqual(Object.keys(knownGaps).sort());
-		expect(stats.conformant).toBe(baseline.conformant);
-		expect(stats.typeGaps).toBe(baseline.typeGaps);
-	});
+		expect(
+			{
+				cases: runnable.length,
+				passing: stats.conformant,
+				typeGaps: stats.typeGaps,
+				gaps: stats.known,
+				instances: stats.assertions,
+				passingInstances: stats.passedAssertions,
+			},
+			[
+				`Known gap cases (${failures.size}):`,
+				...[...failures.keys()].sort(),
+				`Type gap cases (${typeGapKeys.length}):`,
+				...typeGapKeys.sort(),
+			].join('\n')
+		).toEqual(recorded);
+	}, 120_000);
+});
+
+describe('other dialects', () => {
+	for (const dialect of Object.keys(OTHER_DIALECTS) as (keyof typeof OTHER_DIALECTS)[]) {
+		const token = OTHER_DIALECTS[dialect];
+
+		test(`${dialect} matches the recorded baseline`, async () => {
+			const runnable: RunnableCase[] = [];
+
+			for (const file of files) {
+				for (const testCase of file.cases) {
+					if (!isCompatible(testCase.compatibility, token)) {
+						continue;
+					}
+
+					if (testCase.tags?.includes('format-assertion')) {
+						continue;
+					}
+
+					runnable.push({ testCase, key: suiteCaseKey(file, testCase) });
+				}
+			}
+
+			const modules: TypecheckModule[] = [];
+			const crashes = new Map<string, string>();
+
+			for (const { testCase, key } of runnable) {
+				try {
+					modules.push({ key, module: await renderCaseModule(testCase, dialect) });
+				} catch (error) {
+					crashes.set(key, error instanceof Error ? error.message : String(error));
+				}
+			}
+
+			const results = await typecheckCases(modules);
+			let passing = 0;
+			let typeGaps = 0;
+			let passingInstances = 0;
+			const instances = runnable.reduce((total, entry) => total + entry.testCase.tests.length, 0);
+			const gaps: string[] = [];
+			const typeGapKeys: string[] = [];
+
+			for (const { key } of runnable) {
+				const reasons: string[] = [];
+				const crash = crashes.get(key);
+
+				if (crash !== undefined) {
+					reasons.push(`crashes: ${crash.split('\n')[0]}`);
+				}
+
+				for (const message of results.invalidModules.get(key) ?? []) {
+					reasons.push(`invalid TypeScript: ${message}`);
+				}
+
+				for (const index of results.validRejected.get(key) ?? []) {
+					reasons.push(`rejects valid instance ${index}`);
+				}
+
+				if (reasons.length > 0) {
+					gaps.push(`${key}: ${reasons.join('; ')}`);
+					continue;
+				}
+
+				if ((results.invalidAccepted.get(key) ?? []).length > 0) {
+					typeGaps++;
+					typeGapKeys.push(key);
+					continue;
+				}
+
+				passing++;
+			}
+
+			for (const entry of modules) {
+				const rejectedValid = new Set(results.validRejected.get(entry.key) ?? []);
+				const acceptedInvalid = new Set(results.invalidAccepted.get(entry.key) ?? []);
+
+				for (const instance of entry.module.instances) {
+					const failed = instance.valid
+						? rejectedValid.has(instance.index)
+						: acceptedInvalid.has(instance.index);
+
+					if (!failed) {
+						passingInstances++;
+					}
+				}
+			}
+
+			expect(results.unattributed).toEqual([]);
+			expect(
+				{
+					cases: runnable.length,
+					passing,
+					typeGaps,
+					gaps: gaps.length,
+					instances,
+					passingInstances,
+				},
+				[
+					`Failing ${dialect} cases (${gaps.length}):`,
+					...gaps,
+					`Type gap cases (${typeGapKeys.length}):`,
+					...typeGapKeys.sort(),
+				].join('\n')
+			).toEqual(baseline[dialect]);
+		}, 120_000);
+	}
 });
 
 describe('known gaps', () => {

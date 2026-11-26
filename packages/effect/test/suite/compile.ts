@@ -1,5 +1,5 @@
 import { parse } from '@utilize/json-schema';
-import type { ExternalSchemas, JSONSchema } from '@utilize/json-schema';
+import type { DialectId, ExternalSchemas, JSONSchema } from '@utilize/json-schema';
 import { evaluateGeneratedCode, nameRootSchema } from '@utilize/test-utils/suite/evaluate';
 import { Schema } from 'effect';
 
@@ -19,12 +19,14 @@ export type SuiteGeneratedSchema = Parameters<typeof Schema.decodeUnknownSync>[0
 export async function compileToEffectSchema(
 	schema: JSONSchema | boolean,
 	externalSchemas?: ExternalSchemas,
-	formatMode?: FormatMode
+	formatMode?: FormatMode,
+	dialect?: DialectId
 ): Promise<SuiteGeneratedSchema> {
 	const { root } = await parse(schema, {
 		cwd: `${import.meta.dirname}/`,
 		fileName: 'Root.json',
 		externalSchemas,
+		dialect,
 	});
 
 	const code = generate(root, {
