@@ -118,7 +118,7 @@ function resolveReference(
 }
 
 function referenceFromPointer(value: unknown, pointer: string): SchemaReference {
-	if (value === null || isJSONSchemaObject(value)) {
+	if (value === null || typeof value === 'boolean' || isJSONSchemaObject(value)) {
 		return value;
 	}
 

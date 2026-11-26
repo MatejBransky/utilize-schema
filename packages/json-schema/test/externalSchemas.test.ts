@@ -45,6 +45,24 @@ test('serves external schemas by retrieval URI', async () => {
 	).toHaveLength(0);
 });
 
+test('serves a boolean external schema through $ref', async () => {
+	const parsed = await parse(
+		{ $ref: 'https://example.com/false.json' },
+		{
+			cwd: __dirname + '/',
+			fileName: 'Root.json',
+			externalSchemas: { 'https://example.com/false.json': false },
+		}
+	);
+
+	if (!isParsedJSONSchemaObject(parsed.root)) {
+		throw new TypeError('Expected the root document to be an object');
+	}
+
+	expect(parsed.root[Meta].reference).toBe(false);
+	expect(parsed.referencedSchemas).toContain(false);
+});
+
 test('serves identifiers declared inside a provided document', async () => {
 	const parsed = await parse(
 		{

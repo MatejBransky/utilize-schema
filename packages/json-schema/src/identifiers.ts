@@ -44,15 +44,20 @@ export function createSchemaIndex(): SchemaIndex & {
 	 * Indexes a document. `nodeDialects` comes from `prepareSchema`; without it
 	 * every node is read as draft-07.
 	 */
-	addDocument(retrievalUri: string, root: JSONSchema, nodeDialects?: DialectMap): void;
+	addDocument(retrievalUri: string, root: JSONSchema | boolean, nodeDialects?: DialectMap): void;
 } {
 	const resources = new Map<string, JSONSchema | boolean>();
 	const anchors = new Map<string, JSONSchema | boolean>();
 	const bases = new WeakMap<object, string>();
 
-	function addDocument(retrievalUri: string, root: JSONSchema, nodeDialects?: DialectMap) {
+	function addDocument(
+		retrievalUri: string,
+		root: JSONSchema | boolean,
+		nodeDialects?: DialectMap
+	) {
+		resources.set(retrievalUri, root);
+
 		if (typeof root === 'object' && root !== null) {
-			resources.set(retrievalUri, root);
 			bases.set(root, retrievalUri);
 		}
 

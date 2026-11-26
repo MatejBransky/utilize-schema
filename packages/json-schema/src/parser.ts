@@ -7,7 +7,7 @@ import type { ExternalSchemas } from './externalSchemas';
 import { createSchemaIndex, schemaChildren } from './identifiers';
 import { link } from './linker';
 import { isJSONSchema, isJSONSchemaObject, isParsedJSONSchema } from './model';
-import type { JSONSchema, ParsedJSONSchema } from './model';
+import type { JSONSchema, ParsedJSONSchema, ParsedJSONSchemaObject } from './model';
 import { prepareSchema } from './normalize';
 import type { DialectMap } from './normalize';
 
@@ -80,8 +80,7 @@ export async function parse(
 			: {}
 	);
 
-	const entries = schemaEntries($refs.values());
-	// `$RefParser` registers a nested `$id` as its own entry whose value is a node
+	const entries = schemaEntries($refs.values()); // `$RefParser` registers a nested `$id` as its own entry whose value is a node
 	// inside another document. Preparing and linking both would normalize that
 	// node twice and report its dialect issues twice, so keep the entry that
 	// contains the others.
@@ -111,17 +110,19 @@ export async function parse(
 		const fileName = isRootSchema ? rootFileName : (filePath.split(/[\\/]/).at(-1) ?? 'Unknown');
 
 		// A referenced file without `$schema` inherits the root's dialect.
-		const dialects = prepareSchema(entrySchema, {
-			dialect: options.dialect,
-			fallbackDialect: options.fallbackDialect,
-			inheritedDialect: isRootSchema ? undefined : rootDialect,
-			unknownDialect: options.unknownDialect,
-			keywordPolicy: options.keywordPolicy,
-			onDialectIssue,
-			filePath: prefixPath,
-		});
+		const dialects = isJSONSchemaObject(entrySchema)
+			? prepareSchema(entrySchema, {
+					dialect: options.dialect,
+					fallbackDialect: options.fallbackDialect,
+					inheritedDialect: isRootSchema ? undefined : rootDialect,
+					unknownDialect: options.unknownDialect,
+					keywordPolicy: options.keywordPolicy,
+					onDialectIssue,
+					filePath: prefixPath,
+				})
+			: undefined;
 
-		if (isRootSchema) {
+		if (isRootSchema && dialects) {
 			rootDialects = dialects;
 		}
 
@@ -131,6 +132,10 @@ export async function parse(
 	});
 
 	for (const { entrySchema, prefixPath, fileName, dialects } of documents) {
+		if (!isJSONSchemaObject(entrySchema)) {
+			continue;
+		}
+
 		link({
 			schema: entrySchema,
 			parent: null,
@@ -144,21 +149,19 @@ export async function parse(
 		});
 	}
 
-	const root = isParsedJSONSchema(rootSchema)
-		? rootSchema
-		: isJSONSchemaObject(rootSchema)
-			? link({
-					schema: rootSchema,
-					parent: null,
-					fileName: rootFileName,
-					filePath: '#',
-					path: [],
-					$refs,
-					identifiers,
-					stack: new Set(),
-					dialects: rootDialects,
-				})
-			: rootSchema;
+	const root = linkedRoot(rootSchema, (schema) =>
+		link({
+			schema,
+			parent: null,
+			fileName: rootFileName,
+			filePath: '#',
+			path: [],
+			$refs,
+			identifiers,
+			stack: new Set(),
+			dialects: rootDialects,
+		})
+	);
 	const referencedSchemas: ParsedJSONSchema[] = [];
 
 	for (const [, entrySchema] of documentEntries) {
@@ -197,20 +200,35 @@ export async function parse(
 	};
 }
 
-function schemaEntries(values: unknown): [SchemaPath, JSONSchema][] {
-	const entries: [SchemaPath, JSONSchema][] = [];
+function schemaEntries(values: unknown): [SchemaPath, JSONSchema | boolean][] {
+	const entries: [SchemaPath, JSONSchema | boolean][] = [];
 
 	if (!isJSONSchemaObject(values)) {
 		throw new TypeError('Expected a map of schema documents');
 	}
 
 	for (const [filePath, schema] of Object.entries(values)) {
-		if (isJSONSchemaObject(schema)) {
+		if (isJSONSchema(schema)) {
 			entries.push([filePath, schema]);
 		}
 	}
 
 	return entries;
+}
+
+function linkedRoot(
+	rootSchema: JSONSchema | boolean | null,
+	linkRoot: (schema: JSONSchema) => ParsedJSONSchemaObject
+): ParsedJSONSchema {
+	if (isParsedJSONSchema(rootSchema)) {
+		return rootSchema;
+	}
+
+	if (isJSONSchemaObject(rootSchema)) {
+		return linkRoot(rootSchema);
+	}
+
+	return rootSchema;
 }
 
 function schemaFromRootPointer(value: unknown): JSONSchema | boolean | null {
@@ -226,8 +244,10 @@ function schemaFromRootPointer(value: unknown): JSONSchema | boolean | null {
  * duplicate entries for the same document. A nested `$id` is registered as its
  * own URI, but prepare and link already reach the node through its document.
  */
-function outerEntries(entries: [SchemaPath, JSONSchema][]): [SchemaPath, JSONSchema][] {
-	const descendants = new Map<JSONSchema, Set<unknown>>();
+function outerEntries(
+	entries: [SchemaPath, JSONSchema | boolean][]
+): [SchemaPath, JSONSchema | boolean][] {
+	const descendants = new Map<JSONSchema | boolean, Set<unknown>>();
 
 	for (const [, entrySchema] of entries) {
 		if (!descendants.has(entrySchema)) {
@@ -238,7 +258,7 @@ function outerEntries(entries: [SchemaPath, JSONSchema][]): [SchemaPath, JSONSch
 		}
 	}
 
-	const seen = new Set<JSONSchema>();
+	const seen = new Set<JSONSchema | boolean>();
 
 	return entries.filter(([, entrySchema]) => {
 		if (seen.has(entrySchema)) {

@@ -141,9 +141,7 @@
 		// copied from `playground/src/examples.ts`).
 		// Shared test helpers belong in `packages/test-utils`, which is checked.
 
-		// Reviewed clone groups. A key holds the group's fingerprint and its
-		// number of copies, so a change to the code or a new copy makes the
-		// group reportable again.
+		// No reviewed clone groups: the generator compile paths share core helpers.
 		"ignoredClones": [],
 
 		"ignore": [
