@@ -1,7 +1,10 @@
 # Keyword coverage
 
 What each generator does with the JSON Schema keywords, and the dialect rules
-behind it. Every number comes from the official
+behind it. The runtime generators are also checked against each other by the
+differential parity suite
+([`packages/effect/test/parity.test.ts`](../packages/effect/test/parity.test.ts)).
+The dialect rules themselves are in [dialects.md](./dialects.md). Every number comes from the official
 [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite)
 and is pinned in the package's baseline, so it cannot drift silently.
 

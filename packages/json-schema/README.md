@@ -24,6 +24,13 @@ metadata a generator needs; it emits no code and has no opinion about output.
 pnpm add -D @utilize/json-schema
 ```
 
+```ts
+import { Meta, parse } from '@utilize/json-schema';
+
+const { root } = await parse(schema, { cwd: '/', fileName: 'schema.json' });
+root[Meta]; // parent, reference, fileName, dialect, …
+```
+
 <details>
 <summary>Table of contents</summary>
 

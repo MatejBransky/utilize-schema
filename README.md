@@ -38,7 +38,8 @@ types for every dialect from draft-04 to 2020-12.
   own schema or type. Zod also orders them by dependency.
 - **Dialect-aware.** Draft-04/06/07 are read natively, 2019-09 and 2020-12 are
   normalized. `$schema` is resolved per schema resource and `$ref` siblings are
-  applied only where the dialect defines them.
+  applied only where the dialect defines them. The per-dialect rules are in
+  [docs/dialects.md](./docs/dialects.md).
 - **Proven on the official suite.** Draft-07 scores 283/304 cases for Zod,
   286/304 for Effect Schema and 191/285 for TypeScript; five dialects are
   measured. See [supported features](#supported-features).
@@ -87,7 +88,8 @@ export type User = z.infer<typeof User>;
 
 The same three steps work for the other targets: `@utilize/effect` with
 `utilize-effect`, and `@utilize/typescript` with `utilize-typescript` (no runtime
-dependency). See [Usage](#usage) for the API, options and CLI.
+dependency). See [Usage](#usage) for the API and CLI; each package README
+lists the options.
 
 ---
 
@@ -95,7 +97,7 @@ dependency). See [Usage](#usage) for the API, options and CLI.
 
 ## 📦 Packages
 
-- **[@utilize/json-schema](./packages/json-schema)** — Resolves `$ref`, links nodes with metadata, and ships the CLI and compile helpers the three generators share.
+- **[@utilize/json-schema](./packages/json-schema)** — Resolves `$ref`, links nodes with metadata, and provides the CLI runner and compile helpers the three generators share.
 
   [![npm version](https://img.shields.io/npm/v/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
   [![weekly downloads](https://img.shields.io/npm/dw/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
@@ -171,8 +173,9 @@ cat schema.yaml | utilize-zod > schema.generated.ts
 
 The CLIs read JSON and YAML, take a file, directory or glob, and write a file,
 directory or stdout. Generated files start with a "do not edit" banner
-(`--no-banner` omits it); `--format-mode`, `--dialect`, `--fallback-dialect` and
-`--keyword-policy` work across the targets and are listed in the package READMEs.
+(`--no-banner` omits it). The runtime CLIs also accept `--format-mode`,
+`--dialect`, `--fallback-dialect` and `--keyword-policy`; see
+[docs/dialects.md](./docs/dialects.md) for the dialect flags.
 
 ---
 
@@ -196,7 +199,8 @@ the TypeScript target emits types only, so the pane says there is no runtime
 validator.
 
 - Hosted: <https://matejbransky.github.io/utilize-schema/>
-- Pull requests labeled `Preview` get a Vercel preview deployment.
+- Pull requests from this repository labeled `Preview` get a Vercel preview
+  deployment.
 
 <details>
 <summary>Watch the demo (20 s)</summary>

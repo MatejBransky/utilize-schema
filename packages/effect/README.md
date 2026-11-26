@@ -12,7 +12,7 @@
 
 Effect Schema codecs and TypeScript types from JSON Schema. Every `$ref`,
 including cycles, goes through `Schema.suspend`, so the generated module needs no
-dependency ordering and imports only `effect`.
+dependency ordering and imports `effect`.
 
 - **Standalone codecs.** One exported const and one `typeof X.Type` per root,
   `$defs` and `definitions` entry.
@@ -201,7 +201,7 @@ because a target that emits only types has no schema variable to name.
 The official JSON Schema Test Suite is pinned and run for all five dialects. The
 badges link here:
 
-| Dialect  | Cases passing | Exact failures                                                                                      |
+| Dialect  | Cases passing | Where the gaps are                                                                                  |
 | -------- | ------------- | --------------------------------------------------------------------------------------------------- |
 | draft-04 | 173 / 194     | [baseline](test/suite/baseline.ts)                                                                  |
 | draft-06 | 254 / 263     | [baseline](test/suite/baseline.ts)                                                                  |

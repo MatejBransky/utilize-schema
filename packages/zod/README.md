@@ -12,7 +12,7 @@
 
 Zod schemas and TypeScript types from JSON Schema, including `$ref`s, cycles and
 modular `$defs`. Every definition becomes a standalone schema, and the generated
-file imports nothing but `zod`.
+file imports `zod`.
 
 - **Standalone output.** One schema per root, `$defs` and `definitions` entry,
   topologically sorted, each with its `z.infer` type.
@@ -256,7 +256,7 @@ defaults to stdout. Every generated file starts with a "do not edit" banner
 The official JSON Schema Test Suite is pinned and run for all five dialects. The
 badges link here:
 
-| Dialect  | Cases passing | Exact failures                                                                                      |
+| Dialect  | Cases passing | Where the gaps are                                                                                  |
 | -------- | ------------- | --------------------------------------------------------------------------------------------------- |
 | draft-04 | 173 / 194     | [baseline](test/suite/baseline.ts)                                                                  |
 | draft-06 | 251 / 263     | [baseline](test/suite/baseline.ts)                                                                  |
