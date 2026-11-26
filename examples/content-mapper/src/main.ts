@@ -1,6 +1,6 @@
 // fallow-ignore-file coverage-gaps -- the demo entry runs the mapper end to end; the content mapper integration test covers the same path
 
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import Person from './person.jsonschema';
 
