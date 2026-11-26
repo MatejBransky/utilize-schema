@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { collectDialectFailures, renderDialectFailures } from '../../../scripts/suite-failures.mjs';
 
 import { renderKnownFailureInstances } from '@utilize/test-utils/suite/baseline';
-import { isCompatible, OTHER_DIALECTS } from '@utilize/test-utils/suite/compatibility';
+import { DRAFT_7, isCompatible, OTHER_DIALECTS } from '@utilize/test-utils/suite/compatibility';
 import { evaluateGeneratedCode, nameRootSchema } from '@utilize/test-utils/suite/evaluate';
 import { loadSuiteFiles, suiteCaseKey } from '@utilize/test-utils/suite/loadSuite';
 import { Schema } from 'effect';
@@ -131,7 +131,7 @@ process.stdout.write(
 
 const failuresByDialect = await collectDialectFailures({
 	files,
-	dialects: OTHER_DIALECTS,
+	dialects: { 'draft-07': DRAFT_7, ...OTHER_DIALECTS },
 	isCompatible,
 	suiteCaseKey,
 	compile: (testCase, dialect) =>

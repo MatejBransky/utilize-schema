@@ -212,8 +212,11 @@ describe('baseline', () => {
 				`${totalCases - counts.cases} outside this dialect (measured in the baseline)`,
 			].join(' · ')
 		);
-		expect(counts, `Failing draft-07 cases (${failing.length}):\n${failing.join('\n')}`).toEqual(
-			baseline['draft-07']
+		const failureMessage = `Failing draft-07 cases (${failing.length}):\n${failing.join('\n')}`;
+
+		expect(counts, failureMessage).toEqual(baseline['draft-07']);
+		expect([...failing].sort(), failureMessage).toEqual(
+			[...knownFailuresByDialect['draft-07']].sort()
 		);
 	}, 120_000);
 });

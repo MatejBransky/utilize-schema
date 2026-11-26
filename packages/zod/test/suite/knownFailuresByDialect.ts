@@ -2,6 +2,29 @@
 export type KnownFailuresByDialect = Record<string, string[]>;
 
 export const knownFailuresByDialect = {
+	'draft-07': [
+		'format-date-time.json :: validation of date-time strings (5 failed)',
+		'format-email.json :: validation of e-mail addresses (17 failed)',
+		'format-hostname.json :: validation of A-label (punycode) host names (23 failed)',
+		'format-hostname.json :: validation of host names (14 failed)',
+		'format-idn-email.json :: validation of an internationalized e-mail addresses (8 failed)',
+		'format-idn-hostname.json :: validation of internationalized host names (46 failed)',
+		'format-idn-hostname.json :: validation of separators in internationalized host names (12 failed)',
+		'format-iri-reference.json :: validation of IRI References (10 failed)',
+		'format-iri.json :: validation of IRIs (15 failed)',
+		'format-json-pointer.json :: validation of JSON-pointers (JSON String Representation) (12 failed)',
+		'format-regex.json :: validation of regular expressions (6 failed)',
+		'format-relative-json-pointer.json :: validation of Relative JSON Pointers (RJP) (14 failed)',
+		'format-time.json :: validation of time strings (10 failed)',
+		'format-uri-reference.json :: validation of URI References (14 failed)',
+		'format-uri-template.json :: validation of URI-Templates (21 failed)',
+		'format-uri.json :: validation of URIs (17 failed)',
+		'id-legacy.json :: URN ref with nested pointer ref (2 failed)',
+		'id.json :: simple URN base URI with $ref via the URN (2 failed)',
+		'id.json :: simple base URI using an arbitrary URI scheme with $ref to that URI (2 failed)',
+		'id.json :: simple tag URI base URI with $ref via the tag URI (2 failed)',
+		'ref.json :: root pointer ref (4 failed)',
+	],
 	'draft-04': [
 		'anchor-legacy.json :: Location-independent identifier with base URI change in subschema (id) (2 failed)',
 		'anchor-legacy.json :: Reference an anchor with a non-relative URI (id) (2 failed)',

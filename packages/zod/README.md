@@ -256,18 +256,19 @@ defaults to stdout. Every generated file starts with a "do not edit" banner
 The official JSON Schema Test Suite is pinned and run for all five dialects. The
 badges link here:
 
-| Dialect  | Cases passing | Where the gaps are                                                                                  |
-| -------- | ------------- | --------------------------------------------------------------------------------------------------- |
-| draft-04 | 173 / 194     | [case list](test/suite/knownFailuresByDialect.ts)                                                   |
-| draft-06 | 251 / 263     | [case list](test/suite/knownFailuresByDialect.ts)                                                   |
-| draft-07 | 283 / 304     | [case list](test/suite/knownFailures.ts) · [failing instances](test/suite/knownFailureInstances.ts) |
-| 2019-09  | 353 / 417     | [case list](test/suite/knownFailuresByDialect.ts)                                                   |
-| 2020-12  | 351 / 431     | [case list](test/suite/knownFailuresByDialect.ts)                                                   |
+| Dialect  | Cases passing | Where the gaps are                                                                                                                        |
+| -------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| draft-04 | 173 / 194     | [case list](test/suite/knownFailuresByDialect.ts)                                                                                         |
+| draft-06 | 251 / 263     | [case list](test/suite/knownFailuresByDialect.ts)                                                                                         |
+| draft-07 | 283 / 304     | [cases](test/suite/knownFailuresByDialect.ts) · [reasons](test/suite/knownFailures.ts) · [instances](test/suite/knownFailureInstances.ts) |
+| 2019-09  | 353 / 417     | [case list](test/suite/knownFailuresByDialect.ts)                                                                                         |
+| 2020-12  | 351 / 431     | [case list](test/suite/knownFailuresByDialect.ts)                                                                                         |
 
 Which keywords are implemented, and which are only kept as annotations, is in
 [docs/keywords.md](../../docs/keywords.md#runtime-generators). Every dialect is
-pinned case by case: draft-07 in `knownFailures.ts`, the other four in
-`knownFailuresByDialect.ts`.
+pinned case by case in `knownFailuresByDialect.ts`; draft-07 also has a curated
+reason per case in `knownFailures.ts` and the failing instance descriptions in
+`knownFailureInstances.ts`.
 
 ## Testing
 
@@ -283,9 +284,9 @@ case is compiled to a Zod schema in memory and every instance from the suite is
 run through `safeParse`.
 
 All five dialects are measured: draft-04, draft-06, draft-07, 2019-09 and
-2020-12. Every dialect is pinned case by case: draft-07 in `knownFailures.ts`,
-the other four in `knownFailuresByDialect.ts`. `test/suite/baseline.ts` records
-the counts the badges render.
+2020-12. Every dialect is pinned case by case in `knownFailuresByDialect.ts`;
+draft-07 also has a curated reason per case in `knownFailures.ts`.
+`test/suite/baseline.ts` records the counts the badges render.
 
 Today it passes **283 of 304 draft-07 cases (1,399 of 1,655 assertions)**. Format
 cases run in the mode they are tagged for, so both the annotation and the
