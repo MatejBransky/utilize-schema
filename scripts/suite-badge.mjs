@@ -2,6 +2,7 @@
 // recorded suite baselines. Each baseline is asserted by that package's suite
 // test, so a badge can only be stale when the baseline was updated without
 // regenerating it. With `--check` it writes nothing and fails on that.
+// Requires Node 24+ for built-in TypeScript type stripping of baseline.ts.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';

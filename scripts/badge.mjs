@@ -1,5 +1,5 @@
-// Renders the committed shields-style SVG badges. Shared by the coverage and
-// conformance scripts so both use the same geometry and colour thresholds.
+// Renders the committed shields-style conformance badges with shared geometry
+// and colour thresholds.
 const LABEL_WIDTH = 62;
 const CHARACTER_WIDTH = 7;
 const VALUE_PADDING = 10;

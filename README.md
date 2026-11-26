@@ -206,12 +206,12 @@ including the JSON Schema Test Suite and the CLI entry points. It is committed
 to `.github/badges/`, regenerated with `pnpm badge:coverage` and checked in CI;
 see [CONTRIBUTING.md](./CONTRIBUTING.md#coverage-badge).
 
-The conformance badge is the share of compatible JSON Schema Test Suite cases
-where every expected result matches, for draft-07. Each package README shows a
-badge for every measured dialect — draft-04, draft-06, draft-07, 2019-09 and
-2020-12 — with known gaps left in the denominator. The badges are committed to
-`.github/badges/`, regenerated with `pnpm badge:suite` and checked in CI; see
-[CONTRIBUTING.md](./CONTRIBUTING.md#conformance-badges).
+The package badge table above shows draft-07 conformance: the share of compatible
+JSON Schema Test Suite cases where every expected result matches. Each package
+README shows a badge for every measured dialect — draft-04, draft-06, draft-07,
+2019-09 and 2020-12 — with known gaps left in the denominator. The badges are
+committed to `.github/badges/`, regenerated with `pnpm badge:suite` and checked in
+CI; see [CONTRIBUTING.md](./CONTRIBUTING.md#conformance-badges).
 
 The runtime generators need their runtime as a peer dependency: `zod`
 (`>=4.5.0 <5`) and `effect` (`>=4.0.0 <5`).
