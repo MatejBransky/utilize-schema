@@ -8,6 +8,7 @@ import { measureDialect } from '@utilize/test-utils/suite/measureDialect';
 import { baseline } from './suite/baseline';
 import { compileToZodSchema } from './suite/compile';
 import { knownFailureInstances } from './suite/knownFailureInstances';
+import { knownFailuresByDialect } from './suite/knownFailuresByDialect';
 import { knownFailures } from './suite/knownFailures';
 
 const knownFailureByKey = new Map(Object.entries(knownFailures));
@@ -227,10 +228,12 @@ describe('other dialects', () => {
 				(schema, data) => schema.safeParse(data).success
 			);
 
-			expect(
-				counts,
-				`Failing ${dialect} cases (${failing.length}):\n${failing.join('\n')}`
-			).toEqual(baseline[dialect]);
+			const failureMessage = `Failing ${dialect} cases (${failing.length}):\n${failing.join('\n')}`;
+
+			expect(counts, failureMessage).toEqual(baseline[dialect]);
+			expect([...failing].sort(), failureMessage).toEqual(
+				[...knownFailuresByDialect[dialect]].sort()
+			);
 		}, 120_000);
 	}
 });

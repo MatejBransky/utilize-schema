@@ -7,6 +7,7 @@ import type { SuiteCase } from '@utilize/test-utils/suite/loadSuite';
 import { baseline } from './suite/baseline';
 import { renderCaseModule } from './suite/generateCase';
 import { knownGaps } from './suite/knownGaps';
+import { knownGapsByDialect } from './suite/knownGapsByDialect';
 import { typecheckCases } from './suite/typecheck';
 import type { TypecheckModule } from './suite/typecheck';
 
@@ -292,6 +293,13 @@ describe('other dialects', () => {
 			}
 
 			expect(results.unattributed).toEqual([]);
+			const failureMessage = [
+				`Failing ${dialect} cases (${gaps.length}):`,
+				...gaps,
+				`Type gap cases (${typeGapKeys.length}):`,
+				...typeGapKeys.sort(),
+			].join('\n');
+
 			expect(
 				{
 					cases: runnable.length,
@@ -301,13 +309,10 @@ describe('other dialects', () => {
 					instances,
 					passingInstances,
 				},
-				[
-					`Failing ${dialect} cases (${gaps.length}):`,
-					...gaps,
-					`Type gap cases (${typeGapKeys.length}):`,
-					...typeGapKeys.sort(),
-				].join('\n')
+				failureMessage
 			).toEqual(baseline[dialect]);
+			expect([...gaps].sort(), failureMessage).toEqual(knownGapsByDialect[dialect].gaps);
+			expect([...typeGapKeys].sort(), failureMessage).toEqual(knownGapsByDialect[dialect].typeGaps);
 		}, 120_000);
 	}
 });

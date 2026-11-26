@@ -8,6 +8,7 @@ import { measureDialect } from '@utilize/test-utils/suite/measureDialect';
 import { baseline } from './suite/baseline';
 import { compileToEffectSchema } from './suite/compile';
 import { knownFailureInstances } from './suite/knownFailureInstances';
+import { knownFailuresByDialect } from './suite/knownFailuresByDialect';
 import { knownFailures } from './suite/knownFailures';
 import { decode } from './test-utils';
 
@@ -235,10 +236,12 @@ describe('other dialects', () => {
 				(schema, data) => decode(schema, data) !== undefined
 			);
 
-			expect(
-				counts,
-				`Failing ${dialect} cases (${failing.length}):\n${failing.join('\n')}`
-			).toEqual(baseline[dialect]);
+			const failureMessage = `Failing ${dialect} cases (${failing.length}):\n${failing.join('\n')}`;
+
+			expect(counts, failureMessage).toEqual(baseline[dialect]);
+			expect([...failing].sort(), failureMessage).toEqual(
+				[...knownFailuresByDialect[dialect]].sort()
+			);
 		}, 120_000);
 	}
 });
