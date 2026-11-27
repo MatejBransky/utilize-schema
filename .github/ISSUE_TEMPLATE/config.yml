@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Question or idea
+  - name: Question
     url: https://github.com/MatejBransky/utilize-schema/discussions
-    about: Ask a question or propose a feature in Discussions.
+    about: Ask about usage or the codebase in Discussions.
   - name: Security vulnerability
     url: https://github.com/MatejBransky/utilize-schema/security/advisories/new
     about: Report vulnerabilities privately, never in a public issue.
