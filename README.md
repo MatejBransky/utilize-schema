@@ -188,10 +188,9 @@ directory or stdout. Generated files start with a "do not edit" banner
 
 `--validate` checks every resolved document against the meta-schema of the
 dialect its `$schema` selects, and stops before writing anything when a schema
-is invalid. It needs the optional `ajv` package; draft-04 documents also need
-`ajv-draft-04`, which is loaded only for them. Pass `--validator <module>` to
-use another validator instead. See
-[docs/dialects.md](./docs/dialects.md#schema-validation).
+is invalid. It needs the optional `ajv` package; pass `--validator <module>`
+to use another validator instead. Draft-04 schemas also need `ajv-draft-04`.
+See [docs/dialects.md](./docs/dialects.md#schema-validation).
 
 ---
 

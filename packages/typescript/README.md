@@ -120,9 +120,8 @@ defaults to stdout. Every generated file starts with a "do not edit" banner
 (`--no-banner` omits it).
 
 `--validate` checks each resolved document against the meta-schema of its
-dialect before generating; install `ajv` to use it (draft-04 documents also
-need `ajv-draft-04`, which is loaded only for them), or pass
-`--validator <module>` for another validator. See
+dialect before generating; install `ajv` to use it (draft-04 schemas also
+need `ajv-draft-04`), or pass `--validator <module>` for another validator. See
 [docs/dialects.md](../../docs/dialects.md#schema-validation).
 
 ## Output

@@ -115,20 +115,19 @@ schema.json is not a valid draft-07 JSON Schema:
 ```
 
 `--validate` uses Ajv and dispatches to the draft the parser resolved:
-draft-06, draft-07, 2019-09 or 2020-12. A document without `$schema` is
-validated with the root's dialect, and `--dialect` / `--fallback-dialect` apply
-exactly as they do to generation. Every resolved document is checked, including
-`$ref` targets, and all findings are reported before anything is generated. A
-directory or glob run writes no output when any file fails, because every input
-is compiled before the first write.
+draft-04, draft-06, draft-07, 2019-09 or 2020-12. A document without `$schema`
+is validated with the root's dialect, and `--dialect` / `--fallback-dialect`
+apply exactly as they do to generation. Every resolved document is checked,
+including `$ref` targets, and all findings are reported before anything is
+generated. A directory or glob run writes no output when any file fails,
+because every input is compiled before the first write.
 
-Draft-04 is the one dialect Ajv 8 dropped, so validating a draft-04 document
-needs the companion `ajv-draft-04` package (`pnpm add -D ajv-draft-04`). The
-adapter imports it only when it actually validates a draft-04 document, so
-schemas of the other four dialects need `ajv` alone.
+Ajv is an optional peer dependency of `@utilize/json-schema`, so only the
+built-in validator needs it.
 
-Both are optional peer dependencies of `@utilize/json-schema`, so only the
-built-in validator needs them.
+> Draft-04 is the one dialect Ajv 8 dropped, so validating a draft-04 schema
+> also needs the `ajv-draft-04` package (`pnpm add -D ajv-draft-04`). It is
+> imported only when a draft-04 document is validated.
 
 ### In code
 
