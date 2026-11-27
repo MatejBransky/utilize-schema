@@ -1,6 +1,6 @@
 import { parse } from '@utilize/json-schema';
 import type { KeywordPolicy } from '@utilize/json-schema';
-import type { InferenceMode } from '@utilize/typescript';
+import type { InferenceMode } from './generateCode';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { RefObject } from 'react';
 
@@ -189,12 +189,12 @@ function useExampleSelection(
 	return { activeExample, activeCase, applyExample };
 }
 
-function useGeneratorSettings(initial: UrlState) {
-	const [target, setTarget] = useState<TargetId>(initial.target);
-	const [keywordPolicy, setKeywordPolicy] = useState<KeywordPolicy>(initial.keywordPolicy);
-	const [formatMode, setFormatMode] = useState<FormatMode>(initial.formatMode);
-	const [inference, setInference] = useState(initial.inference);
-
+function useSettingsUrl(
+	target: TargetId,
+	keywordPolicy: KeywordPolicy,
+	formatMode: FormatMode,
+	inference: InferenceMode
+) {
 	useEffect(() => {
 		const url = new URL(location.href);
 		const inferred = target === 'typescript' ? String(inference) : null;
@@ -219,6 +219,15 @@ function useGeneratorSettings(initial: UrlState) {
 			'replace'
 		);
 	}, [target, keywordPolicy, formatMode, inference]);
+}
+
+function useGeneratorSettings(initial: UrlState) {
+	const [target, setTarget] = useState<TargetId>(initial.target);
+	const [keywordPolicy, setKeywordPolicy] = useState<KeywordPolicy>(initial.keywordPolicy);
+	const [formatMode, setFormatMode] = useState<FormatMode>(initial.formatMode);
+	const [inference, setInference] = useState(initial.inference);
+
+	useSettingsUrl(target, keywordPolicy, formatMode, inference);
 
 	function applyGenerator(id: TargetId) {
 		setTarget(id);

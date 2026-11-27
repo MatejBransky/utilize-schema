@@ -18,7 +18,7 @@ import {
 import type { CodeFormatter, SchemaFileLocation } from '@utilize/json-schema/node';
 
 import { generate } from './generator';
-import type { CustomSchemaResolver, InferenceMode } from './generator';
+import type { CustomSchemaResolver } from './generator';
 
 export interface CompileOptions extends SchemaValidationOptions {
 	/** Path of the JSON Schema file, resolved against `cwd`. */
@@ -31,13 +31,8 @@ export interface CompileOptions extends SchemaValidationOptions {
 	customNameResolver?: CustomNameResolver;
 	/** Emits a caller-provided TypeScript type for a matching schema node. */
 	customSchemaResolver?: CustomSchemaResolver;
-	/**
-	 * How an untyped schema is narrowed. `spec` (default) keeps scalar keywords
-	 * as `unknown`; `pragmatic` reads the keyword family as the intended type
-	 * (`format` → `string`, `minimum` → `number`, …). Conditional applicators
-	 * stay `unknown` in both modes.
-	 */
-	inference?: InferenceMode;
+	/** `spec` (default) keeps scalar keywords `unknown`; `pragmatic` infers their type. */
+	inference?: 'spec' | 'pragmatic';
 	/** Runs a formatter (for example Prettier) over the generated code. */
 	format?: CodeFormatter | false;
 	/** Header prepended to the generated file. Pass `false` to omit it. */
@@ -51,7 +46,7 @@ export interface CompileSchemaOptions extends SchemaValidationOptions {
 	fileName: string;
 	customNameResolver?: CustomNameResolver;
 	customSchemaResolver?: CustomSchemaResolver;
-	inference?: InferenceMode;
+	inference?: 'spec' | 'pragmatic';
 	format?: CodeFormatter | false;
 	/** Documents served for absolute `$ref` URIs, keyed by retrieval URI. */
 	externalSchemas?: ExternalSchemas;

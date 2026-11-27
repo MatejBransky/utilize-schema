@@ -156,6 +156,26 @@ describe('objects', () => {
 		`);
 	});
 
+	test('falls back when a pattern is not a valid regular expression', async () => {
+		expect(
+			await compile({
+				type: 'object',
+				required: ['a'],
+				patternProperties: { '[': { type: 'string' } },
+				additionalProperties: false,
+			})
+		).toContain('a: never;');
+	});
+
+	test('escapes a backslash in a property key', async () => {
+		expect(
+			await compile({
+				type: 'object',
+				properties: { [String.raw`a\b`]: { type: 'string' } },
+			})
+		).toContain(String.raw`'a\\b'?: string;`);
+	});
+
 	test('marks readOnly properties as readonly', async () => {
 		await expect(
 			compile({

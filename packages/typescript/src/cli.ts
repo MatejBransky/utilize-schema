@@ -3,7 +3,7 @@ import { isEntrypoint, runGeneratorCli, validationCliHelp } from '@utilize/json-
 import type { CliFlagValues, CliIo, CliOptionsResult } from '@utilize/json-schema/node';
 
 import { compileFile, compileSchema, withBanner } from './compile';
-import type { InferenceMode } from './generator';
+import type { InferenceMode } from './renderType';
 
 export { type CliIo, isEntrypoint };
 

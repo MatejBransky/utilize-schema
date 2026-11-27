@@ -86,6 +86,15 @@ describe('CLI', () => {
 		expect(stdout()).toContain('export type Root = string;');
 	});
 
+	test('rejects an unknown inference mode', async () => {
+		const { io, stderr } = createIo(JSON.stringify({ type: 'string' }));
+
+		const exitCode = await run(['--inference', 'loose'], io);
+
+		expect(exitCode).toBe(1);
+		expect(stderr()).toContain('Unknown inference mode');
+	});
+
 	test('compiles a directory of JSON and YAML schemas into an output directory', async () => {
 		const directory = await makeDirectory();
 		const output = join(directory, 'generated');

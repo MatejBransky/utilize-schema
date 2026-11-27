@@ -137,6 +137,28 @@ describe('code generation', () => {
 		`);
 	});
 
+	test('intersects an enum with a parent that has another type keyword', async () => {
+		await expect(
+			compile({
+				type: 'string',
+				enum: ['a'],
+				properties: { x: { type: 'number' } },
+			})
+		).toMatchCode(ts`
+			export type Root = 'a' & string;
+		`);
+	});
+
+	test('filters null and integer enum values by the declared type', async () => {
+		await expect(compile({ type: 'null', enum: [null] })).toMatchCode(ts`
+			export type Root = null;
+		`);
+
+		await expect(compile({ type: 'integer', enum: [1, 1.5] })).toMatchCode(ts`
+			export type Root = 1;
+		`);
+	});
+
 	test('escapes string literals', async () => {
 		await expect(compile({ enum: ["it's", String.raw`a\b`, 'say "hi"'] })).toMatchCode(ts`
 			export type Root = 'it\'s' | 'a\\b' | 'say "hi"';

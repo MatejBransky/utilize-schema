@@ -14,10 +14,8 @@ import type {
 } from '@utilize/json-schema';
 
 import { UnresolvedReferenceError } from './errors';
-import { inferFamily } from './inference';
-import type { InferenceMode } from './inference';
 
-export type { InferenceMode } from './inference';
+export type InferenceMode = 'spec' | 'pragmatic';
 
 export interface TypeContext {
 	/** Name of an already declared standalone schema. */
@@ -28,18 +26,10 @@ export interface TypeContext {
 	inference?: InferenceMode;
 }
 
-/**
- * Returns a TypeScript type for a schema node, or `undefined` to use the
- * renderer. Called for every object node, `$ref` nodes and generated copies
- * included. The type replaces the node's type; its JSDoc comment is kept.
- */
+/** Returns a type for a schema node, or `undefined` to use the renderer. */
 export type CustomSchemaResolver = (schema: ParsedJSONSchemaObject) => string | undefined;
 
-/**
- * Keywords that change the rendered type. Everything else — validation
- * keywords, annotations and conditional applicators — has no TypeScript type
- * equivalent and is ignored.
- */
+/** Keywords that change the rendered type; validation and annotations are ignored. */
 const TYPE_KEYWORDS = new Set([
 	'$ref',
 	'type',
@@ -57,16 +47,49 @@ const TYPE_KEYWORDS = new Set([
 	'additionalItems',
 ]);
 
-/**
- * Global types the renderer emits. A schema name must never shadow one of
- * them: `export type Array = Array<string>` refers to the alias itself.
- */
+/** Types the renderer emits; schema names must not shadow them. */
 export const RENDERED_GLOBAL_TYPES = ['Array', 'Record'] as const;
 
 const INDENT = '\t';
 
 function indent(level: number): string {
 	return INDENT.repeat(level);
+}
+type Family = 'object' | 'array' | 'string' | 'number';
+
+const SPEC_KEYWORDS: Record<Family, string[]> = {
+	object: 'properties patternProperties additionalProperties required'.split(' '),
+	array: 'items prefixItems'.split(' '),
+	string: [],
+	number: [],
+};
+
+const PRAGMATIC_KEYWORDS: Record<Family, string[]> = {
+	object:
+		'properties patternProperties additionalProperties required dependencies dependentRequired dependentSchemas propertyNames minProperties maxProperties unevaluatedProperties'.split(
+			' '
+		),
+	array:
+		'items prefixItems additionalItems contains minItems maxItems uniqueItems minContains maxContains unevaluatedItems'.split(
+			' '
+		),
+	string: 'format minLength maxLength pattern contentEncoding contentMediaType'.split(' '),
+	number: 'minimum maximum exclusiveMinimum exclusiveMaximum multipleOf'.split(' '),
+};
+
+function inferFamily(
+	record: ReturnType<typeof schemaRecord>,
+	inference: InferenceMode | undefined
+): Family | undefined {
+	const keywords = inference === 'pragmatic' ? PRAGMATIC_KEYWORDS : SPEC_KEYWORDS;
+
+	for (const family of ['object', 'array', 'string', 'number'] as const) {
+		if (keywords[family].some((keyword) => record[keyword] !== undefined)) {
+			return family;
+		}
+	}
+
+	return undefined;
 }
 
 export function renderType(
@@ -180,12 +203,7 @@ function renderTypeArray(
 	return union(types.map((type) => renderType(withType(schema, type), context, level)));
 }
 
-/**
- * `const` and `enum` constrain a schema alongside its other keywords rather
- * than replacing them. A scalar `type` rules out literals of another JSON type
- * (`42 & string` is `never`), so those are filtered; every other remaining
- * keyword is intersected with the literal union.
- */
+/** Literal constraints intersect with siblings; scalar types filter other JSON types. */
 function renderLiteralConstraint(
 	values: unknown[],
 	keyword: 'const' | 'enum',
@@ -304,7 +322,7 @@ function renderUntyped(
 	context: TypeContext,
 	level: number
 ): string {
-	const family = inferFamily(schema, context.inference);
+	const family = inferFamily(schemaRecord(schema), context.inference);
 
 	if (family === 'object') {
 		return renderObject(schema, context, level);
@@ -461,11 +479,8 @@ function renderObject(schema: ParsedJSONSchemaObject, context: TypeContext, leve
 }
 
 /**
- * Renders the body of an object type: the declared properties and the index
- * signature. The index signature widens `additionalProperties` with
- * `patternProperties`, the declared property types and `undefined` for optional
- * properties, because TypeScript requires every property to be assignable to
- * it.
+ * Renders an object body; the index signature widens `additionalProperties` with
+ * the patterns and declared property types so every member stays assignable.
  */
 export function renderObjectBody(
 	schema: ParsedJSONSchemaObject,
@@ -511,11 +526,7 @@ export function renderObjectBody(
 	return lines.join('\n');
 }
 
-/**
- * The type of a key that `required` names without declaring it in
- * `properties`. A matching `patternProperties` schema applies to it, so
- * `additionalProperties` only decides when no pattern matches.
- */
+/** The type of a required key that no declared property or pattern covers. */
 function implicitPropertyType(
 	schema: ParsedJSONSchemaObject,
 	key: string,
@@ -567,10 +578,8 @@ function readonlyModifier(schema: ParsedJSONSchema | undefined): string {
 }
 
 /**
- * TypeScript requires every declared property to be assignable to the index
- * signature, so a typed `additionalProperties` is widened with the declared
- * property types. `additionalProperties: false` produces no index signature at
- * all, which is the closest a structural type can get to a closed object.
+ * A typed `additionalProperties` widens with the declared property types;
+ * `false` emits no index signature, the closest a structural type gets to closed.
  */
 function indexSignatureType(
 	schema: ParsedJSONSchemaObject,
@@ -621,10 +630,8 @@ function requiredKeys(schema: ParsedJSONSchemaObject): Set<string> {
 }
 
 /**
- * True when the schema renders as a TypeScript interface: an object with no
- * composition. Everything else becomes a type alias. Objects are emitted as
- * interfaces because an interface with an index signature can be recursive,
- * while `type X = Record<string, X>` is rejected as circular.
+ * True when the schema renders as an interface: an object with no composition.
+ * Interfaces with an index signature can be recursive; `Record` aliases cannot.
  */
 export function isObjectDeclaration(
 	schema: ParsedJSONSchemaObject,
@@ -646,7 +653,7 @@ export function isObjectDeclaration(
 
 	return (
 		schema.type === 'object' ||
-		(schema.type === undefined && inferFamily(schema, inference) === 'object')
+		(schema.type === undefined && inferFamily(schemaRecord(schema), inference) === 'object')
 	);
 }
 

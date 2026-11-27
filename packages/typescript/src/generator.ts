@@ -16,23 +16,18 @@ import {
 	renderObjectBody,
 	renderType,
 } from './renderType';
-import type { CustomSchemaResolver, InferenceMode, TypeContext } from './renderType';
+import type { CustomSchemaResolver, TypeContext } from './renderType';
 import { resolveName } from './resolveName';
 
-export type { CustomSchemaResolver, InferenceMode } from './renderType';
+export type { CustomSchemaResolver } from './renderType';
 
 export interface GenerateOptions {
 	/** Overrides the name allocated for a standalone schema. */
 	customNameResolver?: CustomNameResolver;
 	/** Emits a caller-provided TypeScript type for a matching schema node. */
 	customSchemaResolver?: CustomSchemaResolver;
-	/**
-	 * How an untyped schema is narrowed. `spec` (default) keeps scalar keywords
-	 * as `unknown`; `pragmatic` reads the keyword family as the intended type
-	 * (`format` → `string`, `minimum` → `number`, …). Conditional applicators
-	 * stay `unknown` in both modes.
-	 */
-	inference?: InferenceMode;
+	/** `spec` (default) keeps scalar keywords `unknown`; `pragmatic` infers their type. */
+	inference?: 'spec' | 'pragmatic';
 }
 
 /**

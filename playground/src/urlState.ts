@@ -1,7 +1,7 @@
 import type { KeywordPolicy } from '@utilize/json-schema';
-import type { InferenceMode } from '@utilize/typescript';
 
 import type { SchemaFile } from './bundle';
+import type { InferenceMode } from './generateCode';
 import { exampleData } from './examples';
 import type { Example } from './examples';
 import { isFormatMode } from './formatMode';
@@ -55,74 +55,35 @@ export function readInferenceParam(url: URL): InferenceMode | null {
 	return value === 'spec' || value === 'pragmatic' ? value : null;
 }
 
-interface UrlOverrides {
-	target: TargetId | null;
-	keywordPolicy: KeywordPolicy | null;
-	formatMode: FormatMode | null;
-	inference: InferenceMode | null;
-}
-
-type GeneratorSettings = Pick<UrlState, 'target' | 'keywordPolicy' | 'formatMode' | 'inference'>;
-
-function readUrlOverrides(url: URL): UrlOverrides {
-	return {
-		target: readGeneratorParam(url),
-		keywordPolicy: readKeywordPolicyParam(url),
-		formatMode: readFormatModeParam(url),
-		inference: readInferenceParam(url),
-	};
-}
-
-function hasOverrides(overrides: UrlOverrides): boolean {
-	return (
-		overrides.target !== null ||
-		overrides.keywordPolicy !== null ||
-		overrides.formatMode !== null ||
-		overrides.inference !== null
-	);
-}
-
-function applyOverrides(base: GeneratorSettings, overrides: UrlOverrides): GeneratorSettings {
-	return {
-		target: overrides.target ?? base.target,
-		keywordPolicy: overrides.keywordPolicy ?? base.keywordPolicy,
-		formatMode: overrides.formatMode ?? base.formatMode,
-		inference: overrides.inference ?? base.inference,
-	};
-}
-
 export function readUrlState(url: URL, base: UrlState, example?: Example): UrlState | null {
-	const overrides = readUrlOverrides(url);
+	const target = readGeneratorParam(url);
+	const keywordPolicy = readKeywordPolicyParam(url);
+	const formatMode = readFormatModeParam(url);
+	const inference = readInferenceParam(url);
 
-	if (example) {
-		const settings = applyOverrides(
-			{
+	if (!example && !target && !keywordPolicy && !formatMode && inference === null) {
+		return null;
+	}
+
+	const settings: UrlState = example
+		? {
+				files: example.files,
 				target: defaultTarget,
 				keywordPolicy: base.keywordPolicy,
 				formatMode: base.formatMode,
 				inference: base.inference,
-			},
-			overrides
-		);
-
-		return {
-			files: example.files,
-			...settings,
-			inference: settings.target === 'typescript' ? settings.inference : base.inference,
-			data: exampleData(example),
-		};
-	}
-
-	if (!hasOverrides(overrides)) {
-		return null;
-	}
-
-	const settings = applyOverrides(base, overrides);
+				data: exampleData(example),
+			}
+		: base;
+	const resolvedTarget = target ?? settings.target;
 
 	return {
-		files: base.files,
-		...settings,
-		inference: settings.target === 'typescript' ? settings.inference : base.inference,
-		data: base.data,
+		files: settings.files,
+		target: resolvedTarget,
+		keywordPolicy: keywordPolicy ?? settings.keywordPolicy,
+		formatMode: formatMode ?? settings.formatMode,
+		inference:
+			resolvedTarget === 'typescript' ? (inference ?? settings.inference) : settings.inference,
+		data: settings.data,
 	};
 }
