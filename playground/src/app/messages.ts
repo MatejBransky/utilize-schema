@@ -1,0 +1,88 @@
+import { UiSchema } from '@effect/ui';
+import { Schema } from 'effect';
+
+import {
+	FormatModeSchema,
+	KeywordPolicySchema,
+	ProblemModel,
+	RuntimeModel,
+	SchemaFileModel,
+	Target,
+	ValidationModel,
+} from './model';
+
+export const AppMessage = UiSchema.TaggedEnum({
+	SelectedFile: { id: Schema.String },
+	ClickedAddFile: {},
+	ClickedCloseFile: { id: Schema.String },
+	ClickedRenameFile: { id: Schema.String },
+	UpdatedDraftName: { value: Schema.String },
+	ClickedConfirmRename: {},
+	CancelledRename: {},
+	PressedOutsideRename: {},
+	UpdatedFileContent: { id: Schema.String, content: Schema.String },
+	MovedCursor: { line: Schema.Number, column: Schema.Number },
+	FocusedEditor: { id: Schema.String },
+	SelectedProblem: {
+		fileId: Schema.NullOr(Schema.String),
+		line: Schema.NullOr(Schema.Number),
+		column: Schema.NullOr(Schema.Number),
+	},
+	Generated: {
+		code: Schema.String,
+		runtime: Schema.NullOr(RuntimeModel),
+		problems: Schema.Array(ProblemModel),
+	},
+	Validated: { state: ValidationModel },
+	PickedTarget: { value: Target },
+	PickedKeywordPolicy: { value: KeywordPolicySchema },
+	PickedFormatMode: { value: FormatModeSchema },
+	PickedExample: { id: Schema.String },
+	PickedTestCase: { value: Schema.String },
+	CycledColorMode: {},
+	UpdatedData: { value: Schema.String },
+	RequestedOpenSelect: { which: Schema.Literals(['generator', 'example', 'policy', 'format']) },
+	RequestedCloseSelect: {},
+	ClickedShare: {},
+	Shared: { signature: Schema.String },
+	ClickedCopyCode: {},
+	CopiedCode: { value: Schema.String },
+	FailedCopy: {},
+	CopyFeedbackExpired: { token: Schema.Number },
+	ClickedFormatEditor: { editorId: Schema.String },
+	EnteredFiles: {},
+	MovedOverFiles: {
+		mode: Schema.NullOr(Schema.Literals(['add', 'replace'])),
+		overData: Schema.Boolean,
+	},
+	LeftFiles: {},
+	DroppedSchemas: {
+		schemas: Schema.Array(Schema.Struct({ name: Schema.String, content: Schema.String })),
+		mode: Schema.Literals(['add', 'replace']),
+	},
+	EndedFileDrag: {},
+	DroppedData: { content: Schema.String },
+	ChangedSystemTheme: { dark: Schema.Boolean },
+	ChangedHistory: {
+		files: Schema.Array(SchemaFileModel),
+		target: Target,
+		keywordPolicy: KeywordPolicySchema,
+		formatMode: FormatModeSchema,
+		data: Schema.String,
+	},
+	MeasuredLayout: {
+		headerHeight: Schema.Number,
+		workspaceHeight: Schema.Number,
+		workspaceTop: Schema.Number,
+	},
+	PressedSplitter: { y: Schema.Number },
+	MovedSplitter: { y: Schema.Number },
+	ReleasedSplitter: {},
+	PressedSplitterKey: { key: Schema.String, shift: Schema.Boolean },
+	HoveredSplitter: {},
+	LeftSplitter: {},
+	ToggledDataOpen: { open: Schema.Boolean },
+	ToggledProblems: { open: Schema.Boolean },
+});
+
+export type AppMessage = typeof AppMessage.Type;

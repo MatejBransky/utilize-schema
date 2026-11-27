@@ -3,7 +3,6 @@ import { createRequire } from 'node:module';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 
-import react from '@vitejs/plugin-react-swc';
 import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
 
@@ -133,15 +132,7 @@ export default defineConfig({
 	// Keep worker code splitting so the validator can load only the selected
 	// Zod or Effect runtime instead of inlining both into an IIFE worker bundle.
 	worker: { format: 'es' },
-	optimizeDeps: {
-		include: [
-			'@ui-sdk/react/collapsible',
-			'@ui-sdk/react/resizable',
-			'@ui-sdk/react/segmented-control',
-			'react-dom/client',
-		],
-	},
-	plugins: [react(), zodTypesPlugin(), jsonSchemaFormatsTypesPlugin(), effectTypesPlugin()],
+	plugins: [zodTypesPlugin(), jsonSchemaFormatsTypesPlugin(), effectTypesPlugin()],
 	resolve: {
 		alias: {
 			'@utilize/zod': fileURLToPath(new URL('../packages/zod/src/generator.ts', import.meta.url)),

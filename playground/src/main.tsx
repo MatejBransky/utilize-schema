@@ -1,16 +1,17 @@
-import '@ui-sdk/core/web.css';
 import './global.css';
+import './ui.css';
 import './polyfills';
 import './monaco/setup';
 
-import { expectDefined } from '@utilize/json-schema';
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
+import { BrowserHost } from '@effect/ui/html';
+import { Effect, Layer } from 'effect';
 
-import App from './App';
+import { App } from './app/App';
 
-createRoot(expectDefined(document.getElementById('root'))).render(
-	<StrictMode>
-		<App />
-	</StrictMode>
-);
+const root = document.getElementById('root');
+
+if (!root) {
+	throw new Error('Expected the playground root element.');
+}
+
+Layer.launch(BrowserHost.mount(App, {}, root)).pipe(Effect.runFork);

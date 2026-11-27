@@ -1,15 +1,23 @@
 # Agent notes
 
-## ui-sdk
+## Effect UI
 
-This project uses [ui-sdk](https://ui-sdk.dev/) via `@ui-sdk/react` and
-`@ui-sdk/core` in the `playground` app.
+The playground uses [Effect UI](https://ui.effect.website/) via `@effect/ui` and
+`@effect/ui-kit`. Effect UI is a public preview and is not on npm: both packages
+are pinned to the same `pkg.pr.new` snapshot commit in
+`playground/package.json`.
 
-Before using ui-sdk, follow the `ui-sdk` skill if it is installed, and read
-`node_modules/@ui-sdk/react/docs/llms.txt` (in this pnpm workspace:
-`playground/node_modules/@ui-sdk/react/docs/llms.txt`). To build a new
-component, also search `node_modules/@ui-sdk/react/docs/core.md` by heading and
-read `rendering.md` next to it.
+Before changing the app, read `node_modules/@effect/ui/AGENTS.md` (in this pnpm
+workspace: `playground/node_modules/@effect/ui/AGENTS.md`). Components are
+defined with a Schema model, messages, a pure `update` and a `view`. Side
+effects are Commands and Subscriptions; DOM work that needs a host node is a
+Mount. `@effect/ui-kit` ships headless parts for the controls, so the app's
+`data-slot` attributes and CSS modules supply the look.
+
+The app does not enable `exactOptionalPropertyTypes` in
+`playground/tsconfig.json`: the `@utilize/*` path aliases type-check the package
+sources, and those packages are not written for it. Effect UI's own types still
+compile in this setup.
 
 ## Fallow skills and gates
 
@@ -34,8 +42,7 @@ reason.
 ## Styling
 
 Do not add Tailwind CSS. Use CSS Modules (`*.module.css`) for app-specific
-styling and the `--ui-*` tokens plus `data-slot` attributes for ui-sdk
-components.
+styling and the `--ui-*` tokens plus `data-slot` attributes for the controls.
 
 ---
 

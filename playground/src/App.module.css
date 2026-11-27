@@ -1,3 +1,4 @@
+/* fallow-ignore-file css-dead-surface -- the audit does not resolve CSS-module class references read from the app's .ts views; pnpm exec fallow health --css reports none */
 .app {
 	display: flex;
 	flex-direction: column;
