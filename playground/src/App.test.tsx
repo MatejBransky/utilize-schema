@@ -586,7 +586,7 @@ test('an agent can toggle TypeScript format inference', async () => {
 	expect(labels).toContain('Format as string');
 
 	const result = await agent.act({
-		steps: [{ ref: 'Format as string', action: 'setValue', args: [true] }],
+		steps: [{ ref: 'Format as string', action: 'setChecked', args: [true] }],
 	});
 
 	expect(result.ok, result.error?.message).toBe(true);
