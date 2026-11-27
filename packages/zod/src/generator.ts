@@ -205,9 +205,11 @@ function usedNamesFor(declarations: Iterable<DeclarationNames>, typeNames: Itera
 }
 
 function formatConstantsFor(formatNames: Map<string, string>) {
+	// Each constant ends with a newline so `join(NEWLINE)` leaves a blank line
+	// between the constants and before the first schema declaration.
 	return [...formatNames].map(
 		([format, name]) =>
-			ts`const ${name} = (value: string) => {${expectDefined(formatBody(format))}};`
+			ts`const ${name} = (value: string) => {${expectDefined(formatBody(format))}};${NEWLINE}`
 	);
 }
 

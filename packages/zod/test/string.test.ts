@@ -113,6 +113,19 @@ describe('string constraints', () => {
 			expect(code.match(/\.refine\(formatEmail,/g)).toHaveLength(2);
 		});
 
+		test('separates the format constants from each other and from the schemas', async () => {
+			const code = await generateCode({
+				type: 'object',
+				properties: {
+					email: { type: 'string', format: 'email' },
+					website: { type: 'string', format: 'uri' },
+				},
+			});
+
+			expect(code).toMatch(/\n\nconst formatUri = /);
+			expect(code).toMatch(/\n};\n\nexport const Root = /);
+		});
+
 		test('keeps string constraints next to an asserted format', async () => {
 			const code = await generateCode({ type: 'string', format: 'email', minLength: 5 });
 			const Root = await compileToZod({ type: 'string', format: 'email', minLength: 5 });
