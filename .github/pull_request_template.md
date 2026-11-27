@@ -7,12 +7,13 @@
 Required when the change is visible in the playground. Add the `Preview` label;
 the bot posts the preview URL.
 
-|                 | Link |
-| --------------- | ---- |
-| main (wrong)    |      |
-| preview (right) |      |
+|     | Link |
+| --- | ---- |
+| old |      |
+| new |      |
 
-Build both links with **Share** so the URL carries the workspace.
+Old is the base branch (usually `main`), new is this PR's preview. Build both
+links with **Share** so the URL carries the workspace.
 
 ## Fallow
 
