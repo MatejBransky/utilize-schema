@@ -2,6 +2,8 @@
 
 Thank you for your interest in contributing! We welcome bug reports, feature requests, and pull requests.
 
+Participation is covered by the [Code of Conduct](./CODE_OF_CONDUCT.md).
+
 ## Getting Started
 
 This repository requires Node.js 24 and pnpm 11. The exact pnpm version is
