@@ -86,6 +86,14 @@ function copyMeta(node: ParsedJSONSchemaObject, result: ShapeBuilder, shape: Sha
 	const meta = { ...source };
 	const document = sourceDocumentOf(node);
 	delete meta.reference;
+	Object.defineProperty(meta, 'resolvedName', {
+		enumerable: true,
+		configurable: true,
+		get: () => source.resolvedName,
+		set: (value: string | undefined) => {
+			source.resolvedName = value;
+		},
+	});
 	Object.defineProperty(result, Meta, { enumerable: false, configurable: true, value: meta });
 
 	if (document) {

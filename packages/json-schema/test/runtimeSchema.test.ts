@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 
-import { isParsedJSONSchemaObject, parse, sourceDocumentOf } from '../src';
+import { isParsedJSONSchemaObject, Meta, parse, sourceDocumentOf } from '../src';
 import { createRuntimeGuard } from '../src/runtimeSchema';
 import { createJsonSchemaValidator } from '../src/runtime';
 
@@ -103,6 +103,34 @@ test('does not add a guard to an ordinary schema', async () => {
 
 	expect(createRuntimeGuard(root)).toBeUndefined();
 	expect(sourceDocumentOf(root)).toBeUndefined();
+});
+
+test('shares resolved names between the runtime projection and parsed nodes', async () => {
+	const { root } = await parse(
+		{
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			title: 'Guarded root',
+			type: 'object',
+			unevaluatedProperties: false,
+		},
+		{ cwd: __dirname + '/', fileName: 'Root.json', dialect: '2020-12' }
+	);
+
+	if (!isParsedJSONSchemaObject(root)) {
+		throw new TypeError('Expected an object root');
+	}
+
+	const shape = createRuntimeGuard(root)?.shape;
+
+	if (!isParsedJSONSchemaObject(shape)) {
+		throw new TypeError('Expected an object projection');
+	}
+
+	shape[Meta].resolvedName = 'ProjectedRoot';
+	expect(root[Meta].resolvedName).toBe('ProjectedRoot');
+
+	root[Meta].resolvedName = 'OriginalRoot';
+	expect(shape[Meta].resolvedName).toBe('OriginalRoot');
 });
 
 test('captures source documents only when advanced validation may need them', async () => {

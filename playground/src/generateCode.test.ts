@@ -5,6 +5,22 @@ import { defaultFormatMode } from './formatMode';
 import { generateCodeFor } from './generateCode';
 
 for (const target of ['zod', 'effect'] as const) {
+	test(`${target} keeps a guarded root as a runnable module`, async () => {
+		const { root } = await parse(
+			{
+				$schema: 'https://json-schema.org/draft/2020-12/schema',
+				title: 'GuardedRoot',
+				type: 'object',
+				unevaluatedProperties: false,
+			},
+			{ cwd: '/', fileName: 'schema.json' }
+		);
+		const { code, runtime } = generateCodeFor(target, root, defaultFormatMode);
+
+		expect(runtime).toMatchObject({ status: 'generated', rootName: 'GuardedRoot' });
+		expect(code).toContain('export const GuardedRoot');
+	});
+
 	for (const schema of [true, false]) {
 		test(`${target} exposes a ${schema} root as a runnable module`, async () => {
 			const { root } = await parse(schema, { cwd: '/', fileName: 'schema.json' });
