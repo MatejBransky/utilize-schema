@@ -265,13 +265,13 @@ defaults to stdout. Every generated file starts with a "do not edit" banner
 The official JSON Schema Test Suite is pinned and run for all five dialects. The
 badges link here:
 
-| Dialect  | Cases passing | Where the gaps are                                |
-| -------- | ------------- | ------------------------------------------------- |
-| draft-04 | 186 / 194     | [case list](test/suite/knownFailuresByDialect.ts) |
-| draft-06 | 262 / 263     | [case list](test/suite/knownFailuresByDialect.ts) |
-| draft-07 | 304 / 304     | —                                                 |
-| 2019-09  | 375 / 417     | [case list](test/suite/knownFailuresByDialect.ts) |
-| 2020-12  | 374 / 431     | [case list](test/suite/knownFailuresByDialect.ts) |
+| Dialect  | Cases passing | Where the gaps are |
+| -------- | ------------- | ------------------ |
+| draft-04 | 194 / 194     | —                  |
+| draft-06 | 263 / 263     | —                  |
+| draft-07 | 304 / 304     | —                  |
+| 2019-09  | 417 / 417     | —                  |
+| 2020-12  | 431 / 431     | —                  |
 
 Which keywords are implemented, and which are only kept as annotations, is in
 [docs/keywords.md](../../docs/keywords.md#runtime-generators). Every dialect is

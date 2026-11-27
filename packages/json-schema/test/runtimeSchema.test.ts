@@ -43,8 +43,8 @@ test('does not project validation keywords disabled by a custom vocabulary', asy
 		throw new TypeError('Expected a runtime guard');
 	}
 
-	const validate = createJsonSchemaValidator(guard.bundle, 'assert');
-	const serializedValidate = createJsonSchemaValidator(JSON.stringify(guard.bundle), 'assert');
+	const validate = createJsonSchemaValidator(guard.bundle);
+	const serializedValidate = createJsonSchemaValidator(JSON.stringify(guard.bundle));
 
 	expect(validate('not a number', guard.refFor(root))).toBe(true);
 	expect(serializedValidate('not a number', guard.refFor(root))).toBe(true);
@@ -83,10 +83,45 @@ test('detects a disabled validation vocabulary behind a reference', async () => 
 		throw new TypeError('Expected a runtime guard');
 	}
 
-	const validate = createJsonSchemaValidator(guard.bundle, 'assert');
+	const validate = createJsonSchemaValidator(guard.bundle);
 
 	expect(validate(1, guard.refFor(root))).toBe(true);
 	expect(validate('not a number', guard.refFor(root))).toBe(true);
+});
+
+test('does not inherit a disabled referrer vocabulary into a document without $schema', async () => {
+	const { root } = await parse(
+		{
+			$schema: 'https://example.com/no-validation.json',
+			$ref: 'https://example.com/value.json',
+		},
+		{
+			cwd: __dirname + '/',
+			fileName: 'Root.json',
+			dialect: '2020-12',
+			externalSchemas: {
+				'https://example.com/no-validation.json': metaSchema,
+				'https://example.com/value.json': { type: 'number', minimum: 10 },
+			},
+		}
+	);
+
+	if (!isParsedJSONSchemaObject(root)) {
+		throw new TypeError('Expected an object root');
+	}
+
+	const guard = createRuntimeGuard(root);
+
+	if (!guard || !isParsedJSONSchemaObject(guard.shape)) {
+		throw new TypeError('Expected a runtime guard');
+	}
+
+	expect(guard.shape[Meta].reference).toMatchObject({ type: 'number' });
+
+	const validate = createJsonSchemaValidator(guard.bundle);
+
+	expect(validate(10, guard.refFor(root))).toBe(true);
+	expect(validate('not a number', guard.refFor(root))).toBe(false);
 });
 
 test('keeps object map keywords in the native projection', async () => {

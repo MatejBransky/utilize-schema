@@ -202,8 +202,14 @@ function validationVocabularyPredicate(
 				: inherited;
 		enabled.set(node, current);
 
-		if (typeof node[Meta]?.reference === 'object' && node[Meta].reference !== null) {
-			visit(node[Meta].reference, current);
+		const reference = node[Meta]?.reference;
+
+		if (isParsedJSONSchemaObject(reference)) {
+			const sameDocument = reference[Meta].fileName === node[Meta].fileName;
+
+			// A separately addressed document without `$schema` uses the bundle's
+			// fallback dialect, so it does not inherit the referrer's vocabulary.
+			visit(reference, sameDocument ? current : true);
 		}
 
 		for (const child of schemaChildren(node)) {

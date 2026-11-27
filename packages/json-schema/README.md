@@ -22,7 +22,7 @@ runtime generators. It never emits a target schema.
 - **Advanced validation runtime.** `@utilize/json-schema/runtime` validates
   dynamic references, unevaluated annotations and custom vocabularies before a
   generated Zod or Effect decoder runs.
-- **88% line coverage.**
+- **89% line coverage.**
 
 ```sh
 pnpm add -D @utilize/json-schema

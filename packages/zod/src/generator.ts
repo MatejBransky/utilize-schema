@@ -216,7 +216,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		if (runtimeGuard && validatorName) {
 			code.push(
 				ts`import { createJsonSchemaValidator } from '@utilize/json-schema/runtime';${NEWLINE}`,
-				ts`const ${validatorName} = createJsonSchemaValidator(${JSON.stringify(JSON.stringify(runtimeGuard.bundle))}, ${JSON.stringify(options.formatMode ?? 'assert')});`
+				ts`const ${validatorName} = createJsonSchemaValidator(${JSON.stringify(JSON.stringify(runtimeGuard.bundle))});`
 			);
 		}
 	}

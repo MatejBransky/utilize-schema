@@ -18,14 +18,11 @@ function validator(
 		throw new TypeError('Expected a JSON Schema document');
 	}
 
-	return createJsonSchemaValidator(
-		{
-			rootUri: ROOT,
-			documents: { [ROOT]: schema, ...documents },
-			dialect,
-		},
-		'annotate'
-	);
+	return createJsonSchemaValidator({
+		rootUri: ROOT,
+		documents: { [ROOT]: schema, ...documents },
+		dialect,
+	});
 }
 
 function accepts(schema: unknown, value: unknown, dialect: Dialect = '2020-12'): boolean {

@@ -39,7 +39,7 @@ test('loads generated modules that import the shared JSON Schema runtime', async
 	const module = await loadModule(`
 		import { z } from 'zod';
 		import { createJsonSchemaValidator } from '@utilize/json-schema/runtime';
-		const validate = createJsonSchemaValidator(${JSON.stringify(bundle)}, 'assert');
+		const validate = createJsonSchemaValidator(${JSON.stringify(bundle)});
 		export const schema = z.unknown().refine(
 			(value) => validate(value, 'https://example.com/schema.json'),
 			{ message: 'Invalid JSON Schema value' }

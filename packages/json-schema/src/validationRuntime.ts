@@ -36,8 +36,7 @@ interface AdvancedSchema {
  * Format assertion belongs to the generated target projection, not this guard.
  */
 export function createJsonSchemaValidator(
-	bundle: RuntimeSchemaBundle | string,
-	_formatMode: 'annotate' | 'assert' = 'annotate'
+	bundle: RuntimeSchemaBundle | string
 ): JsonSchemaValidator {
 	const resolved = typeof bundle === 'string' ? parseBundle(bundle) : bundle;
 	const index = createValidationIndex(resolved);

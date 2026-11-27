@@ -66,6 +66,8 @@ regression fails the suite instead of drifting silently.
 | `discriminator`                              | ✅  | —             | Zod emits a discriminated union; Effect ignores the annotation                        |
 | `$ref`                                       | ✅  | ✅            | Local, external, cyclic and `$id`/`$anchor` based; boolean targets supported          |
 | `$recursiveRef` / `$dynamicRef`              | ✅  | ✅            | Validated by the shared runtime guard with dynamic resource scope                     |
+| `$recursiveAnchor` / `$dynamicAnchor`        | ✅  | ✅            | Registered for runtime dynamic-scope resolution                                       |
+| `$vocabulary`                                | ✅  | ✅            | Custom metaschemas may disable the validation vocabulary                              |
 | `$defs` / `definitions`                      | ✅  | ✅            | Supported                                                                             |
 | `$id` / `$anchor`                            | ✅  | ✅            | Establishes the base URI and resolves fragment identifiers                            |
 | `examples`                                   | ✅  | ✅            | Kept as metadata                                                                      |
