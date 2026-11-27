@@ -171,23 +171,43 @@ function attach(send: (event: BrowserEvent) => void): () => void {
 		offer(BrowserEvent.ChangedSystemTheme({ dark: themeQuery.matches }));
 	};
 
-	const measure = () => {
-		const header = document.getElementById('test-data-header');
-		const workspace = document.querySelector('[data-workspace]');
+	let lastMeasurement = { headerHeight: -1, workspaceHeight: -1, workspaceTop: -1 };
+	let measureFrame = 0;
 
-		if (!header || !workspace) {
+	// A ResizeObserver callback must not change the layout it observes. Measuring
+	// on the next frame and dropping sub-pixel changes keeps the observer quiet.
+	const measure = () => {
+		if (measureFrame !== 0) {
 			return;
 		}
 
-		const workspaceRect = workspace.getBoundingClientRect();
+		measureFrame = requestAnimationFrame(() => {
+			measureFrame = 0;
+			const header = document.getElementById('test-data-header');
+			const workspace = document.querySelector('[data-workspace]');
 
-		offer(
-			BrowserEvent.MeasuredLayout({
+			if (!header || !workspace) {
+				return;
+			}
+
+			const workspaceRect = workspace.getBoundingClientRect();
+			const next = {
 				headerHeight: header.getBoundingClientRect().height,
 				workspaceHeight: workspaceRect.height,
 				workspaceTop: workspaceRect.top,
-			})
-		);
+			};
+
+			if (
+				Math.abs(next.headerHeight - lastMeasurement.headerHeight) < 0.5 &&
+				Math.abs(next.workspaceHeight - lastMeasurement.workspaceHeight) < 0.5 &&
+				Math.abs(next.workspaceTop - lastMeasurement.workspaceTop) < 0.5
+			) {
+				return;
+			}
+
+			lastMeasurement = next;
+			offer(BrowserEvent.MeasuredLayout(next));
+		});
 	};
 
 	const observer = new ResizeObserver(measure);
@@ -217,6 +237,7 @@ function attach(send: (event: BrowserEvent) => void): () => void {
 
 	return () => {
 		observer.disconnect();
+		cancelAnimationFrame(measureFrame);
 		controller.abort();
 	};
 }

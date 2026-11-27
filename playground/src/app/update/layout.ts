@@ -10,8 +10,11 @@ export const layoutHandlers = {
 			workspaceHeight: message.workspaceHeight,
 			workspaceTop: message.workspaceTop,
 		};
-		const collapsed = measured.dataCollapsed;
-		const topSplit = collapsed ? 100 - collapsedPercentOf(measured) : measured.topSplit;
+		const collapsedTop = 100 - collapsedPercentOf(measured);
+		const topSplit =
+			measured.dataCollapsed && Math.abs(collapsedTop - model.topSplit) >= 0.5
+				? collapsedTop
+				: model.topSplit;
 
 		return $.evolve({
 			headerHeight: message.headerHeight,
