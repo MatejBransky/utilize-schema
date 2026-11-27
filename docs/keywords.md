@@ -115,26 +115,36 @@ subschemas that do not declare the same property.
 
 ## TypeScript
 
-| JSON Schema keyword                           | TypeScript                                                        |
-| --------------------------------------------- | ----------------------------------------------------------------- |
-| `type`                                        | Primitive types, unions of types                                  |
-| `const`, `enum`                               | Literal types (objects and arrays too), intersected with siblings |
-| `properties`, `required`                      | Interface members, optional members                               |
-| `additionalProperties`                        | Index signature (`unknown` when open)                             |
-| `patternProperties`                           | Index signature union with the pattern schemas                    |
-| `items`, `prefixItems`, `additionalItems`     | `Array<T>`, tuples with optional and rest elements                |
-| `allOf`                                       | Intersection                                                      |
-| `anyOf`, `oneOf`                              | Union, intersected with the sibling keywords                      |
-| `$ref`, `$defs`, `definitions`                | Named declarations, including cycles                              |
-| `title`, `description`                        | JSDoc, skipping a title that only repeats the name                |
-| `deprecated`, `default`, `format`, `examples` | JSDoc tags                                                        |
-| `readOnly`                                    | `readonly` modifier                                               |
+| JSON Schema keyword                       | TypeScript                                                                                 |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `type`                                    | Primitive types, unions of types                                                           |
+| `const`, `enum`                           | Literal types (objects and arrays too), intersected with siblings                          |
+| `properties`, `required`                  | Interface members, optional members                                                        |
+| `additionalProperties`                    | Index signature (`unknown` when open)                                                      |
+| `patternProperties`                       | Index signature union with the pattern schemas                                             |
+| `items`, `prefixItems`, `additionalItems` | `Array<T>`, tuples with optional and rest elements                                         |
+| `allOf`                                   | Intersection                                                                               |
+| `anyOf`, `oneOf`                          | Union, intersected with the sibling keywords                                               |
+| `$ref`, `$defs`, `definitions`            | Named declarations, including cycles                                                       |
+| `title`, `description`                    | JSDoc, skipping a title that only repeats the name                                         |
+| `format`                                  | JSDoc; `unknown` unless a type or shape applies, or `string` with `inference: 'pragmatic'` |
+| `deprecated`, `default`, `examples`       | JSDoc tags                                                                                 |
+| `readOnly`                                | `readonly` modifier                                                                        |
+
+`format` only applies to strings. A schema that would otherwise be `unknown`
+stays `unknown` by default; `inference: 'pragmatic'` opts into treating the
+keyword family as the intended type (`format` → `string`, `minimum` → `number`,
+`contains` → `array`, `minProperties` → `object`). Object-family keywords include
+`dependencies` and `dependentSchemas`, which apply only to objects.
 
 Validation-only keywords (`minLength`, `pattern`, `minimum`, `uniqueItems`,
 `minItems`, `not`, `if`/`then`/`else`, `dependencies`, …) have no equivalent in
-a TypeScript type and are ignored. They are not silently dropped from a schema:
-use [`@utilize/zod`](../packages/zod) or [`@utilize/effect`](../packages/effect)
-when you need runtime validation.
+a TypeScript type. In `spec` mode they are ignored; `pragmatic` inference only
+uses the keyword family to choose `string`, `number`, `array` or `object` and
+still cannot enforce the constraint. They are not silently dropped from a
+schema: use
+[`@utilize/zod`](../packages/zod) or [`@utilize/effect`](../packages/effect) when
+you need runtime validation.
 
 `$ref` siblings are resolved by the parser before generation, so a reference
 with sibling keywords becomes one merged schema.

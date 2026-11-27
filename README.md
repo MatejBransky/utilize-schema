@@ -204,7 +204,8 @@ See [docs/dialects.md](./docs/dialects.md#schema-validation).
 
 The [`playground`](./playground) is a browser app for editing multiple JSON
 Schema files with references. Switch between the three generators, change the
-keyword policy and the format mode, and watch the generated code update live.
+keyword policy, the format mode or the TypeScript pragmatic inference,
+and watch the generated code update live.
 Start from one of the built-in examples: each comes with labelled valid and
 invalid test documents, so you can compare the generated code with what the
 validator does on the same screen.

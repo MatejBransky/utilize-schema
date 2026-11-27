@@ -19,6 +19,7 @@ import type { CodeFormatter, SchemaFileLocation } from '@utilize/json-schema/nod
 
 import { generate } from './generator';
 import type { CustomSchemaResolver } from './generator';
+import type { InferenceMode } from './render/context';
 
 export interface CompileOptions extends SchemaValidationOptions {
 	/** Path of the JSON Schema file, resolved against `cwd`. */
@@ -29,13 +30,13 @@ export interface CompileOptions extends SchemaValidationOptions {
 	cwd?: string;
 	/** Overrides the name allocated for a standalone schema. */
 	customNameResolver?: CustomNameResolver;
-	/** Emits a caller-provided TypeScript type for a matching schema node. */
 	customSchemaResolver?: CustomSchemaResolver;
+	/** `spec` (default) keeps scalar keywords `unknown`; `pragmatic` infers their type. */
+	inference?: InferenceMode;
 	/** Runs a formatter (for example Prettier) over the generated code. */
 	format?: CodeFormatter | false;
 	/** Header prepended to the generated file. Pass `false` to omit it. */
 	bannerComment?: string | false;
-	/** Documents served for absolute `$ref` URIs, keyed by retrieval URI. */
 	externalSchemas?: ExternalSchemas;
 }
 
@@ -44,8 +45,8 @@ export interface CompileSchemaOptions extends SchemaValidationOptions {
 	fileName: string;
 	customNameResolver?: CustomNameResolver;
 	customSchemaResolver?: CustomSchemaResolver;
+	inference?: InferenceMode;
 	format?: CodeFormatter | false;
-	/** Documents served for absolute `$ref` URIs, keyed by retrieval URI. */
 	externalSchemas?: ExternalSchemas;
 }
 
@@ -56,16 +57,14 @@ export const DEFAULT_BANNER = generatedFileBanner('@utilize/typescript');
 /** Compiles a JSON or YAML schema source file to generated types without writing anything. */
 export const compileFile = bindCompileFile(compileSchema);
 
-/**
- * Reads a JSON or YAML schema file, follows its references and writes the
- * generated TypeScript type module next to it.
- */
+/** Reads a schema file, follows its references and writes the generated module. */
 export async function compile(options: CompileOptions): Promise<void> {
 	const { inputPath, outputPath } = compilePaths(options);
 
 	const code = await compileFile(inputPath, {
 		customNameResolver: options.customNameResolver,
 		customSchemaResolver: options.customSchemaResolver,
+		inference: options.inference,
 		format: options.format,
 		externalSchemas: options.externalSchemas,
 		validateSchema: options.validateSchema,
@@ -89,6 +88,7 @@ export async function compileSchema(
 	const code = generate(root, {
 		customNameResolver: options.customNameResolver,
 		customSchemaResolver: options.customSchemaResolver,
+		inference: options.inference,
 	});
 
 	return options.format ? options.format(code) : code;

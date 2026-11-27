@@ -2,6 +2,9 @@ import { generate as generateEffect } from '@utilize/effect';
 import { Meta } from '@utilize/json-schema';
 import type { ParsedJSONSchema } from '@utilize/json-schema';
 import { generate as generateTypeScript } from '@utilize/typescript';
+import type { InferenceMode } from '@utilize/typescript';
+export type { InferenceMode } from '@utilize/typescript';
+
 import { generate as generateZod } from '@utilize/zod';
 
 import type { ExampleGeneratorOptions } from './exampleOptions';
@@ -32,11 +35,16 @@ const runtimeGenerators: Record<
 		generateEffect(root, { importEffect: true, formatMode, ...options?.effect }),
 };
 
+export interface GenerateCodeSettings {
+	inference?: InferenceMode;
+}
+
 export function generateCodeFor(
 	target: TargetId,
 	root: ParsedJSONSchema,
 	formatMode: FormatMode,
-	options?: ExampleGeneratorOptions
+	options?: ExampleGeneratorOptions,
+	settings: GenerateCodeSettings = {}
 ): GeneratedCode {
 	switch (target) {
 		case 'zod':
@@ -48,7 +56,13 @@ export function generateCodeFor(
 			return { code: runtime.status === 'generated' ? runtime.code : '', runtime };
 		}
 		case 'typescript':
-			return { code: generateTypeScript(root, { ...options?.typescript }), runtime: null };
+			return {
+				code: generateTypeScript(root, {
+					...options?.typescript,
+					inference: settings.inference,
+				}),
+				runtime: null,
+			};
 		default: {
 			const unknownTarget: never = target;
 

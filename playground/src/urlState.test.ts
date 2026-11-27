@@ -1,38 +1,13 @@
 import { expect, test } from 'vitest';
 
-import type { SchemaFile } from './bundle';
-import type { Example } from './examples';
 import {
 	readFormatModeParam,
 	readGeneratorParam,
+	readInferenceParam,
 	readKeywordPolicyParam,
 	readUrlState,
 } from './urlState';
-import type { UrlState } from './urlState';
-
-function file(id: string): SchemaFile {
-	return { id, name: `${id}.json`, content: '{}' };
-}
-
-function state(): UrlState {
-	return {
-		files: [file('saved')],
-		target: 'effect',
-		keywordPolicy: 'ignore',
-		formatMode: 'annotate',
-		data: '{"saved":true}',
-	};
-}
-
-function example(): Example {
-	return {
-		id: 'const',
-		name: 'Const',
-		group: 'Basics',
-		files: [file('const')],
-		cases: [{ value: 'valid', label: 'Valid', expect: 'valid', data: 'green' }],
-	};
-}
+import { state } from './test/urlStateFixtures';
 
 test('returns null when the URL has no recognized playground parameters', () => {
 	const base = state();
@@ -62,30 +37,18 @@ test('applies each recognized URL parameter over the saved state', () => {
 		...base,
 		formatMode: 'assert',
 	});
-});
-
-test('loads an example even when it is the only recognized URL parameter', () => {
-	const base = state();
-
-	expect(readUrlState(new URL('https://example.com/?example=const'), base, example())).toEqual({
-		files: example().files,
-		target: 'zod',
-		keywordPolicy: 'ignore',
-		formatMode: 'annotate',
-		data: '"green"',
-	});
-});
-
-test('URL settings override an example while the saved policy and format remain fallbacks', () => {
-	const base = state();
-	const url = new URL('https://example.com/?generator=typescript&keyword-policy=warn');
-
-	expect(readUrlState(url, base, example())).toEqual({
-		files: example().files,
+	expect(
+		readUrlState(new URL('https://example.com/?generator=typescript&inference=pragmatic'), base)
+	).toEqual({
+		...base,
 		target: 'typescript',
-		keywordPolicy: 'warn',
-		formatMode: 'annotate',
-		data: '"green"',
+		inference: 'pragmatic',
+	});
+	expect(
+		readUrlState(new URL('https://example.com/?generator=effect&inference=pragmatic'), base)
+	).toEqual({
+		...base,
+		target: 'effect',
 	});
 });
 
@@ -97,9 +60,13 @@ test('parameter readers ignore missing and invalid values', () => {
 	expect(readGeneratorParam(url)).toBe('effect');
 	expect(readKeywordPolicyParam(url)).toBe('warn');
 	expect(readFormatModeParam(url)).toBe('assert');
+	expect(readInferenceParam(url)).toBeNull();
 
 	const empty = new URL('https://example.com/');
 	expect(readGeneratorParam(empty)).toBeNull();
 	expect(readKeywordPolicyParam(empty)).toBeNull();
 	expect(readFormatModeParam(empty)).toBeNull();
+	expect(readInferenceParam(empty)).toBeNull();
+	expect(readInferenceParam(new URL('https://example.com/?inference=pragmatic'))).toBe('pragmatic');
+	expect(readInferenceParam(new URL('https://example.com/?inference=spec'))).toBe('spec');
 });

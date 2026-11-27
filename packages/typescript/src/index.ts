@@ -10,6 +10,7 @@ export {
 	type CompileSchemaOptions,
 } from './compile';
 export { generate, type CustomSchemaResolver, type GenerateOptions } from './generator';
+export type { InferenceMode } from './render/context';
 export { UnresolvedReferenceError, UnsupportedCircularTypeError } from './errors';
 export { resolveName } from './resolveName';
 export { toSafeString, type CustomNameResolver } from '@utilize/json-schema';

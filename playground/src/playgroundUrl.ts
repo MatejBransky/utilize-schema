@@ -2,12 +2,14 @@ const EXAMPLE_PARAM = 'example';
 const GENERATOR_PARAM = 'generator';
 const KEYWORD_POLICY_PARAM = 'keyword-policy';
 const FORMAT_MODE_PARAM = 'format-mode';
+const INFERENCE_PARAM = 'inference';
 
 export const playgroundParams = {
 	example: EXAMPLE_PARAM,
 	generator: GENERATOR_PARAM,
 	keywordPolicy: KEYWORD_POLICY_PARAM,
 	formatMode: FORMAT_MODE_PARAM,
+	inference: INFERENCE_PARAM,
 } as const;
 
 export function updateUrl(values: Record<string, string | null>, mode: 'push' | 'replace'): void {

@@ -83,9 +83,13 @@ memory, `customNameResolver(schema, usedNames)` to rename a
 declaration, `customSchemaResolver(schema)` to return a TypeScript type for a
 schema node, `validateSchema(schema, { dialect, filePath })` to reject an
 invalid document before generation (see
-[docs/dialects.md](../../docs/dialects.md#schema-validation)), and
-`format(code)` to run a synchronous or asynchronous formatter over the
-generated code. The schema resolver is called for every object node
+[docs/dialects.md](../../docs/dialects.md#schema-validation)), `inference` to
+choose how an untyped schema is narrowed, and `format(code)` to run a synchronous
+or asynchronous formatter over the generated code. The default,
+`inference: 'spec'`, keeps scalar keywords as `unknown` because they only
+constrain one instance type; `inference: 'pragmatic'` reads the keyword family as
+the intended type (`format` → `string`, `minimum` → `number`, `contains` →
+`array`). The schema resolver is called for every object node
 (including `$ref` nodes and the per-type copies of a `type` list, never boolean
 schemas) before the built-in renderer. The returned type replaces the node's
 type, while its JSDoc comment and the `?` of a non-required property are kept:
@@ -104,8 +108,11 @@ import { parse } from '@utilize/json-schema';
 import { generate } from '@utilize/typescript';
 
 const { root } = await parse(schema, { cwd: process.cwd(), fileName: 'schema.json' });
-const code = generate(root);
+const code = generate(root, { inference: 'pragmatic' });
 ```
+
+`generate()` accepts the same `customNameResolver`, `customSchemaResolver` and
+`inference` options.
 
 ## CLI
 
@@ -117,7 +124,8 @@ cat schema.yaml | utilize-typescript > schema.generated.ts
 
 Input can be a file, a directory or a glob; JSON and YAML are supported. Output
 defaults to stdout. Every generated file starts with a "do not edit" banner
-(`--no-banner` omits it).
+(`--no-banner` omits it). `--inference pragmatic` enables the pragmatic
+inference described above.
 
 `--validate` checks each resolved document against the meta-schema of its
 dialect before generating; install `ajv` to use it (draft-04 schemas also
@@ -228,12 +236,21 @@ A schema without `type` infers a shape from structural keywords: `properties`,
 keywords only constrain their own JSON type, so a valid `"foo"` is also accepted
 by that schema; the generated type rejects it.
 
-Scalar constraints do not infer a type. `maximum` only applies to numbers, so
-`{ maximum: 3 }` also accepts `"foo"`; typing it as `number` would reject a
-spec-valid instance. A schema that only bounds values therefore stays `unknown`,
-which is why the valid-instance rate is above 96% while the object/array shape
-inference remains the only source of rejected valid instances in this
-generator.
+Scalar constraints are different. In the default `spec` mode they do not infer a
+type. `maximum` only applies to numbers, so `{ maximum: 3 }` also accepts
+`"foo"`; typing it as `number` would reject a spec-valid instance. A schema that
+only bounds values therefore stays `unknown`, which is why the valid-instance
+rate is above 96% and object/array shape inference remains the only source of
+rejected valid instances in spec mode.
+
+`inference: 'pragmatic'` opts into the opposite trade-off: it reads the keyword
+family as the intended type (`format` → `string`, `minimum` → `number`,
+`contains` → `array`), so real-world schemas that omit `type` produce useful
+types. It is **not** exact compatibility with json-schema-to-typescript — that
+library emits an object index signature for `{ "format": "email" }` and
+`{ "minimum": 3 }` — and it rejects spec-valid instances of other types.
+Conditional applicators (`if`/`then`/`else`, `not`) stay `unknown` in both modes
+because they cannot be expressed as a type.
 
 ## Differences from json-schema-to-typescript
 
