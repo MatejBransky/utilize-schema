@@ -5,7 +5,7 @@ with
 [json-schema-to-typescript](https://github.com/bcherny/json-schema-to-typescript),
 the project this repository started from.
 
-Every project here runs the official
+Every measured project here runs the official
 [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
 The runtime generators are validated with values; the two type-level generators
 are measured with the compiler.
@@ -68,15 +68,15 @@ select exactly the same cases. The difference is in how each generator spends
 its failures:
 
 - `@utilize/typescript` has more **type gaps**: cases where the only difference
-  is an invalid instance accepted by a keyword TypeScript cannot express
-  (`minimum`, `pattern`, `format`, `uniqueItems`, dependencies, `if`/`then`/
-  `else`).
+  is an invalid instance accepted, usually because a keyword (`minimum`,
+  `pattern`, `format`, `uniqueItems`, dependencies, `if`/`then`/`else`) has no
+  type-level equivalent.
 - json-schema-to-typescript has more **structural gaps**: crashes, invalid
-  TypeScript, or a spec-valid instance rejected by the generated type. A large
-  share comes from its inference rule: a schema with only a scalar or object
-  keyword but no `type` (for example `{ maximum: 3 }`) becomes an object type,
-  so valid numbers and strings are rejected. `@utilize/typescript` keeps such a
-  schema as `unknown`.
+  TypeScript, output without a `Root` declaration, or a spec-valid instance
+  rejected by the generated type. A large share comes from its inference rule: a
+  schema with only a scalar or object keyword but no `type` (for example
+  `{ maximum: 3 }`) becomes an object type, so valid numbers and strings are
+  rejected. `@utilize/typescript` keeps such a schema as `unknown`.
 
 Which trade-off is preferable depends on the schemas you feed it, but the
 measurement itself is now like for like.

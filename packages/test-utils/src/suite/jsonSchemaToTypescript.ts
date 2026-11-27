@@ -1,3 +1,5 @@
+// The `Parent` symbol is private to the pinned 16.0.0 build. Revisit this deep
+// import and the root-name detection below when upgrading the competitor.
 import { Parent } from 'json-schema-to-typescript/dist/src/types/JSONSchema.js';
 import { compile } from 'json-schema-to-typescript';
 

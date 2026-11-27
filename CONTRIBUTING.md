@@ -205,6 +205,10 @@ signature must also be exported, so consumers can name it.
   ```sh
   pnpm --filter @utilize/typescript test:suite
   ```
+- Run the pinned json-schema-to-typescript comparison baseline:
+  ```sh
+  pnpm --filter @utilize/test-utils test:suite
+  ```
 
 ## Coverage badge
 
@@ -227,25 +231,27 @@ pnpm badge:coverage
 
 `@utilize/zod`, `@utilize/effect` and `@utilize/typescript` each show one badge
 per JSON Schema dialect: draft-04, draft-06, draft-07, 2019-09 and 2020-12.
-The value is the share of compatible JSON Schema Test Suite cases where every
-expected result matches, rounded down. Known gaps stay in the denominator, so a
-badge cannot hide them. The TypeScript runner skips `format-assertion` cases,
-which a type cannot check, so its denominator is smaller.
+The repository README also shows the same five badges for the pinned
+`json-schema-to-typescript` competitor. The value is the share of compatible
+JSON Schema Test Suite cases where every expected result matches, rounded down.
+Known gaps stay in the denominator, so a badge cannot hide them. The type-level
+runners skip `format-assertion` cases, which a type cannot check, so their
+denominator is smaller.
+
+The numbers for the three generators live in
+`packages/*/test/suite/baseline.ts` and each package's suite test asserts them.
+Every dialect is also pinned case by case: the runtime generators record failing
+cases in `knownFailuresByDialect.ts`, and TypeScript uses `knownGapCases.ts` with
+curated reasons in `knownGaps.ts`. The runtime generators have no draft-07 gaps;
+their `knownFailures.ts` files stay as the place to record one.
 
 The `json-schema-to-typescript` row is the pinned competitor, measured by
 `@utilize/test-utils` through the same type-level runner and suite revision. Its
 baseline is
-`packages/test-utils/src/suite/jsonSchemaToTypescriptBaseline.ts`; it is a
-comparison record, not a local generator.
-
-The numbers live in `packages/*/test/suite/baseline.ts` and each package's suite
-test asserts them. Every dialect is also pinned case by case: the runtime
-generators record failing cases in `knownFailuresByDialect.ts`, and TypeScript
-uses `knownGapCases.ts` with curated reasons in `knownGaps.ts`. The runtime
-generators have no draft-07 gaps; their `knownFailures.ts` files stay as the
-place to record one. When a count or a case changes, the test prints the measured
-numbers and failing keys; update the baseline and regenerate the list on purpose
-in the same pull request:
+`packages/test-utils/src/suite/jsonSchemaToTypescriptBaseline.ts`: counts only,
+because it records the competitor rather than gating it. When a count or a case
+changes, the test prints the measured numbers and failing keys; update the
+baseline and regenerate the list on purpose in the same pull request:
 
 ```sh
 pnpm --filter @utilize/zod update:suite-baseline

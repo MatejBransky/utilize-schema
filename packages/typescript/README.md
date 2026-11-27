@@ -219,11 +219,11 @@ spec-invalid instance is accepted.
 Across instances, 4,033 of 5,133 (78%) are classified correctly, against 2,808
 (54%). The difference is directional: 140 cases fail here because the output
 crashes, is invalid TypeScript or rejects a spec-valid instance, against 760 for
-json-schema-to-typescript. Both leave type gaps — invalid instances accepted by
-keywords a type cannot express (427 here, 224 for the competitor). This
-generator keeps such a schema `unknown`, while the competitor narrows more
-eagerly, so its remaining failures land on the structural side. The full
-methodology and baseline are in
+json-schema-to-typescript. Both leave type gaps — invalid instances accepted,
+usually because a keyword has no type-level equivalent (427 here, 224 for the
+competitor). This generator keeps such a schema `unknown`, while the competitor
+narrows more eagerly, so its remaining failures land on the structural side.
+The full methodology and baseline are in
 [docs/conformance.md](../../docs/conformance.md#type-level-comparison).
 
 The generator is checked against the official
