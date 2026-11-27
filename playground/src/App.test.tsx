@@ -2,7 +2,7 @@ import type { Ref } from 'react';
 
 import { createAgent } from '@ui-sdk/react/agent';
 import { assert, isPlainObject } from '@utilize/json-schema';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 
@@ -521,7 +521,7 @@ test('the format-as-string switch infers string for the type generator', async (
 	await vi.waitFor(() => expect(generatedCode()).toContain('export type Root = unknown;'));
 
 	toggle.element().focus();
-	toggle.element().dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+	await userEvent.keyboard('{Space}');
 
 	await expect.element(toggle).toBeChecked();
 	await vi.waitFor(() =>
@@ -586,7 +586,7 @@ test('an agent can toggle TypeScript format inference', async () => {
 	expect(labels).toContain('Format as string');
 
 	const result = await agent.act({
-		steps: [{ ref: 'Format as string', action: 'press' }],
+		steps: [{ ref: 'Format as string', action: 'setValue', args: [true] }],
 	});
 
 	expect(result.ok, result.error?.message).toBe(true);
