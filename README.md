@@ -281,6 +281,7 @@ dependency and architecture checks (`pnpm fallow`, `pnpm fallow:audit`).
 
 The full guide, including changesets and release steps, is in
 [CONTRIBUTING.md](./CONTRIBUTING.md) and [RELEASING.md](./RELEASING.md).
+Participation is covered by the [Code of Conduct](./CODE_OF_CONDUCT.md).
 
 ---
 
