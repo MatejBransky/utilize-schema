@@ -83,7 +83,10 @@ its failures:
   declaration, and boolean schemas.
 
 Which trade-off is preferable depends on the schemas you feed it, but the
-measurement itself is now like for like. The competitor's own baseline is
+measurement itself is now like for like. The
+[TypeScript comparison page](typescript-vs-json-schema-to-typescript.md) breaks
+the difference down example by example, including the cases where
+json-schema-to-typescript is more precise. The competitor's own baseline is
 recorded on suite `3c25e5f` with 1,000 mutation cases, where 141 of 257 draft-07
 groups have no valid instance rejected and no invalid one accepted. This table
 re-runs the pinned `16.0.0` on `e2a68a1` without mutations, so compare the two

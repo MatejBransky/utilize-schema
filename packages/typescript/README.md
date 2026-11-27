@@ -291,6 +291,10 @@ because they cannot be expressed as a type.
 
 ## Differences from json-schema-to-typescript
 
+For an example-by-example comparison, including the cases where the competitor
+is more precise, see
+[docs/typescript-vs-json-schema-to-typescript.md](../../docs/typescript-vs-json-schema-to-typescript.md).
+
 - **Same pipeline as the other Utilize generators.** Parsing, `$ref` resolution,
   linking and naming are shared, so the three targets agree on what a schema
   means.
