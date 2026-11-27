@@ -6,6 +6,7 @@ import type {
 	ExternalSchemas,
 	JSONSchema,
 	ParsedJSONSchema,
+	SchemaValidationOptions,
 } from '@utilize/json-schema';
 import {
 	bindCompileFile,
@@ -23,6 +24,7 @@ import { generate } from './generator';
 export interface CompileOptions
 	extends
 		DialectOptions,
+		SchemaValidationOptions,
 		Pick<
 			GenerateOptions,
 			'customNameResolver' | 'customSchemaResolver' | 'schemaName' | 'typeName'
@@ -51,6 +53,7 @@ export interface CompileOptions
 export interface CompileSchemaOptions
 	extends
 		DialectOptions,
+		SchemaValidationOptions,
 		Pick<
 			GenerateOptions,
 			'customNameResolver' | 'customSchemaResolver' | 'schemaName' | 'typeName'
@@ -87,6 +90,7 @@ export async function compile(options: CompileOptions): Promise<void> {
 		customSchemaResolver: options.customSchemaResolver,
 		format: options.format,
 		externalSchemas: options.externalSchemas,
+		validateSchema: options.validateSchema,
 		...pickDialectOptions(options),
 	});
 

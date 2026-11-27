@@ -145,6 +145,11 @@ await compile({
   retrieval URI. A URI present here is read from memory instead of disk or the
   network. Identifiers declared inside a document (`$id`, or the draft-04 `id`)
   are served too.
+- `validateSchema(schema, { dialect, filePath })` — run an optional validator on
+  every resolved document before generation. Any finding throws
+  `SchemaValidationError` with one report per document. See
+  [docs/dialects.md](../../docs/dialects.md#schema-validation) for the finding
+  shape and the Ajv adapter.
 
 For custom pipelines, `compileFile()` and `compileSchema()` return the generated
 code without writing anything, and `withBanner()` applies the default header.
@@ -260,6 +265,11 @@ defaults to stdout. Every generated file starts with a "do not edit" banner
 (`--no-banner` omits it). Pass `--readonly` to map `readOnly: true` to
 `.readonly()`, and `--runtime-import @utilize/zod/runtime` to import the
 `oneOf` helper instead of declaring it in every file.
+
+`--validate` checks each resolved document against the meta-schema of its
+dialect before generating; install `ajv` to use it (draft-04 schemas also
+need `ajv-draft-04`), or pass `--validator <module>` for another validator. See
+[docs/dialects.md](../../docs/dialects.md#schema-validation).
 
 ## Conformance
 

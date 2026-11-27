@@ -1,7 +1,12 @@
 import { writeFileSync } from 'node:fs';
 
 import { parse } from '@utilize/json-schema';
-import type { CustomNameResolver, ExternalSchemas, JSONSchema } from '@utilize/json-schema';
+import type {
+	CustomNameResolver,
+	ExternalSchemas,
+	JSONSchema,
+	SchemaValidationOptions,
+} from '@utilize/json-schema';
 
 import {
 	bindCompileFile,
@@ -15,7 +20,7 @@ import type { CodeFormatter, SchemaFileLocation } from '@utilize/json-schema/nod
 import { generate } from './generator';
 import type { CustomSchemaResolver } from './generator';
 
-export interface CompileOptions {
+export interface CompileOptions extends SchemaValidationOptions {
 	/** Path of the JSON Schema file, resolved against `cwd`. */
 	input: string;
 	/** Path of the generated file, resolved against `cwd`. */
@@ -34,7 +39,7 @@ export interface CompileOptions {
 	externalSchemas?: ExternalSchemas;
 }
 
-export interface CompileSchemaOptions {
+export interface CompileSchemaOptions extends SchemaValidationOptions {
 	cwd: string;
 	fileName: string;
 	customNameResolver?: CustomNameResolver;
@@ -63,6 +68,7 @@ export async function compile(options: CompileOptions): Promise<void> {
 		customSchemaResolver: options.customSchemaResolver,
 		format: options.format,
 		externalSchemas: options.externalSchemas,
+		validateSchema: options.validateSchema,
 	});
 
 	writeFileSync(outputPath, withBanner(code, options.bannerComment), 'utf8');
@@ -77,6 +83,7 @@ export async function compileSchema(
 		cwd: options.cwd,
 		fileName: options.fileName,
 		externalSchemas: options.externalSchemas,
+		validateSchema: options.validateSchema,
 	});
 
 	const code = generate(root, {

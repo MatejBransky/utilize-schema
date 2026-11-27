@@ -206,6 +206,16 @@ describe('CLI path handling', () => {
 		expect(stdout()).toContain('export const Root');
 	});
 
+	test('--validate rejects a schema that does not match its dialect', async () => {
+		const { io, stdout, stderr } = createIo(JSON.stringify({ title: 'Thing', type: 'nonsense' }));
+
+		const exitCode = await run(['--no-banner', '--validate'], io);
+
+		expect(exitCode).toBe(1);
+		expect(stdout()).toBe('');
+		expect(stderr()).toContain('Root.json is not a valid draft-07 JSON Schema');
+	});
+
 	test('detects the entrypoint through a symlink', async () => {
 		const directory = await makeDirectory();
 		const real = join(directory, 'real.mjs');

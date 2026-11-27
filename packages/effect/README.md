@@ -111,6 +111,11 @@ Options:
   `hostname` are stricter than their target helpers.
 - `format(code)` — optional synchronous or asynchronous formatter (for example
   Prettier) applied to the generated code before the banner is prepended.
+- `validateSchema(schema, { dialect, filePath })` — run an optional validator on
+  every resolved document before generation. Any finding throws
+  `SchemaValidationError` with one report per document. See
+  [docs/dialects.md](../../docs/dialects.md#schema-validation) for the finding
+  shape and the Ajv adapter.
 - `importEffect` — emit `import { Schema } from 'effect';`; on by default.
 
 ## CLI
@@ -124,6 +129,11 @@ cat schema.yaml | utilize-effect > schema.generated.ts
 Input can be a file, a directory or a glob; JSON and YAML are supported. Output
 defaults to stdout. Every generated file starts with a "do not edit" banner
 (`--no-banner` omits it).
+
+`--validate` checks each resolved document against the meta-schema of its
+dialect before generating; install `ajv` to use it (draft-04 schemas also
+need `ajv-draft-04`), or pass `--validator <module>` for another validator. See
+[docs/dialects.md](../../docs/dialects.md#schema-validation).
 
 ## Output
 

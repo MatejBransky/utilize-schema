@@ -31,3 +31,4 @@ export * from './normalize';
 export * from './parser';
 export * from './resolveName';
 export * from './utils';
+export * from './validation';

@@ -6,6 +6,7 @@ import {
 	isEntrypoint,
 	readFormatAndDialectFlags,
 	runGeneratorCli,
+	validationCliHelp,
 } from '@utilize/json-schema/node';
 import type { CliFlagValues, CliIo, CliOptionsResult } from '@utilize/json-schema/node';
 
@@ -35,6 +36,7 @@ Options:
                         (e.g. @utilize/zod/runtime) instead of declaring it
   --no-banner           omit the generated-file banner
 ${dialectCliHelp}
+${validationCliHelp}
   -h, --help            show this help
 `;
 

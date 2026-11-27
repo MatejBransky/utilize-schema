@@ -22,7 +22,10 @@ generators import. It never emits a target schema.
 - **Runtime validators.** `@utilize/json-schema/formats` exports the structural
   format checks (`formatEmail`, `formatUri`, `formatDateTime`, …) that generated
   Zod and Effect schemas import instead of inlining them.
-- **89% line coverage.**
+- **Opt-in validation.** Pass any `SchemaValidator` to `parse` or `compile`, or
+  use the included Ajv adapter to check every resolved document against its
+  dialect's meta-schema.
+- **90% line coverage.**
 
 ```sh
 pnpm add @utilize/json-schema
@@ -48,6 +51,7 @@ root[Meta]; // parent, reference, fileName, dialect, …
 - [Usage](#usage)
 - [External schemas by URI](#external-schemas-by-uri)
 - [Dialects](#dialects)
+- [Schema validation](#schema-validation)
 - [Benchmarks](#benchmarks)
 
 </details>
@@ -155,6 +159,40 @@ await parse(schema, {
 ```
 
 See [docs/dialects.md](../../docs/dialects.md) for the keyword matrix.
+
+## Schema validation
+
+The parser checks keywords against the dialect, but it does not reject values
+with the wrong shape. Pass a validator to check every resolved document before
+generation. It receives the dialect the parser resolved, so an adapter can
+dispatch to the right meta-schema:
+
+```ts
+import { parse } from '@utilize/json-schema';
+
+await parse(schema, {
+  cwd: process.cwd(),
+  fileName: 'schema.json',
+  validateSchema: (document, { dialect, filePath }) => myValidator(document, dialect, filePath),
+});
+```
+
+Return every `SchemaValidationFinding` (`pointer`, `message`, optional
+`keyword`). Any finding throws `SchemaValidationError`, which carries one
+report per document. The callback runs on the root, every `$ref` target and
+every provided external schema the document reaches, before normalization.
+
+An Ajv adapter is included behind the optional `ajv` peer dependency:
+
+```ts
+import { ajvValidator } from '@utilize/json-schema/validate/ajv';
+```
+
+It dispatches per dialect: draft-04, draft-06, draft-07, 2019-09 and 2020-12.
+The CLIs use it for `--validate`; `--validator <module>` replaces it. Draft-04
+schemas also need the optional `ajv-draft-04` package, imported only then. See
+[docs/dialects.md](../../docs/dialects.md#schema-validation) for the CLI and
+the module contract.
 
 ## Benchmarks
 

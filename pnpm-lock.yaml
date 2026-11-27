@@ -24,6 +24,12 @@ catalogs:
     '@vitest/ui':
       specifier: 5.1.1
       version: 5.1.1
+    ajv:
+      specifier: 8.20.0
+      version: 8.20.0
+    ajv-draft-04:
+      specifier: 1.0.0
+      version: 1.0.0
     effect:
       specifier: 4.1.5
       version: 4.1.5
@@ -145,6 +151,12 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2
+      ajv:
+        specifier: 'catalog:'
+        version: 8.20.0
+      ajv-draft-04:
+        specifier: 'catalog:'
+        version: 1.0.0(ajv@8.20.0)
       tsdown:
         specifier: 'catalog:'
         version: 0.23.7(tsrs@7.1.0-beta.tsrs5)(typescript@7.0.2)
@@ -260,10 +272,10 @@ importers:
         specifier: workspace:*
         version: link:../packages/zod
       ajv:
-        specifier: 8.20.0
+        specifier: 'catalog:'
         version: 8.20.0
       ajv-draft-04:
-        specifier: 1.0.0
+        specifier: 'catalog:'
         version: 1.0.0(ajv@8.20.0)
       buffer:
         specifier: 6.0.3

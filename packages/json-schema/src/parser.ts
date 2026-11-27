@@ -9,12 +9,18 @@ import { createSchemaIndex, schemaChildren } from './identifiers';
 import { link } from './linker';
 import { isJSONSchema, isJSONSchemaObject, isParsedJSONSchema } from './model';
 import type { JSONSchema, ParsedJSONSchema, ParsedJSONSchemaObject } from './model';
-import { prepareSchema } from './normalize';
+import { prepareSchema, resolveDocumentDialect } from './normalize';
 import type { DialectMap } from './normalize';
+import { SchemaValidationError } from './validation';
+import type {
+	SchemaValidationOptions,
+	SchemaValidationReport,
+	SchemaValidator,
+} from './validation';
 
 type SchemaPath = string;
 
-export interface ParseOptions extends DialectOptions {
+export interface ParseOptions extends DialectOptions, SchemaValidationOptions {
 	cwd: string;
 	fileName: string;
 	/**
@@ -79,6 +85,18 @@ export async function parse(
 	// its metadata. The root document is the object handed to `resolve`.
 	const rootDocument = entries.find(([, value]) => value === input)?.[1];
 	const rootSchema = rootDocument ?? schemaFromRootPointer($refs.get('#'));
+	const validationReports = await validateDocuments(options.validateSchema, documentEntries, {
+		cwd,
+		rootFileName,
+		rootSchema,
+		rootDialect,
+		options,
+	});
+
+	if (validationReports.length > 0) {
+		throw new SchemaValidationError(validationReports);
+	}
+
 	const identifiers = createSchemaIndex();
 
 	// Every document is normalized and indexed before linking, so a `$ref` can
@@ -315,6 +333,52 @@ function removeLegacyIdAliases(
 	for (const child of schemaChildren(node)) {
 		removeLegacyIdAliases(child, aliases, ignored, seen);
 	}
+}
+
+/** What one optional validation pass needs from the parse that started it. */
+interface ValidationRun {
+	cwd: string;
+	rootFileName: string;
+	rootSchema: JSONSchema | boolean | null;
+	rootDialect: DialectId;
+	options: ParseOptions;
+}
+
+/**
+ * Runs the optional validator on every resolved document, before normalization
+ * rewrites draft-specific keyword shapes (such as draft-04 `exclusiveMinimum`).
+ * A referenced file without `$schema` is validated with the root dialect, just
+ * as the normalizer will assign it.
+ */
+async function validateDocuments(
+	validator: SchemaValidator | undefined,
+	entries: [SchemaPath, JSONSchema | boolean][],
+	{ cwd, rootFileName, rootSchema, rootDialect, options }: ValidationRun
+): Promise<SchemaValidationReport[]> {
+	if (!validator) {
+		return [];
+	}
+
+	const reports: SchemaValidationReport[] = [];
+
+	for (const [filePath, entrySchema] of entries) {
+		const isRootSchema = entrySchema === rootSchema;
+		const resolved = resolveDocumentDialect(entrySchema, {
+			...options,
+			inheritedDialect: isRootSchema ? undefined : rootDialect,
+		});
+		const documentPath = isRootSchema ? rootFileName : filePath.replace(cwd, '') || filePath;
+		const findings = await validator(entrySchema, {
+			filePath: documentPath,
+			dialect: resolved.dialect.id,
+		});
+
+		if (findings.length > 0) {
+			reports.push({ filePath: documentPath, dialect: resolved.dialect.id, findings });
+		}
+	}
+
+	return reports;
 }
 
 function schemaEntries(values: unknown): [SchemaPath, JSONSchema | boolean][] {
