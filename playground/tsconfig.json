@@ -20,6 +20,7 @@
 			"@utilize/zod": ["../packages/zod/src/generator.ts"],
 			"@utilize/effect": ["../packages/effect/src/generator.ts"],
 			"@utilize/typescript": ["../packages/typescript/src/generator.ts"],
+			"@utilize/json-schema/formats": ["../packages/json-schema/src/formats.ts"],
 			"@utilize/json-schema": ["../packages/json-schema/src/index.ts"]
 		}
 	},

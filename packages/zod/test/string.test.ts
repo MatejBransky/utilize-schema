@@ -98,7 +98,7 @@ describe('string constraints', () => {
       `);
 		});
 
-		test('emits one complex validator and reuses it', async () => {
+		test('imports one validator and reuses it', async () => {
 			const code = await generateCode({
 				type: 'object',
 				properties: {
@@ -107,10 +107,24 @@ describe('string constraints', () => {
 				},
 			});
 
-			expect(code.match(/const formatEmail =/g)).toHaveLength(1);
+			expect(code).toContain("import { formatEmail } from '@utilize/json-schema/formats';");
 			expect(code.match(/\.refine\(formatEmail,/g)).toHaveLength(2);
 		});
 
+		test('aliases a validator that collides with a declaration', async () => {
+			const code = await generateCode(
+				{
+					type: 'object',
+					properties: { email: { type: 'string', format: 'email' } },
+				},
+				{ schemaName: () => 'formatEmail' }
+			);
+
+			expect(code).toContain(
+				"import { formatEmail as formatEmail1 } from '@utilize/json-schema/formats';"
+			);
+			expect(code).toContain('refine(formatEmail1, { message: ');
+		});
 		test('keeps string constraints next to an asserted format', async () => {
 			const code = await generateCode({ type: 'string', format: 'email', minLength: 5 });
 			const Root = await compileToZod({ type: 'string', format: 'email', minLength: 5 });

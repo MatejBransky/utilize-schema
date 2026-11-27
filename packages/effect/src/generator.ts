@@ -3,7 +3,9 @@ import {
 	collectStandaloneSchemas,
 	dialectOf,
 	expectDefined,
+	formatConstantBase,
 	formatNameFor,
+	formatRuntimeModule,
 	isParsedJSONSchemaObject,
 	mapDeclarationNames,
 	Meta,
@@ -21,7 +23,6 @@ import { FALLBACK_ROOT_NAME, RESERVED_NAMES } from './context';
 import { generateSchema } from './dispatch';
 import { UnresolvedReferenceError } from './errors';
 import { findCyclicSchemas } from './findCyclicSchemas';
-import { formatCheck } from './formats';
 import { canonicalJson, hasStructuredLiteral, jsonLiteralHelper } from './literals';
 import { literalType, renderValueTypeDeclaration } from './valueTypes';
 import type { ValueTypeContext } from './valueTypes';
@@ -113,10 +114,10 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		parts.push("import { Schema } from 'effect';");
 	}
 
-	// Declarations rendered above registered the formats they use, so the
-	// constants can be emitted once, before any schema that references them.
-	for (const [format, name] of formatNames) {
-		parts.push(`const ${name} = ${expectDefined(formatCheck(format))};`);
+	// Declarations rendered above registered the formats they use, so one
+	// import covers every validator before the first schema that references it.
+	if (formatNames.size > 0) {
+		parts.push(formatImport(formatNames));
 	}
 
 	if (jsonLiteralName !== undefined) {
@@ -161,6 +162,20 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		valueAliases.set(schema, alias);
 		return alias;
 	}
+}
+
+/**
+ * One import for every structural format validator a declaration uses. The
+ * exported name is the same `formatX` name the Zod generator uses.
+ */
+function formatImport(formatNames: Map<string, string>): string {
+	const specifiers = [...formatNames].map(([format, name]) => {
+		const exported = formatConstantBase(format);
+
+		return exported === name ? exported : `${exported} as ${name}`;
+	});
+
+	return `import { ${specifiers.join(', ')} } from '${formatRuntimeModule}';`;
 }
 
 /**

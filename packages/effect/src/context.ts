@@ -68,8 +68,8 @@ export type Context = {
 	/** Whether `format` becomes a validation or only an annotation. */
 	formatMode?: FormatMode;
 	/**
-	 * Name of the module-level constant that holds the check for a format.
-	 * Registered on first use, so one format yields one constant per file.
+	 * Local name of the imported validator for a format. Registered on first use,
+	 * so one format yields one import per file.
 	 */
 	formatOf: (format: string) => string;
 	/**

@@ -30,9 +30,23 @@ test('Effect reports every invalid field instead of stopping at the first', asyn
 	]);
 });
 
+test('generated code can load structural format validators', async () => {
+	const module = await loadModule(`
+		import { formatEmail, formatUri } from '@utilize/json-schema/formats';
+		export const schema = [formatEmail('user@example.com'), formatUri('not a uri')];
+	`);
+	const schema = rootValidator(module, 'schema');
+
+	expect(schema).toEqual([true, false]);
+});
+
 test('generated code cannot replace the runtime package bridge', async () => {
 	await loadModule("import { z } from 'zod'; export const schema = z.string();");
 	await loadModule("import { Schema } from 'effect'; export const schema = Schema.String;");
+	await loadModule(`
+		import { formatEmail } from '@utilize/json-schema/formats';
+		export const schema = formatEmail;
+	`);
 	const descriptor = Object.getOwnPropertyDescriptor(globalThis, '__utilizePlaygroundPackages');
 
 	assert(descriptor !== undefined, 'Expected the runtime package bridge to be installed.');
@@ -41,12 +55,15 @@ test('generated code cannot replace the runtime package bridge', async () => {
 	assert(isPlainObject(bridge), 'Expected the runtime package bridge to be an object.');
 	assert(isPlainObject(bridge.zod), 'Expected the Zod bridge to be an object.');
 	assert(isPlainObject(bridge.effect), 'Expected the Effect bridge to be an object.');
+	assert(isPlainObject(bridge.formats), 'Expected the formats bridge to be an object.');
 
 	expect(Object.isFrozen(bridge)).toBe(true);
 	expect(Object.isFrozen(bridge.zod)).toBe(true);
 	expect(Object.isFrozen(bridge.effect)).toBe(true);
+	expect(Object.isFrozen(bridge.formats)).toBe(true);
 	expect(Reflect.set(bridge, 'zod', { z: {} })).toBe(false);
 	expect(Reflect.set(bridge.zod, 'z', {})).toBe(false);
+	expect(Reflect.set(bridge.formats, 'formatEmail', () => false)).toBe(false);
 
 	await expect(
 		loadModule(`

@@ -1,4 +1,5 @@
 import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
+import { hasFormatValidator } from '@utilize/json-schema';
 
 import type { Context } from './context';
 import { patternExpression } from './expressions';
@@ -42,7 +43,11 @@ function stringFormat(schema: ParsedJSONSchemaObject, context: Context): string 
 			? 'hostname-legacy'
 			: schema.format;
 
-	return formatCheck(validationFormat) === undefined
-		? undefined
-		: context.formatOf(validationFormat);
+	if (hasFormatValidator(validationFormat)) {
+		const validator = context.formatOf(validationFormat);
+
+		return `Schema.makeFilter<string>((value) => ${validator}(value) ? undefined : ${JSON.stringify(`Invalid ${schema.format}`)})`;
+	}
+
+	return formatCheck(validationFormat);
 }

@@ -52,6 +52,16 @@ export default defineConfig({
 			rules: { 'no-console': 'off' },
 		},
 		{
+			// The format validators port the RFC grammars literally. Their character
+			// classes deliberately contain control characters (ASCII range checks)
+			// and IDNA joiners/combining marks, which is exactly what they must match.
+			files: ['packages/json-schema/src/formats.ts'],
+			rules: {
+				'eslint/no-control-regex': 'off',
+				'eslint/no-misleading-character-class': 'off',
+			},
+		},
+		{
 			// The playground syncs derived UI state from effects; deriving it during
 			// render instead is a separate refactor.
 			files: ['playground/src/**/*.{ts,tsx}'],

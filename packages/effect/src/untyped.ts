@@ -1,4 +1,4 @@
-import { isKeywordApplicable, schemaRecord } from '@utilize/json-schema';
+import { hasFormatValidator, isKeywordApplicable, schemaRecord } from '@utilize/json-schema';
 import type { Dialect, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { generateArray } from './array';
@@ -66,15 +66,7 @@ function appliesTo(
 
 	switch (type) {
 		case 'string':
-			// A format only constrains the string branch, so an untyped schema
-			// asserts it the same way a typed one does. In annotate mode it adds
-			// no check, so the branch stays plain `Schema.String`.
-			return (
-				anyKeyword(['minLength', 'maxLength', 'pattern']) ||
-				(assertFormats &&
-					typeof schema.format === 'string' &&
-					formatCheck(schema.format) !== undefined)
-			);
+			return appliesToString(schema, assertFormats, anyKeyword);
 		case 'number':
 			return anyKeyword([
 				'minimum',
@@ -109,4 +101,25 @@ function appliesTo(
 				'contains',
 			]);
 	}
+}
+
+/**
+ * A format only constrains the string branch, so an untyped schema asserts it
+ * the same way a typed one does. In annotate mode it adds no check, so the
+ * branch stays plain `Schema.String`.
+ */
+function appliesToString(
+	schema: ParsedJSONSchemaObject,
+	assertFormats: boolean,
+	anyKeyword: (keywords: string[]) => boolean
+): boolean {
+	if (anyKeyword(['minLength', 'maxLength', 'pattern'])) {
+		return true;
+	}
+
+	return (
+		assertFormats &&
+		typeof schema.format === 'string' &&
+		(hasFormatValidator(schema.format) || formatCheck(schema.format) !== undefined)
+	);
 }

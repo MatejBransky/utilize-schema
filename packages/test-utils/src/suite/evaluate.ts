@@ -1,7 +1,16 @@
 import { Meta } from '@utilize/json-schema';
 import type { CustomNameResolver } from '@utilize/json-schema';
+import { formats } from '@utilize/json-schema/formats';
 
 import { stripTypeScriptTypes } from 'node:module';
+
+const FORMAT_IMPORT_PATTERN =
+	/^import\s*\{([^}]*)\}\s*from\s*['"]@utilize\/json-schema\/formats['"];\s*$/gm;
+
+const formatValidators = new Map<string, (value: string) => boolean>();
+for (const validator of Object.values(formats)) {
+	formatValidators.set(validator.name, validator);
+}
 
 /**
  * Names the root schema of the `Root.json` document `Root`. Suite schemas
@@ -41,6 +50,8 @@ function isCallable<T>(value: FunctionLike): value is FunctionLike & ((...args: 
 }
 
 export function evaluateGeneratedCode<T>(code: string, scope: Record<string, unknown>): T {
+	code = bindFormatImports(code, scope);
+
 	const names = Object.keys(scope);
 	const values = Object.values(scope);
 
@@ -57,4 +68,31 @@ export function evaluateGeneratedCode<T>(code: string, scope: Record<string, unk
 	);
 
 	return evaluateModule<T>(names, `${javascript}\nreturn Root;`, values);
+}
+
+/**
+ * Turns the format-validator import into function arguments, so the generated
+ * module can run in memory without resolving a package. Aliases keep working:
+ * `formatEmail as formatEmail1` binds `formatEmail1`.
+ */
+function bindFormatImports(code: string, scope: Record<string, unknown>): string {
+	return code.replaceAll(FORMAT_IMPORT_PATTERN, (_, specifiers: string) => {
+		for (const specifier of specifiers.split(',')) {
+			const [imported, alias] = specifier.trim().split(/\s+as\s+/);
+
+			if (imported === undefined) {
+				continue;
+			}
+
+			const validator = formatValidators.get(imported);
+
+			if (validator === undefined) {
+				throw new Error(`Unknown format validator: ${imported}`);
+			}
+
+			scope[alias ?? imported] = validator;
+		}
+
+		return '';
+	});
 }
