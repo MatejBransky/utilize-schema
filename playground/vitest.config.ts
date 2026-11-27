@@ -10,6 +10,7 @@ import { createReporters } from '../scripts/vitest-reporters.mjs';
  * only pays the Chromium startup for this project.
  */
 const browserTests = [
+	'src/app/App.browser.test.ts',
 	'src/drop.test.ts',
 	'src/monaco/transpile.test.ts',
 	'src/monaco/types.test.ts',
