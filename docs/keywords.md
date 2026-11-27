@@ -90,6 +90,8 @@ Schemas using `$recursiveRef`, `$dynamicRef`, `unevaluatedProperties` or
 the original input with dynamic resource scope and annotation propagation before
 the native Zod or Effect decoder runs. A custom metaschema can disable the
 validation vocabulary; the guard and the native projection honor that choice.
+Defaults run after this validation, so a missing value that the original schema
+rejects is not filled by a native default.
 Unknown `$schema` values without a provided metaschema still fall back to
 draft-07.
 

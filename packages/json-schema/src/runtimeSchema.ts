@@ -65,11 +65,7 @@ export function createRuntimeGuard(root: ParsedJSONSchema): RuntimeGuard | undef
 		return undefined;
 	}
 
-	const source = sourceDocumentOf(root)?.schema ?? root;
-	const customDialect =
-		isPlainObject(source) &&
-		typeof source.$schema === 'string' &&
-		!isStandardDialectUri(source.$schema);
+	const customDialect = requiresCustomDialect(root);
 	const needsRuntimeKeywords = requiresRuntimeGuard(root);
 
 	if (!needsRuntimeKeywords && !customDialect) {
@@ -138,6 +134,20 @@ function isStandardDialectUri(uri: string): boolean {
 }
 
 function requiresRuntimeGuard(root: ParsedJSONSchemaObject): boolean {
+	return someParsedNode(root, hasRuntimeKeyword);
+}
+
+function requiresCustomDialect(root: ParsedJSONSchemaObject): boolean {
+	return someParsedNode(
+		root,
+		(node) => typeof node.$schema === 'string' && !isStandardDialectUri(node.$schema)
+	);
+}
+
+function someParsedNode(
+	root: ParsedJSONSchemaObject,
+	predicate: (node: ParsedJSONSchemaObject) => boolean
+): boolean {
 	const seen = new Set<object>();
 
 	function visit(node: ParsedJSONSchema | undefined): boolean {
@@ -147,7 +157,7 @@ function requiresRuntimeGuard(root: ParsedJSONSchemaObject): boolean {
 
 		seen.add(node);
 
-		if (hasRuntimeKeyword(node) || visit(node[Meta]?.reference)) {
+		if (predicate(node) || visit(node[Meta]?.reference)) {
 			return true;
 		}
 
@@ -227,12 +237,10 @@ function disablesValidationVocabulary(
 	root: ParsedJSONSchemaObject,
 	documents: Map<string, JSONSchema | boolean>
 ): boolean {
-	const schema = sourceDocumentOf(root)?.schema ?? root;
-
-	return (
-		isPlainObject(schema) &&
-		typeof schema.$schema === 'string' &&
-		validationVocabularyFor(schema.$schema, documents) === false
+	return someParsedNode(
+		root,
+		(node) =>
+			typeof node.$schema === 'string' && validationVocabularyFor(node.$schema, documents) === false
 	);
 }
 

@@ -29,6 +29,10 @@ or a custom validation vocabulary also import the browser-safe
 `@utilize/json-schema/runtime` guard, which validates the original input before
 the native decoder runs.
 
+The guard does not materialize defaults before validation. A native default
+therefore applies only when the original input is otherwise valid; a missing
+required value is rejected rather than filled by the default.
+
 - Format cases run in the mode they are tagged for: `format-annotation` with
   `formatMode: 'annotate'`, `format-assertion` with `formatMode: 'assert'`.
 - Cases that need external schemas are served from memory through
