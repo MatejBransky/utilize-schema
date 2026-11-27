@@ -74,12 +74,20 @@ its failures:
 - json-schema-to-typescript has more **structural gaps**: crashes, invalid
   TypeScript, output without a `Root` declaration, or a spec-valid instance
   rejected by the generated type. A large share comes from its inference rule: a
-  schema with only a scalar or object keyword but no `type` (for example
-  `{ maximum: 3 }`) becomes an object type, so valid numbers and strings are
-  rejected. `@utilize/typescript` keeps such a schema as `unknown`.
+  schema with only a keyword that constrains one JSON type (`format`, `minimum`,
+  `contains`, `if`, `not`, …) is narrowed to that type, so spec-valid instances
+  of the other types are rejected. For example, `{ maximum: 3 }` becomes an
+  object type and `{ format: "email" }` becomes `string`. `@utilize/typescript`
+  keeps such a schema as `unknown`. Most of the remaining crashes are
+  `$id`/`$anchor`/relative `$ref` resolution, output without a `Root`
+  declaration, and boolean schemas.
 
 Which trade-off is preferable depends on the schemas you feed it, but the
-measurement itself is now like for like.
+measurement itself is now like for like. The competitor's own baseline is
+recorded on suite `3c25e5f` with 1,000 mutation cases, where 141 of 257 draft-07
+groups have no valid instance rejected and no invalid one accepted. This table
+re-runs the pinned `16.0.0` on `e2a68a1` without mutations, so compare the two
+columns with each other, not the absolute number with its published result.
 
 ### Where json-schema-to-typescript does more
 
