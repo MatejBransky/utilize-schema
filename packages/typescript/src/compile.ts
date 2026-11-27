@@ -18,7 +18,8 @@ import {
 import type { CodeFormatter, SchemaFileLocation } from '@utilize/json-schema/node';
 
 import { generate } from './generator';
-import type { CustomSchemaResolver, InferenceMode } from './generator';
+import type { CustomSchemaResolver } from './generator';
+import type { InferenceMode } from './render/context';
 
 export interface CompileOptions extends SchemaValidationOptions {
 	/** Path of the JSON Schema file, resolved against `cwd`. */

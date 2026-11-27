@@ -5,7 +5,7 @@ import { renderObjectBodyWith } from './render/objectBody';
 import type { TypeContext } from './render/context';
 
 export { RENDERED_GLOBAL_TYPES } from './render/constants';
-export type { CustomSchemaResolver, InferenceMode, TypeContext } from './render/context';
+export type { CustomSchemaResolver, TypeContext } from './render/context';
 export { renderJsDoc } from './render/jsdoc';
 export { isObjectDeclaration } from './render/objectDeclaration';
 export { renderType };
