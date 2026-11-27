@@ -20,6 +20,9 @@ when you want types without a schema runtime.
   to narrow at the boundary.
 - **Recursive types are first-class.** Interfaces and deferred aliases; a cycle
   TypeScript cannot express fails with `UnsupportedCircularTypeError`.
+- **Ahead of `json-schema-to-typescript` on every dialect.** Same harness, same
+  pinned suite: 963 of 1,530 cases (62%) versus 546 (35%), and 4,033 of 5,133
+  instances (78%) versus 2,808 (54%). See [Conformance](#conformance).
 - **67% type-level score.** 192 of 285 draft-07 cases; the 81 type gaps are
   keywords a type cannot express, not bugs. 97% line coverage.
 - **The output imports nothing.** It compiles with `tsc --strict` as part of CI.
@@ -194,6 +197,34 @@ Which keywords become types is in
 [docs/keywords.md](../../docs/keywords.md#typescript). Every dialect is pinned
 case by case in `knownGapCases.ts` (structural gaps and the type-gap keys);
 draft-07 also has the curated reasons in `knownGaps.ts`.
+
+### Compared with json-schema-to-typescript
+
+[`json-schema-to-typescript`](https://github.com/bcherny/json-schema-to-typescript)
+16.0.0 runs through the same harness: the same pinned suite revision
+(`e2a68a1`), the same five dialects, the same case selection (`format-assertion`
+skipped), every instance emitted as a typed constant, and one `tsc --strict`
+run. A case passes only when no spec-valid instance is rejected and no
+spec-invalid instance is accepted.
+
+| Dialect  | `@utilize/typescript` | `json-schema-to-typescript` |
+| -------- | --------------------- | --------------------------- |
+| draft-04 | 122 / 187 (65%)       | 78 / 187 (41%)              |
+| draft-06 | 169 / 253 (66%)       | 108 / 253 (42%)             |
+| draft-07 | 192 / 285 (67%)       | 111 / 285 (38%)             |
+| 2019-09  | 243 / 396 (61%)       | 129 / 396 (32%)             |
+| 2020-12  | 237 / 409 (57%)       | 120 / 409 (29%)             |
+| **All**  | **963 / 1,530 (62%)** | **546 / 1,530 (35%)**       |
+
+Across instances, 4,033 of 5,133 (78%) are classified correctly, against 2,808
+(54%). The difference is directional: 140 cases fail here because the output
+crashes, is invalid TypeScript or rejects a spec-valid instance, against 760 for
+json-schema-to-typescript. Both leave type gaps — invalid instances accepted by
+keywords a type cannot express (427 here, 224 for the competitor). This
+generator keeps such a schema `unknown`, while the competitor narrows more
+eagerly, so its remaining failures land on the structural side. The full
+methodology and baseline are in
+[docs/conformance.md](../../docs/conformance.md#type-level-comparison).
 
 The generator is checked against the official
 [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite)

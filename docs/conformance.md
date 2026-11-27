@@ -55,14 +55,17 @@ json-schema-to-typescript is pinned to `16.0.0` and its baseline lives in
 
 | Dialect  | `@utilize/typescript` cases | json-schema-to-typescript cases | `@utilize/typescript` instances | json-schema-to-typescript instances |
 | -------- | --------------------------- | ------------------------------- | ------------------------------- | ----------------------------------- |
-| draft-04 | 115 / 187 (61%)             | 78 / 187 (41%)                  | 526 / 672 (78%)                 | 399 / 672 (59%)                     |
+| draft-04 | 122 / 187 (65%)             | 78 / 187 (41%)                  | 542 / 672 (80%)                 | 399 / 672 (59%)                     |
 | draft-06 | 169 / 253 (66%)             | 108 / 253 (42%)                 | 712 / 878 (81%)                 | 521 / 878 (59%)                     |
 | draft-07 | 192 / 285 (67%)             | 111 / 285 (38%)                 | 795 / 972 (81%)                 | 546 / 972 (56%)                     |
 | 2019-09  | 243 / 396 (61%)             | 129 / 396 (32%)                 | 988 / 1,292 (76%)               | 683 / 1,292 (52%)                   |
 | 2020-12  | 237 / 409 (57%)             | 120 / 409 (29%)                 | 996 / 1,319 (75%)               | 659 / 1,319 (49%)                   |
 
-The case counts match because both runners select exactly the same cases. The
-difference is in how each generator spends its failures:
+Across the five dialects, `@utilize/typescript` passes 963 of 1,530 cases (62%)
+and json-schema-to-typescript 546 (35%); across instances the numbers are 4,033
+of 5,133 (78%) and 2,808 (54%). The case counts match because both runners
+select exactly the same cases. The difference is in how each generator spends
+its failures:
 
 - `@utilize/typescript` has more **type gaps**: cases where the only difference
   is an invalid instance accepted by a keyword TypeScript cannot express
@@ -88,8 +91,10 @@ individual features. Concrete capabilities the competitor has and
   `[string] | [string, string]`; the Utilize generator emits `Array<string>`.
   This is why it passes `ref.json :: ref applies alongside sibling keywords`
   for 2019-09 and 2020-12 in the table above.
-- `not: {}` becomes `never`, so a forbidden property is rejected. The Utilize
-  generator keeps `unknown` and accepts it, which is why the competitor passes
+- `not` constraints narrow more: in `{ properties: { foo: { not: {} } } }` the
+  competitor types `foo` as an object index signature rather than `unknown`, so
+  the suite's numeric `foo` is rejected. The Utilize generator keeps `unknown`
+  and accepts it, which is why the competitor passes
   `not.json :: forbidden property` in every dialect.
 - Named and `const` enums via `tsEnumNames`, `enableConstEnums` and
   `inferStringEnumKeysFromValues`; the Utilize generator always emits a literal
