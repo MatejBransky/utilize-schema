@@ -134,7 +134,7 @@ function isSchemaFile(value: unknown): value is SchemaFile {
 	);
 }
 
-function normalizeState(value: unknown): UrlState | null {
+export function normalizeState(value: unknown): UrlState | null {
 	if (!hasFiles(value)) {
 		return null;
 	}

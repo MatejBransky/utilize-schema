@@ -64,7 +64,7 @@ jobs:
       - name: Check types
         run: pnpm run check:types
 
-      # The only test run in this workflow. Pages consumes these artifacts later
+      # The unit and browser test run. Pages consumes these artifacts later
       # instead of starting a second suite in a separate workflow.
       - name: Test
         env:
@@ -73,6 +73,9 @@ jobs:
           mkdir -p .fallow/reports
           pnpm run --recursive --aggregate-output --reporter-hide-prefix --if-present ci:test --coverage.enabled
           pnpm test:scripts 2>&1 | tee .fallow/reports/script-tests.txt
+
+      - name: End-to-end tests
+        run: pnpm --filter playground test:e2e
 
       - name: Check coverage badges
         run: pnpm run check:coverage-badge

@@ -1,16 +1,24 @@
-import '@ui-sdk/core/web.css';
 import './global.css';
+import './ui.css';
 import './polyfills';
 import './monaco/setup';
 
 import { expectDefined } from '@utilize/json-schema';
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
+import { BrowserHost } from '@effect/ui/html';
+import { Effect, Layer } from 'effect';
 
-import App from './App';
+import { App } from './app/App';
 
-createRoot(expectDefined(document.getElementById('root'))).render(
-	<StrictMode>
-		<App />
-	</StrictMode>
-);
+const root = expectDefined(document.getElementById('root'));
+
+// The inspector is opt-in for a preview or a production build (`?devtools`) and
+// automatic in local development. Playwright sets `navigator.webdriver`, so the
+// end-to-end suite runs without the overlay.
+const search = new URLSearchParams(location.search);
+const devTools = search.has('devtools') || (import.meta.env.DEV && !navigator.webdriver);
+
+const layer = devTools
+	? (await import('@effect/ui-devtools')).DevTools.layer({ position: 'BottomRight' })
+	: Layer.empty;
+
+Layer.launch(BrowserHost.mount(App, {}, root).pipe(Layer.provide(layer))).pipe(Effect.runFork);
