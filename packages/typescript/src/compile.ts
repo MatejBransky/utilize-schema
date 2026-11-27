@@ -32,9 +32,9 @@ export interface CompileOptions extends SchemaValidationOptions {
 	/** Emits a caller-provided TypeScript type for a matching schema node. */
 	customSchemaResolver?: CustomSchemaResolver;
 	/**
-	 * Treats a schema with `format` and no inferred object or array shape as
-	 * `string` instead of `unknown`. Off by default because `format` only
-	 * applies to strings; non-string instances stay valid without `type`.
+	 * Treats a schema that would otherwise be `unknown` and has `format` as
+	 * `string`. Off by default because `format` only applies to strings;
+	 * non-string instances stay valid without `type`.
 	 */
 	inferFormatAsString?: boolean;
 	/** Runs a formatter (for example Prettier) over the generated code. */

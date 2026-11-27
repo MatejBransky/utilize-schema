@@ -19,8 +19,8 @@ Options:
   -o, --output <path>   output file or directory
   --cwd <path>          directory used to resolve paths
   --infer-format-as-string
-                        treat a schema with only a "format" as string
-                        instead of unknown
+                        treat a schema that would otherwise be unknown and
+                        has "format" as string
   --no-banner           omit the generated-file banner
 ${validationCliHelp}
   -h, --help            show this help

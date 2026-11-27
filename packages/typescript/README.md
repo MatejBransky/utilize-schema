@@ -84,12 +84,12 @@ declaration, `customSchemaResolver(schema)` to return a TypeScript type for a
 schema node, `validateSchema(schema, { dialect, filePath })` to reject an
 invalid document before generation (see
 [docs/dialects.md](../../docs/dialects.md#schema-validation)),
-`inferFormatAsString` to treat a schema with only a `format` as `string` instead
-of `unknown`, and `format(code)` to run a synchronous or asynchronous formatter
-over the generated code. The inference is off by default because `format` only
-applies to strings, so a non-string instance is still valid without `type`;
-enable it when your schemas use `format` as an implicit string hint. The schema
-resolver is called for every object node
+`inferFormatAsString` to treat a schema that would otherwise be `unknown` and
+has `format` as `string`, and `format(code)` to run a synchronous or
+asynchronous formatter over the generated code. The inference is off by default
+because `format` only applies to strings, so a non-string instance is still valid
+without `type`; enable it when your schemas use `format` as an implicit string
+hint. The schema resolver is called for every object node
 (including `$ref` nodes and the per-type copies of a `type` list, never boolean
 schemas) before the built-in renderer. The returned type replaces the node's
 type, while its JSDoc comment and the `?` of a non-required property are kept:
@@ -108,8 +108,11 @@ import { parse } from '@utilize/json-schema';
 import { generate } from '@utilize/typescript';
 
 const { root } = await parse(schema, { cwd: process.cwd(), fileName: 'schema.json' });
-const code = generate(root);
+const code = generate(root, { inferFormatAsString: true });
 ```
+
+`generate()` accepts the same `customNameResolver`, `customSchemaResolver` and
+`inferFormatAsString` options.
 
 ## CLI
 
