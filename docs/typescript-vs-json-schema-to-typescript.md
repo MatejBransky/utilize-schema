@@ -35,6 +35,11 @@ number with its published result.
 
 ## The main difference: inferring a type from a keyword
 
+The table and every number below use the default `inference: 'spec'`. The
+generator also has an opt-in `inference: 'pragmatic'` mode; it is discussed
+separately because it trades conformance for more useful untyped schemas and is
+not exact json-schema-to-typescript compatibility.
+
 JSON Schema keywords apply only to instances of a particular type. A schema
 without `type` is not a promise that the value has that type; it is a set of
 constraints that are ignored for values of other types.
@@ -45,15 +50,15 @@ does not infer `string` from `format`, `number` from `minimum`, or `object` from
 useful in everyday schemas but makes the generated type reject spec-valid
 instances.
 
-| Schema                              | What the specification says                                      | `@utilize/typescript` | json-schema-to-typescript |
-| ----------------------------------- | ---------------------------------------------------------------- | --------------------- | ------------------------- |
-| `{ "format": "email" }`             | `format` applies to strings; other instance types are unaffected | `unknown`             | object index signature    |
-| `{ "minimum": 3 }`                  | the keyword constrains numeric instances only                    | `unknown`             | object index signature    |
-| `{ "contains": { … } }`             | the keyword constrains array instances only                      | `unknown`             | object index signature    |
-| `{ "if": …, "then": …, "else": … }` | branches depend on the instance value                            | `unknown`             | object index signature    |
-| `{ "not": { … } }`                  | the complement of the subschema                                  | `unknown`             | object index signature    |
-| `{ "properties": … }`               | an object shape                                                  | object                | object                    |
-| `{ "items": … }`                    | an array shape                                                   | array                 | array                     |
+| Schema                              | What the specification says                                      | `@utilize/typescript` (spec) | json-schema-to-typescript |
+| ----------------------------------- | ---------------------------------------------------------------- | ---------------------------- | ------------------------- |
+| `{ "format": "email" }`             | `format` applies to strings; other instance types are unaffected | `unknown`                    | object index signature    |
+| `{ "minimum": 3 }`                  | the keyword constrains numeric instances only                    | `unknown`                    | object index signature    |
+| `{ "contains": { … } }`             | the keyword constrains array instances only                      | `unknown`                    | object index signature    |
+| `{ "if": …, "then": …, "else": … }` | branches depend on the instance value                            | `unknown`                    | object index signature    |
+| `{ "not": { … } }`                  | the complement of the subschema                                  | `unknown`                    | object index signature    |
+| `{ "properties": … }`               | an object shape                                                  | object                       | object                    |
+| `{ "items": … }`                    | an array shape                                                   | array                        | array                     |
 
 ### `format` without `type`
 
@@ -86,6 +91,11 @@ Adding `type` makes the intent explicit, and both generators then emit `string`:
 { "type": "string", "format": "email" }
 ```
 
+The opt-in `inference: 'pragmatic'` mode makes this schema `string` instead of
+`unknown`. That is more useful for a schema that uses `format` as an implicit
+string hint, but it does not reproduce json-schema-to-typescript's object output
+and it rejects valid numbers and objects.
+
 ### `minimum`, `maximum`, `multipleOf`
 
 ```json
@@ -97,7 +107,9 @@ see [JSON Schema Validation, minimum](https://json-schema.org/draft/2020-12/json
 `"foo"` and `{}` are valid against this schema. `@utilize/typescript` keeps it
 `unknown`; json-schema-to-typescript emits an object index signature, rejecting
 those valid instances. The same applies to `maximum`, `exclusiveMinimum`,
-`exclusiveMaximum`, `multipleOf`, `pattern` and `minLength`.
+`exclusiveMaximum`, `multipleOf`, `pattern` and `minLength`. Pragmatic mode
+instead emits `number` for this schema (and `string` for string keywords), again
+as an opt-in trade-off.
 
 ### `contains`, `if`/`then`/`else`, `not`
 
@@ -111,7 +123,9 @@ see [JSON Schema Core, if](https://json-schema.org/draft/2020-12/json-schema-cor
 None of these can be represented exactly in TypeScript, because they depend on
 the value, not only on its type. `@utilize/typescript` keeps the type `unknown`
 instead of guessing a shape. json-schema-to-typescript guesses an object type,
-which rejects valid strings, numbers and arrays.
+which rejects valid strings, numbers and arrays. Pragmatic mode infers an array
+from `contains` because that keyword applies only to arrays, but `if`/`then`/
+`else` and `not` stay `unknown` in both modes.
 
 ### Structural keywords where both agree
 
@@ -160,6 +174,26 @@ Some cases in the table are not about a smarter TypeScript type at all:
   Cases where one generator passes are usually caused by the other crashing or
   over-narrowing, not by a type that expresses the annotation.
 
+## Pragmatic inference (opt-in)
+
+Real-world schemas often omit `type` and rely on keywords to imply it. The
+`inference: 'pragmatic'` option reads the keyword family as the intended type:
+
+| Schema                              | Default `spec` | `inference: 'pragmatic'` |
+| ----------------------------------- | -------------- | ------------------------ |
+| `{ "format": "email" }`             | `unknown`      | `string`                 |
+| `{ "minimum": 3 }`                  | `unknown`      | `number`                 |
+| `{ "contains": { … } }`             | `unknown`      | `Array<…>`               |
+| `{ "minProperties": 1 }`            | `unknown`      | object                   |
+| `{ "if": …, "then": …, "else": … }` | `unknown`      | `unknown`                |
+
+Object and array shapes win over scalar families. This is **not** exact
+compatibility with json-schema-to-typescript: that generator emits an object
+index signature for `{ "format": "email" }` and `{ "minimum": 3 }`, while
+pragmatic mode emits `string` and `number`. The option stays opt-in because it
+rejects spec-valid instances of other types; use `type` when the schema really
+means one type.
+
 ## Where json-schema-to-typescript is more precise
 
 The comparison is not one-sided. The pinned release does more in several places:
@@ -194,14 +228,16 @@ classification of the 431:
 | Boolean schemas                                                                                       |     8 |
 | Other                                                                                                 |    44 |
 
-The counts are a guide, not a second baseline. The important part is that only a
-minority are cases where we express a constraint the competitor cannot. Most are
-cases where the competitor produces a narrower type than the specification
-justifies.
+The counts are a guide, not a second baseline, and they describe default `spec`
+mode. Pragmatic inference would give up most of the 145 format/scalar wins by
+rejecting the spec-valid instances of other types. The important part is that
+only a minority are cases where we express a constraint the competitor cannot.
+Most are cases where the competitor produces a narrower type than the
+specification justifies.
 
 ## What the numbers mean
 
-On the pinned suite:
+On the pinned suite, using the default `spec` mode:
 
 | Metric                                                       | `@utilize/typescript` | json-schema-to-typescript |
 | ------------------------------------------------------------ | --------------------: | ------------------------: |

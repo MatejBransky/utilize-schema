@@ -52,6 +52,8 @@ and
 
 json-schema-to-typescript is pinned to `16.0.0` and its baseline lives in
 [`packages/test-utils/src/suite/jsonSchemaToTypescriptBaseline.ts`](../packages/test-utils/src/suite/jsonSchemaToTypescriptBaseline.ts).
+All numbers on this page use the default `inference: 'spec'`; the opt-in
+`pragmatic` mode is not part of this baseline.
 
 | Dialect  | `@utilize/typescript` cases | json-schema-to-typescript cases | `@utilize/typescript` instances | json-schema-to-typescript instances |
 | -------- | --------------------------- | ------------------------------- | ------------------------------- | ----------------------------------- |

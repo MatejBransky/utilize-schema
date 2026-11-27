@@ -216,6 +216,10 @@ spec-invalid instance is accepted.
 | 2020-12  | 237 / 409 (57%)       | 120 / 409 (29%)             |
 | **All**  | **963 / 1,530 (62%)** | **546 / 1,530 (35%)**       |
 
+This table uses the default `inference: 'spec'`. The opt-in
+`inference: 'pragmatic'` mode is not part of this measurement; it trades
+conformance for more useful untyped schemas.
+
 Across instances, 4,033 of 5,133 (78%) are classified correctly, against 2,808
 (54%). The difference is directional: 140 cases fail here because the output
 crashes, is invalid TypeScript or rejects a spec-valid instance, against 760 for
