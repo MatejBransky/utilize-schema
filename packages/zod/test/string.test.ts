@@ -1,4 +1,5 @@
 import type { JSONSchema } from '@utilize/json-schema';
+import { formats as formatValidators } from '@utilize/json-schema/formats';
 import { describe, test, expect } from 'vitest';
 
 import { compileToZod, generateCode, ts } from './test-utils';
@@ -109,6 +110,20 @@ describe('string constraints', () => {
 
 			expect(code).toContain("import { formatEmail } from '@utilize/json-schema/formats';");
 			expect(code.match(/\.refine\(formatEmail,/g)).toHaveLength(2);
+		});
+
+		test.each(Object.keys(formatValidators))('does not inline a regex for %s', async (format) => {
+			const code = await generateCode({ type: 'string', format });
+
+			expect(code).not.toContain('new RegExp');
+		});
+
+		test('imports the uuid validator instead of inlining its pattern', async () => {
+			const code = await generateCode({ type: 'string', format: 'uuid' });
+
+			expect(code).toContain("import { formatUuid } from '@utilize/json-schema/formats';");
+			expect(code).toContain('refine(formatUuid,');
+			expect(code).not.toContain('[0-9A-Fa-f]');
 		});
 
 		test('aliases a validator that collides with a declaration', async () => {

@@ -106,7 +106,7 @@ lists the options.
 
 ## 📦 Packages
 
-- **[@utilize/json-schema](./packages/json-schema)** — Resolves `$ref`, links nodes with metadata, and provides the CLI runner and compile helpers the three generators share.
+- **[@utilize/json-schema](./packages/json-schema)** — Resolves `$ref`, links nodes with metadata, provides the CLI runner and compile helpers the three generators share, and exports the runtime format validators generated schemas import.
 
   [![npm version](https://img.shields.io/npm/v/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
   [![weekly downloads](https://img.shields.io/npm/dw/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)

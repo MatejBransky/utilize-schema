@@ -2,21 +2,38 @@ import { describe, expect, test } from 'vitest';
 
 import {
 	formats,
+	formatBase64,
+	formatBase64Url,
+	formatCidrv4,
+	formatCidrv6,
+	formatCuid,
+	formatCuid2,
+	formatDate,
 	formatDateTime,
 	formatDuration,
 	formatEmail,
+	formatEmoji,
 	formatHostname,
 	formatHostnameLegacy,
 	formatIdnEmail,
 	formatIdnHostname,
+	formatIpv4,
+	formatIpv6,
 	formatIri,
 	formatIriReference,
+	formatJsonPointer,
+	formatNanoid,
 	formatRegex,
+	formatRelativeJsonPointer,
 	formatTime,
+	formatUlid,
 	formatUri,
 	formatUriReference,
 	formatUriTemplate,
+	formatUrl,
+	formatUuid,
 } from '../src/formats';
+import { formatNames } from '../src/formatName';
 import {
 	formatConstantBase,
 	formatNameFor,
@@ -26,13 +43,13 @@ import {
 
 describe('formatPattern', () => {
 	test.each(['json-pointer', 'relative-json-pointer', 'uuid'])(
-		'returns a pattern for %s',
+		'keeps the legacy pattern for %s',
 		(format) => {
 			expect(formatPattern(format)).toMatch(/^\^/);
 		}
 	);
 
-	test('returns nothing for a structural format', () => {
+	test('returns nothing for a runtime validator', () => {
 		expect(formatPattern('email')).toBeUndefined();
 	});
 });
@@ -42,8 +59,12 @@ describe('hasFormatValidator', () => {
 		expect(hasFormatValidator(format)).toBe(true);
 	});
 
-	test('returns false for a pattern format', () => {
-		expect(hasFormatValidator('json-pointer')).toBe(false);
+	test('keeps the declaration manifest in sync with the validators', () => {
+		expect(new Set(formatNames)).toEqual(new Set(Object.keys(formats)));
+	});
+
+	test('returns false for an unknown format', () => {
+		expect(hasFormatValidator('not-a-format')).toBe(false);
 	});
 
 	test('does not treat inherited object keys as formats', () => {
@@ -81,6 +102,12 @@ describe('structural validators', () => {
 		expect(formatTime('15:59:60-08:00')).toBe(true);
 		expect(formatTime('12:00:00')).toBe(false);
 		expect(formatTime('23:59:60+01:00')).toBe(false);
+	});
+
+	test('uuid', () => {
+		expect(formatUuid('99c17cbb-656f-f64a-940f-1a4568f03487')).toBe(true);
+		expect(formatUuid('not-a-uuid')).toBe(false);
+		expect(formatUuid('99c17cbb-656f-f64a-940f-1a4568f03487x')).toBe(false);
 	});
 
 	test('duration', () => {
@@ -176,11 +203,45 @@ describe('structural validators', () => {
 		expect(formatRegex('a|b')).toBe(true);
 		expect(formatRegex('*a')).toBe(false);
 	});
+
+	test('other pattern formats', () => {
+		expect(formatJsonPointer('/foo/bar~0')).toBe(true);
+		expect(formatJsonPointer('/~2')).toBe(false);
+		expect(formatRelativeJsonPointer('0#')).toBe(true);
+		expect(formatRelativeJsonPointer('01/a')).toBe(false);
+		expect(formatEmoji('😀')).toBe(true);
+		expect(formatEmoji('abc')).toBe(false);
+		expect(formatBase64('aGVsbG8=')).toBe(true);
+		expect(formatBase64('not base64!')).toBe(false);
+		expect(formatBase64Url('aGVsbG8')).toBe(true);
+		expect(formatBase64Url('a+b/c')).toBe(false);
+		expect(formatNanoid('V1StGXR8_Z5jdHi6B-myT')).toBe(true);
+		expect(formatNanoid('short')).toBe(false);
+		expect(formatCuid('cjld2cjxh0000qzrmn831i7rn')).toBe(true);
+		expect(formatCuid('not-cuid')).toBe(false);
+		expect(formatCuid2('tz4a98xxat96iws9zmbrgj3a')).toBe(true);
+		expect(formatCuid2('!')).toBe(false);
+		expect(formatUlid('01ARZ3NDEKTSV4RRFFQ69G5FAV')).toBe(true);
+		expect(formatUlid('not-a-ulid')).toBe(false);
+		expect(formatIpv4('192.168.0.1')).toBe(true);
+		expect(formatIpv4('999.168.0.1')).toBe(false);
+		expect(formatIpv6('::1')).toBe(true);
+		expect(formatIpv6('not-ip')).toBe(false);
+		expect(formatCidrv4('192.168.0.0/24')).toBe(true);
+		expect(formatCidrv4('192.168.0.0/33')).toBe(false);
+		expect(formatCidrv6('::1/128')).toBe(true);
+		expect(formatCidrv6('::1/129')).toBe(false);
+		expect(formatDate('2024-02-29')).toBe(true);
+		expect(formatDate('2023-02-29')).toBe(false);
+		expect(formatUrl('https://example.com/a?b=1')).toBe(true);
+		expect(formatUrl('not a url')).toBe(false);
+	});
 });
 
 describe('format names', () => {
 	test('turns a format into an import name', () => {
 		expect(formatConstantBase('date-time')).toBe('formatDateTime');
+		expect(formatConstantBase('base64url')).toBe('formatBase64Url');
 	});
 
 	test('allocates once and reuses the name', () => {

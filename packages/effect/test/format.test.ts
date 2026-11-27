@@ -1,3 +1,4 @@
+import { formats } from '@utilize/json-schema/formats';
 import { Schema } from 'effect';
 import { describe, expect, test } from 'vitest';
 
@@ -29,6 +30,22 @@ describe('formatMode', () => {
 
 		expect(code).toContain("annotate({ format: 'not-a-format' })");
 		expect(code).not.toContain('isPattern');
+	});
+
+	test.each(Object.keys(formats))('imports the %s validator', async (format) => {
+		const code = await compile({ type: 'string', format }, { formatMode: 'assert' });
+
+		expect(code).toContain("from '@utilize/json-schema/formats'");
+		expect(code).not.toContain('new RegExp');
+		expect(code).not.toContain('Schema.isPattern');
+	});
+
+	test('imports the uuid validator instead of inlining its pattern', async () => {
+		const code = await compile({ type: 'string', format: 'uuid' }, { formatMode: 'assert' });
+
+		expect(code).toContain("import { formatUuid } from '@utilize/json-schema/formats';");
+		expect(code).toContain('formatUuid(value)');
+		expect(code).not.toContain('[0-9A-Fa-f]');
 	});
 
 	test('aliases a validator that collides with a declaration', async () => {

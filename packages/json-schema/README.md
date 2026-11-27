@@ -6,8 +6,8 @@
 
 The shared foundation behind `@utilize/zod`, `@utilize/effect` and
 `@utilize/typescript`. It resolves `$ref`s, annotates every node with the metadata
-a generator needs, and provides the target-neutral format validators used by both
-runtime generators. It never emits a target schema.
+a generator needs, and exports the target-neutral format validators both runtime
+generators import. It never emits a target schema.
 
 - **Every reference shape.** Local, external, `$id`/`$anchor`, boolean targets
   and recursive graphs.
@@ -16,7 +16,7 @@ runtime generators. It never emits a target schema.
 - **Metadata per node.** Parent, referenced schema, file name and dialect, under
   a `Meta` symbol that never serializes.
 - **Shared generator plumbing.** `collectStandaloneSchemas`, the format
-  validators and the `@utilize/json-schema/node` entry — CLI runner, flags,
+  metadata and the `@utilize/json-schema/node` entry — CLI runner, flags,
   JSON/YAML and file/glob input, `compilePaths` — are what the three generator
   packages build on.
 - **Runtime validators.** `@utilize/json-schema/formats` exports the structural
@@ -31,8 +31,8 @@ pnpm add @utilize/json-schema
 Generated schemas import `@utilize/json-schema/formats` at runtime, so that
 package is a runtime dependency of the code they produce. Use `pnpm add -D`
 only when the project calls the parser or CLI at build time and does not run
-generated schemas. Bundlers can tree-shake unused validators; pattern-only
-formats stay inline.
+generated schemas. Bundlers can tree-shake unused validators; target-native
+helpers such as `z.url()` remain native.
 
 ```ts
 import { Meta, parse } from '@utilize/json-schema';

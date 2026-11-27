@@ -27,7 +27,7 @@ pinned in `package.json#packageManager`; Corepack can install it for you.
 
 ## Project Structure
 
-- `packages/json-schema`: Core JSON Schema utilities and parser.
+- `packages/json-schema`: Core JSON Schema utilities, parser and the runtime format validators generated schemas import.
 - `packages/zod`: Zod code generator and related logic.
 - `packages/effect`: Effect Schema code generator and related logic.
 - `packages/typescript`: TypeScript type generator (no runtime dependency).

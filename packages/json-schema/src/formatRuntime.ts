@@ -1,18 +1,21 @@
+import { formatConstantBase } from './formatName';
+import { exactEnd } from './formatSources';
 import { formats } from './formats';
 
 import { allocateName } from './resolveName';
 
+export { formatConstantBase };
+
 /**
- * Target-neutral format metadata the generators share: patterns that need no
- * runtime code, names for the validators a file imports, and the set of
- * formats whose validators live in `@utilize/json-schema/formats`.
+ * Target-neutral format metadata the generators share: names for the validators
+ * a file imports, and the set of formats whose validators live in
+ * `@utilize/json-schema/formats`.
  */
 
 /** Module generated code imports the structural format validators from. */
 export const formatRuntimeModule = '@utilize/json-schema/formats';
 
-const exactEnd = String.raw`(?![\s\S])`;
-
+/** Legacy pattern metadata, retained for callers that already use it. */
 const patterns = new Map<string, string>([
 	['json-pointer', String.raw`^(?:\/(?:[^~]|~[01])*)?${exactEnd}`],
 	['relative-json-pointer', String.raw`^(?:0|[1-9][0-9]*)(?:#|\/(?:[^~]|~[01])*)?${exactEnd}`],
@@ -22,6 +25,7 @@ const patterns = new Map<string, string>([
 	],
 ]);
 
+/** Legacy pattern metadata, retained for callers that already use it. */
 export function formatPattern(format: string): string | undefined {
 	return patterns.get(format);
 }
@@ -50,13 +54,4 @@ export function formatNameFor(
 
 	formatNames.set(format, name);
 	return name;
-}
-
-/** `date-time` becomes `formatDateTime`, matching the runtime export. */
-export function formatConstantBase(format: string): string {
-	const pascal = format.replaceAll(/[^a-zA-Z0-9]+(.)?/g, (_, next: string | undefined) =>
-		next === undefined ? '' : next.toUpperCase()
-	);
-
-	return `format${pascal.charAt(0).toUpperCase()}${pascal.slice(1)}`;
 }
