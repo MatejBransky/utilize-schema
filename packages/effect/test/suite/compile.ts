@@ -1,6 +1,7 @@
 import { parse } from '@utilize/json-schema';
 import type { DialectId, ExternalSchemas, JSONSchema } from '@utilize/json-schema';
 import { evaluateGeneratedCode, nameRootSchema } from '@utilize/test-utils/suite/evaluate';
+import { suiteDirectory } from '@utilize/test-utils/suite/loadSuite';
 import { Schema } from 'effect';
 
 import type { FormatMode } from '../../src/context';
@@ -23,7 +24,7 @@ export async function compileToEffectSchema(
 	dialect?: DialectId
 ): Promise<SuiteGeneratedSchema> {
 	const { root } = await parse(schema, {
-		cwd: `${import.meta.dirname}/`,
+		cwd: `${suiteDirectory}/`,
 		fileName: 'Root.json',
 		externalSchemas,
 		dialect,

@@ -168,7 +168,7 @@ The badges link here. Numbers for every measured dialect live in
 
 | Dialect  | Cases passing | Where the gaps are                                                                                                       |
 | -------- | ------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| draft-04 | 115 / 187     | [gaps](test/suite/knownGapCases.ts)                                                                                      |
+| draft-04 | 122 / 187     | [gaps](test/suite/knownGapCases.ts)                                                                                      |
 | draft-06 | 169 / 253     | [gaps](test/suite/knownGapCases.ts)                                                                                      |
 | draft-07 | 192 / 285     | [gaps](test/suite/knownGapCases.ts) · [reasons](test/suite/knownGaps.ts) · 81 type gaps (keywords a type cannot express) |
 | 2019-09  | 243 / 396     | [gaps](test/suite/knownGapCases.ts)                                                                                      |

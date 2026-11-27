@@ -84,16 +84,20 @@ function appliesTo(
 				'multipleOf',
 			]);
 		case 'object':
-			return anyKeyword([
-				'properties',
-				'patternProperties',
-				'required',
-				'additionalProperties',
-				'minProperties',
-				'maxProperties',
-				'propertyNames',
-				'dependencies',
-			]);
+			// The normalizer represents dependentRequired/dependentSchemas as
+			// dependencies even though the modern dialect removed that keyword.
+			return (
+				schema.dependencies !== undefined ||
+				anyKeyword([
+					'properties',
+					'patternProperties',
+					'required',
+					'additionalProperties',
+					'minProperties',
+					'maxProperties',
+					'propertyNames',
+				])
+			);
 		case 'array':
 			return anyKeyword([
 				'items',

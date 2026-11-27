@@ -232,12 +232,15 @@ The TypeScript generator has no runtime, so validation keywords such as
 `minLength`, `pattern` or `uniqueItems` have no type-level equivalent and are
 ignored. Use Zod or Effect Schema when you need runtime validation.
 
-Draft-07 numbers from the official suite, with every measured dialect pinned in
-the package baselines:
+Official-suite numbers, with every measured dialect pinned in the package
+baselines:
 
-- **Zod:** 304 of 304 cases (1,655 of 1,655 assertions).
-- **Effect Schema:** 304 of 304 cases (1,655 of 1,655 assertions).
-- **TypeScript:** 192 of 285 cases at the type level (795 of 972 instances).
+- **Zod:** 1,514 of 1,609 cases; draft-04, draft-06 and draft-07 are complete.
+- **Effect Schema:** 1,510 of 1,609 cases; draft-04, draft-06 and draft-07 are complete.
+- **TypeScript:** 192 of 285 draft-07 cases at the type level (795 of 972 instances).
+
+The remaining runtime gaps are dynamic/recursive references and full
+`unevaluated*` annotation propagation.
 
 ---
 
