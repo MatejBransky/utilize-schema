@@ -244,6 +244,9 @@ importers:
       '@effect/ui':
         specifier: https://pkg.pr.new/Effect-TS/ui/@effect/ui@22128c6
         version: https://pkg.pr.new/Effect-TS/ui/@effect/ui@22128c6(effect@4.1.5)
+      '@effect/ui-devtools':
+        specifier: https://pkg.pr.new/Effect-TS/ui/@effect/ui-devtools@22128c6
+        version: https://pkg.pr.new/Effect-TS/ui/@effect/ui-devtools@22128c6(@effect/ui-kit@https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@22128c6(@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@22128c6(effect@4.1.5))(effect@4.1.5))(@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@22128c6(effect@4.1.5))(effect@4.1.5)
       '@effect/ui-kit':
         specifier: https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@22128c6
         version: https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@22128c6(@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@22128c6(effect@4.1.5))(effect@4.1.5)
@@ -426,6 +429,19 @@ packages:
       tsrs:
         optional: true
       vite-plus:
+        optional: true
+
+  '@effect/ui-devtools@https://pkg.pr.new/Effect-TS/ui/@effect/ui-devtools@22128c6':
+    resolution: {integrity: sha512-+2JxAUi/I7AmfTuNauLuxos8RYJpjDDFDK984MXahk2bvJODUUXoM8DNwSMCtZS7vc0qdmZ/r5t37bTUH5pStg==, tarball: https://pkg.pr.new/Effect-TS/ui/@effect/ui-devtools@22128c6}
+    version: 0.0.0
+    hasBin: true
+    peerDependencies:
+      '@effect/platform-node': ^4.1.4
+      '@effect/ui': ^0.0.0
+      '@effect/ui-kit': ^0.0.0
+      effect: ^4.1.4
+    peerDependenciesMeta:
+      '@effect/platform-node':
         optional: true
 
   '@effect/ui-kit@https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@22128c6':
@@ -2233,6 +2249,12 @@ snapshots:
     transitivePeerDependencies:
       - eslint
       - eslint-plugin-perfectionist
+
+  '@effect/ui-devtools@https://pkg.pr.new/Effect-TS/ui/@effect/ui-devtools@22128c6(@effect/ui-kit@https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@22128c6(@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@22128c6(effect@4.1.5))(effect@4.1.5))(@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@22128c6(effect@4.1.5))(effect@4.1.5)':
+    dependencies:
+      '@effect/ui': https://pkg.pr.new/Effect-TS/ui/@effect/ui@22128c6(effect@4.1.5)
+      '@effect/ui-kit': https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@22128c6(@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@22128c6(effect@4.1.5))(effect@4.1.5)
+      effect: 4.1.5
 
   '@effect/ui-kit@https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@22128c6(@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@22128c6(effect@4.1.5))(effect@4.1.5)':
     dependencies:

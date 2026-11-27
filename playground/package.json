@@ -14,6 +14,7 @@
 	},
 	"dependencies": {
 		"@effect/ui": "https://pkg.pr.new/Effect-TS/ui/@effect/ui@22128c6",
+		"@effect/ui-devtools": "https://pkg.pr.new/Effect-TS/ui/@effect/ui-devtools@22128c6",
 		"@effect/ui-kit": "https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@22128c6",
 		"@utilize/effect": "workspace:*",
 		"@utilize/json-schema": "workspace:*",
