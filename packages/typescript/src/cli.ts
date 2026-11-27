@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import { isEntrypoint, runGeneratorCli, validationCliHelp } from '@utilize/json-schema/node';
-import type { CliFlagValues, CliIo } from '@utilize/json-schema/node';
+import type { CliFlagValues, CliIo, CliOptionsResult } from '@utilize/json-schema/node';
 
 import { compileFile, compileSchema, withBanner } from './compile';
+import type { InferenceMode } from './generator';
 
 export { type CliIo, isEntrypoint };
 
@@ -18,17 +19,25 @@ Options:
   -i, --input <path>    schema file, directory or glob
   -o, --output <path>   output file or directory
   --cwd <path>          directory used to resolve paths
-  --infer-format-as-string
-                        treat a schema that would otherwise be unknown and
-                        has "format" as string
+  --inference <mode>    spec (default) keeps scalar keywords unknown;
+                        pragmatic infers string/number/array from the keyword
+                        family (format, minimum, contains, ...)
   --no-banner           omit the generated-file banner
 ${validationCliHelp}
   -h, --help            show this help
 `;
 
 const parseOptions = {
-	'infer-format-as-string': { type: 'boolean', default: false },
+	inference: { type: 'string', default: 'spec' },
 } as const;
+
+function readInference(value: string): CliOptionsResult<{ inference: InferenceMode }> {
+	if (value === 'spec' || value === 'pragmatic') {
+		return { ok: true, options: { inference: value } };
+	}
+
+	return { ok: false, error: `Unknown inference mode "${value}"; expected "spec" or "pragmatic".` };
+}
 
 export async function run(
 	argv: string[],
@@ -37,10 +46,7 @@ export async function run(
 	return runGeneratorCli(argv, io, {
 		help: HELP,
 		parseOptions,
-		readOptions: (values: CliFlagValues<typeof parseOptions>) => ({
-			ok: true,
-			options: { inferFormatAsString: values['infer-format-as-string'] },
-		}),
+		readOptions: (values: CliFlagValues<typeof parseOptions>) => readInference(values.inference),
 		compileSchema,
 		compileFile,
 		withBanner,

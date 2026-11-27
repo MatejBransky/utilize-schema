@@ -14,14 +14,18 @@ import type {
 } from '@utilize/json-schema';
 
 import { UnresolvedReferenceError } from './errors';
+import { inferFamily } from './inference';
+import type { InferenceMode } from './inference';
+
+export type { InferenceMode } from './inference';
 
 export interface TypeContext {
 	/** Name of an already declared standalone schema. */
 	nameOf(schema: ParsedJSONSchemaObject, ref: string): string;
 	/** Emits a caller-provided TypeScript type for a matching schema node. */
 	customSchemaResolver?: CustomSchemaResolver;
-	/** Treats a schema that would otherwise be `unknown` and has `format` as `string`. */
-	inferFormatAsString?: boolean;
+	/** How an untyped schema is narrowed; `spec` keeps scalar keywords as `unknown`. */
+	inference?: InferenceMode;
 }
 
 /**
@@ -52,10 +56,6 @@ const TYPE_KEYWORDS = new Set([
 	'prefixItems',
 	'additionalItems',
 ]);
-
-const OBJECT_KEYWORDS = ['properties', 'patternProperties', 'additionalProperties', 'required'];
-
-const ARRAY_KEYWORDS = ['items', 'prefixItems'];
 
 /**
  * Global types the renderer emits. A schema name must never shadow one of
@@ -304,7 +304,7 @@ function renderUntyped(
 	context: TypeContext,
 	level: number
 ): string {
-	const family = inferFamily(schema);
+	const family = inferFamily(schema, context.inference);
 
 	if (family === 'object') {
 		return renderObject(schema, context, level);
@@ -314,35 +314,15 @@ function renderUntyped(
 		return renderArray(schema, context, level);
 	}
 
-	if (context.inferFormatAsString === true && typeof schema.format === 'string') {
+	if (family === 'string') {
 		return 'string';
 	}
 
+	if (family === 'number') {
+		return 'number';
+	}
+
 	return 'unknown';
-}
-
-/**
- * A schema without `type` can still have a shape: `properties`, `required` and
- * `patternProperties` describe an object, `items` and `prefixItems` describe an
- * array. Those keywords infer the emitted type, mirroring
- * `json-schema-to-typescript`.
- *
- * Scalar constraints do not infer anything. `maximum` only applies to numbers,
- * so `{ maximum: 3 }` also accepts `"foo"`; typing it as `number` would reject a
- * spec-valid instance. A schema that only bounds values therefore stays
- * `unknown`.
- */
-function inferFamily(schema: ParsedJSONSchemaObject): 'object' | 'array' | undefined {
-	const record = schemaRecord(schema);
-
-	if (OBJECT_KEYWORDS.some((keyword) => record[keyword] !== undefined)) {
-		return 'object';
-	}
-	if (ARRAY_KEYWORDS.some((keyword) => record[keyword] !== undefined)) {
-		return 'array';
-	}
-
-	return undefined;
 }
 
 function renderReference(
@@ -646,7 +626,10 @@ function requiredKeys(schema: ParsedJSONSchemaObject): Set<string> {
  * interfaces because an interface with an index signature can be recursive,
  * while `type X = Record<string, X>` is rejected as circular.
  */
-export function isObjectDeclaration(schema: ParsedJSONSchemaObject): boolean {
+export function isObjectDeclaration(
+	schema: ParsedJSONSchemaObject,
+	inference?: InferenceMode
+): boolean {
 	if (typeof schema.$ref === 'string' || Object.hasOwn(schema, 'const')) {
 		return false;
 	}
@@ -662,7 +645,8 @@ export function isObjectDeclaration(schema: ParsedJSONSchemaObject): boolean {
 	}
 
 	return (
-		schema.type === 'object' || (schema.type === undefined && inferFamily(schema) === 'object')
+		schema.type === 'object' ||
+		(schema.type === undefined && inferFamily(schema, inference) === 'object')
 	);
 }
 

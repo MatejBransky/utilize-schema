@@ -16,10 +16,10 @@ import {
 	renderObjectBody,
 	renderType,
 } from './renderType';
-import type { CustomSchemaResolver, TypeContext } from './renderType';
+import type { CustomSchemaResolver, InferenceMode, TypeContext } from './renderType';
 import { resolveName } from './resolveName';
 
-export type { CustomSchemaResolver } from './renderType';
+export type { CustomSchemaResolver, InferenceMode } from './renderType';
 
 export interface GenerateOptions {
 	/** Overrides the name allocated for a standalone schema. */
@@ -27,11 +27,11 @@ export interface GenerateOptions {
 	/** Emits a caller-provided TypeScript type for a matching schema node. */
 	customSchemaResolver?: CustomSchemaResolver;
 	/**
-	 * Treats a schema that would otherwise be `unknown` and has `format` as
-	 * `string`. Off by default because `format` only applies to strings;
-	 * non-string instances stay valid without `type`.
+	 * How an untyped schema is narrowed. `spec` (default) keeps scalar and
+	 * conditional keywords as `unknown`; `pragmatic` reads the keyword family as
+	 * the intended type (`format` → `string`, `minimum` → `number`, …).
 	 */
-	inferFormatAsString?: boolean;
+	inference?: InferenceMode;
 }
 
 /**
@@ -58,7 +58,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 			return name;
 		},
 		customSchemaResolver: options.customSchemaResolver,
-		inferFormatAsString: options.inferFormatAsString,
+		inference: options.inference,
 	};
 
 	if (!isParsedJSONSchemaObject(root)) {
@@ -143,7 +143,9 @@ function renderDeclaration(
 		return [...doc, `export type ${name} = ${customType};`].join('\n');
 	}
 
-	const body = isObjectDeclaration(schema) ? renderObjectBody(schema, context, 1) : undefined;
+	const body = isObjectDeclaration(schema, context.inference)
+		? renderObjectBody(schema, context, 1)
+		: undefined;
 
 	return body === undefined
 		? [...doc, `export type ${name} = ${renderType(schema, context)};`].join('\n')

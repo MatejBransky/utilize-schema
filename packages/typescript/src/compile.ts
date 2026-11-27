@@ -18,7 +18,7 @@ import {
 import type { CodeFormatter, SchemaFileLocation } from '@utilize/json-schema/node';
 
 import { generate } from './generator';
-import type { CustomSchemaResolver } from './generator';
+import type { CustomSchemaResolver, InferenceMode } from './generator';
 
 export interface CompileOptions extends SchemaValidationOptions {
 	/** Path of the JSON Schema file, resolved against `cwd`. */
@@ -32,11 +32,11 @@ export interface CompileOptions extends SchemaValidationOptions {
 	/** Emits a caller-provided TypeScript type for a matching schema node. */
 	customSchemaResolver?: CustomSchemaResolver;
 	/**
-	 * Treats a schema that would otherwise be `unknown` and has `format` as
-	 * `string`. Off by default because `format` only applies to strings;
-	 * non-string instances stay valid without `type`.
+	 * How an untyped schema is narrowed. `spec` (default) keeps scalar and
+	 * conditional keywords as `unknown`; `pragmatic` reads the keyword family as
+	 * the intended type (`format` → `string`, `minimum` → `number`, …).
 	 */
-	inferFormatAsString?: boolean;
+	inference?: InferenceMode;
 	/** Runs a formatter (for example Prettier) over the generated code. */
 	format?: CodeFormatter | false;
 	/** Header prepended to the generated file. Pass `false` to omit it. */
@@ -50,7 +50,7 @@ export interface CompileSchemaOptions extends SchemaValidationOptions {
 	fileName: string;
 	customNameResolver?: CustomNameResolver;
 	customSchemaResolver?: CustomSchemaResolver;
-	inferFormatAsString?: boolean;
+	inference?: InferenceMode;
 	format?: CodeFormatter | false;
 	/** Documents served for absolute `$ref` URIs, keyed by retrieval URI. */
 	externalSchemas?: ExternalSchemas;
@@ -73,7 +73,7 @@ export async function compile(options: CompileOptions): Promise<void> {
 	const code = await compileFile(inputPath, {
 		customNameResolver: options.customNameResolver,
 		customSchemaResolver: options.customSchemaResolver,
-		inferFormatAsString: options.inferFormatAsString,
+		inference: options.inference,
 		format: options.format,
 		externalSchemas: options.externalSchemas,
 		validateSchema: options.validateSchema,
@@ -97,7 +97,7 @@ export async function compileSchema(
 	const code = generate(root, {
 		customNameResolver: options.customNameResolver,
 		customSchemaResolver: options.customSchemaResolver,
-		inferFormatAsString: options.inferFormatAsString,
+		inference: options.inference,
 	});
 
 	return options.format ? options.format(code) : code;

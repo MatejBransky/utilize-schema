@@ -77,10 +77,10 @@ describe('CLI', () => {
 		expect(stdout()).toContain('export type Root = string;');
 	});
 
-	test('--infer-format-as-string treats a format-only schema as string', async () => {
+	test('--inference pragmatic infers a format-only schema as string', async () => {
 		const { io, stdout } = createIo(JSON.stringify({ format: 'email' }));
 
-		const exitCode = await run(['--no-banner', '--infer-format-as-string'], io);
+		const exitCode = await run(['--no-banner', '--inference', 'pragmatic'], io);
 
 		expect(exitCode).toBe(0);
 		expect(stdout()).toContain('export type Root = string;');
