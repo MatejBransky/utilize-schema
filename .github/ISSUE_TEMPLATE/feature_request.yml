@@ -1,0 +1,24 @@
+name: Feature request
+description: Propose a generator, option or playground change.
+title: '[feat]: '
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does it solve
+      description: The schema or workflow where the current output is not enough.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Expected output, new option, or UI change.
+    validations:
+      required: true
+  - type: input
+    id: playground
+    attributes:
+      label: Playground link (optional)
+      description: Share a workspace with the schema that should produce the new output.
