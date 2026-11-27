@@ -236,12 +236,21 @@ A schema without `type` infers a shape from structural keywords: `properties`,
 keywords only constrain their own JSON type, so a valid `"foo"` is also accepted
 by that schema; the generated type rejects it.
 
-Scalar constraints do not infer a type. `maximum` only applies to numbers, so
-`{ maximum: 3 }` also accepts `"foo"`; typing it as `number` would reject a
-spec-valid instance. A schema that only bounds values therefore stays `unknown`,
-which is why the valid-instance rate is above 96% while the object/array shape
-inference remains the only source of rejected valid instances in this
-generator.
+Scalar constraints are different. In the default `spec` mode they do not infer a
+type. `maximum` only applies to numbers, so `{ maximum: 3 }` also accepts
+`"foo"`; typing it as `number` would reject a spec-valid instance. A schema that
+only bounds values therefore stays `unknown`, which is why the valid-instance
+rate is above 96% and object/array shape inference remains the only source of
+rejected valid instances in spec mode.
+
+`inference: 'pragmatic'` opts into the opposite trade-off: it reads the keyword
+family as the intended type (`format` → `string`, `minimum` → `number`,
+`contains` → `array`), so real-world schemas that omit `type` produce useful
+types. It is **not** exact compatibility with json-schema-to-typescript — that
+library emits an object index signature for `{ "format": "email" }` and
+`{ "minimum": 3 }` — and it rejects spec-valid instances of other types.
+Conditional applicators (`if`/`then`/`else`, `not`) stay `unknown` in both modes
+because they cannot be expressed as a type.
 
 ## Differences from json-schema-to-typescript
 

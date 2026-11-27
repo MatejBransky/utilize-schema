@@ -32,9 +32,10 @@ export interface CompileOptions extends SchemaValidationOptions {
 	/** Emits a caller-provided TypeScript type for a matching schema node. */
 	customSchemaResolver?: CustomSchemaResolver;
 	/**
-	 * How an untyped schema is narrowed. `spec` (default) keeps scalar and
-	 * conditional keywords as `unknown`; `pragmatic` reads the keyword family as
-	 * the intended type (`format` → `string`, `minimum` → `number`, …).
+	 * How an untyped schema is narrowed. `spec` (default) keeps scalar keywords
+	 * as `unknown`; `pragmatic` reads the keyword family as the intended type
+	 * (`format` → `string`, `minimum` → `number`, …). Conditional applicators
+	 * stay `unknown` in both modes.
 	 */
 	inference?: InferenceMode;
 	/** Runs a formatter (for example Prettier) over the generated code. */

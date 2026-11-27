@@ -39,6 +39,30 @@ describe('inference', () => {
 		).toContain('export type Root = Array<');
 	});
 
+	test('infers the other scalar and array keyword families', async () => {
+		expect(await generateCode({ minLength: 1 }, { inference: 'pragmatic' })).toContain(
+			'export type Root = string;'
+		);
+		expect(await generateCode({ maximum: 3 }, { inference: 'pragmatic' })).toContain(
+			'export type Root = number;'
+		);
+		expect(await generateCode({ minItems: 1 }, { inference: 'pragmatic' })).toContain(
+			'export type Root = Array<'
+		);
+		expect(await generateCode({ minProperties: 1 }, { inference: 'pragmatic' })).toContain(
+			'export interface Root'
+		);
+	});
+
+	test('gives object and array shapes precedence over scalar families', async () => {
+		expect(
+			await generateCode({ format: 'email', minimum: 1 }, { inference: 'pragmatic' })
+		).toContain('export type Root = string;');
+		expect(await generateCode({ minItems: 1, minLength: 1 }, { inference: 'pragmatic' })).toContain(
+			'export type Root = Array<'
+		);
+	});
+
 	test('does not override an inferred object shape', async () => {
 		expect(
 			await generateCode(

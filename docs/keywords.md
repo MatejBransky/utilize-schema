@@ -138,9 +138,11 @@ keyword family as the intended type (`format` → `string`, `minimum` → `numbe
 
 Validation-only keywords (`minLength`, `pattern`, `minimum`, `uniqueItems`,
 `minItems`, `not`, `if`/`then`/`else`, `dependencies`, …) have no equivalent in
-a TypeScript type and are ignored. They are not silently dropped from a schema:
-use [`@utilize/zod`](../packages/zod) or [`@utilize/effect`](../packages/effect)
-when you need runtime validation.
+a TypeScript type. In `spec` mode they are ignored; `pragmatic` inference only
+uses the keyword family to choose `string`, `number` or `array` and still cannot
+enforce the constraint. They are not silently dropped from a schema: use
+[`@utilize/zod`](../packages/zod) or [`@utilize/effect`](../packages/effect) when
+you need runtime validation.
 
 `$ref` siblings are resolved by the parser before generation, so a reference
 with sibling keywords becomes one merged schema.
