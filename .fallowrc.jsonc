@@ -254,7 +254,7 @@
 				// and splitting it would scatter the transitions without lowering the
 				// total. Raising the ceilings keeps every file visible and still fails
 				// a transition that grows past them.
-				"files": ["playground/src/app/*.ts"],
+				"files": ["playground/src/app/**"],
 				"maxCyclomatic": 100,
 				"maxCognitive": 100,
 				"maxCrap": 10000,
