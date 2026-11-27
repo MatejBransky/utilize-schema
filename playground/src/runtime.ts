@@ -1,5 +1,7 @@
 import { init as initLexer, parse as parseImports } from 'es-module-lexer';
 
+import type { createJsonSchemaValidator as CreateJsonSchemaValidator } from '@utilize/json-schema/runtime';
+
 import type {
 	Result as EffectResult,
 	Schema as EffectSchema,
@@ -50,8 +52,12 @@ interface EffectRuntime {
 	readonly SchemaIssue: typeof EffectSchemaIssue;
 }
 
-type RuntimeModule = ZodRuntime | EffectRuntime;
-type RuntimePackageName = 'zod' | 'effect';
+interface JsonSchemaRuntimePackage {
+	readonly createJsonSchemaValidator: typeof CreateJsonSchemaValidator;
+}
+
+type RuntimeModule = ZodRuntime | EffectRuntime | JsonSchemaRuntimePackage;
+type RuntimePackageName = 'zod' | 'effect' | '@utilize/json-schema/runtime';
 
 interface ZodPackage {
 	readonly z: typeof ZodNamespace;
@@ -61,11 +67,12 @@ interface EffectPackage {
 	readonly Schema: typeof EffectSchema;
 }
 
-type RuntimePackage = ZodPackage | EffectPackage;
+type RuntimePackage = ZodPackage | EffectPackage | JsonSchemaRuntimePackage;
 
 interface PackageBridge {
 	readonly zod: ZodPackage | undefined;
 	readonly effect: EffectPackage | undefined;
+	readonly jsonSchemaRuntime: JsonSchemaRuntimePackage | undefined;
 }
 
 const PACKAGES_GLOBAL = '__utilizePlaygroundPackages';
@@ -73,6 +80,7 @@ const runtimeModules = new Map<RuntimePackageName, Promise<RuntimeModule>>();
 const packageUrls = new Map<RuntimePackageName, string>();
 let zodPackage: ZodPackage | undefined;
 let effectPackage: EffectPackage | undefined;
+let jsonSchemaRuntimePackage: JsonSchemaRuntimePackage | undefined;
 
 const packages: PackageBridge = {
 	get zod() {
@@ -80,6 +88,9 @@ const packages: PackageBridge = {
 	},
 	get effect() {
 		return effectPackage;
+	},
+	get jsonSchemaRuntime() {
+		return jsonSchemaRuntimePackage;
 	},
 };
 
@@ -260,12 +271,18 @@ const validators: Record<
 
 function runtimeModule(name: 'zod'): Promise<ZodRuntime>;
 function runtimeModule(name: 'effect'): Promise<EffectRuntime>;
+function runtimeModule(name: '@utilize/json-schema/runtime'): Promise<JsonSchemaRuntimePackage>;
 function runtimeModule(name: RuntimePackageName): Promise<RuntimeModule>;
 function runtimeModule(name: RuntimePackageName): Promise<RuntimeModule> {
 	let module = runtimeModules.get(name);
 
 	if (!module) {
-		module = name === 'zod' ? import('zod') : import('effect');
+		module =
+			name === 'zod'
+				? import('zod')
+				: name === 'effect'
+					? import('effect')
+					: import('@utilize/json-schema/runtime');
 		runtimeModules.set(name, module);
 		module.catch(() => {
 			if (runtimeModules.get(name) === module) {
@@ -278,29 +295,20 @@ function runtimeModule(name: RuntimePackageName): Promise<RuntimeModule> {
 }
 
 async function packageUrl(name: string): Promise<string> {
-	if (name !== 'zod' && name !== 'effect') {
+	if (name !== 'zod' && name !== 'effect' && name !== '@utilize/json-schema/runtime') {
 		throw new Error(
 			`The generated module imports "${name}", which the playground does not provide.`
 		);
 	}
 
-	let exports: RuntimePackage;
-
-	if (name === 'zod') {
-		zodPackage ??= Object.freeze({ z: (await runtimeModule('zod')).z });
-		exports = zodPackage;
-	} else {
-		effectPackage ??= Object.freeze({ Schema: (await runtimeModule('effect')).Schema });
-		exports = effectPackage;
-	}
-
+	const { bridgeName, exports } = await packageExports(name);
 	let url = packageUrls.get(name);
 
 	if (!url) {
 		const source = Object.keys(exports)
 			.map(
 				(exportName) =>
-					`export const ${exportName} = globalThis.${PACKAGES_GLOBAL}[${JSON.stringify(name)}].${exportName};`
+					`export const ${exportName} = globalThis.${PACKAGES_GLOBAL}[${JSON.stringify(bridgeName)}].${exportName};`
 			)
 			.join('\n');
 
@@ -309,6 +317,29 @@ async function packageUrl(name: string): Promise<string> {
 	}
 
 	return url;
+}
+
+async function packageExports(name: RuntimePackageName): Promise<{
+	bridgeName: 'zod' | 'effect' | 'jsonSchemaRuntime';
+	exports: RuntimePackage;
+}> {
+	if (name === 'zod') {
+		zodPackage ??= Object.freeze({ z: (await runtimeModule('zod')).z });
+
+		return { bridgeName: 'zod', exports: zodPackage };
+	}
+
+	if (name === 'effect') {
+		effectPackage ??= Object.freeze({ Schema: (await runtimeModule('effect')).Schema });
+
+		return { bridgeName: 'effect', exports: effectPackage };
+	}
+
+	jsonSchemaRuntimePackage ??= Object.freeze({
+		createJsonSchemaValidator: (await runtimeModule(name)).createJsonSchemaValidator,
+	});
+
+	return { bridgeName: 'jsonSchemaRuntime', exports: jsonSchemaRuntimePackage };
 }
 
 function moduleUrl(source: string): string {

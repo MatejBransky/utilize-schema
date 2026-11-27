@@ -105,6 +105,9 @@ export default defineConfig({
 			'@utilize/typescript': fileURLToPath(
 				new URL('../packages/typescript/src/generator.ts', import.meta.url)
 			),
+			'@utilize/json-schema/runtime': fileURLToPath(
+				new URL('../packages/json-schema/src/runtime.ts', import.meta.url)
+			),
 			'@utilize/json-schema': fileURLToPath(
 				new URL('../packages/json-schema/src/index.ts', import.meta.url)
 			),

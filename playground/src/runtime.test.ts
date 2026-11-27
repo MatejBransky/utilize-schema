@@ -30,9 +30,40 @@ test('Effect reports every invalid field instead of stopping at the first', asyn
 	]);
 });
 
+test('loads generated modules that import the shared JSON Schema runtime', async () => {
+	const bundle = JSON.stringify({
+		rootUri: 'https://example.com/schema.json',
+		documents: { 'https://example.com/schema.json': { type: 'string' } },
+		dialect: '2020-12',
+	});
+	const module = await loadModule(`
+		import { z } from 'zod';
+		import { createJsonSchemaValidator } from '@utilize/json-schema/runtime';
+		const validate = createJsonSchemaValidator(${JSON.stringify(bundle)}, 'assert');
+		export const schema = z.unknown().refine(
+			(value) => validate(value, 'https://example.com/schema.json'),
+			{ message: 'Invalid JSON Schema value' }
+		);
+	`);
+	const schema = rootValidator(module, 'schema');
+
+	await expect(validateWithZod(schema, 'valid')).resolves.toMatchObject({
+		ok: true,
+		value: 'valid',
+		issues: [],
+	});
+	await expect(validateWithZod(schema, 42)).resolves.toMatchObject({
+		ok: false,
+		issues: [{ path: '$', message: 'Invalid JSON Schema value' }],
+	});
+});
+
 test('generated code cannot replace the runtime package bridge', async () => {
 	await loadModule("import { z } from 'zod'; export const schema = z.string();");
 	await loadModule("import { Schema } from 'effect'; export const schema = Schema.String;");
+	await loadModule(
+		"import { createJsonSchemaValidator } from '@utilize/json-schema/runtime'; export const validate = createJsonSchemaValidator;"
+	);
 	const descriptor = Object.getOwnPropertyDescriptor(globalThis, '__utilizePlaygroundPackages');
 
 	assert(descriptor !== undefined, 'Expected the runtime package bridge to be installed.');
@@ -41,10 +72,15 @@ test('generated code cannot replace the runtime package bridge', async () => {
 	assert(isPlainObject(bridge), 'Expected the runtime package bridge to be an object.');
 	assert(isPlainObject(bridge.zod), 'Expected the Zod bridge to be an object.');
 	assert(isPlainObject(bridge.effect), 'Expected the Effect bridge to be an object.');
+	assert(
+		isPlainObject(bridge.jsonSchemaRuntime),
+		'Expected the JSON Schema runtime bridge to be an object.'
+	);
 
 	expect(Object.isFrozen(bridge)).toBe(true);
 	expect(Object.isFrozen(bridge.zod)).toBe(true);
 	expect(Object.isFrozen(bridge.effect)).toBe(true);
+	expect(Object.isFrozen(bridge.jsonSchemaRuntime)).toBe(true);
 	expect(Reflect.set(bridge, 'zod', { z: {} })).toBe(false);
 	expect(Reflect.set(bridge.zod, 'z', {})).toBe(false);
 
