@@ -128,6 +128,25 @@ export interface Person {
 }
 ```
 
+A finite key set becomes a mapped type instead:
+
+```ts
+export type WorkingHours = {
+  [key in Weekday]?: number;
+};
+```
+
+`propertyNames` with an `enum` or `const`, and a `patternProperties` pattern that
+reduces to a key union, narrow the key type. Patterns that a type cannot express
+keep the index signature. A mapped type cannot declare properties next to its
+`[key in …]`, so declared properties are intersected with it:
+
+```ts
+export type Root = { monday: number } & {
+  [key in 'monday' | 'tuesday']?: number;
+};
+```
+
 Enums and `const` become literal unions, filtered and intersected with the
 declared type:
 
@@ -149,7 +168,7 @@ export interface Tree {
 }
 ```
 
-Objects are emitted as interfaces rather than
+Objects without a finite key set are emitted as interfaces rather than
 `type X = Record<string, X>` because TypeScript rejects a mapped type that
 refers to its own alias — an interface with an index signature defers the
 reference correctly.
@@ -247,6 +266,11 @@ generator.
 - Objects are structural in TypeScript, so `additionalProperties: false`
   removes the index signature but cannot make a type truly exact. Use a runtime
   validator if excess keys must be rejected.
+- A `propertyNames` enum or `const` becomes a mapped key type. A
+  `patternProperties` pattern becomes one when it only contains literals,
+  character classes and alternation; an unanchored pattern keeps its open side
+  as `${string}`. Patterns with `*`, `+`, `?`, `.` or a shorthand class keep the
+  index signature.
 - Optional properties use `?`, which is `T | undefined` without
   `exactOptionalPropertyTypes` and `T` with it.
 - A required key that is not declared in `properties` is typed from the

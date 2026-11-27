@@ -21,9 +21,6 @@ export const knownGapCases = {
 	'additionalProperties.json :: additionalProperties with schema': {
 		typeGaps: ['2019-09', '2020-12', 'draft-04', 'draft-06', 'draft-07'],
 	},
-	'additionalProperties.json :: non-ASCII pattern with additionalProperties': {
-		typeGaps: ['2019-09', '2020-12', 'draft-04', 'draft-06', 'draft-07'],
-	},
 	'allOf.json :: allOf combined with anyOf, oneOf': {
 		typeGaps: ['2019-09', '2020-12', 'draft-04', 'draft-06', 'draft-07'],
 	},
@@ -587,15 +584,6 @@ export const knownGapCases = {
 	'propertyNames.json :: propertyNames validation with pattern': {
 		typeGaps: ['2019-09', '2020-12', 'draft-06', 'draft-07'],
 	},
-	'propertyNames.json :: propertyNames with boolean schema false': {
-		typeGaps: ['2019-09', '2020-12', 'draft-06', 'draft-07'],
-	},
-	'propertyNames.json :: propertyNames with const': {
-		typeGaps: ['2019-09', '2020-12', 'draft-06', 'draft-07'],
-	},
-	'propertyNames.json :: propertyNames with enum': {
-		typeGaps: ['2019-09', '2020-12', 'draft-06', 'draft-07'],
-	},
 	'recursiveRef.json :: $recursiveRef with $recursiveAnchor: false works like $ref': {
 		gaps: {
 			'2019-09':
@@ -916,9 +904,6 @@ export const knownGapCases = {
 		},
 	},
 	'unevaluatedProperties.json :: unevaluatedProperties with $ref': {
-		typeGaps: ['2019-09', '2020-12'],
-	},
-	'unevaluatedProperties.json :: unevaluatedProperties with adjacent patternProperties': {
 		typeGaps: ['2019-09', '2020-12'],
 	},
 	'unevaluatedProperties.json :: unevaluatedProperties with anyOf': {
