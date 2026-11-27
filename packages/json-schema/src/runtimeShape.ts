@@ -172,25 +172,37 @@ function copyObjectShape(
 ): void {
 	const raw = source ?? node;
 
-	if (isPlainObject(raw.properties) && isPlainObject(node.properties)) {
-		setField(
-			result,
-			'properties',
-			Object.fromEntries(Object.entries(node.properties).map(([key, value]) => [key, shape(value)]))
-		);
+	copySchemaMap(raw.properties, node.properties, result, 'properties', shape);
+	copySchemaMap(raw.patternProperties, node.patternProperties, result, 'patternProperties', shape);
+
+	if (raw.additionalProperties !== undefined && isParsedJSONSchema(node.additionalProperties)) {
+		setField(result, 'additionalProperties', shape(node.additionalProperties));
 	}
 
-	for (const keyword of ['$defs', 'definitions'] as const) {
-		const definitions = node[keyword];
+	copySchemaMap(raw.$defs, node.$defs, result, '$defs', shape);
+	copySchemaMap(raw.definitions, node.definitions, result, 'definitions', shape);
+}
 
-		if (isPlainObject(definitions)) {
-			setField(
-				result,
-				keyword,
-				Object.fromEntries(Object.entries(definitions).map(([key, value]) => [key, shape(value)]))
-			);
+function copySchemaMap(
+	raw: unknown,
+	parsed: unknown,
+	result: ShapeBuilder,
+	keyword: 'properties' | 'patternProperties' | '$defs' | 'definitions',
+	shape: Shape
+): void {
+	if (!isPlainObject(raw) || !isPlainObject(parsed)) {
+		return;
+	}
+
+	const entries: [string, ParsedJSONSchema][] = [];
+
+	for (const [key, value] of Object.entries(parsed)) {
+		if (isParsedJSONSchema(value)) {
+			entries.push([key, shape(value)]);
 		}
 	}
+
+	setField(result, keyword, Object.fromEntries(entries));
 }
 
 function copyArrayShape(

@@ -50,6 +50,69 @@ test('does not project validation keywords disabled by a custom vocabulary', asy
 	expect(serializedValidate('not a number', guard.refFor(root))).toBe(true);
 });
 
+test('detects a disabled validation vocabulary behind a reference', async () => {
+	const { root } = await parse(
+		{
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			$ref: 'https://example.com/value.json',
+		},
+		{
+			cwd: __dirname + '/',
+			fileName: 'Root.json',
+			dialect: '2020-12',
+			externalSchemas: {
+				'https://example.com/no-validation.json': metaSchema,
+				'https://example.com/value.json': {
+					$schema: 'https://example.com/no-validation.json',
+					type: 'number',
+					minimum: 10,
+				},
+			},
+		}
+	);
+
+	if (!isParsedJSONSchemaObject(root)) {
+		throw new TypeError('Expected an object root');
+	}
+
+	const guard = createRuntimeGuard(root);
+
+	expect(guard).toBeDefined();
+
+	if (!guard) {
+		throw new TypeError('Expected a runtime guard');
+	}
+
+	const validate = createJsonSchemaValidator(guard.bundle, 'assert');
+
+	expect(validate(1, guard.refFor(root))).toBe(true);
+	expect(validate('not a number', guard.refFor(root))).toBe(true);
+});
+
+test('keeps object map keywords in the native projection', async () => {
+	const { root } = await parse(
+		{
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'object',
+			patternProperties: { '^x-': { type: 'number' } },
+			additionalProperties: { type: 'string' },
+			unevaluatedProperties: false,
+		},
+		{ cwd: __dirname + '/', fileName: 'Root.json', dialect: '2020-12' }
+	);
+
+	if (!isParsedJSONSchemaObject(root)) {
+		throw new TypeError('Expected an object root');
+	}
+
+	const guard = createRuntimeGuard(root);
+
+	expect(guard?.shape).toMatchObject({
+		patternProperties: { '^x-': { type: 'number' } },
+		additionalProperties: { type: 'string' },
+	});
+});
+
 test('keeps unevaluated array rests open in the native projection', async () => {
 	const { root } = await parse(
 		{

@@ -164,6 +164,32 @@ describe('$schema versions', () => {
 		expect(decode(Root, { value: 'root', extra: true })).toBeUndefined();
 	});
 
+	test('guard preserves typed additionalProperties decoding', async () => {
+		const Root = await compileToSchema({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'object',
+			properties: { id: { type: 'string' } },
+			additionalProperties: { type: 'string' },
+			unevaluatedProperties: false,
+		});
+
+		expect(decode(Root, { id: 'x', extra: 'y' })).toEqual({ id: 'x', extra: 'y' });
+		expect(decode(Root, { id: 'x', extra: 1 })).toBeUndefined();
+	});
+
+	test('guard preserves patternProperties decoding', async () => {
+		const Root = await compileToSchema({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'object',
+			patternProperties: { '^S_': { type: 'string' } },
+			unevaluatedProperties: false,
+		});
+
+		expect(decode(Root, { S_name: 'a' })).toEqual({ S_name: 'a' });
+		expect(decode(Root, { S_name: 1 })).toBeUndefined();
+		expect(decode(Root, { other: 'a' })).toBeUndefined();
+	});
+
 	test('validates unevaluated properties across allOf branches', async () => {
 		const Root = await compileToSchema({
 			$schema: 'https://json-schema.org/draft/2019-09/schema',
