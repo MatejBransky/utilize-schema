@@ -1,6 +1,7 @@
 import { isParsedJSONSchemaObject, Meta, parse } from '@utilize/json-schema';
 import type { JSONSchema, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 import { formatSource, ts } from '@utilize/test-utils/code';
+import { commandOutput } from '@utilize/test-utils/process';
 
 import { generate } from '../src/generator';
 import type { GenerateOptions } from '../src/generator';
@@ -17,7 +18,7 @@ export type TestSchema = JSONSchema & {
 	dependentSchemas?: Record<string, JSONSchema>;
 };
 
-export { ts };
+export { commandOutput, ts };
 
 export function withMeta(obj: JSONSchema, meta: Partial<Meta> = {}): ParsedJSONSchemaObject {
 	Object.defineProperty(obj, Meta, {
@@ -32,21 +33,6 @@ export function withMeta(obj: JSONSchema, meta: Partial<Meta> = {}): ParsedJSONS
 	}
 
 	return obj;
-}
-
-/** The captured output of a failed child process, without trusting the thrown value. */
-export function commandOutput(error: unknown) {
-	if (typeof error !== 'object' || error === null) {
-		return { stdout: '', stderr: '' };
-	}
-
-	const stdout = 'stdout' in error ? error.stdout : undefined;
-	const stderr = 'stderr' in error ? error.stderr : undefined;
-
-	return {
-		stdout: typeof stdout === 'string' ? stdout : '',
-		stderr: typeof stderr === 'string' ? stderr : '',
-	};
 }
 
 export interface CompileOptions extends GenerateOptions {

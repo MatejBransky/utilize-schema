@@ -232,6 +232,12 @@ expected result matches, rounded down. Known gaps stay in the denominator, so a
 badge cannot hide them. The TypeScript runner skips `format-assertion` cases,
 which a type cannot check, so its denominator is smaller.
 
+The `json-schema-to-typescript` row is the pinned competitor, measured by
+`@utilize/test-utils` through the same type-level runner and suite revision. Its
+baseline is
+`packages/test-utils/src/suite/jsonSchemaToTypescriptBaseline.ts`; it is a
+comparison record, not a local generator.
+
 The numbers live in `packages/*/test/suite/baseline.ts` and each package's suite
 test asserts them. Every dialect is also pinned case by case: the runtime
 generators record failing cases in `knownFailuresByDialect.ts`, and TypeScript
@@ -245,6 +251,7 @@ in the same pull request:
 pnpm --filter @utilize/zod update:suite-baseline
 pnpm --filter @utilize/effect update:suite-baseline
 pnpm --filter @utilize/typescript update:suite-baseline
+pnpm --filter @utilize/test-utils update:suite-baseline
 ```
 
 CI runs `pnpm check:suite-badge` and fails when a committed badge no longer

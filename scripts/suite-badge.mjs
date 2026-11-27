@@ -1,6 +1,6 @@
-// Renders one conformance badge per generator and JSON Schema dialect from the
-// recorded suite baselines. Each baseline is asserted by that package's suite
-// test, so a badge can only be stale when the baseline was updated without
+// Renders one conformance badge per measured library and JSON Schema dialect
+// from the recorded suite baselines. Each baseline is asserted by a suite test,
+// so a badge can only be stale when the baseline was updated without
 // regenerating it. With `--check` it writes nothing and fails on that.
 // Requires Node 24+ for built-in TypeScript type stripping of baseline.ts.
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -9,15 +9,21 @@ import { pathToFileURL } from 'node:url';
 
 import { pickColor, renderBadge } from './badge.mjs';
 
-const PACKAGES = ['zod', 'effect', 'typescript'];
+const BASELINES = [
+	['zod', ['packages', 'zod', 'test', 'suite', 'baseline.ts']],
+	['effect', ['packages', 'effect', 'test', 'suite', 'baseline.ts']],
+	['typescript', ['packages', 'typescript', 'test', 'suite', 'baseline.ts']],
+	[
+		'json-schema-to-typescript',
+		['packages', 'test-utils', 'src', 'suite', 'jsonSchemaToTypescriptBaseline.ts'],
+	],
+];
 const ROOT = resolve(import.meta.dirname, '..');
 const BADGE_DIRECTORY = join(ROOT, '.github', 'badges');
 const IS_CHECK = process.argv.includes('--check');
 
-async function loadBaseline(packageName) {
-	const module = await import(
-		pathToFileURL(join(ROOT, 'packages', packageName, 'test', 'suite', 'baseline.ts')).href
-	);
+async function loadBaseline(parts) {
+	const module = await import(pathToFileURL(join(ROOT, ...parts)).href);
 
 	return module.baseline;
 }
@@ -80,12 +86,12 @@ async function run() {
 		mkdirSync(BADGE_DIRECTORY, { recursive: true });
 	}
 
-	for (const packageName of PACKAGES) {
-		const baseline = await loadBaseline(packageName);
+	for (const [name, parts] of BASELINES) {
+		const baseline = await loadBaseline(parts);
 
 		for (const [dialect, entry] of Object.entries(baseline)) {
-			recordBadge(packageName, dialect, entry, staleBadges);
-			expectedBadges.add(badgePathFor(packageName, dialect));
+			recordBadge(name, dialect, entry, staleBadges);
+			expectedBadges.add(badgePathFor(name, dialect));
 		}
 	}
 

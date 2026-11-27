@@ -1,0 +1,217 @@
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+import { describe, expect, test } from 'vitest';
+
+import { DRAFT_7, isCompatible, OTHER_DIALECTS } from '../src/suite/compatibility';
+import type { Dialect } from '../src/suite/compatibility';
+import { baseline } from '../src/suite/jsonSchemaToTypescriptBaseline';
+import type { DialectStats } from '../src/suite/jsonSchemaToTypescriptBaseline';
+import { renderJsonSchemaToTypescriptCase } from '../src/suite/jsonSchemaToTypescript';
+import { loadSuiteFiles, suiteCaseKey } from '../src/suite/loadSuite';
+import type { SuiteCase } from '../src/suite/loadSuite';
+import { typecheckCases } from '../src/suite/typecheck';
+import type { TypecheckModule } from '../src/suite/typecheck';
+
+/**
+ * Runs the official JSON Schema Test Suite through json-schema-to-typescript
+ * with the same type-level method as `@utilize/typescript`.
+ *
+ * Both generators are compiled from the same pinned suite revision, skip the
+ * same `format-assertion` cases, serve `externalSchemas` from memory, and write
+ * every instance as a typed constant that one `tsc --strict` run checks. A case
+ * passes when no valid instance is rejected and no invalid instance is
+ * accepted.
+ *
+ * This is a comparison baseline, not a gate on the competitor: the numbers
+ * record what the pinned json-schema-to-typescript version does. Update them on
+ * purpose with `pnpm --filter @utilize/test-utils update:suite-baseline`.
+ */
+
+const files = loadSuiteFiles();
+const UPDATE_BASELINE = process.env.UPDATE_SUITE_BASELINE === '1';
+
+interface Failure {
+	key: string;
+	reasons: string[];
+}
+
+interface DialectMeasurement {
+	counts: DialectStats;
+	failures: Failure[];
+	typeGapKeys: string[];
+}
+
+const DIALECTS = {
+	'draft-04': OTHER_DIALECTS['draft-04'],
+	'draft-06': OTHER_DIALECTS['draft-06'],
+	'draft-07': DRAFT_7,
+	'2019-09': OTHER_DIALECTS['2019-09'],
+	'2020-12': OTHER_DIALECTS['2020-12'],
+} as const satisfies Record<string, Dialect>;
+
+const DIALECT_NAMES = ['draft-04', 'draft-06', 'draft-07', '2019-09', '2020-12'] as const;
+
+async function measure(token: Dialect): Promise<DialectMeasurement> {
+	const runnable: { testCase: SuiteCase; key: string }[] = [];
+
+	for (const file of files) {
+		for (const testCase of file.cases) {
+			if (!isCompatible(testCase.compatibility, token)) {
+				continue;
+			}
+
+			if (testCase.tags?.includes('format-assertion')) {
+				continue;
+			}
+
+			runnable.push({ testCase, key: suiteCaseKey(file, testCase) });
+		}
+	}
+
+	const modules: TypecheckModule[] = [];
+	const crashes = new Map<string, string>();
+
+	for (const { testCase, key } of runnable) {
+		try {
+			modules.push({ key, module: await renderJsonSchemaToTypescriptCase(testCase) });
+		} catch (error) {
+			crashes.set(key, error instanceof Error ? error.message : String(error));
+		}
+	}
+
+	const results = await typecheckCases(modules);
+	const failures: Failure[] = [];
+	const typeGapKeys: string[] = [];
+	let passing = 0;
+	let typeGaps = 0;
+
+	for (const { key } of runnable) {
+		const reasons: string[] = [];
+		const crash = crashes.get(key);
+
+		if (crash !== undefined) {
+			reasons.push(`crashes: ${crash.split('\n')[0]}`);
+		}
+
+		for (const message of results.invalidModules.get(key) ?? []) {
+			reasons.push(`invalid TypeScript: ${message}`);
+		}
+
+		for (const index of results.validRejected.get(key) ?? []) {
+			reasons.push(`rejects valid instance ${index}`);
+		}
+
+		if (reasons.length > 0) {
+			failures.push({ key, reasons });
+			continue;
+		}
+
+		if ((results.invalidAccepted.get(key) ?? []).length > 0) {
+			typeGaps++;
+			typeGapKeys.push(key);
+			continue;
+		}
+
+		passing++;
+	}
+
+	const instances = runnable.reduce((total, entry) => total + entry.testCase.tests.length, 0);
+	let passingInstances = 0;
+
+	for (const entry of modules) {
+		const rejectedValid = new Set(results.validRejected.get(entry.key) ?? []);
+		const acceptedInvalid = new Set(results.invalidAccepted.get(entry.key) ?? []);
+
+		for (const instance of entry.module.instances) {
+			const failed = instance.valid
+				? rejectedValid.has(instance.index)
+				: acceptedInvalid.has(instance.index);
+
+			if (!failed) {
+				passingInstances++;
+			}
+		}
+	}
+
+	if (results.unattributed.length > 0) {
+		throw new Error(`Unattributed diagnostics:\n${results.unattributed.join('\n')}`);
+	}
+
+	return {
+		counts: {
+			cases: runnable.length,
+			passing,
+			typeGaps,
+			gaps: failures.length,
+			instances,
+			passingInstances,
+		},
+		failures,
+		typeGapKeys,
+	};
+}
+
+function renderBaseline(measured: Record<string, DialectStats>) {
+	const entries = Object.entries(measured)
+		.map(([dialect, counts]) => {
+			const lines = Object.entries(counts)
+				.map(([key, value]) => `\t\t${key}: ${value},`)
+				.join('\n');
+
+			return `\t${JSON.stringify(dialect)}: {\n${lines}\n\t},`;
+		})
+		.join('\n');
+
+	return `// Generated by \`pnpm --filter @utilize/test-utils update:suite-baseline\`; do not edit by hand.
+export interface DialectStats {
+	cases: number;
+	passing: number;
+	typeGaps: number;
+	gaps: number;
+	instances: number;
+	passingInstances: number;
+}
+
+export const baseline = {
+${entries}
+} satisfies Record<string, DialectStats>;
+`;
+}
+
+describe('json-schema-to-typescript conformance', () => {
+	test('matches the recorded per-dialect baseline', async () => {
+		const measured: Record<string, DialectStats> = {};
+		const report: string[] = [];
+
+		for (const dialect of DIALECT_NAMES) {
+			const { counts, failures, typeGapKeys } = await measure(DIALECTS[dialect]);
+			measured[dialect] = counts;
+
+			const details = [
+				`${dialect}: ${counts.passing}/${counts.cases} cases, ${counts.passingInstances}/${counts.instances} instances`,
+				`Structural gaps (${failures.length}):`,
+				...failures.map(({ key, reasons }) => `${key}: ${reasons.join('; ')}`).sort(),
+				`Type gaps (${typeGapKeys.length}):`,
+				...typeGapKeys.sort(),
+			].join('\n');
+
+			report.push(
+				`json-schema-to-typescript ${dialect}: ${counts.passing}/${counts.cases} cases, ${counts.passingInstances}/${counts.instances} instances`
+			);
+
+			if (!UPDATE_BASELINE) {
+				expect(counts, details).toEqual(baseline[dialect]);
+			}
+		}
+
+		console.log(report.join('\n'));
+
+		if (UPDATE_BASELINE) {
+			writeFileSync(
+				join(__dirname, '../src/suite/jsonSchemaToTypescriptBaseline.ts'),
+				renderBaseline(measured)
+			);
+		}
+	}, 600_000);
+});

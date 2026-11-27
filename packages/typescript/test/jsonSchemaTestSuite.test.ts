@@ -6,14 +6,14 @@ import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 import { DRAFT_7, isCompatible, OTHER_DIALECTS } from '@utilize/test-utils/suite/compatibility';
 import { loadSuiteFiles, suiteCaseKey } from '@utilize/test-utils/suite/loadSuite';
 import type { SuiteCase } from '@utilize/test-utils/suite/loadSuite';
+import { typecheckCases } from '@utilize/test-utils/suite/typecheck';
+import type { TypecheckModule } from '@utilize/test-utils/suite/typecheck';
 
 import { baseline } from './suite/baseline';
 import { renderCaseModule } from './suite/generateCase';
 import { knownGaps } from './suite/knownGaps';
 import { knownGapCases } from './suite/knownGapCases';
 import type { CaseGaps, GapDialect } from './suite/knownGapCases';
-import { typecheckCases } from './suite/typecheck';
-import type { TypecheckModule } from './suite/typecheck';
 
 /**
  * Runs the official JSON Schema Test Suite against the generated TypeScript
