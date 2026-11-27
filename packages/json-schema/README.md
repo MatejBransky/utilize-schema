@@ -22,7 +22,10 @@ generators import. It never emits a target schema.
 - **Runtime validators.** `@utilize/json-schema/formats` exports the structural
   format checks (`formatEmail`, `formatUri`, `formatDateTime`, …) that generated
   Zod and Effect schemas import instead of inlining them.
-- **89% line coverage.**
+- **Opt-in validation.** Pass any `SchemaValidator` to `parse` or `compile`, or
+  use the included Ajv adapter to check every resolved document against its
+  dialect's meta-schema.
+- **90% line coverage.**
 
 ```sh
 pnpm add @utilize/json-schema

@@ -18,8 +18,9 @@ export interface SchemaValidationContext {
 	 */
 	filePath: string;
 	/**
-	 * Dialect resolved from `$schema`, `dialect` and reference inheritance, so a
-	 * validator checks the same dialect the generator will use.
+	 * Dialect the parser resolved for the document root from `$schema`,
+	 * `dialect` and reference inheritance. A document that embeds resources of
+	 * another dialect is validated as a whole against this dialect.
 	 */
 	dialect: DialectId;
 }

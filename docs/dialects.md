@@ -99,9 +99,9 @@ specification only says they are ignored. They are reported as
 ## Schema validation
 
 The parser checks keywords against the dialect, but it does not reject a schema
-whose values have the wrong shape: `{"type": "nonsense"}` currently generates a
-permissive `z.unknown()`. Validation is an opt-in step that checks every
-resolved document against its dialect's meta-schema:
+whose values have the wrong shape: `{"type": "nonsense"}` generates a permissive
+schema instead (`z.unknown()` for Zod). Validation is an opt-in step that checks
+every resolved document against its dialect's meta-schema:
 
 ```sh
 pnpm add -D ajv

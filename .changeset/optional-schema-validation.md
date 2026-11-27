@@ -18,5 +18,6 @@ replaces it with any function, so Ajv stays out of the install for callers that
 do not validate. Draft-04 schemas also need `ajv-draft-04`.
 
 `@utilize/json-schema` exports the adapter as the new `./validate/ajv` entry and
-the validation types, `SchemaValidator` and `SchemaValidationError`, from the
-main entry.
+the validation API from the main entry: `SchemaValidator`, the finding, context
+and report types, `SchemaValidationError`, and `resolveDocumentDialect`, which
+resolves a document's dialect the way `parse` does.

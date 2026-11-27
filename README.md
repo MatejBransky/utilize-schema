@@ -106,7 +106,7 @@ lists the options.
 
 ## 📦 Packages
 
-- **[@utilize/json-schema](./packages/json-schema)** — Resolves `$ref`, links nodes with metadata, provides the CLI runner and compile helpers the three generators share, and exports the runtime format validators generated schemas import and the optional Ajv validation adapter.
+- **[@utilize/json-schema](./packages/json-schema)** — Resolves `$ref`, links nodes with metadata, provides the CLI runner and compile helpers the three generators share, exports the runtime format validators generated schemas import, and the optional Ajv adapter at `./validate/ajv`.
 
   [![npm version](https://img.shields.io/npm/v/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
   [![weekly downloads](https://img.shields.io/npm/dw/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
@@ -187,8 +187,8 @@ directory or stdout. Generated files start with a "do not edit" banner
 [docs/dialects.md](./docs/dialects.md) for the dialect flags.
 
 `--validate` checks every resolved document against the meta-schema of the
-dialect its `$schema` selects, and stops before writing anything when a schema
-is invalid. It needs the optional `ajv` package; pass `--validator <module>`
+dialect the parser resolves, and stops before writing anything when a schema is
+invalid. It needs the optional `ajv` package; pass `--validator <module>`
 to use another validator instead. Draft-04 schemas also need `ajv-draft-04`.
 See [docs/dialects.md](./docs/dialects.md#schema-validation).
 
