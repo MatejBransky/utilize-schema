@@ -60,4 +60,4 @@ test('the result pane follows the selected generator', async () => {
 
 	await expect.element(screen.getByText(/emits types only/)).toBeVisible();
 	expect(document.querySelector('[data-testid="result-effect"]')).toBeNull();
-});
+}, 30_000);

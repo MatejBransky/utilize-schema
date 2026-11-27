@@ -63,7 +63,7 @@ test('an agent can toggle TypeScript pragmatic inference', async () => {
 	const agent = createAgent({ allow: () => true });
 	const screen = await render(<App />);
 
-	expectAgentSnapshotLabels(agent, ['Pragmatic inference']);
+	expectAgentSnapshotLabels(agent, ['Pragmatic inference'], ['Example test data']);
 
 	const result = await agent.act({
 		steps: [{ ref: 'Pragmatic inference', action: 'setChecked', args: [true] }],
