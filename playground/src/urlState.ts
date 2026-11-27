@@ -1,4 +1,5 @@
 import type { KeywordPolicy } from '@utilize/json-schema';
+import type { InferenceMode } from '@utilize/typescript';
 
 import type { SchemaFile } from './bundle';
 import { exampleData } from './examples';
@@ -11,14 +12,14 @@ import type { TargetId } from './targets';
 const GENERATOR_PARAM = 'generator';
 const KEYWORD_POLICY_PARAM = 'keyword-policy';
 const FORMAT_MODE_PARAM = 'format-mode';
-const INFER_FORMAT_AS_STRING_PARAM = 'infer-format-as-string';
+const INFERENCE_PARAM = 'inference';
 
 export interface UrlState {
 	files: SchemaFile[];
 	target: TargetId;
 	keywordPolicy: KeywordPolicy;
 	formatMode: FormatMode;
-	inferFormatAsString: boolean;
+	inference: InferenceMode;
 	data: string;
 }
 
@@ -48,38 +49,27 @@ export function readFormatModeParam(url: URL): FormatMode | null {
 	return isFormatMode(value) ? value : null;
 }
 
-export function readInferFormatAsStringParam(url: URL): boolean | null {
-	const value = url.searchParams.get(INFER_FORMAT_AS_STRING_PARAM);
+export function readInferenceParam(url: URL): InferenceMode | null {
+	const value = url.searchParams.get(INFERENCE_PARAM);
 
-	if (value === 'true') {
-		return true;
-	}
-
-	if (value === 'false') {
-		return false;
-	}
-
-	return null;
+	return value === 'spec' || value === 'pragmatic' ? value : null;
 }
 
 interface UrlOverrides {
 	target: TargetId | null;
 	keywordPolicy: KeywordPolicy | null;
 	formatMode: FormatMode | null;
-	inferFormatAsString: boolean | null;
+	inference: InferenceMode | null;
 }
 
-type GeneratorSettings = Pick<
-	UrlState,
-	'target' | 'keywordPolicy' | 'formatMode' | 'inferFormatAsString'
->;
+type GeneratorSettings = Pick<UrlState, 'target' | 'keywordPolicy' | 'formatMode' | 'inference'>;
 
 function readUrlOverrides(url: URL): UrlOverrides {
 	return {
 		target: readGeneratorParam(url),
 		keywordPolicy: readKeywordPolicyParam(url),
 		formatMode: readFormatModeParam(url),
-		inferFormatAsString: readInferFormatAsStringParam(url),
+		inference: readInferenceParam(url),
 	};
 }
 
@@ -88,7 +78,7 @@ function hasOverrides(overrides: UrlOverrides): boolean {
 		overrides.target !== null ||
 		overrides.keywordPolicy !== null ||
 		overrides.formatMode !== null ||
-		overrides.inferFormatAsString !== null
+		overrides.inference !== null
 	);
 }
 
@@ -97,7 +87,7 @@ function applyOverrides(base: GeneratorSettings, overrides: UrlOverrides): Gener
 		target: overrides.target ?? base.target,
 		keywordPolicy: overrides.keywordPolicy ?? base.keywordPolicy,
 		formatMode: overrides.formatMode ?? base.formatMode,
-		inferFormatAsString: overrides.inferFormatAsString ?? base.inferFormatAsString,
+		inference: overrides.inference ?? base.inference,
 	};
 }
 
@@ -112,7 +102,7 @@ export function readUrlState(url: URL, base: UrlState, example?: Example): UrlSt
 					target: defaultTarget,
 					keywordPolicy: base.keywordPolicy,
 					formatMode: base.formatMode,
-					inferFormatAsString: base.inferFormatAsString,
+					inference: base.inference,
 				},
 				overrides
 			),

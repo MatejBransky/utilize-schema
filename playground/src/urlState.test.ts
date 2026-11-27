@@ -5,7 +5,7 @@ import type { Example } from './examples';
 import {
 	readFormatModeParam,
 	readGeneratorParam,
-	readInferFormatAsStringParam,
+	readInferenceParam,
 	readKeywordPolicyParam,
 	readUrlState,
 } from './urlState';
@@ -21,7 +21,7 @@ function state(): UrlState {
 		target: 'effect',
 		keywordPolicy: 'ignore',
 		formatMode: 'annotate',
-		inferFormatAsString: false,
+		inference: 'spec',
 		data: '{"saved":true}',
 	};
 }
@@ -64,9 +64,9 @@ test('applies each recognized URL parameter over the saved state', () => {
 		...base,
 		formatMode: 'assert',
 	});
-	expect(readUrlState(new URL('https://example.com/?infer-format-as-string=true'), base)).toEqual({
+	expect(readUrlState(new URL('https://example.com/?inference=pragmatic'), base)).toEqual({
 		...base,
-		inferFormatAsString: true,
+		inference: 'pragmatic',
 	});
 });
 
@@ -78,7 +78,7 @@ test('loads an example even when it is the only recognized URL parameter', () =>
 		target: 'zod',
 		keywordPolicy: 'ignore',
 		formatMode: 'annotate',
-		inferFormatAsString: false,
+		inference: 'spec',
 		data: '"green"',
 	});
 });
@@ -92,7 +92,7 @@ test('URL settings override an example while the saved policy and format remain 
 		target: 'typescript',
 		keywordPolicy: 'warn',
 		formatMode: 'annotate',
-		inferFormatAsString: false,
+		inference: 'spec',
 		data: '"green"',
 	});
 });
@@ -105,17 +105,13 @@ test('parameter readers ignore missing and invalid values', () => {
 	expect(readGeneratorParam(url)).toBe('effect');
 	expect(readKeywordPolicyParam(url)).toBe('warn');
 	expect(readFormatModeParam(url)).toBe('assert');
-	expect(readInferFormatAsStringParam(url)).toBeNull();
+	expect(readInferenceParam(url)).toBeNull();
 
 	const empty = new URL('https://example.com/');
 	expect(readGeneratorParam(empty)).toBeNull();
 	expect(readKeywordPolicyParam(empty)).toBeNull();
 	expect(readFormatModeParam(empty)).toBeNull();
-	expect(readInferFormatAsStringParam(empty)).toBeNull();
-	expect(
-		readInferFormatAsStringParam(new URL('https://example.com/?infer-format-as-string=true'))
-	).toBe(true);
-	expect(
-		readInferFormatAsStringParam(new URL('https://example.com/?infer-format-as-string=false'))
-	).toBe(false);
+	expect(readInferenceParam(empty)).toBeNull();
+	expect(readInferenceParam(new URL('https://example.com/?inference=pragmatic'))).toBe('pragmatic');
+	expect(readInferenceParam(new URL('https://example.com/?inference=spec'))).toBe('spec');
 });

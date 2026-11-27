@@ -489,16 +489,16 @@ test('the format select switches between annotation and assertion', async () => 
 test('the format controls follow the type generator', async () => {
 	const screen = await render(<App />);
 
-	expect(screen.getByRole('switch', { name: 'Format as string' }).query()).toBeNull();
+	expect(screen.getByRole('switch', { name: 'Pragmatic inference' }).query()).toBeNull();
 
 	await screen.getByRole('combobox', { name: 'Generator' }).click();
 	await screen.getByRole('option', { name: /TypeScript/ }).click();
 
 	await expect.element(screen.getByRole('combobox', { name: 'Format' })).toBeDisabled();
-	await expect.element(screen.getByRole('switch', { name: 'Format as string' })).toBeVisible();
+	await expect.element(screen.getByRole('switch', { name: 'Pragmatic inference' })).toBeVisible();
 });
 
-test('the format-as-string switch infers string for the type generator', async () => {
+test('the pragmatic inference switch infers string for the type generator', async () => {
 	localStorage.setItem(
 		'utilize-schema-playground',
 		JSON.stringify({
@@ -514,7 +514,7 @@ test('the format-as-string switch infers string for the type generator', async (
 		})
 	);
 	const screen = await render(<App />);
-	const toggle = screen.getByRole('switch', { name: 'Format as string' });
+	const toggle = screen.getByRole('switch', { name: 'Pragmatic inference' });
 
 	await expect.element(toggle).toBeVisible();
 	await expect.element(toggle).not.toBeChecked();
@@ -525,18 +525,18 @@ test('the format-as-string switch infers string for the type generator', async (
 
 	await expect.element(toggle).toBeChecked();
 	await vi.waitFor(() =>
-		expect(new URL(location.href).searchParams.get('infer-format-as-string')).toBe('true')
+		expect(new URL(location.href).searchParams.get('inference')).toBe('pragmatic')
 	);
 	await vi.waitFor(() => expect(generatedCode()).toContain('export type Root = string;'));
 
 	await screen.getByRole('button', { name: 'Share' }).click();
 	await vi.waitFor(() =>
-		expect(new URL(location.href).searchParams.get('infer-format-as-string')).toBe('true')
+		expect(new URL(location.href).searchParams.get('inference')).toBe('pragmatic')
 	);
 	expect(new URL(location.href).hash).toContain('data=');
 	await vi.waitFor(() =>
-		expect(JSON.parse(localStorage.getItem('utilize-schema-playground')!).inferFormatAsString).toBe(
-			true
+		expect(JSON.parse(localStorage.getItem('utilize-schema-playground')!).inference).toBe(
+			'pragmatic'
 		)
 	);
 });
@@ -564,7 +564,7 @@ test('an agent can switch the generator', async () => {
 	);
 });
 
-test('an agent can toggle TypeScript format inference', async () => {
+test('an agent can toggle TypeScript pragmatic inference', async () => {
 	localStorage.setItem(
 		'utilize-schema-playground',
 		JSON.stringify({
@@ -583,15 +583,15 @@ test('an agent can toggle TypeScript format inference', async () => {
 	await render(<App />);
 
 	const labels = agent.snapshot().map((entry) => entry.label);
-	expect(labels).toContain('Format as string');
+	expect(labels).toContain('Pragmatic inference');
 
 	const result = await agent.act({
-		steps: [{ ref: 'Format as string', action: 'setChecked', args: [true] }],
+		steps: [{ ref: 'Pragmatic inference', action: 'setChecked', args: [true] }],
 	});
 
 	expect(result.ok, result.error?.message).toBe(true);
 	await vi.waitFor(() =>
-		expect(new URL(location.href).searchParams.get('infer-format-as-string')).toBe('true')
+		expect(new URL(location.href).searchParams.get('inference')).toBe('pragmatic')
 	);
 });
 

@@ -1,5 +1,6 @@
 import { parse } from '@utilize/json-schema';
 import type { KeywordPolicy } from '@utilize/json-schema';
+import type { InferenceMode } from '@utilize/typescript';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { RefObject } from 'react';
 
@@ -53,7 +54,7 @@ interface SettingsSetters {
 	setTarget(target: TargetId): void;
 	setKeywordPolicy(policy: KeywordPolicy): void;
 	setFormatMode(mode: FormatMode): void;
-	setInferFormatAsString(value: boolean): void;
+	setInference(value: InferenceMode): void;
 	setData(data: string): void;
 }
 
@@ -67,7 +68,7 @@ export function usePlayground() {
 		settings.target,
 		settings.keywordPolicy,
 		settings.formatMode,
-		settings.inferFormatAsString
+		settings.inference
 	);
 	const theme = useTheme();
 	const editors = useEditorNavigation(workspace.setActiveId);
@@ -87,7 +88,7 @@ export function usePlayground() {
 		settings.target,
 		settings.keywordPolicy,
 		settings.formatMode,
-		settings.inferFormatAsString,
+		settings.inference,
 		generation.code,
 		testData.data,
 		editors.codeEditorRef
@@ -104,7 +105,7 @@ export function usePlayground() {
 		target: settings.target,
 		keywordPolicy: settings.keywordPolicy,
 		formatMode: settings.formatMode,
-		inferFormatAsString: settings.inferFormatAsString,
+		inference: settings.inference,
 		data: testData.data,
 	});
 
@@ -134,7 +135,7 @@ interface PersistedWorkspace {
 	target: TargetId;
 	keywordPolicy: KeywordPolicy;
 	formatMode: FormatMode;
-	inferFormatAsString: boolean;
+	inference: InferenceMode;
 	data: string;
 }
 
@@ -143,19 +144,19 @@ function useWorkspacePersistence({
 	target,
 	keywordPolicy,
 	formatMode,
-	inferFormatAsString,
+	inference,
 	data,
 }: PersistedWorkspace) {
 	useEffect(() => {
 		try {
 			localStorage.setItem(
 				PLAYGROUND_STORAGE_KEY,
-				JSON.stringify({ files, target, keywordPolicy, formatMode, inferFormatAsString, data })
+				JSON.stringify({ files, target, keywordPolicy, formatMode, inference, data })
 			);
 		} catch {
 			// Storage can be full or denied. Keep the workspace in memory.
 		}
-	}, [files, target, keywordPolicy, formatMode, inferFormatAsString, data]);
+	}, [files, target, keywordPolicy, formatMode, inference, data]);
 }
 
 interface ExampleSelection {
@@ -192,18 +193,18 @@ function useGeneratorSettings(initial: UrlState) {
 	const [target, setTarget] = useState<TargetId>(initial.target);
 	const [keywordPolicy, setKeywordPolicy] = useState<KeywordPolicy>(initial.keywordPolicy);
 	const [formatMode, setFormatMode] = useState<FormatMode>(initial.formatMode);
-	const [inferFormatAsString, setInferFormatAsString] = useState(initial.inferFormatAsString);
+	const [inference, setInference] = useState(initial.inference);
 
 	useEffect(() => {
 		const url = new URL(location.href);
-		const inferred = target === 'typescript' ? String(inferFormatAsString) : null;
+		const inferred = target === 'typescript' ? String(inference) : null;
 
 		if (
 			url.hash ||
 			(url.searchParams.get(playgroundParams.generator) === target &&
 				url.searchParams.get(playgroundParams.keywordPolicy) === keywordPolicy &&
 				url.searchParams.get(playgroundParams.formatMode) === formatMode &&
-				url.searchParams.get(playgroundParams.inferFormatAsString) === inferred)
+				url.searchParams.get(playgroundParams.inference) === inferred)
 		) {
 			return;
 		}
@@ -213,19 +214,18 @@ function useGeneratorSettings(initial: UrlState) {
 				[playgroundParams.generator]: target,
 				[playgroundParams.keywordPolicy]: keywordPolicy,
 				[playgroundParams.formatMode]: formatMode,
-				[playgroundParams.inferFormatAsString]: inferred,
+				[playgroundParams.inference]: inferred,
 			},
 			'replace'
 		);
-	}, [target, keywordPolicy, formatMode, inferFormatAsString]);
+	}, [target, keywordPolicy, formatMode, inference]);
 
 	function applyGenerator(id: TargetId) {
 		setTarget(id);
 		updateUrl(
 			{
 				[playgroundParams.generator]: id,
-				[playgroundParams.inferFormatAsString]:
-					id === 'typescript' ? String(inferFormatAsString) : null,
+				[playgroundParams.inference]: id === 'typescript' ? String(inference) : null,
 			},
 			'push'
 		);
@@ -241,24 +241,24 @@ function useGeneratorSettings(initial: UrlState) {
 		updateUrl({ [playgroundParams.formatMode]: mode }, 'push');
 	}
 
-	function applyInferFormatAsString(value: boolean) {
-		setInferFormatAsString(value);
-		updateUrl({ [playgroundParams.inferFormatAsString]: String(value) }, 'push');
+	function applyInference(value: InferenceMode) {
+		setInference(value);
+		updateUrl({ [playgroundParams.inference]: value }, 'push');
 	}
 
 	return {
 		target,
 		keywordPolicy,
 		formatMode,
-		inferFormatAsString,
+		inference,
 		setTarget,
 		setKeywordPolicy,
 		setFormatMode,
-		setInferFormatAsString,
+		setInference,
 		applyGenerator,
 		applyKeywordPolicy,
 		applyFormatMode,
-		applyInferFormatAsString,
+		applyInference,
 	};
 }
 
@@ -303,7 +303,7 @@ function useSchemaFiles(initialFiles: SchemaFile[], settings: SettingsSetters) {
 			settings.setTarget(next.target);
 			settings.setKeywordPolicy(next.keywordPolicy);
 			settings.setFormatMode(next.formatMode);
-			settings.setInferFormatAsString(next.inferFormatAsString);
+			settings.setInference(next.inference);
 			settings.setData(next.data);
 			setActiveId(next.files[0]?.id ?? '');
 			setEditingId(null);
@@ -467,7 +467,7 @@ function useGeneration(
 	target: TargetId,
 	keywordPolicy: KeywordPolicy,
 	formatMode: FormatMode,
-	inferFormatAsString: boolean
+	inference: InferenceMode
 ) {
 	const [code, setCode] = useState('');
 	const [runtime, setRuntime] = useState<RuntimeSource | null>(null);
@@ -496,7 +496,7 @@ function useGeneration(
 				target,
 				keywordPolicy,
 				formatMode,
-				inferFormatAsString,
+				inference,
 				exampleId
 			);
 
@@ -516,7 +516,7 @@ function useGeneration(
 			cancelled = true;
 			clearTimeout(timer);
 		};
-	}, [bundle, exampleId, target, keywordPolicy, formatMode, inferFormatAsString]);
+	}, [bundle, exampleId, target, keywordPolicy, formatMode, inference]);
 
 	return { exampleId, problems, code, runtime, busy };
 }
@@ -526,7 +526,7 @@ async function generateOutput(
 	target: TargetId,
 	keywordPolicy: KeywordPolicy,
 	formatMode: FormatMode,
-	inferFormatAsString: boolean,
+	inference: InferenceMode,
 	exampleId: string | null
 ): Promise<{ code: string; runtime: RuntimeSource | null; problems: Problem[] }> {
 	let nextCode = '';
@@ -546,7 +546,7 @@ async function generateOutput(
 
 			const generatorOptions = exampleId ? generatorOptionsFor(exampleId) : undefined;
 			const generated = generateCodeFor(target, root, formatMode, generatorOptions, {
-				inferFormatAsString,
+				inference,
 			});
 
 			nextRuntime = generated.runtime;
@@ -644,7 +644,7 @@ interface FeedbackSnapshot {
 	target: TargetId;
 	keywordPolicy: KeywordPolicy;
 	formatMode: FormatMode;
-	inferFormatAsString: boolean;
+	inference: InferenceMode;
 	data: string;
 }
 
@@ -653,7 +653,7 @@ function useFeedback(
 	target: TargetId,
 	keywordPolicy: KeywordPolicy,
 	formatMode: FormatMode,
-	inferFormatAsString: boolean,
+	inference: InferenceMode,
 	code: string,
 	data: string,
 	codeEditorRef: RefObject<MonacoEditorHandle | null>
@@ -669,7 +669,7 @@ function useFeedback(
 		sharedSnapshot.target === target &&
 		sharedSnapshot.keywordPolicy === keywordPolicy &&
 		sharedSnapshot.formatMode === formatMode &&
-		sharedSnapshot.inferFormatAsString === inferFormatAsString &&
+		sharedSnapshot.inference === inference &&
 		sharedSnapshot.data === data;
 	const copied = copy !== null && copy.value === code;
 
@@ -701,7 +701,7 @@ function useFeedback(
 			target,
 			keywordPolicy,
 			formatMode,
-			inferFormatAsString,
+			inference,
 			data,
 		});
 		const url = new URL(location.href);
@@ -712,9 +712,9 @@ function useFeedback(
 		url.searchParams.set(playgroundParams.formatMode, formatMode);
 
 		if (target === 'typescript') {
-			url.searchParams.set(playgroundParams.inferFormatAsString, String(inferFormatAsString));
+			url.searchParams.set(playgroundParams.inference, String(inference));
 		} else {
-			url.searchParams.delete(playgroundParams.inferFormatAsString);
+			url.searchParams.delete(playgroundParams.inference);
 		}
 
 		url.hash = `data=${encoded}`;
@@ -724,7 +724,7 @@ function useFeedback(
 			target,
 			keywordPolicy,
 			formatMode,
-			inferFormatAsString,
+			inference,
 			data,
 		});
 

@@ -27,7 +27,7 @@ export type PlaygroundControlsModel = Pick<
 	| 'target'
 	| 'keywordPolicy'
 	| 'formatMode'
-	| 'inferFormatAsString'
+	| 'inference'
 	| 'exampleId'
 	| 'targetOptions'
 	| 'exampleOptions'
@@ -35,7 +35,7 @@ export type PlaygroundControlsModel = Pick<
 	| 'applyExample'
 	| 'applyKeywordPolicy'
 	| 'applyFormatMode'
-	| 'applyInferFormatAsString'
+	| 'applyInference'
 >;
 
 export interface PlaygroundControlsProps {
@@ -47,7 +47,7 @@ export function PlaygroundControls({ playground }: PlaygroundControlsProps) {
 		target,
 		keywordPolicy,
 		formatMode,
-		inferFormatAsString,
+		inference,
 		exampleId,
 		targetOptions,
 		exampleOptions,
@@ -55,7 +55,7 @@ export function PlaygroundControls({ playground }: PlaygroundControlsProps) {
 		applyExample: onExampleChange,
 		applyKeywordPolicy: onKeywordPolicyChange,
 		applyFormatMode: onFormatModeChange,
-		applyInferFormatAsString: onInferFormatAsStringChange,
+		applyInference: onInferenceChange,
 	} = playground;
 	return (
 		<>
@@ -128,9 +128,12 @@ export function PlaygroundControls({ playground }: PlaygroundControlsProps) {
 				</Select>
 			</div>
 			{target === 'typescript' ? (
-				<label className={styles.formatAsString}>
-					<span>Format as string</span>
-					<Switch checked={inferFormatAsString} onCheckedChange={onInferFormatAsStringChange}>
+				<label className={styles.pragmaticInference}>
+					<span>Pragmatic inference</span>
+					<Switch
+						checked={inference === 'pragmatic'}
+						onCheckedChange={(checked) => onInferenceChange(checked ? 'pragmatic' : 'spec')}
+					>
 						<SwitchThumb />
 					</Switch>
 				</label>

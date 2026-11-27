@@ -8,7 +8,7 @@ import {
 	isAvailableTarget,
 	isKeywordPolicy,
 	readFormatModeParam,
-	readInferFormatAsStringParam,
+	readInferenceParam,
 	readKeywordPolicyParam,
 	readUrlState,
 } from './urlState';
@@ -30,7 +30,7 @@ export function loadState(): UrlState {
 		defaultState();
 	const keywordPolicy = readKeywordPolicyParam(url);
 	const formatMode = readFormatModeParam(url);
-	const inferFormatAsString = readInferFormatAsStringParam(url);
+	const inference = readInferenceParam(url);
 
 	// The query parameters win over the settings stored in the shared `#data=`
 	// hash so they can be changed without editing the hash.
@@ -44,8 +44,8 @@ export function loadState(): UrlState {
 		state.formatMode = formatMode;
 	}
 
-	if (inferFormatAsString !== null) {
-		state.inferFormatAsString = inferFormatAsString;
+	if (inference !== null) {
+		state.inference = inference;
 	}
 
 	return state;
@@ -115,7 +115,7 @@ function defaultState(): UrlState {
 		target: defaultTarget,
 		keywordPolicy: 'warn',
 		formatMode: defaultFormatMode,
-		inferFormatAsString: false,
+		inference: 'spec',
 		data: exampleData(example),
 	};
 }
@@ -151,7 +151,7 @@ function normalizeState(value: unknown): UrlState | null {
 		target: isAvailableTarget(value.target) ? value.target : defaultTarget,
 		keywordPolicy: isKeywordPolicy(value.keywordPolicy) ? value.keywordPolicy : 'warn',
 		formatMode: isFormatMode(value.formatMode) ? value.formatMode : defaultFormatMode,
-		inferFormatAsString: value.inferFormatAsString === true,
+		inference: value.inference === 'pragmatic' ? 'pragmatic' : 'spec',
 		data: typeof value.data === 'string' ? value.data : dataForFiles(value.files),
 	};
 }

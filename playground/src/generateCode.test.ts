@@ -43,7 +43,7 @@ test('the TypeScript generator uses the playground format setting', async () => 
 	);
 	expect(
 		generateCodeFor('typescript', root, defaultFormatMode, undefined, {
-			inferFormatAsString: true,
+			inference: 'pragmatic',
 		}).code
 	).toContain('export type Schema = string;');
 });

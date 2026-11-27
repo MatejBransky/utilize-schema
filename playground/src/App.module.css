@@ -31,7 +31,7 @@
 	min-width: 5.75rem;
 }
 
-.formatAsString {
+.pragmaticInference {
 	display: flex;
 	flex-direction: column;
 	gap: calc(var(--ui-spacing) * 1);

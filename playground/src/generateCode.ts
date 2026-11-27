@@ -2,6 +2,7 @@ import { generate as generateEffect } from '@utilize/effect';
 import { Meta } from '@utilize/json-schema';
 import type { ParsedJSONSchema } from '@utilize/json-schema';
 import { generate as generateTypeScript } from '@utilize/typescript';
+import type { InferenceMode } from '@utilize/typescript';
 import { generate as generateZod } from '@utilize/zod';
 
 import type { ExampleGeneratorOptions } from './exampleOptions';
@@ -33,7 +34,7 @@ const runtimeGenerators: Record<
 };
 
 export interface GenerateCodeSettings {
-	inferFormatAsString?: boolean;
+	inference?: InferenceMode;
 }
 
 export function generateCodeFor(
@@ -56,7 +57,7 @@ export function generateCodeFor(
 			return {
 				code: generateTypeScript(root, {
 					...options?.typescript,
-					inferFormatAsString: settings.inferFormatAsString,
+					inference: settings.inference,
 				}),
 				runtime: null,
 			};
