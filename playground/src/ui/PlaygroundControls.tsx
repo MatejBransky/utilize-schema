@@ -128,7 +128,7 @@ export function PlaygroundControls({ playground }: PlaygroundControlsProps) {
 				</Select>
 			</div>
 			{target === 'typescript' ? (
-				<label className={styles.pragmaticInference}>
+				<label className={styles.pragmaticInference} data-slot="label">
 					<span>Pragmatic inference</span>
 					<Switch
 						checked={inference === 'pragmatic'}

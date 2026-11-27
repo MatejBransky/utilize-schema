@@ -701,7 +701,7 @@ function useFeedback(
 			target,
 			keywordPolicy,
 			formatMode,
-			inference,
+			inference: target === 'typescript' ? inference : 'spec',
 			data,
 		});
 		const url = new URL(location.href);

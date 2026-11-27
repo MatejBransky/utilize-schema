@@ -95,17 +95,20 @@ export function readUrlState(url: URL, base: UrlState, example?: Example): UrlSt
 	const overrides = readUrlOverrides(url);
 
 	if (example) {
+		const settings = applyOverrides(
+			{
+				target: defaultTarget,
+				keywordPolicy: base.keywordPolicy,
+				formatMode: base.formatMode,
+				inference: base.inference,
+			},
+			overrides
+		);
+
 		return {
 			files: example.files,
-			...applyOverrides(
-				{
-					target: defaultTarget,
-					keywordPolicy: base.keywordPolicy,
-					formatMode: base.formatMode,
-					inference: base.inference,
-				},
-				overrides
-			),
+			...settings,
+			inference: settings.target === 'typescript' ? settings.inference : base.inference,
 			data: exampleData(example),
 		};
 	}
@@ -114,9 +117,12 @@ export function readUrlState(url: URL, base: UrlState, example?: Example): UrlSt
 		return null;
 	}
 
+	const settings = applyOverrides(base, overrides);
+
 	return {
 		files: base.files,
-		...applyOverrides(base, overrides),
+		...settings,
+		inference: settings.target === 'typescript' ? settings.inference : base.inference,
 		data: base.data,
 	};
 }

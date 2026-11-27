@@ -64,9 +64,18 @@ test('applies each recognized URL parameter over the saved state', () => {
 		...base,
 		formatMode: 'assert',
 	});
-	expect(readUrlState(new URL('https://example.com/?inference=pragmatic'), base)).toEqual({
+	expect(
+		readUrlState(new URL('https://example.com/?generator=typescript&inference=pragmatic'), base)
+	).toEqual({
 		...base,
+		target: 'typescript',
 		inference: 'pragmatic',
+	});
+	expect(
+		readUrlState(new URL('https://example.com/?generator=effect&inference=pragmatic'), base)
+	).toEqual({
+		...base,
+		target: 'effect',
 	});
 });
 

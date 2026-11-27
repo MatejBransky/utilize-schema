@@ -539,6 +539,12 @@ test('the pragmatic inference switch infers string for the type generator', asyn
 			'pragmatic'
 		)
 	);
+
+	await toggle.click();
+
+	await expect.element(toggle).not.toBeChecked();
+	await vi.waitFor(() => expect(new URL(location.href).searchParams.get('inference')).toBe('spec'));
+	await vi.waitFor(() => expect(generatedCode()).toContain('export type Root = unknown;'));
 });
 
 test('an example URL loads that example', async () => {
@@ -580,7 +586,7 @@ test('an agent can toggle TypeScript pragmatic inference', async () => {
 		})
 	);
 	const agent = createAgent({ allow: () => true });
-	await render(<App />);
+	const screen = await render(<App />);
 
 	const labels = agent.snapshot().map((entry) => entry.label);
 	expect(labels).toContain('Pragmatic inference');
@@ -590,6 +596,8 @@ test('an agent can toggle TypeScript pragmatic inference', async () => {
 	});
 
 	expect(result.ok, result.error?.message).toBe(true);
+	await expect.element(screen.getByRole('switch', { name: 'Pragmatic inference' })).toBeChecked();
+	await vi.waitFor(() => expect(generatedCode()).toContain('export type Root = string;'));
 	await vi.waitFor(() =>
 		expect(new URL(location.href).searchParams.get('inference')).toBe('pragmatic')
 	);

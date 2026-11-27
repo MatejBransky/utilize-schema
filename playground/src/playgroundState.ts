@@ -44,7 +44,7 @@ export function loadState(): UrlState {
 		state.formatMode = formatMode;
 	}
 
-	if (inference !== null) {
+	if (inference !== null && state.target === 'typescript') {
 		state.inference = inference;
 	}
 
