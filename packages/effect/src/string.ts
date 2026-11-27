@@ -36,5 +36,13 @@ function stringFormat(schema: ParsedJSONSchemaObject, context: Context): string 
 		return undefined;
 	}
 
-	return formatCheck(schema.format) === undefined ? undefined : context.formatOf(schema.format);
+	const validationFormat =
+		schema.format === 'hostname' &&
+		(context.dialect.id === 'draft-04' || context.dialect.id === 'draft-06')
+			? 'hostname-legacy'
+			: schema.format;
+
+	return formatCheck(validationFormat) === undefined
+		? undefined
+		: context.formatOf(validationFormat);
 }

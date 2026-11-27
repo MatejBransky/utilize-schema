@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="142" height="20" role="img" aria-label="2020-12: 366/431 cases (84%)">
-	<title>2020-12: 366/431 cases (84%)</title>
+<svg xmlns="http://www.w3.org/2000/svg" width="142" height="20" role="img" aria-label="2020-12: 374/431 cases (86%)">
+	<title>2020-12: 374/431 cases (86%)</title>
 	<linearGradient id="s" x2="0" y2="100%">
 		<stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
 		<stop offset="1" stop-opacity=".1"/>
@@ -13,7 +13,7 @@
 	<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">
 		<text x="31" y="15" fill="#010101" fill-opacity=".3">2020-12</text>
 		<text x="31" y="14">2020-12</text>
-		<text x="102" y="15" fill="#010101" fill-opacity=".3">84% passed</text>
-		<text x="102" y="14">84% passed</text>
+		<text x="102" y="15" fill="#010101" fill-opacity=".3">86% passed</text>
+		<text x="102" y="14">86% passed</text>
 	</g>
 </svg>

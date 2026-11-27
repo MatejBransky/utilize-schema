@@ -36,10 +36,6 @@ const patterns = new Map<string, string>([
 		String.raw`^(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$`,
 	],
 	['date', `^${dateSource}$`],
-	[
-		'duration',
-		String.raw`^P(?!$)(?:\d+Y)?(?:\d+M)?(?:\d+W)?(?:\d+D)?(?:T(?=\d)(?:\d+H)?(?:\d+M)?(?:\d+S)?)?$`,
-	],
 ]);
 
 const cidrv4 = String.raw`^(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)/(?:3[0-2]|[12]?\d)$`;
@@ -47,9 +43,6 @@ const cidrv4 = String.raw`^(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5
 /** Returns a `Schema.*` check for a format, or `undefined` for an unknown one. */
 export function formatCheck(format: string): string | undefined {
 	switch (format) {
-		case 'uuid': {
-			return 'Schema.isUUID()';
-		}
 		case 'url': {
 			return filter(
 				`try {

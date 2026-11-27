@@ -67,7 +67,7 @@ utilize-zod user.json user.zod.ts
   "properties": {
     "id": {
       "type": "string",
-      "format": "uuid"
+      "format": "date"
     }
   },
   "required": ["id"],
@@ -81,12 +81,12 @@ utilize-zod user.json user.zod.ts
 import { z } from 'zod';
 
 export const User = z.strictObject({
-  id: z.uuid().meta({ format: 'uuid' }),
+  id: z.iso.date().meta({ format: 'date' }),
 });
 export type User = z.infer<typeof User>;
 ```
 
-The UUID format keeps this example short. Formats that need structural
+The date format keeps this example short. Formats that need structural
 validation, such as `email`, `hostname` and `uri`, emit one validator constant
 per format, shared by every schema that uses it.
 
@@ -232,12 +232,15 @@ The TypeScript generator has no runtime, so validation keywords such as
 `minLength`, `pattern` or `uniqueItems` have no type-level equivalent and are
 ignored. Use Zod or Effect Schema when you need runtime validation.
 
-Draft-07 numbers from the official suite, with every measured dialect pinned in
-the package baselines:
+Official-suite numbers, with every measured dialect pinned in the package
+baselines:
 
-- **Zod:** 304 of 304 cases (1,655 of 1,655 assertions).
-- **Effect Schema:** 304 of 304 cases (1,655 of 1,655 assertions).
-- **TypeScript:** 192 of 285 cases at the type level (795 of 972 instances).
+- **Zod:** 1,514 of 1,609 cases; draft-04, draft-06 and draft-07 are complete.
+- **Effect Schema:** 1,510 of 1,609 cases; draft-04, draft-06 and draft-07 are complete.
+- **TypeScript:** 192 of 285 draft-07 cases at the type level (795 of 972 instances).
+
+The remaining runtime gaps are dynamic/recursive references, full `unevaluated*`
+annotation propagation, and a few vocabulary/annotation cases.
 
 ---
 

@@ -1,6 +1,7 @@
 import { $RefParser } from '@apidevtools/json-schema-ref-parser';
+import type { $Refs } from '@apidevtools/json-schema-ref-parser';
 
-import type { DialectIssue, DialectOptions } from './dialect';
+import type { DialectId, DialectIssue, DialectOptions } from './dialect';
 import { resolveDialect } from './dialect';
 import { indexExternalSchemas, normalizeUri } from './externalSchemas';
 import type { ExternalSchemas } from './externalSchemas';
@@ -58,29 +59,7 @@ export async function parse(
 		throw new Error(`Provided schema is missing its root document: ${cwd}`);
 	}
 
-	const providedSchema = (url: string) => provided.get(url) ?? provided.get(normalizeUri(url));
-
-	const $refs = await parser.resolve(cwd, input, {
-		resolve: {
-			external: true,
-			// Provided URIs and identifiers must win over file and HTTP reads.
-			provided: {
-				order: 1,
-				canRead: (file: { url: string }) => providedSchema(file.url) !== undefined,
-				// A boolean schema is a valid document, but the resolver type only
-				// admits objects, so hand it to the JSON parser as source.
-				read: (file: { url: string }) => {
-					const providedDocument = providedSchema(file.url);
-
-					if (providedDocument === undefined) {
-						throw new Error(`Provided schema not found: ${file.url}`);
-					}
-
-					return isJSONSchemaObject(providedDocument) ? providedDocument : String(providedDocument);
-				},
-			},
-		},
-	});
+	const $refs = await resolveDocuments(parser, cwd, input, provided, rootDialect);
 
 	const entries = schemaEntries($refs.values()); // `$RefParser` registers a nested `$id` as its own entry whose value is a node
 	// inside another document. Preparing and linking both would normalize that
@@ -198,6 +177,144 @@ export async function parse(
 		referencedSchemas,
 		issues,
 	};
+}
+
+async function resolveDocuments(
+	parser: $RefParser,
+	cwd: string,
+	input: JSONSchema | boolean,
+	provided: Map<string, JSONSchema | boolean>,
+	rootDialect: DialectId
+): Promise<$Refs> {
+	const providedSchema = (url: string) => provided.get(url) ?? provided.get(normalizeUri(url));
+
+	const legacyIdAliases = new WeakSet<object>();
+	const ignoredLegacyIds = new WeakMap<object, string>();
+
+	for (const document of provided.values()) {
+		addLegacyIdAliases(document, rootDialect, legacyIdAliases, ignoredLegacyIds, new WeakSet());
+	}
+
+	try {
+		return await parser.resolve(cwd, input, {
+			resolve: {
+				external: true,
+				// Provided URIs and identifiers must win over file and HTTP reads.
+				provided: {
+					order: 1,
+					canRead: (file: { url: string }) => providedSchema(file.url) !== undefined,
+					// A boolean schema is a valid document, but the resolver type only
+					// admits objects, so hand it to the JSON parser as source.
+					read: (file: { url: string }) => {
+						const providedDocument = providedSchema(file.url);
+
+						if (providedDocument === undefined) {
+							throw new Error(`Provided schema not found: ${file.url}`);
+						}
+
+						return isJSONSchemaObject(providedDocument)
+							? providedDocument
+							: String(providedDocument);
+					},
+				},
+			},
+		});
+	} finally {
+		for (const document of provided.values()) {
+			removeLegacyIdAliases(document, legacyIdAliases, ignoredLegacyIds, new WeakSet());
+		}
+	}
+}
+
+/**
+ * `$RefParser` follows `$id` but not the draft-04 `id`. Expose the same base
+ * URI under `$id` while it resolves external documents, then remove only the
+ * aliases we added before normalization and linking.
+ */
+function addLegacyIdAliases(
+	node: unknown,
+	inheritedDialect: DialectId,
+	aliases: WeakSet<object>,
+	ignored: WeakMap<object, string>,
+	seen: WeakSet<object>
+): void {
+	if (Array.isArray(node)) {
+		for (const item of node) {
+			addLegacyIdAliases(item, inheritedDialect, aliases, ignored, seen);
+		}
+
+		return;
+	}
+
+	if (!isJSONSchemaObject(node) || seen.has(node)) {
+		return;
+	}
+
+	seen.add(node);
+
+	const dialect = resolveDialect(node, { fallbackDialect: inheritedDialect }).dialect.id;
+	prepareLegacyId(node, dialect, aliases, ignored);
+
+	for (const child of schemaChildren(node)) {
+		addLegacyIdAliases(child, dialect, aliases, ignored, seen);
+	}
+}
+
+function prepareLegacyId(
+	node: JSONSchema,
+	dialect: DialectId,
+	aliases: WeakSet<object>,
+	ignored: WeakMap<object, string>
+): void {
+	if (dialect !== 'draft-04' || typeof node.id !== 'string') {
+		return;
+	}
+
+	if (typeof node.$ref === 'string') {
+		ignored.set(node, node.id);
+		delete node.id;
+		return;
+	}
+
+	if (node.$id === undefined) {
+		node.$id = node.id;
+		aliases.add(node);
+	}
+}
+
+function removeLegacyIdAliases(
+	node: unknown,
+	aliases: WeakSet<object>,
+	ignored: WeakMap<object, string>,
+	seen: WeakSet<object>
+): void {
+	if (Array.isArray(node)) {
+		for (const item of node) {
+			removeLegacyIdAliases(item, aliases, ignored, seen);
+		}
+
+		return;
+	}
+
+	if (!isJSONSchemaObject(node) || seen.has(node)) {
+		return;
+	}
+
+	seen.add(node);
+
+	if (aliases.has(node)) {
+		delete node.$id;
+	}
+
+	const id = ignored.get(node);
+
+	if (id !== undefined) {
+		node.id = id;
+	}
+
+	for (const child of schemaChildren(node)) {
+		removeLegacyIdAliases(child, aliases, ignored, seen);
+	}
 }
 
 function schemaEntries(values: unknown): [SchemaPath, JSONSchema | boolean][] {

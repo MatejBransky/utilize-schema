@@ -231,3 +231,56 @@ test('indexes the draft-04 id keyword', async () => {
 
 	expect(item[Meta].reference).toMatchObject({ type: 'number' });
 });
+
+test('ignores a draft-04 sibling id while resolving an external ref', async () => {
+	const parsed = await parse(
+		{
+			$schema: 'http://json-schema.org/draft-04/schema#',
+			id: 'https://example.com/root.json',
+			properties: {
+				value: Object.assign({ $ref: 'integer.json' } satisfies JSONSchema, {
+					id: 'https://example.com/missing/',
+				}),
+			},
+		},
+		{
+			cwd: __dirname + '/',
+			fileName: 'Root.json',
+			dialect: 'draft-04',
+			externalSchemas: { 'https://example.com/integer.json': { type: 'integer' } },
+		}
+	);
+
+	const root = parsedObject(parsed.root);
+	const value = parsedObject(root.properties?.value);
+
+	expect(value[Meta].reference).toMatchObject({ type: 'integer' });
+});
+
+test('resolves external refs relative to a nested draft-04 id', async () => {
+	const parsed = await parse(
+		{
+			$schema: 'http://json-schema.org/draft-04/schema#',
+			id: 'https://example.com/root.json',
+			items: Object.assign({ items: { $ref: 'integer.json' } } satisfies JSONSchema, {
+				id: 'nested/',
+			}),
+		},
+		{
+			cwd: __dirname + '/',
+			fileName: 'Root.json',
+			dialect: 'draft-04',
+			externalSchemas: {
+				'https://example.com/nested/integer.json': { type: 'integer' },
+			},
+		}
+	);
+
+	const root = parsedObject(parsed.root);
+	const nested = parsedObject(root.items);
+	const item = parsedObject(nested.items);
+
+	expect(item[Meta].reference).toMatchObject({ type: 'integer' });
+	expect(root.$id).toBeUndefined();
+	expect(nested.$id).toBeUndefined();
+});

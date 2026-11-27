@@ -205,11 +205,11 @@ badges link here:
 
 | Dialect  | Cases passing | Where the gaps are                                |
 | -------- | ------------- | ------------------------------------------------- |
-| draft-04 | 186 / 194     | [case list](test/suite/knownFailuresByDialect.ts) |
-| draft-06 | 262 / 263     | [case list](test/suite/knownFailuresByDialect.ts) |
+| draft-04 | 194 / 194     | —                                                 |
+| draft-06 | 263 / 263     | —                                                 |
 | draft-07 | 304 / 304     | —                                                 |
-| 2019-09  | 367 / 417     | [case list](test/suite/knownFailuresByDialect.ts) |
-| 2020-12  | 366 / 431     | [case list](test/suite/knownFailuresByDialect.ts) |
+| 2019-09  | 375 / 417     | [case list](test/suite/knownFailuresByDialect.ts) |
+| 2020-12  | 374 / 431     | [case list](test/suite/knownFailuresByDialect.ts) |
 
 Which keywords are implemented, and which are only kept as annotations, is in
 [docs/keywords.md](../../docs/keywords.md#runtime-generators). Every dialect is
@@ -230,10 +230,12 @@ All five dialects are measured: draft-04, draft-06, draft-07, 2019-09 and
 2020-12. Every dialect is pinned case by case in `knownFailuresByDialect.ts`.
 `test/suite/baseline.ts` records the counts the badges render.
 
-Today it passes **304 of 304 draft-07 cases (1,655 of 1,655 assertions)**. Format
-cases run in the mode they are tagged for, so both the annotation and the
-assertion cases are measured; cases that need external schemas are served from
-`externalSchemas`.
+Today it passes **1,510 of 1,609 cases** across the five dialects, including every
+draft-04, draft-06 and draft-07 case. Format cases run in the mode they are tagged
+for, so both the annotation and the assertion cases are measured; cases that need
+external schemas are served from `externalSchemas`. The remaining 2019-09 and
+2020-12 gaps are dynamic/recursive references, full `unevaluated*` annotation
+propagation, and a few vocabulary/annotation cases.
 
 Draft-07 has no known gaps. A future gap is recorded in
 `test/suite/knownFailures.ts` and `test/suite/knownFailureInstances.ts`. Refresh

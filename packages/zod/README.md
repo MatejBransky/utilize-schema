@@ -28,7 +28,7 @@ file imports `zod`.
   "properties": {
     "id": {
       "type": "string",
-      "format": "uuid"
+      "format": "date"
     }
   },
   "required": ["id"]
@@ -36,11 +36,11 @@ file imports `zod`.
 ```
 
 ```ts
-export const User = z.object({ id: z.uuid().meta({ format: 'uuid' }) });
+export const User = z.object({ id: z.iso.date().meta({ format: 'date' }) });
 export type User = z.infer<typeof User>;
 ```
 
-The UUID format keeps this example short. Formats that need structural
+The date format keeps this example short. Formats that need structural
 validation, such as `email`, `hostname` and `uri`, emit one validator constant
 per format, shared by every schema that uses it.
 
@@ -89,7 +89,7 @@ await compile({
 - `readOnlyKeyword` — map `readOnly: true` to `.readonly()`. Off by default,
   because it freezes values and changes the inferred type.
 - `formatMode` — what `format` becomes in the generated code. `'assert'`
-  (default) turns known formats into validation (`.uuid()`, `.iso.date()`,
+  (default) turns known formats into validation (`.iso.date()`, `url` patterns,
   RFC 3339 date-time and URI validators, …); `'annotate'` keeps `format` as
   `.meta({ format })`. Unknown formats stay annotations in both modes. A format
   that needs structural validation becomes one module-level validator reused by
@@ -266,11 +266,11 @@ badges link here:
 
 | Dialect  | Cases passing | Where the gaps are                                |
 | -------- | ------------- | ------------------------------------------------- |
-| draft-04 | 186 / 194     | [case list](test/suite/knownFailuresByDialect.ts) |
-| draft-06 | 262 / 263     | [case list](test/suite/knownFailuresByDialect.ts) |
+| draft-04 | 194 / 194     | —                                                 |
+| draft-06 | 263 / 263     | —                                                 |
 | draft-07 | 304 / 304     | —                                                 |
-| 2019-09  | 375 / 417     | [case list](test/suite/knownFailuresByDialect.ts) |
-| 2020-12  | 374 / 431     | [case list](test/suite/knownFailuresByDialect.ts) |
+| 2019-09  | 377 / 417     | [case list](test/suite/knownFailuresByDialect.ts) |
+| 2020-12  | 376 / 431     | [case list](test/suite/knownFailuresByDialect.ts) |
 
 Which keywords are implemented, and which are only kept as annotations, is in
 [docs/keywords.md](../../docs/keywords.md#runtime-generators). Every dialect is
@@ -295,9 +295,11 @@ All five dialects are measured: draft-04, draft-06, draft-07, 2019-09 and
 2020-12. Every dialect is pinned case by case in `knownFailuresByDialect.ts`.
 `test/suite/baseline.ts` records the counts the badges render.
 
-Today it passes **304 of 304 draft-07 cases (1,655 of 1,655 assertions)**. Format
-cases run in the mode they are tagged for, so both the annotation and the
-assertion cases are measured.
+Today it passes **1,514 of 1,609 cases** across the five dialects, including every
+draft-04, draft-06 and draft-07 case. Format cases run in the mode they are tagged
+for, so both the annotation and the assertion cases are measured. The remaining
+2019-09 and 2020-12 gaps are dynamic/recursive references, full `unevaluated*`
+annotation propagation, and a few vocabulary/annotation cases.
 
 Draft-07 has no known gaps. A future gap is recorded in
 `test/suite/knownFailures.ts`, together with its exact failing instances in

@@ -21,11 +21,11 @@
 export const baseline = {
 	'draft-04': {
 		cases: 187,
-		passing: 115,
+		passing: 122,
 		typeGaps: 53,
-		gaps: 19,
+		gaps: 12,
 		instances: 672,
-		passingInstances: 526,
+		passingInstances: 542,
 	},
 	'draft-06': {
 		cases: 253,

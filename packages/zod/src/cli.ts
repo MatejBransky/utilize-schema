@@ -28,7 +28,7 @@ Options:
   --cwd <path>          directory used to resolve paths
   --readonly            map readOnly: true to .readonly()
   --format-mode <mode>  assert (default) validates known formats
-                        (.email(), .uuid(), ...), annotate keeps format
+                        (.iso.date(), url patterns, ...), annotate keeps format
                         as metadata
   --runtime-import <module>
                         import the oneOf helper from this module

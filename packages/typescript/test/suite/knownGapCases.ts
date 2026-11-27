@@ -265,48 +265,6 @@ export const knownGapCases = {
 				'crashes: "$dynamicRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
 		},
 	},
-	'id-legacy.json :: $ref prevents a sibling id from changing the base uri': {
-		gaps: {
-			'draft-04':
-				"crashes: Error opening file foo.json: ENOENT: no such file or directory, open 'foo.json'",
-		},
-	},
-	'id-legacy.json :: base URI change': {
-		gaps: {
-			'draft-04':
-				"crashes: Error opening file folderInteger.json: ENOENT: no such file or directory, open 'folderInteger.json'",
-		},
-	},
-	'id-legacy.json :: base URI change - change folder (id)': {
-		gaps: {
-			'draft-04':
-				"crashes: Error opening file folderInteger.json: ENOENT: no such file or directory, open 'folderInteger.json'",
-		},
-	},
-	'id-legacy.json :: base URI change - change folder in subschema (id)': {
-		gaps: {
-			'draft-04':
-				"crashes: Error opening file folderInteger.json: ENOENT: no such file or directory, open 'folderInteger.json'",
-		},
-	},
-	'id-legacy.json :: ref with absolute-path-reference (id)': {
-		gaps: {
-			'draft-04':
-				"crashes: Error opening file /absref/foobar.json: ENOENT: no such file or directory, open '/absref/foobar.json'",
-		},
-	},
-	'id-legacy.json :: refs with relative uris and defs (id)': {
-		gaps: {
-			'draft-04':
-				"crashes: Error opening file schema-relative-uri-defs2.json: ENOENT: no such file or directory, open 'schema-relative-uri-defs2.json'",
-		},
-	},
-	'id-legacy.json :: relative refs with absolute uris and defs (id)': {
-		gaps: {
-			'draft-04':
-				"crashes: Error opening file schema-refs-absolute-uris-defs2.json: ENOENT: no such file or directory, open 'schema-refs-absolute-uris-defs2.json'",
-		},
-	},
 	'id-legacy.json :: simple URN base URI with $ref via the URN (id)': {
 		gaps: {
 			'draft-04': 'rejects valid instance 0',

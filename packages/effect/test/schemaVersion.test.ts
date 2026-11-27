@@ -97,6 +97,28 @@ describe('$schema versions', () => {
 		expect(decode(Root, { a: 'x' })).toBeUndefined();
 	});
 
+	test('2019-09 dependentRequired constrains only objects without an explicit type', async () => {
+		const Root = await compileToSchema({
+			$schema: 'https://json-schema.org/draft/2019-09/schema',
+			dependentRequired: { bar: ['foo'] },
+		});
+
+		expect(decode(Root, { foo: 1, bar: 2 })).toEqual({ foo: 1, bar: 2 });
+		expect(decode(Root, { bar: 2 })).toBeUndefined();
+		expect(decode(Root, ['bar'])).toEqual(['bar']);
+	});
+
+	test('2020-12 dependentSchemas constrains only objects without an explicit type', async () => {
+		const Root = await compileToSchema({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			dependentSchemas: { bar: false },
+		});
+
+		expect(decode(Root, { foo: 1 })).toEqual({ foo: 1 });
+		expect(decode(Root, { bar: 2 })).toBeUndefined();
+		expect(decode(Root, 'bar')).toBe('bar');
+	});
+
 	test('draft-04 boolean exclusiveMinimum', async () => {
 		const Root = await compileToSchema(draft04ExclusiveSchema);
 

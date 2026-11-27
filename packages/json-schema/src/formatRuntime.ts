@@ -11,6 +11,10 @@ const dateSource = String.raw`(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[0
 const patterns = new Map<string, string>([
 	['json-pointer', String.raw`^(?:\/(?:[^~]|~[01])*)?${exactEnd}`],
 	['relative-json-pointer', String.raw`^(?:0|[1-9][0-9]*)(?:#|\/(?:[^~]|~[01])*)?${exactEnd}`],
+	[
+		'uuid',
+		String.raw`^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}${exactEnd}`,
+	],
 ]);
 
 export function formatPattern(format: string): string | undefined {
@@ -72,7 +76,7 @@ const arabicDigitPattern = /[\u0660-\u0669]/;
 const extendedArabicDigitPattern = /[\u06F0-\u06F9]/;
 const viramaPattern = /[\u094D\u09CD\u0A4D\u0ACD\u0B4D\u0BCD\u0C4D\u0CCD\u0D4D\u0DCA]/u;
 const joiningContextPattern = /[\u0621-\u063A\u0640-\u064A]\u200C[\u0621-\u063A\u0640-\u064A]/u;
-function isHost(value: string, idn: boolean) {
+function isHost(value: string, idn: boolean, aLabelRules: boolean) {
 	let hostname = value;
 	if (idn) {
 		if (value === '' || /[\s\u0000-\u0020\u007F/\\?#@:\[\]%]/.test(value)) return false;
@@ -86,7 +90,8 @@ function isHost(value: string, idn: boolean) {
 	}
 	if (hostname.length > 253 || hostname.endsWith('.')) return false;
 	const labels = hostname.split('.');
-	if (labels.some((label: string) => !hostnameLabelPattern.test(label) || !isAsciiIdnaLabel(label))) return false;
+	if (labels.some((label: string) => !hostnameLabelPattern.test(label) || (aLabelRules && !isAsciiIdnaLabel(label)))) return false;
+	if (!aLabelRules) return true;
 	const decoded = labels.map((label: string) => label.startsWith('xn--') ? decodePunycode(label.slice(4)) : label);
 	if (decoded.some((label: string | null) => label === null)) return false;
 	const bidi = decoded.some((label: string | null) => label !== null && rtlAnyPattern.test(label));
@@ -223,7 +228,7 @@ function isEmail(value: string, idn: boolean) {
 	}
 	if (domain === '' || new TextEncoder().encode(local).byteLength > 64) return false;
 	if (domain.startsWith('[')) return isEmailDomainLiteral(domain);
-	return idn ? isHost(domain, true) : emailDomainPattern.test(domain);
+	return idn ? isHost(domain, true, true) : emailDomainPattern.test(domain);
 }
 function isEmailDomainLiteral(domain: string) {
 	if (!domain.endsWith(']')) return false;
@@ -401,14 +406,26 @@ try {
 	return false;
 }`;
 
+/** RFC 3339 duration syntax, including its ordering and component dependencies. */
+const durationBody = String.raw`
+const match = /^P(?:(\d+)W|(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)D)?(?:T(?=\d)(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?)$/.exec(value);
+if (match === null) return false;
+if (match[1] !== undefined) return true;
+if (match.slice(2).every((part) => part === undefined)) return false;
+if (match[2] !== undefined && match[3] === undefined && match[4] !== undefined) return false;
+if (match[5] !== undefined && match[6] === undefined && match[7] !== undefined) return false;
+return true;`;
+
 /** One structural validator per format; a format it omits is a plain pattern. */
 const formatBodies = new Map<string, string>([
 	['date-time', dateTimeBody],
 	['time', timeBody],
+	['duration', durationBody],
 	['email', `${emailRuntime}\n${ipRuntime}\n${hostnameRuntime}\nreturn isEmail(value, false);`],
 	['idn-email', `${emailRuntime}\n${ipRuntime}\n${hostnameRuntime}\nreturn isEmail(value, true);`],
-	['hostname', `${hostnameRuntime}\nreturn isHost(value, false);`],
-	['idn-hostname', `${hostnameRuntime}\nreturn isHost(value, true);`],
+	['hostname', `${hostnameRuntime}\nreturn isHost(value, false, true);`],
+	['hostname-legacy', `${hostnameRuntime}\nreturn isHost(value, false, false);`],
+	['idn-hostname', `${hostnameRuntime}\nreturn isHost(value, true, true);`],
 	['uri', `${ipRuntime}\n${uriRuntime}\nreturn isUri(value, false, false);`],
 	['uri-reference', `${ipRuntime}\n${uriRuntime}\nreturn isUri(value, true, false);`],
 	['iri', `${ipRuntime}\n${uriRuntime}\nreturn isUri(value, false, true);`],
