@@ -68,7 +68,7 @@ describe('formatMode', () => {
 	});
 
 	test.each([
-		['uuid', '2f8a1b3c-4d5e-6f70-8a9b-0c1d2e3f4a5b', 'not-a-uuid'],
+		['uuid', '99c17cbb-656f-f64a-940f-1a4568f03487', 'not-a-uuid'],
 		['url', 'https://example.com/a?b=1', 'not a url'],
 		['emoji', '😀', 'abc'],
 		['base64', 'aGVsbG8=', 'not base64!'],
@@ -84,7 +84,7 @@ describe('formatMode', () => {
 		['date', '2024-02-29', '2023-02-29'],
 		['time', '12:00:00Z', '12:00:00'],
 		['date-time', '2024-02-29T12:00:00Z', '2024-02-29 12:00:00'],
-		['duration', 'P3DT4H', 'three days'],
+		['duration', 'P3DT4H', 'P1Y2D'],
 	])('asserts %s', async (format, valid, invalid) => {
 		const Root = await compileToSchema({ type: 'string', format }, { formatMode: 'assert' });
 
@@ -110,6 +110,19 @@ describe('formatMode', () => {
 
 		expect(Schema.is(Root)(valid), `${valid} should be valid`).toBe(true);
 		expect(Schema.is(Root)(invalid), `${invalid} should be invalid`).toBe(false);
+	});
+
+	test.each([
+		['http://json-schema.org/draft-04/schema#'],
+		['http://json-schema.org/draft-06/schema#'],
+	])('uses legacy hostname rules for %s', async ($schema) => {
+		const Root = await compileToSchema(
+			{ $schema, type: 'string', format: 'hostname' },
+			{ formatMode: 'assert' }
+		);
+
+		expect(Schema.is(Root)('ab--cd.example')).toBe(true);
+		expect(Schema.is(Root)('-hostname')).toBe(false);
 	});
 
 	test.each([

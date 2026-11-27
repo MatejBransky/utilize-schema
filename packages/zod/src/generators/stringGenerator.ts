@@ -57,17 +57,22 @@ function resolveFormat(format: string, context: GeneratorContext) {
 }
 
 function formatExpression(format: string, context: GeneratorContext) {
-	const pattern = formatPattern(format);
+	const validationFormat =
+		format === 'hostname' &&
+		(context.dialect.id === 'draft-04' || context.dialect.id === 'draft-06')
+			? 'hostname-legacy'
+			: format;
+	const pattern = formatPattern(validationFormat);
 
 	if (pattern !== undefined) {
 		return `z.string().regex(new RegExp(${JSON.stringify(pattern)}, 'u'))`;
 	}
 
-	if (formatBody(format) !== undefined) {
-		return `z.string().refine(${context.formatOf(format)}, { message: ${JSON.stringify(`Invalid ${format}`)} })`;
+	if (formatBody(validationFormat) !== undefined) {
+		return `z.string().refine(${context.formatOf(validationFormat)}, { message: ${JSON.stringify(`Invalid ${format}`)} })`;
 	}
 
-	const method = ownValue(formatToZodMethod, format);
+	const method = ownValue(formatToZodMethod, validationFormat);
 
 	return method ? ts`z${method}` : undefined;
 }
@@ -106,7 +111,6 @@ function applyStringConstraints({ expression, schema }: StringConstraints) {
 }
 
 const formatToZodMethod = {
-	uuid: '.uuid()',
 	url: '.url()',
 	emoji: '.emoji()',
 	base64: '.base64()',
@@ -120,5 +124,4 @@ const formatToZodMethod = {
 	cidrv4: '.cidrv4()',
 	cidrv6: '.cidrv6()',
 	date: '.iso.date()',
-	duration: '.iso.duration()',
 } satisfies Record<string, string>;

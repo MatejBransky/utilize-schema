@@ -125,10 +125,41 @@ describe('$schema versions', () => {
 		);
 	});
 
-	test('unsupported 2020-12 features fail loudly', async () => {
-		await expect(generateCode(unsupportedFeatureSchema)).rejects.toThrow(
-			/"\$dynamicRef" is not supported/
+	test('emits a runtime guard for 2020-12 dynamic references', async () => {
+		await expect(generateCode(unsupportedFeatureSchema)).resolves.toContain(
+			'createJsonSchemaValidator'
 		);
+	});
+
+	test('validates recursive dynamic references before decoding', async () => {
+		const Root = await compileToZod({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			$dynamicAnchor: 'node',
+			type: 'object',
+			properties: {
+				value: { type: 'string' },
+				next: Object.assign<JSONSchema, { $dynamicRef: string }>({}, { $dynamicRef: '#node' }),
+			},
+			required: ['value'],
+			additionalProperties: false,
+		});
+
+		expect(Root.safeParse({ value: 'root', next: { value: 'child' } }).success).toBe(true);
+		expect(Root.safeParse({ value: 'root', next: { value: 1 } }).success).toBe(false);
+		expect(Root.safeParse({ value: 'root', extra: true }).success).toBe(false);
+	});
+
+	test('validates unevaluated properties across allOf branches', async () => {
+		const Root = await compileToZod({
+			$schema: 'https://json-schema.org/draft/2019-09/schema',
+			type: 'object',
+			properties: { foo: { type: 'string' } },
+			allOf: [{ properties: { bar: { type: 'number' } } }],
+			unevaluatedProperties: false,
+		});
+
+		expect(Root.safeParse({ foo: 'x', bar: 1 }).success).toBe(true);
+		expect(Root.safeParse({ foo: 'x', baz: true }).success).toBe(false);
 	});
 
 	test('2020-12 unevaluatedProperties maps to additionalProperties', async () => {

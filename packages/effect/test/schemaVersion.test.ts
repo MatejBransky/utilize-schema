@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { expectDefined } from '@utilize/json-schema';
+import type { JSONSchema } from '@utilize/json-schema';
 
 import { compile, compileToSchema, decode } from './test-utils';
 import type { TestSchema } from './test-utils';
@@ -97,6 +98,28 @@ describe('$schema versions', () => {
 		expect(decode(Root, { a: 'x' })).toBeUndefined();
 	});
 
+	test('2019-09 dependentRequired constrains only objects without an explicit type', async () => {
+		const Root = await compileToSchema({
+			$schema: 'https://json-schema.org/draft/2019-09/schema',
+			dependentRequired: { bar: ['foo'] },
+		});
+
+		expect(decode(Root, { foo: 1, bar: 2 })).toEqual({ foo: 1, bar: 2 });
+		expect(decode(Root, { bar: 2 })).toBeUndefined();
+		expect(decode(Root, ['bar'])).toEqual(['bar']);
+	});
+
+	test('2020-12 dependentSchemas constrains only objects without an explicit type', async () => {
+		const Root = await compileToSchema({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			dependentSchemas: { bar: false },
+		});
+
+		expect(decode(Root, { foo: 1 })).toEqual({ foo: 1 });
+		expect(decode(Root, { bar: 2 })).toBeUndefined();
+		expect(decode(Root, 'bar')).toBe('bar');
+	});
+
 	test('draft-04 boolean exclusiveMinimum', async () => {
 		const Root = await compileToSchema(draft04ExclusiveSchema);
 
@@ -116,8 +139,42 @@ describe('$schema versions', () => {
 		);
 	});
 
-	test('unsupported 2020-12 features fail loudly', async () => {
-		await expect(compile(unsupportedFeatureSchema)).rejects.toThrow(/\$dynamicRef/);
+	test('emits a runtime guard for 2020-12 dynamic references', async () => {
+		await expect(compile(unsupportedFeatureSchema)).resolves.toContain('createJsonSchemaValidator');
+	});
+
+	test('validates recursive dynamic references before decoding', async () => {
+		const Root = await compileToSchema({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			$dynamicAnchor: 'node',
+			type: 'object',
+			properties: {
+				value: { type: 'string' },
+				next: Object.assign<JSONSchema, { $dynamicRef: string }>({}, { $dynamicRef: '#node' }),
+			},
+			required: ['value'],
+			additionalProperties: false,
+		});
+
+		expect(decode(Root, { value: 'root', next: { value: 'child' } })).toEqual({
+			value: 'root',
+			next: { value: 'child' },
+		});
+		expect(decode(Root, { value: 'root', next: { value: 1 } })).toBeUndefined();
+		expect(decode(Root, { value: 'root', extra: true })).toBeUndefined();
+	});
+
+	test('validates unevaluated properties across allOf branches', async () => {
+		const Root = await compileToSchema({
+			$schema: 'https://json-schema.org/draft/2019-09/schema',
+			type: 'object',
+			properties: { foo: { type: 'string' } },
+			allOf: [{ properties: { bar: { type: 'number' } } }],
+			unevaluatedProperties: false,
+		});
+
+		expect(decode(Root, { foo: 'x', bar: 1 })).toEqual({ foo: 'x', bar: 1 });
+		expect(decode(Root, { foo: 'x', baz: true })).toBeUndefined();
 	});
 
 	test('2020-12 unevaluatedProperties maps to additionalProperties', async () => {

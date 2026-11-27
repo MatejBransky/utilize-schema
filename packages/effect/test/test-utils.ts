@@ -17,7 +17,7 @@ export type TestSchema = JSONSchema & {
 	unevaluatedProperties?: boolean | JSONSchema;
 	unevaluatedItems?: boolean | JSONSchema;
 	dependentRequired?: Record<string, string[]>;
-	dependentSchemas?: Record<string, JSONSchema>;
+	dependentSchemas?: Record<string, JSONSchema | boolean>;
 };
 
 export type GeneratedSchema = Parameters<typeof Schema.decodeUnknownSync>[0];

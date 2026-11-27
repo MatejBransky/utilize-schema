@@ -44,7 +44,6 @@ describe('string constraints', () => {
 	});
 
 	const formats = [
-		{ format: 'uuid', zod: '.uuid()' },
 		{ format: 'url', zod: '.url()' },
 		{ format: 'emoji', zod: '.emoji()' },
 		{ format: 'base64', zod: '.base64()' },
@@ -58,7 +57,6 @@ describe('string constraints', () => {
 		{ format: 'cidrv4', zod: '.cidrv4()' },
 		{ format: 'cidrv6', zod: '.cidrv6()' },
 		{ format: 'date', zod: '.iso.date()' },
-		{ format: 'duration', zod: '.iso.duration()' },
 	];
 
 	const testCases = formats.map(({ format, zod }) => {
@@ -166,6 +164,8 @@ describe('string constraints', () => {
 			['json-pointer', '/foo/bar~0', '/~2'],
 			['relative-json-pointer', '0#', '01/a'],
 			['regex', 'a|b', '*a'],
+			['uuid', '99c17cbb-656f-f64a-940f-1a4568f03487', 'not-a-uuid'],
+			['duration', 'P4DT12H30M5S', 'PT0.5S'],
 			['uri-template', '{+var}', '{v:0}'],
 			['time', '08:30:06+00:20', '12:00:00'],
 			['date-time', '1998-12-31T15:59:60.123-08:00', '1998-12-31T22:59:60Z'],
@@ -174,6 +174,19 @@ describe('string constraints', () => {
 
 			expect(Root.safeParse(valid).success, `${valid} should be valid`).toBe(true);
 			expect(Root.safeParse(invalid).success, `${invalid} should be invalid`).toBe(false);
+		});
+
+		test.each([
+			['http://json-schema.org/draft-04/schema#'],
+			['http://json-schema.org/draft-06/schema#'],
+		])('uses legacy hostname rules for %s', async ($schema) => {
+			const Root = await compileToZod(
+				{ $schema, type: 'string', format: 'hostname' },
+				{ formatMode: 'assert' }
+			);
+
+			expect(Root.safeParse('ab--cd.example').success).toBe(true);
+			expect(Root.safeParse('-hostname').success).toBe(false);
 		});
 
 		test.each([

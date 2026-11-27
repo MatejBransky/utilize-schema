@@ -3,9 +3,12 @@ import { describe, expect, test } from 'vitest';
 import { formatBody, formatConstantBase, formatNameFor, formatPattern } from '../src/formatRuntime';
 
 describe('formatPattern', () => {
-	test.each(['json-pointer', 'relative-json-pointer'])('returns a pattern for %s', (format) => {
-		expect(formatPattern(format)).toMatch(/^\^/);
-	});
+	test.each(['json-pointer', 'relative-json-pointer', 'uuid'])(
+		'returns a pattern for %s',
+		(format) => {
+			expect(formatPattern(format)).toMatch(/^\^/);
+		}
+	);
 
 	test('returns nothing for a structural format', () => {
 		expect(formatPattern('email')).toBeUndefined();
@@ -16,10 +19,12 @@ describe('formatBody', () => {
 	test.each([
 		['date-time', 'const match = new RegExp('],
 		['time', 'const match = new RegExp('],
+		['duration', 'const match = /^P'],
+		['hostname-legacy', 'return isHost(value, false, false);'],
 		['email', 'return isEmail(value, false);'],
-		['hostname', 'return isHost(value, false);'],
+		['hostname', 'return isHost(value, false, true);'],
 		['idn-email', 'return isEmail(value, true);'],
-		['idn-hostname', 'return isHost(value, true);'],
+		['idn-hostname', 'return isHost(value, true, true);'],
 		['iri', 'return isUri(value, false, true);'],
 		['iri-reference', 'return isUri(value, true, true);'],
 		['regex', "new RegExp(value, 'u');"],
