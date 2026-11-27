@@ -55,6 +55,14 @@ function validate(schema: unknown, context: SchemaValidationContext): SchemaVali
 		return [{ pointer: '', message: 'must be an object or a boolean', keyword: 'type' }];
 	}
 
+	// Every dialect from draft-06 on allows a boolean document. Draft-04 defines
+	// a schema as an object only, so a boolean root has no meta-schema to pass.
+	if (typeof schema === 'boolean') {
+		return context.dialect === 'draft-04'
+			? [{ pointer: '', message: 'must be object', keyword: 'type' }]
+			: [];
+	}
+
 	const ajv = ajvFor(context.dialect);
 	const valid = ajv.validateSchema(withDialectMetaSchema(schema, context.dialect));
 

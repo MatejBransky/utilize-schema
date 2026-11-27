@@ -44,13 +44,22 @@ describe('Ajv validator', () => {
 		).toEqual([]);
 	});
 
-	test('accepts boolean schema documents for every dialect', () => {
-		const dialects: DialectId[] = ['draft-04', 'draft-06', 'draft-07', '2019-09', '2020-12'];
+	test('accepts boolean schema documents from draft-06 on', () => {
+		const dialects: DialectId[] = ['draft-06', 'draft-07', '2019-09', '2020-12'];
 
 		for (const dialect of dialects) {
 			expect(ajvValidator(true, context(dialect))).toEqual([]);
 			expect(ajvValidator(false, context(dialect))).toEqual([]);
 		}
+	});
+
+	test('rejects a draft-04 boolean document, which the dialect does not allow', () => {
+		expect(ajvValidator(true, context('draft-04'))).toEqual([
+			{ pointer: '', message: 'must be object', keyword: 'type' },
+		]);
+		expect(ajvValidator(false, context('draft-04'))).toEqual([
+			{ pointer: '', message: 'must be object', keyword: 'type' },
+		]);
 	});
 
 	test('keeps the resolved dialect when $schema is unknown', () => {
