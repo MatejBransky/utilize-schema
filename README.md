@@ -223,20 +223,20 @@ validator.
 ## ✅ Supported features
 
 Both runtime generators implement the validation keywords, including
-`$ref`/`$defs`, `allOf`/`anyOf`/`oneOf`, conditionals, `patternProperties` and
-`unevaluated*` (best effort). The exceptions are annotations a target cannot
-enforce, such as `readOnly` in Effect Schema or `discriminator`; the full table
-is in [docs/keywords.md](./docs/keywords.md).
+`$ref`/`$defs`, `allOf`/`anyOf`/`oneOf`, conditionals, `patternProperties`,
+dynamic references and `unevaluated*`. The exceptions are annotations a target
+cannot enforce, such as `readOnly` in Effect Schema or `discriminator`; the full
+table is in [docs/keywords.md](./docs/keywords.md).
 
 The TypeScript generator has no runtime, so validation keywords such as
 `minLength`, `pattern` or `uniqueItems` have no type-level equivalent and are
 ignored. Use Zod or Effect Schema when you need runtime validation.
 
-Draft-07 numbers from the official suite, with every measured dialect pinned in
-the package baselines:
+Both runtime generators pass every official suite case in all five dialects,
+with every measured dialect pinned in the package baselines:
 
-- **Zod:** 304 of 304 cases (1,655 of 1,655 assertions).
-- **Effect Schema:** 304 of 304 cases (1,655 of 1,655 assertions).
+- **Zod:** 1,609 of 1,609 cases and 7,909 of 7,909 assertions.
+- **Effect Schema:** 1,609 of 1,609 cases and 7,909 of 7,909 assertions.
 - **TypeScript:** 192 of 285 cases at the type level (795 of 972 instances).
 
 ---

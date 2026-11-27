@@ -21,7 +21,7 @@ when you want types without a schema runtime.
 - **Recursive types are first-class.** Interfaces and deferred aliases; a cycle
   TypeScript cannot express fails with `UnsupportedCircularTypeError`.
 - **67% type-level score.** 192 of 285 draft-07 cases; the 81 type gaps are
-  keywords a type cannot express, not bugs. 97% line coverage.
+  keywords a type cannot express, not bugs. 96% line coverage.
 - **The output imports nothing.** It compiles with `tsc --strict` as part of CI.
 
 ```json

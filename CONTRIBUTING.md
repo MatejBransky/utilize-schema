@@ -234,10 +234,10 @@ The numbers live in `packages/*/test/suite/baseline.ts` and each package's suite
 test asserts them. Every dialect is also pinned case by case: the runtime
 generators record failing cases in `knownFailuresByDialect.ts`, and TypeScript
 uses `knownGapCases.ts` with curated reasons in `knownGaps.ts`. The runtime
-generators have no draft-07 gaps; their `knownFailures.ts` files stay as the
-place to record one. When a count or a case changes, the test prints the measured
-numbers and failing keys; update the baseline and regenerate the list on purpose
-in the same pull request:
+generators currently have no gaps in any dialect; their `knownFailures.ts` files
+stay as the place to record a future draft-07 gap. When a count or a case changes,
+the test prints the measured numbers and failing keys; update the baseline and
+regenerate the list on purpose in the same pull request:
 
 ```sh
 pnpm --filter @utilize/zod update:suite-baseline

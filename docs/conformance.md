@@ -13,9 +13,22 @@ Every project here runs the official
 ## Runtime generators
 
 `@utilize/zod` and `@utilize/effect` generate runtime validators and pass every
-draft-07 case in the pinned suite (`e2a68a1`):
+case in all five released dialects in the pinned suite (`e2a68a1`):
 
-- **304 of 304 cases** and **1,655 of 1,655 assertions** for both generators.
+| Dialect  |     Cases |    Assertions |
+| -------- | --------: | ------------: |
+| draft-04 | 194 / 194 |     911 / 911 |
+| draft-06 | 263 / 263 | 1,218 / 1,218 |
+| draft-07 | 304 / 304 | 1,655 / 1,655 |
+| 2019-09  | 417 / 417 | 2,043 / 2,043 |
+| 2020-12  | 431 / 431 | 2,082 / 2,082 |
+
+Both generators keep native Zod and Effect schemas for types, defaults and
+transformations. Schemas that use dynamic references, `unevaluated*` annotations
+or a custom validation vocabulary also import the browser-safe
+`@utilize/json-schema/runtime` guard, which validates the original input before
+the native decoder runs.
+
 - Format cases run in the mode they are tagged for: `format-annotation` with
   `formatMode: 'annotate'`, `format-assertion` with `formatMode: 'assert'`.
 - Cases that need external schemas are served from memory through

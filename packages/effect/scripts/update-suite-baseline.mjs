@@ -7,7 +7,7 @@ import { collectDialectFailures, renderDialectFailures } from '../../../scripts/
 import { renderKnownFailureInstances } from '@utilize/test-utils/suite/baseline';
 import { DRAFT_7, isCompatible, OTHER_DIALECTS } from '@utilize/test-utils/suite/compatibility';
 import { evaluateGeneratedCode, nameRootSchema } from '@utilize/test-utils/suite/evaluate';
-import { loadSuiteFiles, suiteCaseKey } from '@utilize/test-utils/suite/loadSuite';
+import { loadSuiteFiles, suiteCaseKey, suiteDirectory } from '@utilize/test-utils/suite/loadSuite';
 import { Schema } from 'effect';
 
 import { reasonFor } from './suiteReasons.mjs';
@@ -15,6 +15,9 @@ import { reasonFor } from './suiteReasons.mjs';
 const root = resolve(import.meta.dirname, '..');
 
 const { parse } = await import(pathToFileURL(join(root, '../json-schema/dist/index.mjs')).href);
+const { createJsonSchemaValidator } = await import(
+	pathToFileURL(join(root, '../json-schema/dist/runtime.mjs')).href
+);
 const { generate } = await import(pathToFileURL(join(root, 'dist/index.mjs')).href);
 
 function formatModeFor(testCase) {
@@ -29,7 +32,7 @@ function formatModeFor(testCase) {
 
 async function compileToSchema(schema, externalSchemas, formatMode, dialect) {
 	const { root: parsedRoot } = await parse(schema, {
-		cwd: `${join(root, 'test/suite')}/`,
+		cwd: `${suiteDirectory}/`,
 		fileName: 'Root.json',
 		externalSchemas,
 		dialect,
@@ -40,7 +43,7 @@ async function compileToSchema(schema, externalSchemas, formatMode, dialect) {
 		customNameResolver: nameRootSchema,
 	});
 
-	return evaluateGeneratedCode(code, { Schema });
+	return evaluateGeneratedCode(code, { Schema, createJsonSchemaValidator });
 }
 
 function isValid(schema, value) {

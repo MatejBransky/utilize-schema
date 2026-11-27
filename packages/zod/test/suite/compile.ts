@@ -1,6 +1,8 @@
 import { parse } from '@utilize/json-schema';
+import { createJsonSchemaValidator } from '@utilize/json-schema/runtime';
 import type { DialectId, ExternalSchemas, JSONSchema } from '@utilize/json-schema';
 import { evaluateGeneratedCode, nameRootSchema } from '@utilize/test-utils/suite/evaluate';
+import { suiteDirectory } from '@utilize/test-utils/suite/loadSuite';
 
 import { z } from 'zod';
 
@@ -21,7 +23,7 @@ export async function compileToZodSchema(
 	dialect?: DialectId
 ): Promise<z.ZodType> {
 	const { root } = await parse(schema, {
-		cwd: __dirname + '/',
+		cwd: `${suiteDirectory}/`,
 		fileName: 'Root.json',
 		externalSchemas,
 		dialect,
@@ -33,5 +35,5 @@ export async function compileToZodSchema(
 		customNameResolver: nameRootSchema,
 	});
 
-	return evaluateGeneratedCode(code, { z });
+	return evaluateGeneratedCode(code, { z, createJsonSchemaValidator });
 }

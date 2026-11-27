@@ -21,11 +21,11 @@
 export const baseline = {
 	'draft-04': {
 		cases: 187,
-		passing: 115,
+		passing: 122,
 		typeGaps: 53,
-		gaps: 19,
+		gaps: 12,
 		instances: 672,
-		passingInstances: 526,
+		passingInstances: 542,
 	},
 	'draft-06': {
 		cases: 253,
@@ -45,18 +45,18 @@ export const baseline = {
 	},
 	'2019-09': {
 		cases: 396,
-		passing: 243,
-		typeGaps: 108,
-		gaps: 45,
+		passing: 244,
+		typeGaps: 116,
+		gaps: 36,
 		instances: 1292,
-		passingInstances: 988,
+		passingInstances: 1013,
 	},
 	'2020-12': {
 		cases: 409,
-		passing: 237,
-		typeGaps: 113,
-		gaps: 59,
+		passing: 242,
+		typeGaps: 128,
+		gaps: 39,
 		instances: 1319,
-		passingInstances: 996,
+		passingInstances: 1024,
 	},
 } as const;

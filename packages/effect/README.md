@@ -19,7 +19,8 @@ dependency ordering and imports `effect`.
 - **Mapped or rejected, never ignored.** Unsupported constructs fail with
   `UnsupportedEffectSchemaFeatureError` instead of disappearing.
 - **Five dialects.** draft-04, draft-06, draft-07, 2019-09 and 2020-12.
-- **100% of the official draft-07 suite.** 304 of 304 cases; 95% line coverage.
+- **100% of the official suite in all five dialects.** 1,609 of 1,609 cases;
+  96% line coverage.
 
 ```json
 {
@@ -230,12 +231,14 @@ All five dialects are measured: draft-04, draft-06, draft-07, 2019-09 and
 2020-12. Every dialect is pinned case by case in `knownFailuresByDialect.ts`.
 `test/suite/baseline.ts` records the counts the badges render.
 
-Today it passes **304 of 304 draft-07 cases (1,655 of 1,655 assertions)**. Format
-cases run in the mode they are tagged for, so both the annotation and the
-assertion cases are measured; cases that need external schemas are served from
-`externalSchemas`.
+Today it passes **every case and assertion in all five dialects**: draft-04
+(194/194 cases, 911/911 assertions), draft-06 (263/263, 1,218/1,218), draft-07
+(304/304, 1,655/1,655), 2019-09 (417/417, 2,043/2,043) and 2020-12 (431/431,
+2,082/2,082). Format cases run in the mode they are tagged for, so both the
+annotation and the assertion cases are measured; cases that need external
+schemas are served from `externalSchemas`.
 
-Draft-07 has no known gaps. A future gap is recorded in
+There are no known gaps. A future gap is recorded in
 `test/suite/knownFailures.ts` and `test/suite/knownFailureInstances.ts`. Refresh
 the baseline after a fix or a regression:
 

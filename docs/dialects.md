@@ -74,8 +74,8 @@ await compile({
 
 The policy only decides how foreign keywords are reported. The parser keeps
 them in the schema, and the generators skip them (see [Generation](#generation)).
-Valid keywords that no generator supports yet (`$dynamicRef`, `$recursiveRef`)
-always fail, whatever the policy.
+Valid dynamic references (`$dynamicRef`, `$recursiveRef`) are preserved for the
+shared runtime guard used by the Zod and Effect generators.
 
 The other options:
 
