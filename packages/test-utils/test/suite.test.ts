@@ -7,6 +7,7 @@ import { loadSuiteFiles, suiteCaseKey } from '../src/suite/loadSuite';
 import type { SuiteFile } from '../src/suite/loadSuite';
 import { measureDialect } from '../src/suite/measureDialect';
 import { DRAFT_7 } from '../src/suite/compatibility';
+import { appendInstances } from '../src/suite/typecheck';
 
 describe('code', () => {
 	test('ts formats the expected code like formatSource', async () => {
@@ -61,6 +62,27 @@ describe('renderKnownFailureInstances', () => {
 				`\t\t"y",`,
 				`\t],`,
 			].join('\n')
+		);
+	});
+});
+
+describe('appendInstances', () => {
+	test('adds an instance declaration and a directive for every test', () => {
+		const module = appendInstances('export interface Root {}', [
+			{ valid: true, data: { a: 1 } },
+			{ valid: false, data: { b: 2 } },
+		]);
+
+		expect(module.schemaLines).toBe(1);
+		expect(module.instances).toEqual([
+			{ index: 0, valid: true, line: 2, directiveLine: undefined },
+			{ index: 1, valid: false, line: 4, directiveLine: 3 },
+		]);
+	});
+
+	test('refuses output without a Root declaration', () => {
+		expect(() => appendInstances('', [{ valid: false, data: 'foo' }])).toThrow(
+			'Generated code does not declare Root'
 		);
 	});
 });

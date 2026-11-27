@@ -55,11 +55,11 @@ json-schema-to-typescript is pinned to `16.0.0` and its baseline lives in
 
 | Dialect  | `@utilize/typescript` cases | json-schema-to-typescript cases | `@utilize/typescript` instances | json-schema-to-typescript instances |
 | -------- | --------------------------- | ------------------------------- | ------------------------------- | ----------------------------------- |
-| draft-04 | 115 / 187 (61%)             | 78 / 187 (41%)                  | 526 / 672 (78%)                 | 400 / 672 (59%)                     |
-| draft-06 | 169 / 253 (66%)             | 110 / 253 (43%)                 | 712 / 878 (81%)                 | 524 / 878 (59%)                     |
-| draft-07 | 192 / 285 (67%)             | 113 / 285 (39%)                 | 795 / 972 (81%)                 | 549 / 972 (56%)                     |
-| 2019-09  | 243 / 396 (61%)             | 132 / 396 (33%)                 | 988 / 1,292 (76%)               | 689 / 1,292 (53%)                   |
-| 2020-12  | 237 / 409 (57%)             | 123 / 409 (30%)                 | 996 / 1,319 (75%)               | 665 / 1,319 (50%)                   |
+| draft-04 | 115 / 187 (61%)             | 78 / 187 (41%)                  | 526 / 672 (78%)                 | 399 / 672 (59%)                     |
+| draft-06 | 169 / 253 (66%)             | 108 / 253 (42%)                 | 712 / 878 (81%)                 | 521 / 878 (59%)                     |
+| draft-07 | 192 / 285 (67%)             | 111 / 285 (38%)                 | 795 / 972 (81%)                 | 546 / 972 (56%)                     |
+| 2019-09  | 243 / 396 (61%)             | 129 / 396 (32%)                 | 988 / 1,292 (76%)               | 683 / 1,292 (52%)                   |
+| 2020-12  | 237 / 409 (57%)             | 120 / 409 (29%)                 | 996 / 1,319 (75%)               | 659 / 1,319 (49%)                   |
 
 The case counts match because both runners select exactly the same cases. The
 difference is in how each generator spends its failures:
@@ -77,6 +77,33 @@ difference is in how each generator spends its failures:
 
 Which trade-off is preferable depends on the schemas you feed it, but the
 measurement itself is now like for like.
+
+### Where json-schema-to-typescript does more
+
+The score only counts cases where both directions match; it does not capture
+individual features. Concrete capabilities the competitor has and
+`@utilize/typescript` does not:
+
+- Bounded arrays from `minItems`/`maxItems` become tuple unions, such as
+  `[string] | [string, string]`; the Utilize generator emits `Array<string>`.
+  This is why it passes `ref.json :: ref applies alongside sibling keywords`
+  for 2019-09 and 2020-12 in the table above.
+- `not: {}` becomes `never`, so a forbidden property is rejected. The Utilize
+  generator keeps `unknown` and accepts it, which is why the competitor passes
+  `not.json :: forbidden property` in every dialect.
+- Named and `const` enums via `tsEnumNames`, `enableConstEnums` and
+  `inferStringEnumKeysFromValues`; the Utilize generator always emits a literal
+  union.
+- The `tsType` schema extension for a custom TypeScript type. The Utilize API
+  has `customSchemaResolver`, which covers the same use case through a
+  different mechanism.
+- Draft-03 `required: true` on a property, which predates the draft-04
+  `required` array.
+
+Some of these are deliberate output choices rather than missing support: a
+literal union has no runtime object, and `customSchemaResolver` handles custom
+types. The tuple and `not` cases are real precision gaps that could be closed
+later.
 
 ## Why the runtime numbers are not directly comparable
 

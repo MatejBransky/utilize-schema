@@ -5,6 +5,7 @@ import { commandOutput } from '../process';
 import { execFileSync } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 
 const require = createRequire(import.meta.url);
@@ -44,16 +45,25 @@ export interface TypecheckResults {
 }
 
 const DIAGNOSTIC = /^(.*)\((\d+),(\d+)\): error (TS\d+): (.*)$/;
+const ROOT_DECLARATION = /^export (?:interface|type|enum|const enum) Root\b/m;
 
 /**
  * Appends one typed constant per suite instance to generated declarations.
  * Valid instances are plain declarations; invalid instances get a
  * `@ts-expect-error` directive, so a single `tsc` run checks both directions.
+ *
+ * A generator that emits no `Root` declaration cannot be scored: an
+ * `@ts-expect-error` would swallow the missing name and make an invalid
+ * instance look rejected. Treat that output as a compile failure instead.
  */
 export function appendInstances(
 	code: string,
 	tests: readonly { valid: boolean; data: unknown }[]
 ): CaseModule {
+	if (!ROOT_DECLARATION.test(code)) {
+		throw new Error('Generated code does not declare Root');
+	}
+
 	const lines = code.trimEnd().split('\n');
 	const schemaLines = lines.length;
 	const instances: InstanceLine[] = [];
@@ -80,7 +90,7 @@ export function appendInstances(
  * instance.
  */
 export async function typecheckCases(modules: TypecheckModule[]): Promise<TypecheckResults> {
-	const directory = await mkdtemp(join(__dirname, '__suite__-'));
+	const directory = await mkdtemp(join(tmpdir(), 'utilize-suite-'));
 	const byPath = new Map<string, TypecheckModule>();
 	const files: string[] = [];
 	const results: TypecheckResults = {
