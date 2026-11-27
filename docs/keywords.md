@@ -115,20 +115,21 @@ subschemas that do not declare the same property.
 
 ## TypeScript
 
-| JSON Schema keyword                           | TypeScript                                                        |
-| --------------------------------------------- | ----------------------------------------------------------------- |
-| `type`                                        | Primitive types, unions of types                                  |
-| `const`, `enum`                               | Literal types (objects and arrays too), intersected with siblings |
-| `properties`, `required`                      | Interface members, optional members                               |
-| `additionalProperties`                        | Index signature (`unknown` when open)                             |
-| `patternProperties`                           | Index signature union with the pattern schemas                    |
-| `items`, `prefixItems`, `additionalItems`     | `Array<T>`, tuples with optional and rest elements                |
-| `allOf`                                       | Intersection                                                      |
-| `anyOf`, `oneOf`                              | Union, intersected with the sibling keywords                      |
-| `$ref`, `$defs`, `definitions`                | Named declarations, including cycles                              |
-| `title`, `description`                        | JSDoc, skipping a title that only repeats the name                |
-| `deprecated`, `default`, `format`, `examples` | JSDoc tags                                                        |
-| `readOnly`                                    | `readonly` modifier                                               |
+| JSON Schema keyword                           | TypeScript                                                             |
+| --------------------------------------------- | ---------------------------------------------------------------------- |
+| `type`                                        | Primitive types, unions of types                                       |
+| `const`, `enum`                               | Literal types (objects and arrays too), intersected with siblings      |
+| `properties`, `required`                      | Interface members, optional members                                    |
+| `additionalProperties`                        | Index signature (`unknown` when open)                                  |
+| `patternProperties`                           | Mapped type with a template-literal key union, else an index signature |
+| `propertyNames`                               | Mapped type over an `enum` or `const` key union                        |
+| `items`, `prefixItems`, `additionalItems`     | `Array<T>`, tuples with optional and rest elements                     |
+| `allOf`                                       | Intersection                                                           |
+| `anyOf`, `oneOf`                              | Union, intersected with the sibling keywords                           |
+| `$ref`, `$defs`, `definitions`                | Named declarations, including cycles                                   |
+| `title`, `description`                        | JSDoc, skipping a title that only repeats the name                     |
+| `deprecated`, `default`, `format`, `examples` | JSDoc tags                                                             |
+| `readOnly`                                    | `readonly` modifier                                                    |
 
 Validation-only keywords (`minLength`, `pattern`, `minimum`, `uniqueItems`,
 `minItems`, `not`, `if`/`then`/`else`, `dependencies`, …) have no equivalent in

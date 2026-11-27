@@ -100,6 +100,27 @@ const patterns: TestSchema = {
 	additionalProperties: false,
 };
 
+const mappedKeys: TestSchema = {
+	type: 'object',
+	propertyNames: { $ref: '#/$defs/Weekday' },
+	properties: { monday: { type: 'number' } },
+	required: ['monday'],
+	patternProperties: { '^applies_to_(foo|bar)$': { type: 'string' } },
+	additionalProperties: { type: 'number' },
+	$defs: {
+		Weekday: { type: 'string', enum: ['monday', 'tuesday'] },
+	},
+};
+
+const patternKeys: TestSchema = {
+	type: 'object',
+	additionalProperties: false,
+	patternProperties: {
+		'^x-': { type: 'number' },
+		'applies_to_(foo|bar)': { type: 'string' },
+	},
+};
+
 const constants: TestSchema = {
 	type: 'object',
 	properties: {
@@ -201,6 +222,8 @@ describe('generated types type-check', () => {
 				'Unions.ts': unions,
 				'TypedAdditionalProperties.ts': typedAdditionalProperties,
 				'Patterns.ts': patterns,
+				'MappedKeys.ts': mappedKeys,
+				'PatternKeys.ts': patternKeys,
 				'Constants.ts': constants,
 				'RequiredWithoutProperty.ts': requiredWithoutProperty,
 				'Tuples.ts': tuples,
