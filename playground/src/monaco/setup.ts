@@ -3,6 +3,7 @@ import editorWorker from 'monaco-editor/editor/editor.worker.js?worker';
 import jsonWorker from 'monaco-editor/languages/features/json/json.worker.js?worker';
 import tsWorker from 'monaco-editor/languages/features/typescript/ts.worker.js?worker';
 
+import jsonSchemaFormatsTypes from 'virtual:json-schema-formats-types';
 import zodTypes from 'virtual:zod-types';
 
 interface MonacoEnvironment {
@@ -50,6 +51,11 @@ typescript.typescriptDefaults.setEagerModelSync(true);
 for (const [file, content] of Object.entries(zodTypes)) {
 	typescript.typescriptDefaults.addExtraLib(content, `file:///node_modules/zod/${file}`);
 }
+
+typescript.typescriptDefaults.addExtraLib(
+	jsonSchemaFormatsTypes,
+	'file:///node_modules/@utilize/json-schema/formats.d.ts'
+);
 
 let effectTypesPromise: Promise<void> | undefined;
 

@@ -19,8 +19,9 @@ Schema or TypeScript code next to the schemas.
   `format` into validation, `annotate` keeps it as metadata
   (`?format-mode=annotate`). It is disabled for the TypeScript target, which
   cannot check a format.
-- Generated code is formatted with Prettier at 80 columns, and the Effect target
-  adds the real `effect` type declarations to the editor's TypeScript worker
+- Generated code is formatted with Prettier at 80 columns; the editor's
+  TypeScript worker gets the real Zod and Effect declarations plus
+  `@utilize/json-schema/formats`, so generated field types stay concrete
 - Live JSON and JSON Schema validation with AJV (draft-07, 2019-09 and
   2020-12 meta-schemas)
 - Unresolved `$ref`s and remote refs are reported

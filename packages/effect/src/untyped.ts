@@ -4,7 +4,6 @@ import type { Dialect, ParsedJSONSchemaObject } from '@utilize/json-schema';
 import { generateArray } from './array';
 import type { Context, JSONValueType } from './context';
 import { JSON_VALUE_TYPES } from './context';
-import { formatCheck } from './formats';
 import { generateNumber } from './number';
 import { generateObject } from './object';
 import { arrayRest, prefixItemsOf } from './schemaParts';
@@ -117,9 +116,5 @@ function appliesToString(
 		return true;
 	}
 
-	return (
-		assertFormats &&
-		typeof schema.format === 'string' &&
-		(hasFormatValidator(schema.format) || formatCheck(schema.format) !== undefined)
-	);
+	return assertFormats && typeof schema.format === 'string' && hasFormatValidator(schema.format);
 }

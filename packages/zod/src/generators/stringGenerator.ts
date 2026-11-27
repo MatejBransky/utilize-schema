@@ -1,5 +1,5 @@
 import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
-import { formatPattern, hasFormatValidator } from '@utilize/json-schema';
+import { hasFormatValidator } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
 import type { GeneratorContext } from './types';
@@ -62,19 +62,17 @@ function formatExpression(format: string, context: GeneratorContext) {
 		(context.dialect.id === 'draft-04' || context.dialect.id === 'draft-06')
 			? 'hostname-legacy'
 			: format;
-	const pattern = formatPattern(validationFormat);
+	const method = ownValue(formatToZodMethod, validationFormat);
 
-	if (pattern !== undefined) {
-		return `z.string().regex(new RegExp(${JSON.stringify(pattern)}, 'u'))`;
+	if (method) {
+		return ts`z${method}`;
 	}
 
 	if (hasFormatValidator(validationFormat)) {
 		return `z.string().refine(${context.formatOf(validationFormat)}, { message: ${JSON.stringify(`Invalid ${format}`)} })`;
 	}
 
-	const method = ownValue(formatToZodMethod, validationFormat);
-
-	return method ? ts`z${method}` : undefined;
+	return undefined;
 }
 
 /**

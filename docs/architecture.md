@@ -33,7 +33,8 @@ generators share:
   generators share.
 - The **`@utilize/json-schema/formats` entry** holds the target-neutral runtime
   validators that generated Zod and Effect schemas import instead of inlining
-  them.
+  them. It is therefore a runtime dependency of the applications that run those
+  generated modules.
 - The **`@utilize/json-schema/node` entry** adds the Node-only helpers behind the
   generator `compile()` functions and their CLIs: reading JSON and YAML,
   file/glob/directory input, `compilePaths`, `parseForCompile`, the generated

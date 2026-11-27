@@ -1,97 +1,54 @@
 /**
- * Runtime validators for the JSON Schema formats that need structural
- * validation rather than a single regular expression.
+ * Runtime validators for JSON Schema formats.
  *
  * Generated Zod and Effect schemas import these instead of inlining a copy of
  * each validator, so a file that asserts a few formats stays small.
  */
 
+import {
+	formatBase64,
+	formatBase64Url,
+	formatCidrv4,
+	formatCidrv6,
+	formatCuid,
+	formatCuid2,
+	formatDate,
+	formatEmoji,
+	formatJsonPointer,
+	formatNanoid,
+	formatRelativeJsonPointer,
+	formatUlid,
+	formatUrl,
+} from './formatPatterns';
+import { exactEnd } from './formatSources';
+import { formatDateTime, formatDuration, formatTime, formatUuid } from './formatTemporal';
+
+export {
+	formatBase64,
+	formatBase64Url,
+	formatCidrv4,
+	formatCidrv6,
+	formatCuid,
+	formatCuid2,
+	formatDate,
+	formatEmoji,
+	formatJsonPointer,
+	formatNanoid,
+	formatRelativeJsonPointer,
+	formatUlid,
+	formatUrl,
+} from './formatPatterns';
+export { formatDateTime, formatDuration, formatTime, formatUuid } from './formatTemporal';
+
 /** Returns whether `value` satisfies a JSON Schema `format`. */
 export type FormatValidator = (value: string) => boolean;
 
-const exactEnd = String.raw`(?![\s\S])`;
-const dateSource = String.raw`(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))`;
-
-const dateTimePattern = new RegExp(
-	`^(${dateSource})[Tt]((?:[01]\\d|2[0-3]):[0-5]\\d):([0-5]\\d|60)(?:\\.\\d+)?([zZ]|[+-](?:[01]\\d|2[0-3]):[0-5]\\d)${exactEnd}`,
-	'u'
-);
-
-const timePattern = new RegExp(
-	`^((?:[01]\\d|2[0-3]):[0-5]\\d):([0-5]\\d|60)(?:\\.\\d+)?([zZ]|[+-](?:[01]\\d|2[0-3]):[0-5]\\d)${exactEnd}`,
-	'u'
-);
-
-/**
- * `60` names the second that is `23:59:60` in UTC, so the value's own offset
- * decides whether a local time spells it: `15:59:60-08:00` does,
- * `23:59:60+01:00` does not.
- */
-function matchesLeapSecond(
-	match: RegExpExecArray,
-	hourMinuteGroup: number,
-	secondsGroup: number,
-	zoneGroup: number
-): boolean {
-	if (match[secondsGroup] !== '60') {
-		return true;
-	}
-
-	const hourMinute = match[hourMinuteGroup] ?? '';
-	const rawOffset = match[zoneGroup] ?? '';
-	const hour = Number(hourMinute.slice(0, 2));
-	const minute = Number(hourMinute.slice(3, 5));
-	const offset =
-		rawOffset.toLowerCase() === 'z'
-			? 0
-			: (rawOffset[0] === '-' ? -1 : 1) *
-				(Number(rawOffset.slice(1, 3)) * 60 + Number(rawOffset.slice(4, 6)));
-
-	return (hour * 60 + minute - offset + 1440) % 1440 === 23 * 60 + 59;
+export function formatIpv4(value: string): boolean {
+	return isIPv4(value);
 }
 
-/** RFC 3339 `date-time`, including calendar dates and leap seconds. */
-export function formatDateTime(value: string): boolean {
-	const match = dateTimePattern.exec(value);
-
-	return match !== null && matchesLeapSecond(match, 2, 3, 4);
-}
-
-/** RFC 3339 `time`, which requires an offset. */
-export function formatTime(value: string): boolean {
-	const match = timePattern.exec(value);
-
-	return match !== null && matchesLeapSecond(match, 1, 2, 3);
-}
-
-/** RFC 3339 duration syntax, including its ordering and component dependencies. */
-export function formatDuration(value: string): boolean {
-	const match =
-		/^P(?:(\d+)W|(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)D)?(?:T(?=\d)(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?)$/.exec(
-			value
-		);
-
-	if (match === null) {
-		return false;
-	}
-
-	if (match[1] !== undefined) {
-		return true;
-	}
-
-	if (match.slice(2).every((part) => part === undefined)) {
-		return false;
-	}
-
-	if (match[2] !== undefined && match[3] === undefined && match[4] !== undefined) {
-		return false;
-	}
-
-	if (match[5] !== undefined && match[6] === undefined && match[7] !== undefined) {
-		return false;
-	}
-
-	return true;
+export function formatIpv6(value: string): boolean {
+	return isIPv6(value);
 }
 
 const ipv4Part = String.raw`(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)`;
@@ -861,7 +818,9 @@ export function formatIriReference(value: string): boolean {
 export const formats = {
 	'date-time': formatDateTime,
 	time: formatTime,
+	uuid: formatUuid,
 	duration: formatDuration,
+	date: formatDate,
 	email: formatEmail,
 	'idn-email': formatIdnEmail,
 	hostname: formatHostname,
@@ -872,5 +831,19 @@ export const formats = {
 	iri: formatIri,
 	'iri-reference': formatIriReference,
 	'uri-template': formatUriTemplate,
+	url: formatUrl,
+	'json-pointer': formatJsonPointer,
+	'relative-json-pointer': formatRelativeJsonPointer,
+	emoji: formatEmoji,
+	base64: formatBase64,
+	base64url: formatBase64Url,
+	nanoid: formatNanoid,
+	cuid: formatCuid,
+	cuid2: formatCuid2,
+	ulid: formatUlid,
+	ipv4: formatIpv4,
+	ipv6: formatIpv6,
+	cidrv4: formatCidrv4,
+	cidrv6: formatCidrv6,
 	regex: formatRegex,
 } satisfies Record<string, FormatValidator>;

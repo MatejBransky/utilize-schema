@@ -3,7 +3,6 @@ import { hasFormatValidator } from '@utilize/json-schema';
 
 import type { Context } from './context';
 import { patternExpression } from './expressions';
-import { formatCheck } from './formats';
 
 export function generateString(schema: ParsedJSONSchemaObject, context: Context): string {
 	const checks = stringChecks(schema);
@@ -49,5 +48,5 @@ function stringFormat(schema: ParsedJSONSchemaObject, context: Context): string 
 		return `Schema.makeFilter<string>((value) => ${validator}(value) ? undefined : ${JSON.stringify(`Invalid ${schema.format}`)})`;
 	}
 
-	return formatCheck(validationFormat);
+	return undefined;
 }

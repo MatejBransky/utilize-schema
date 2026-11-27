@@ -7,6 +7,7 @@ import react from '@vitejs/plugin-react-swc';
 import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
 
+import { formatConstantBase, formatNames } from '../packages/json-schema/src/formatName.ts';
 import { collectDeclarations } from './src/viteDeclarations.ts';
 
 const require = createRequire(import.meta.url);
@@ -43,6 +44,51 @@ function zodTypesPlugin(): Plugin {
 			walk(zodRoot);
 
 			return `export default ${JSON.stringify(files)};`;
+		},
+	};
+}
+
+/**
+ * The generated code imports the shared format validators. Monaco needs their
+ * declarations too; derive them from the real map so a new validator cannot
+ * leave the editor falling back to `any`.
+ */
+function jsonSchemaFormatsTypesPlugin(): Plugin {
+	const virtualId = 'virtual:json-schema-formats-types';
+	const resolvedId = `\0${virtualId}`;
+
+	return {
+		name: 'utilize-json-schema-formats-types',
+		resolveId(id) {
+			return id === virtualId ? resolvedId : undefined;
+		},
+		load(id) {
+			if (id !== resolvedId) {
+				return;
+			}
+
+			const entries = formatNames.map((format) => ({
+				format,
+				name: formatConstantBase(format),
+			}));
+			const functions = entries
+				.map(({ name }) => `\texport function ${name}(value: string): boolean;`)
+				.join('\n');
+			const map = entries
+				.map(({ format, name }) => `\t\t${JSON.stringify(format)}: typeof ${name};`)
+				.join('\n');
+			const source = [
+				"declare module '@utilize/json-schema/formats' {",
+				'\texport type FormatValidator = (value: string) => boolean;',
+				functions,
+				'\texport const formats: {',
+				map,
+				'\t};',
+				'}',
+				'',
+			].join('\n');
+
+			return `export default ${JSON.stringify(source)};`;
 		},
 	};
 }
@@ -95,7 +141,7 @@ export default defineConfig({
 			'react-dom/client',
 		],
 	},
-	plugins: [react(), zodTypesPlugin(), effectTypesPlugin()],
+	plugins: [react(), zodTypesPlugin(), jsonSchemaFormatsTypesPlugin(), effectTypesPlugin()],
 	resolve: {
 		alias: {
 			'@utilize/zod': fileURLToPath(new URL('../packages/zod/src/generator.ts', import.meta.url)),
