@@ -30,4 +30,5 @@ export * from './narrow';
 export * from './normalize';
 export * from './parser';
 export * from './resolveName';
+export * from './runtimeSchema';
 export * from './utils';

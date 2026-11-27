@@ -420,6 +420,24 @@ test('resolves draft-04 id identifiers', async () => {
 	expect(byFragment.type).toBe('boolean');
 });
 
+test('resolves a $ref to a $dynamicAnchor', async () => {
+	const schema = {
+		$schema: 'https://json-schema.org/draft/2020-12/schema',
+		type: 'array',
+		items: { $ref: '#items' },
+		$defs: {
+			foo: { $dynamicAnchor: 'items', type: 'string' },
+		},
+	} as JSONSchema;
+	const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Unknown' });
+
+	assert(typeof parsed.root === 'object' && parsed.root !== null);
+	const items = parsed.root.items;
+
+	assert(isParsedJSONSchemaObject(items));
+	expect(items[Meta].reference).toMatchObject({ type: 'string' });
+});
+
 test('resolves a JSON pointer against the embedded resource that contains it', async () => {
 	const schema = {
 		$id: 'http://example.com/root.json',

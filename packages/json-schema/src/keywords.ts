@@ -11,6 +11,8 @@ export const ANNOTATION_KEYWORDS: ReadonlySet<string> = new Set([
 	'$id',
 	'id',
 	'$anchor',
+	'$recursiveAnchor',
+	'$dynamicAnchor',
 	'$vocabulary',
 	'$comment',
 	'$defs',

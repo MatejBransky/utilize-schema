@@ -35,10 +35,16 @@
 			"types": "./dist/node.d.ts",
 			"default": "./dist/node.mjs"
 		},
+		"./runtime": {
+			"types": "./dist/runtime.d.ts",
+			"default": "./dist/runtime.mjs"
+		},
 		"./dist/index.mjs": "./dist/index.mjs",
 		"./dist/index.d.ts": "./dist/index.d.ts",
 		"./dist/node.mjs": "./dist/node.mjs",
 		"./dist/node.d.ts": "./dist/node.d.ts",
+		"./dist/runtime.mjs": "./dist/runtime.mjs",
+		"./dist/runtime.d.ts": "./dist/runtime.d.ts",
 		"./package.json": "./package.json"
 	},
 	"publishConfig": {
