@@ -35,6 +35,17 @@ for (const target of ['zod', 'effect'] as const) {
 	}
 }
 
+test('the TypeScript generator uses the playground format setting', async () => {
+	const { root } = await parse({ format: 'email' }, { cwd: '/', fileName: 'schema.json' });
+
+	expect(generateCodeFor('typescript', root, defaultFormatMode).code).toContain(
+		'export type Schema = unknown;'
+	);
+	expect(generateCodeFor('typescript', root, defaultFormatMode, undefined, true).code).toContain(
+		'export type Schema = string;'
+	);
+});
+
 test('a failed generator keeps its error for the results pane', async () => {
 	// `\-` is only invalid under the Unicode flag, which the Zod generator uses.
 	const { root } = await parse(

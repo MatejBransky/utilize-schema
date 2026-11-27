@@ -140,6 +140,10 @@ function resultStatus(target: 'zod' | 'effect'): string | null {
 	);
 }
 
+function generatedCode(): string {
+	return document.querySelector('[data-testid="generated-code"]')?.getAttribute('data-value') ?? '';
+}
+
 test('dragging JSON files over the editor shows the add and replace targets', async () => {
 	const screen = await render(<App />);
 
@@ -489,6 +493,35 @@ test('the format select is disabled for the type generator', async () => {
 	await screen.getByRole('option', { name: /TypeScript/ }).click();
 
 	await expect.element(screen.getByRole('combobox', { name: 'Format' })).toBeDisabled();
+});
+
+test('the format-as-string switch infers string for the type generator', async () => {
+	localStorage.setItem(
+		'utilize-schema-playground',
+		JSON.stringify({
+			files: [
+				{
+					id: 'root',
+					name: 'root.json',
+					content: JSON.stringify({ format: 'email' }),
+				},
+			],
+			target: 'typescript',
+			data: '"ada@example.com"',
+		})
+	);
+	const screen = await render(<App />);
+	const toggle = screen.getByRole('switch', { name: 'Format as string' });
+
+	await expect.element(toggle).toBeVisible();
+	await vi.waitFor(() => expect(generatedCode()).toContain('export type Root = unknown;'));
+
+	await toggle.click();
+
+	await vi.waitFor(() =>
+		expect(new URL(location.href).searchParams.get('infer-format-as-string')).toBe('true')
+	);
+	await vi.waitFor(() => expect(generatedCode()).toContain('export type Root = string;'));
 });
 
 test('an example URL loads that example', async () => {

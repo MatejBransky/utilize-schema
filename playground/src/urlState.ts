@@ -11,12 +11,14 @@ import type { TargetId } from './targets';
 const GENERATOR_PARAM = 'generator';
 const KEYWORD_POLICY_PARAM = 'keyword-policy';
 const FORMAT_MODE_PARAM = 'format-mode';
+const INFER_FORMAT_AS_STRING_PARAM = 'infer-format-as-string';
 
 export interface UrlState {
 	files: SchemaFile[];
 	target: TargetId;
 	keywordPolicy: KeywordPolicy;
 	formatMode: FormatMode;
+	inferFormatAsString: boolean;
 	data: string;
 }
 
@@ -46,30 +48,85 @@ export function readFormatModeParam(url: URL): FormatMode | null {
 	return isFormatMode(value) ? value : null;
 }
 
+export function readInferFormatAsStringParam(url: URL): boolean | null {
+	const value = url.searchParams.get(INFER_FORMAT_AS_STRING_PARAM);
+
+	if (value === 'true' || value === '1') {
+		return true;
+	}
+
+	if (value === 'false' || value === '0') {
+		return false;
+	}
+
+	return null;
+}
+
+interface UrlOverrides {
+	target: TargetId | null;
+	keywordPolicy: KeywordPolicy | null;
+	formatMode: FormatMode | null;
+	inferFormatAsString: boolean | null;
+}
+
+type GeneratorSettings = Pick<
+	UrlState,
+	'target' | 'keywordPolicy' | 'formatMode' | 'inferFormatAsString'
+>;
+
+function readUrlOverrides(url: URL): UrlOverrides {
+	return {
+		target: readGeneratorParam(url),
+		keywordPolicy: readKeywordPolicyParam(url),
+		formatMode: readFormatModeParam(url),
+		inferFormatAsString: readInferFormatAsStringParam(url),
+	};
+}
+
+function hasOverrides(overrides: UrlOverrides): boolean {
+	return (
+		overrides.target !== null ||
+		overrides.keywordPolicy !== null ||
+		overrides.formatMode !== null ||
+		overrides.inferFormatAsString !== null
+	);
+}
+
+function applyOverrides(base: GeneratorSettings, overrides: UrlOverrides): GeneratorSettings {
+	return {
+		target: overrides.target ?? base.target,
+		keywordPolicy: overrides.keywordPolicy ?? base.keywordPolicy,
+		formatMode: overrides.formatMode ?? base.formatMode,
+		inferFormatAsString: overrides.inferFormatAsString ?? base.inferFormatAsString,
+	};
+}
+
 export function readUrlState(url: URL, base: UrlState, example?: Example): UrlState | null {
-	const target = readGeneratorParam(url);
-	const keywordPolicy = readKeywordPolicyParam(url);
-	const formatMode = readFormatModeParam(url);
+	const overrides = readUrlOverrides(url);
 
 	if (example) {
 		return {
 			files: example.files,
-			target: target ?? defaultTarget,
-			keywordPolicy: keywordPolicy ?? base.keywordPolicy,
-			formatMode: formatMode ?? base.formatMode,
+			...applyOverrides(
+				{
+					target: defaultTarget,
+					keywordPolicy: base.keywordPolicy,
+					formatMode: base.formatMode,
+					inferFormatAsString: base.inferFormatAsString,
+				},
+				overrides
+			),
 			data: exampleData(example),
 		};
 	}
 
-	if (!target && !keywordPolicy && !formatMode) {
+	if (!hasOverrides(overrides)) {
 		return null;
 	}
 
 	return {
 		files: base.files,
-		target: target ?? base.target,
-		keywordPolicy: keywordPolicy ?? base.keywordPolicy,
-		formatMode: formatMode ?? base.formatMode,
+		...applyOverrides(base, overrides),
 		data: base.data,
 	};
 }

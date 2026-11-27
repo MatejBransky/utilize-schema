@@ -7,6 +7,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@ui-sdk/react/select';
+import { Switch, SwitchThumb } from '@ui-sdk/react/switch';
 
 import { formatModes, isFormatMode } from '../formatMode';
 import type { Playground } from '../playgroundHooks';
@@ -26,6 +27,7 @@ export type PlaygroundControlsModel = Pick<
 	| 'target'
 	| 'keywordPolicy'
 	| 'formatMode'
+	| 'inferFormatAsString'
 	| 'exampleId'
 	| 'targetOptions'
 	| 'exampleOptions'
@@ -33,6 +35,7 @@ export type PlaygroundControlsModel = Pick<
 	| 'applyExample'
 	| 'applyKeywordPolicy'
 	| 'applyFormatMode'
+	| 'applyInferFormatAsString'
 >;
 
 export interface PlaygroundControlsProps {
@@ -44,6 +47,7 @@ export function PlaygroundControls({ playground }: PlaygroundControlsProps) {
 		target,
 		keywordPolicy,
 		formatMode,
+		inferFormatAsString,
 		exampleId,
 		targetOptions,
 		exampleOptions,
@@ -51,6 +55,7 @@ export function PlaygroundControls({ playground }: PlaygroundControlsProps) {
 		applyExample: onExampleChange,
 		applyKeywordPolicy: onKeywordPolicyChange,
 		applyFormatMode: onFormatModeChange,
+		applyInferFormatAsString: onInferFormatAsStringChange,
 	} = playground;
 	return (
 		<>
@@ -122,6 +127,14 @@ export function PlaygroundControls({ playground }: PlaygroundControlsProps) {
 					</SelectContent>
 				</Select>
 			</div>
+			{target === 'typescript' ? (
+				<label className={styles.formatAsString}>
+					<span>Format as string</span>
+					<Switch checked={inferFormatAsString} onCheckedChange={onInferFormatAsStringChange}>
+						<SwitchThumb />
+					</Switch>
+				</label>
+			) : null}
 		</>
 	);
 }

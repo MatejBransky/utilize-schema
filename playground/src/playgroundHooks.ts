@@ -53,6 +53,7 @@ interface SettingsSetters {
 	setTarget(target: TargetId): void;
 	setKeywordPolicy(policy: KeywordPolicy): void;
 	setFormatMode(mode: FormatMode): void;
+	setInferFormatAsString(value: boolean): void;
 	setData(data: string): void;
 }
 
@@ -65,7 +66,8 @@ export function usePlayground() {
 		workspace.files,
 		settings.target,
 		settings.keywordPolicy,
-		settings.formatMode
+		settings.formatMode,
+		settings.inferFormatAsString
 	);
 	const theme = useTheme();
 	const editors = useEditorNavigation(workspace.setActiveId);
@@ -85,6 +87,7 @@ export function usePlayground() {
 		settings.target,
 		settings.keywordPolicy,
 		settings.formatMode,
+		settings.inferFormatAsString,
 		generation.code,
 		testData.data,
 		editors.codeEditorRef
@@ -101,6 +104,7 @@ export function usePlayground() {
 		target: settings.target,
 		keywordPolicy: settings.keywordPolicy,
 		formatMode: settings.formatMode,
+		inferFormatAsString: settings.inferFormatAsString,
 		data: testData.data,
 	});
 
@@ -130,6 +134,7 @@ interface PersistedWorkspace {
 	target: TargetId;
 	keywordPolicy: KeywordPolicy;
 	formatMode: FormatMode;
+	inferFormatAsString: boolean;
 	data: string;
 }
 
@@ -138,18 +143,19 @@ function useWorkspacePersistence({
 	target,
 	keywordPolicy,
 	formatMode,
+	inferFormatAsString,
 	data,
 }: PersistedWorkspace) {
 	useEffect(() => {
 		try {
 			localStorage.setItem(
 				PLAYGROUND_STORAGE_KEY,
-				JSON.stringify({ files, target, keywordPolicy, formatMode, data })
+				JSON.stringify({ files, target, keywordPolicy, formatMode, inferFormatAsString, data })
 			);
 		} catch {
 			// Storage can be full or denied. Keep the workspace in memory.
 		}
-	}, [files, target, keywordPolicy, formatMode, data]);
+	}, [files, target, keywordPolicy, formatMode, inferFormatAsString, data]);
 }
 
 interface ExampleSelection {
@@ -186,6 +192,7 @@ function useGeneratorSettings(initial: UrlState) {
 	const [target, setTarget] = useState<TargetId>(initial.target);
 	const [keywordPolicy, setKeywordPolicy] = useState<KeywordPolicy>(initial.keywordPolicy);
 	const [formatMode, setFormatMode] = useState<FormatMode>(initial.formatMode);
+	const [inferFormatAsString, setInferFormatAsString] = useState(initial.inferFormatAsString);
 
 	useEffect(() => {
 		const url = new URL(location.href);
@@ -194,7 +201,8 @@ function useGeneratorSettings(initial: UrlState) {
 			url.hash ||
 			(url.searchParams.get(playgroundParams.generator) === target &&
 				url.searchParams.get(playgroundParams.keywordPolicy) === keywordPolicy &&
-				url.searchParams.get(playgroundParams.formatMode) === formatMode)
+				url.searchParams.get(playgroundParams.formatMode) === formatMode &&
+				url.searchParams.get(playgroundParams.inferFormatAsString) === String(inferFormatAsString))
 		) {
 			return;
 		}
@@ -204,10 +212,11 @@ function useGeneratorSettings(initial: UrlState) {
 				[playgroundParams.generator]: target,
 				[playgroundParams.keywordPolicy]: keywordPolicy,
 				[playgroundParams.formatMode]: formatMode,
+				[playgroundParams.inferFormatAsString]: String(inferFormatAsString),
 			},
 			'replace'
 		);
-	}, [target, keywordPolicy, formatMode]);
+	}, [target, keywordPolicy, formatMode, inferFormatAsString]);
 
 	function applyGenerator(id: TargetId) {
 		setTarget(id);
@@ -224,16 +233,24 @@ function useGeneratorSettings(initial: UrlState) {
 		updateUrl({ [playgroundParams.formatMode]: mode }, 'push');
 	}
 
+	function applyInferFormatAsString(value: boolean) {
+		setInferFormatAsString(value);
+		updateUrl({ [playgroundParams.inferFormatAsString]: String(value) }, 'push');
+	}
+
 	return {
 		target,
 		keywordPolicy,
 		formatMode,
+		inferFormatAsString,
 		setTarget,
 		setKeywordPolicy,
 		setFormatMode,
+		setInferFormatAsString,
 		applyGenerator,
 		applyKeywordPolicy,
 		applyFormatMode,
+		applyInferFormatAsString,
 	};
 }
 
@@ -278,6 +295,7 @@ function useSchemaFiles(initialFiles: SchemaFile[], settings: SettingsSetters) {
 			settings.setTarget(next.target);
 			settings.setKeywordPolicy(next.keywordPolicy);
 			settings.setFormatMode(next.formatMode);
+			settings.setInferFormatAsString(next.inferFormatAsString);
 			settings.setData(next.data);
 			setActiveId(next.files[0]?.id ?? '');
 			setEditingId(null);
@@ -440,7 +458,8 @@ function useGeneration(
 	files: SchemaFile[],
 	target: TargetId,
 	keywordPolicy: KeywordPolicy,
-	formatMode: FormatMode
+	formatMode: FormatMode,
+	inferFormatAsString: boolean
 ) {
 	const [code, setCode] = useState('');
 	const [runtime, setRuntime] = useState<RuntimeSource | null>(null);
@@ -464,7 +483,14 @@ function useGeneration(
 		setBusy(true);
 
 		async function generate() {
-			const next = await generateOutput(bundle, target, keywordPolicy, formatMode, exampleId);
+			const next = await generateOutput(
+				bundle,
+				target,
+				keywordPolicy,
+				formatMode,
+				inferFormatAsString,
+				exampleId
+			);
 
 			if (!cancelled) {
 				setCode(next.code);
@@ -482,7 +508,7 @@ function useGeneration(
 			cancelled = true;
 			clearTimeout(timer);
 		};
-	}, [bundle, exampleId, target, keywordPolicy, formatMode]);
+	}, [bundle, exampleId, target, keywordPolicy, formatMode, inferFormatAsString]);
 
 	return { exampleId, problems, code, runtime, busy };
 }
@@ -492,6 +518,7 @@ async function generateOutput(
 	target: TargetId,
 	keywordPolicy: KeywordPolicy,
 	formatMode: FormatMode,
+	inferFormatAsString: boolean,
 	exampleId: string | null
 ): Promise<{ code: string; runtime: RuntimeSource | null; problems: Problem[] }> {
 	let nextCode = '';
@@ -510,7 +537,13 @@ async function generateOutput(
 			});
 
 			const generatorOptions = exampleId ? generatorOptionsFor(exampleId) : undefined;
-			const generated = generateCodeFor(target, root, formatMode, generatorOptions);
+			const generated = generateCodeFor(
+				target,
+				root,
+				formatMode,
+				generatorOptions,
+				inferFormatAsString
+			);
 
 			nextRuntime = generated.runtime;
 
@@ -607,6 +640,7 @@ interface FeedbackSnapshot {
 	target: TargetId;
 	keywordPolicy: KeywordPolicy;
 	formatMode: FormatMode;
+	inferFormatAsString: boolean;
 	data: string;
 }
 
@@ -615,6 +649,7 @@ function useFeedback(
 	target: TargetId,
 	keywordPolicy: KeywordPolicy,
 	formatMode: FormatMode,
+	inferFormatAsString: boolean,
 	code: string,
 	data: string,
 	codeEditorRef: RefObject<MonacoEditorHandle | null>
@@ -630,6 +665,7 @@ function useFeedback(
 		sharedSnapshot.target === target &&
 		sharedSnapshot.keywordPolicy === keywordPolicy &&
 		sharedSnapshot.formatMode === formatMode &&
+		sharedSnapshot.inferFormatAsString === inferFormatAsString &&
 		sharedSnapshot.data === data;
 	const copied = copy !== null && copy.value === code;
 
@@ -656,16 +692,31 @@ function useFeedback(
 	}
 
 	async function share() {
-		const encoded = encodeState({ files, target, keywordPolicy, formatMode, data });
+		const encoded = encodeState({
+			files,
+			target,
+			keywordPolicy,
+			formatMode,
+			inferFormatAsString,
+			data,
+		});
 		const url = new URL(location.href);
 
 		url.searchParams.delete(playgroundParams.example);
 		url.searchParams.delete(playgroundParams.generator);
 		url.searchParams.set(playgroundParams.keywordPolicy, keywordPolicy);
 		url.searchParams.set(playgroundParams.formatMode, formatMode);
+		url.searchParams.set(playgroundParams.inferFormatAsString, String(inferFormatAsString));
 		url.hash = `data=${encoded}`;
 		history.replaceState(null, '', url);
-		setSharedSnapshot({ files, target, keywordPolicy, formatMode, data });
+		setSharedSnapshot({
+			files,
+			target,
+			keywordPolicy,
+			formatMode,
+			inferFormatAsString,
+			data,
+		});
 
 		try {
 			await navigator.clipboard.writeText(url.href);

@@ -31,6 +31,15 @@
 	min-width: 5.75rem;
 }
 
+.formatAsString {
+	display: flex;
+	flex-direction: column;
+	gap: calc(var(--ui-spacing) * 1);
+	font-size: 0.75rem;
+	line-height: 1.2;
+	color: var(--ui-muted-foreground);
+}
+
 .policyPicker [data-slot='select-label'] {
 	font-size: 0.75rem;
 	line-height: 1.2;

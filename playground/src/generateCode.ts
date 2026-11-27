@@ -36,7 +36,8 @@ export function generateCodeFor(
 	target: TargetId,
 	root: ParsedJSONSchema,
 	formatMode: FormatMode,
-	options?: ExampleGeneratorOptions
+	options?: ExampleGeneratorOptions,
+	inferFormatAsString = false
 ): GeneratedCode {
 	switch (target) {
 		case 'zod':
@@ -48,7 +49,13 @@ export function generateCodeFor(
 			return { code: runtime.status === 'generated' ? runtime.code : '', runtime };
 		}
 		case 'typescript':
-			return { code: generateTypeScript(root, { ...options?.typescript }), runtime: null };
+			return {
+				code: generateTypeScript(root, {
+					...options?.typescript,
+					inferFormatAsString,
+				}),
+				runtime: null,
+			};
 		default: {
 			const unknownTarget: never = target;
 
