@@ -1,0 +1,32 @@
+name: Bug report
+description: The playground generates wrong code or behaves wrongly.
+title: '[bug]: '
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Open the [playground](https://matejbransky.github.io/utilize-schema/), reproduce the problem, click **Share** and paste the copied URL. The link carries the whole workspace, so nobody has to rebuild it.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong
+      description: Expected output vs. actual output.
+      placeholder: |
+        Expected: z.string().email()
+        Actual: z.string()
+    validations:
+      required: true
+  - type: input
+    id: playground
+    attributes:
+      label: Playground link
+      description: Share URL from the hosted playground. Use a branch preview only if the bug cannot be reproduced on main.
+      placeholder: https://matejbransky.github.io/utilize-schema/#...
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Details (optional)
+      description: Package and version, browser, anything the link does not capture.
