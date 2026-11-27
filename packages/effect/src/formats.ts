@@ -10,7 +10,7 @@
  * so switching targets does not change which values pass.
  */
 
-import { formatBody, formatPattern } from '@utilize/json-schema';
+import { formatPattern } from '@utilize/json-schema';
 
 /** Calendar date with leap years. Same shape as Zod's `iso.date` regex, which
  * also accepts year 0000 that `Date` would map into 1900. */
@@ -63,12 +63,6 @@ export function formatCheck(format: string): string | undefined {
 			return filter(cidrv6Body);
 		}
 		default: {
-			const body = formatBody(format);
-
-			if (body !== undefined) {
-				return filter(body);
-			}
-
 			const pattern = formatPattern(format) ?? patterns.get(format);
 
 			return pattern === undefined ? undefined : patternCheck(pattern);

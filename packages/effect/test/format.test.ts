@@ -7,8 +7,11 @@ describe('formatMode', () => {
 	test('asserts a known format by default', async () => {
 		const code = await compile({ type: 'string', format: 'email' });
 
-		expect(code).toContain('const formatEmail = Schema.makeFilter<string>(');
-		expect(code).toContain("Schema.String.check(formatEmail).annotate({ format: 'email' })");
+		expect(code).toContain("import { formatEmail } from '@utilize/json-schema/formats';");
+		expect(code).toContain(
+			"Schema.makeFilter<string>((value) => (formatEmail(value) ? undefined : 'Invalid email'))"
+		);
+		expect(code).toContain('Schema.String.check(');
 	});
 
 	test('keeps a known format as metadata in annotate mode', async () => {
@@ -28,7 +31,22 @@ describe('formatMode', () => {
 		expect(code).not.toContain('isPattern');
 	});
 
-	test('emits one constant per format and reuses it', async () => {
+	test('aliases a validator that collides with a declaration', async () => {
+		const code = await compile(
+			{
+				type: 'object',
+				properties: { email: { type: 'string', format: 'email' } },
+			},
+			{ formatMode: 'assert', schemaName: () => 'formatEmail' }
+		);
+
+		expect(code).toContain(
+			"import { formatEmail as formatEmail1 } from '@utilize/json-schema/formats';"
+		);
+		expect(code).toContain('(formatEmail1(value)');
+	});
+
+	test('imports one validator per format and reuses it', async () => {
 		const code = await compile(
 			{
 				type: 'object',
@@ -41,9 +59,11 @@ describe('formatMode', () => {
 			{ formatMode: 'assert' }
 		);
 
-		expect(code.match(/const formatEmail = /g)).toHaveLength(1);
-		expect(code.match(/const formatDateTime = /g)).toHaveLength(1);
-		expect(code.match(/Schema\.String\.check\(formatEmail\)/g)).toHaveLength(2);
+		expect(code).toContain(
+			"import { formatEmail, formatDateTime } from '@utilize/json-schema/formats';"
+		);
+		expect(code.match(/formatEmail\(value\)/g)).toHaveLength(2);
+		expect(code.match(/formatDateTime\(value\)/g)).toHaveLength(1);
 	});
 
 	test('asserts a known format', async () => {
@@ -155,7 +175,7 @@ describe('formatMode', () => {
 			const code = await compile({ type: 'string', format }, { formatMode: 'assert' });
 
 			expect(code).toContain(`annotate({ format: '${format}' })`);
-			expect(code).not.toMatch(/const format[A-Z]/);
+			expect(code).not.toContain('@utilize/json-schema/formats');
 		}
 	});
 

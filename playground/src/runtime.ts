@@ -53,6 +53,8 @@ interface EffectRuntime {
 type RuntimeModule = ZodRuntime | EffectRuntime;
 type RuntimePackageName = 'zod' | 'effect';
 
+const FORMATS_MODULE = '@utilize/json-schema/formats';
+
 interface ZodPackage {
 	readonly z: typeof ZodNamespace;
 }
@@ -61,18 +63,23 @@ interface EffectPackage {
 	readonly Schema: typeof EffectSchema;
 }
 
-type RuntimePackage = ZodPackage | EffectPackage;
+/** Only the export names are read when the bridge module is generated. */
+type FormatsPackage = object;
+
+type RuntimePackage = ZodPackage | EffectPackage | FormatsPackage;
 
 interface PackageBridge {
 	readonly zod: ZodPackage | undefined;
 	readonly effect: EffectPackage | undefined;
+	readonly formats: FormatsPackage | undefined;
 }
 
 const PACKAGES_GLOBAL = '__utilizePlaygroundPackages';
 const runtimeModules = new Map<RuntimePackageName, Promise<RuntimeModule>>();
-const packageUrls = new Map<RuntimePackageName, string>();
+const packageUrls = new Map<string, string>();
 let zodPackage: ZodPackage | undefined;
 let effectPackage: EffectPackage | undefined;
+let formatsPackage: FormatsPackage | undefined;
 
 const packages: PackageBridge = {
 	get zod() {
@@ -80,6 +87,9 @@ const packages: PackageBridge = {
 	},
 	get effect() {
 		return effectPackage;
+	},
+	get formats() {
+		return formatsPackage;
 	},
 };
 
@@ -278,29 +288,21 @@ function runtimeModule(name: RuntimePackageName): Promise<RuntimeModule> {
 }
 
 async function packageUrl(name: string): Promise<string> {
-	if (name !== 'zod' && name !== 'effect') {
+	if (name !== 'zod' && name !== 'effect' && name !== FORMATS_MODULE) {
 		throw new Error(
 			`The generated module imports "${name}", which the playground does not provide.`
 		);
 	}
 
-	let exports: RuntimePackage;
-
-	if (name === 'zod') {
-		zodPackage ??= Object.freeze({ z: (await runtimeModule('zod')).z });
-		exports = zodPackage;
-	} else {
-		effectPackage ??= Object.freeze({ Schema: (await runtimeModule('effect')).Schema });
-		exports = effectPackage;
-	}
-
+	const exports = await packageExports(name);
 	let url = packageUrls.get(name);
 
 	if (!url) {
+		const bridgeName = name === FORMATS_MODULE ? 'formats' : name;
 		const source = Object.keys(exports)
 			.map(
 				(exportName) =>
-					`export const ${exportName} = globalThis.${PACKAGES_GLOBAL}[${JSON.stringify(name)}].${exportName};`
+					`export const ${exportName} = globalThis.${PACKAGES_GLOBAL}[${JSON.stringify(bridgeName)}].${exportName};`
 			)
 			.join('\n');
 
@@ -309,6 +311,23 @@ async function packageUrl(name: string): Promise<string> {
 	}
 
 	return url;
+}
+
+async function packageExports(name: string): Promise<RuntimePackage> {
+	if (name === 'zod') {
+		zodPackage ??= Object.freeze({ z: (await runtimeModule('zod')).z });
+		return zodPackage;
+	}
+
+	if (name === 'effect') {
+		effectPackage ??= Object.freeze({ Schema: (await runtimeModule('effect')).Schema });
+		return effectPackage;
+	}
+
+	const loaded =
+		formatsPackage ?? Object.freeze({ ...(await import('@utilize/json-schema/formats')) });
+	formatsPackage = loaded;
+	return loaded;
 }
 
 function moduleUrl(source: string): string {

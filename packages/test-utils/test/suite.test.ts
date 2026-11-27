@@ -29,6 +29,24 @@ describe('evaluateGeneratedCode', () => {
 	test('returns a bare expression', () => {
 		expect(evaluateGeneratedCode('value * 2', { value: 3 })).toBe(6);
 	});
+
+	test('binds generated format imports, including aliases', () => {
+		const code = [
+			"import { formatEmail, formatUri as checkUri } from '@utilize/json-schema/formats';",
+			"export const Root = [formatEmail('user@example.com'), checkUri('not a uri')];",
+		].join('\n');
+
+		expect(evaluateGeneratedCode(code, {})).toEqual([true, false]);
+	});
+
+	test('rejects an unknown format validator', () => {
+		const code = [
+			"import { formatNope } from '@utilize/json-schema/formats';",
+			'export const Root = formatNope;',
+		].join('\n');
+
+		expect(() => evaluateGeneratedCode(code, {})).toThrow('Unknown format validator: formatNope');
+	});
 });
 
 describe('renderKnownFailureInstances', () => {

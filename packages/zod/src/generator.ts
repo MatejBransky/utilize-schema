@@ -2,8 +2,9 @@ import {
 	collectStandaloneSchemas,
 	dialectOf,
 	expectDefined,
-	formatBody,
+	formatConstantBase,
 	formatNameFor,
+	formatRuntimeModule,
 	Meta,
 } from '@utilize/json-schema';
 import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
@@ -163,7 +164,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 
 	const importIndex = importIndexFor(options);
 
-	code.splice(importIndex, 0, ...formatConstantsFor(formatNames));
+	code.splice(importIndex, 0, ...formatImportsFor(formatNames));
 	code.splice(importIndex, 0, ...oneOfLines(context.usesOneOf, options.runtimeImport));
 
 	return code.join(NEWLINE);
@@ -204,11 +205,20 @@ function usedNamesFor(declarations: Iterable<DeclarationNames>, typeNames: Itera
 	return usedNames;
 }
 
-function formatConstantsFor(formatNames: Map<string, string>) {
-	return [...formatNames].map(
-		([format, name]) =>
-			ts`const ${name} = (value: string) => {${expectDefined(formatBody(format))}};`
-	);
+function formatImportsFor(formatNames: Map<string, string>) {
+	if (formatNames.size === 0) {
+		return [];
+	}
+
+	const specifiers = [...formatNames].map(([format, name]) => {
+		const exported = formatConstantBase(format);
+
+		return exported === name ? exported : `${exported} as ${name}`;
+	});
+
+	return [
+		ts`import { ${specifiers.join(', ')} } from ${singleQuoted(formatRuntimeModule)};${NEWLINE}`,
+	];
 }
 
 function oneOfLines(usesOneOf: boolean | undefined, runtimeImport: string | undefined): string[] {

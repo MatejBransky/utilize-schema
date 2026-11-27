@@ -19,11 +19,20 @@ runtime generators. It never emits a target schema.
   validators and the `@utilize/json-schema/node` entry — CLI runner, flags,
   JSON/YAML and file/glob input, `compilePaths` — are what the three generator
   packages build on.
-- **88% line coverage.**
+- **Runtime validators.** `@utilize/json-schema/formats` exports the structural
+  format checks (`formatEmail`, `formatUri`, `formatDateTime`, …) that generated
+  Zod and Effect schemas import instead of inlining them.
+- **89% line coverage.**
 
 ```sh
-pnpm add -D @utilize/json-schema
+pnpm add @utilize/json-schema
 ```
+
+Generated schemas import `@utilize/json-schema/formats` at runtime, so that
+package is a runtime dependency of the code they produce. Use `pnpm add -D`
+only when the project calls the parser or CLI at build time and does not run
+generated schemas. Bundlers can tree-shake unused validators; pattern-only
+formats stay inline.
 
 ```ts
 import { Meta, parse } from '@utilize/json-schema';

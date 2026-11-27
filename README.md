@@ -53,10 +53,14 @@ types for every dialect from draft-04 to 2020-12.
 ## ⚡ Quick start
 
 ```sh
+pnpm add zod @utilize/json-schema
 pnpm add -D @utilize/zod
-pnpm add zod
 utilize-zod user.json user.zod.ts
 ```
+
+Generated schemas import structural format validators from
+`@utilize/json-schema/formats`, so `@utilize/json-schema` is a runtime
+dependency of the app, not only a generator dependency.
 
 `user.json`:
 
@@ -87,8 +91,9 @@ export type User = z.infer<typeof User>;
 ```
 
 The date format keeps this example short. Formats that need structural
-validation, such as `email`, `hostname` and `uri`, emit one validator constant
-per format, shared by every schema that uses it.
+validation, such as `email`, `hostname` and `uri`, are imported from
+`@utilize/json-schema/formats` as one validator per format, shared by every
+schema that uses it.
 
 The same three steps work for the other targets: `@utilize/effect` with
 `utilize-effect`, and `@utilize/typescript` with `utilize-typescript` (no runtime

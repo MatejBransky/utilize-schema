@@ -48,8 +48,8 @@ export type GeneratorContext = {
 	/** Emits a caller-provided expression before the built-in generator runs. */
 	customSchemaResolver?: CustomSchemaResolver;
 	/**
-	 * Name of the module-level validator constant for a format. Registered on
-	 * first use, so one format yields one constant per file.
+	 * Local name of the imported validator for a format. Registered on first
+	 * use, so one format yields one import per file.
 	 */
 	formatOf(format: string): string;
 };

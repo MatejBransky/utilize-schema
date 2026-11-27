@@ -27,10 +27,13 @@ flowchart LR
 generators share:
 
 - The **main entry** is browser-safe: parser, linker and metadata, dialect
-  detection and keyword policy, name resolution, `collectStandaloneSchemas`,
-  which gathers every schema that gets its own declaration together with the
-  dependency edges between them, and the target-neutral format validators both
-  runtime generators share.
+  detection and keyword policy, name resolution, `collectStandaloneSchemas`
+  (which gathers every schema that gets its own declaration together with the
+  dependency edges between them), and the format metadata both runtime
+  generators share.
+- The **`@utilize/json-schema/formats` entry** holds the target-neutral runtime
+  validators that generated Zod and Effect schemas import instead of inlining
+  them.
 - The **`@utilize/json-schema/node` entry** adds the Node-only helpers behind the
   generator `compile()` functions and their CLIs: reading JSON and YAML,
   file/glob/directory input, `compilePaths`, `parseForCompile`, the generated

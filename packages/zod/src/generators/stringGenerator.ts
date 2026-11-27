@@ -1,5 +1,5 @@
 import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
-import { formatBody, formatPattern } from '@utilize/json-schema';
+import { formatPattern, hasFormatValidator } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
 import type { GeneratorContext } from './types';
@@ -68,7 +68,7 @@ function formatExpression(format: string, context: GeneratorContext) {
 		return `z.string().regex(new RegExp(${JSON.stringify(pattern)}, 'u'))`;
 	}
 
-	if (formatBody(validationFormat) !== undefined) {
+	if (hasFormatValidator(validationFormat)) {
 		return `z.string().refine(${context.formatOf(validationFormat)}, { message: ${JSON.stringify(`Invalid ${format}`)} })`;
 	}
 
