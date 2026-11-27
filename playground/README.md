@@ -19,6 +19,9 @@ Schema or TypeScript code next to the schemas.
   `format` into validation, `annotate` keeps it as metadata
   (`?format-mode=annotate`). It is disabled for the TypeScript target, which
   cannot check a format.
+- A `Format as string` switch for the TypeScript target: it treats a schema that
+  would otherwise be `unknown` and has `format` as `string`
+  (`?infer-format-as-string=true`). It is hidden for the runtime generators.
 - Generated code is formatted with Prettier at 80 columns; the editor's
   TypeScript worker gets the real Zod and Effect declarations plus
   `@utilize/json-schema/formats`, so generated field types stay concrete

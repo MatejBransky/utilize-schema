@@ -51,11 +51,11 @@ export function readFormatModeParam(url: URL): FormatMode | null {
 export function readInferFormatAsStringParam(url: URL): boolean | null {
 	const value = url.searchParams.get(INFER_FORMAT_AS_STRING_PARAM);
 
-	if (value === 'true' || value === '1') {
+	if (value === 'true') {
 		return true;
 	}
 
-	if (value === 'false' || value === '0') {
+	if (value === 'false') {
 		return false;
 	}
 

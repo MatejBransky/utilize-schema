@@ -116,6 +116,6 @@ test('parameter readers ignore missing and invalid values', () => {
 		readInferFormatAsStringParam(new URL('https://example.com/?infer-format-as-string=true'))
 	).toBe(true);
 	expect(
-		readInferFormatAsStringParam(new URL('https://example.com/?infer-format-as-string=0'))
+		readInferFormatAsStringParam(new URL('https://example.com/?infer-format-as-string=false'))
 	).toBe(false);
 });

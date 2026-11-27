@@ -32,12 +32,16 @@ const runtimeGenerators: Record<
 		generateEffect(root, { importEffect: true, formatMode, ...options?.effect }),
 };
 
+export interface GenerateCodeSettings {
+	inferFormatAsString?: boolean;
+}
+
 export function generateCodeFor(
 	target: TargetId,
 	root: ParsedJSONSchema,
 	formatMode: FormatMode,
 	options?: ExampleGeneratorOptions,
-	inferFormatAsString = false
+	settings: GenerateCodeSettings = {}
 ): GeneratedCode {
 	switch (target) {
 		case 'zod':
@@ -52,7 +56,7 @@ export function generateCodeFor(
 			return {
 				code: generateTypeScript(root, {
 					...options?.typescript,
-					inferFormatAsString,
+					inferFormatAsString: settings.inferFormatAsString,
 				}),
 				runtime: null,
 			};

@@ -41,9 +41,11 @@ test('the TypeScript generator uses the playground format setting', async () => 
 	expect(generateCodeFor('typescript', root, defaultFormatMode).code).toContain(
 		'export type Schema = unknown;'
 	);
-	expect(generateCodeFor('typescript', root, defaultFormatMode, undefined, true).code).toContain(
-		'export type Schema = string;'
-	);
+	expect(
+		generateCodeFor('typescript', root, defaultFormatMode, undefined, {
+			inferFormatAsString: true,
+		}).code
+	).toContain('export type Schema = string;');
 });
 
 test('a failed generator keeps its error for the results pane', async () => {

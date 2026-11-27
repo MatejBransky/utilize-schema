@@ -196,13 +196,14 @@ function useGeneratorSettings(initial: UrlState) {
 
 	useEffect(() => {
 		const url = new URL(location.href);
+		const inferred = target === 'typescript' ? String(inferFormatAsString) : null;
 
 		if (
 			url.hash ||
 			(url.searchParams.get(playgroundParams.generator) === target &&
 				url.searchParams.get(playgroundParams.keywordPolicy) === keywordPolicy &&
 				url.searchParams.get(playgroundParams.formatMode) === formatMode &&
-				url.searchParams.get(playgroundParams.inferFormatAsString) === String(inferFormatAsString))
+				url.searchParams.get(playgroundParams.inferFormatAsString) === inferred)
 		) {
 			return;
 		}
@@ -212,7 +213,7 @@ function useGeneratorSettings(initial: UrlState) {
 				[playgroundParams.generator]: target,
 				[playgroundParams.keywordPolicy]: keywordPolicy,
 				[playgroundParams.formatMode]: formatMode,
-				[playgroundParams.inferFormatAsString]: String(inferFormatAsString),
+				[playgroundParams.inferFormatAsString]: inferred,
 			},
 			'replace'
 		);
@@ -220,7 +221,14 @@ function useGeneratorSettings(initial: UrlState) {
 
 	function applyGenerator(id: TargetId) {
 		setTarget(id);
-		updateUrl({ [playgroundParams.generator]: id }, 'push');
+		updateUrl(
+			{
+				[playgroundParams.generator]: id,
+				[playgroundParams.inferFormatAsString]:
+					id === 'typescript' ? String(inferFormatAsString) : null,
+			},
+			'push'
+		);
 	}
 
 	function applyKeywordPolicy(policy: KeywordPolicy) {
@@ -537,13 +545,9 @@ async function generateOutput(
 			});
 
 			const generatorOptions = exampleId ? generatorOptionsFor(exampleId) : undefined;
-			const generated = generateCodeFor(
-				target,
-				root,
-				formatMode,
-				generatorOptions,
-				inferFormatAsString
-			);
+			const generated = generateCodeFor(target, root, formatMode, generatorOptions, {
+				inferFormatAsString,
+			});
 
 			nextRuntime = generated.runtime;
 
@@ -706,7 +710,13 @@ function useFeedback(
 		url.searchParams.delete(playgroundParams.generator);
 		url.searchParams.set(playgroundParams.keywordPolicy, keywordPolicy);
 		url.searchParams.set(playgroundParams.formatMode, formatMode);
-		url.searchParams.set(playgroundParams.inferFormatAsString, String(inferFormatAsString));
+
+		if (target === 'typescript') {
+			url.searchParams.set(playgroundParams.inferFormatAsString, String(inferFormatAsString));
+		} else {
+			url.searchParams.delete(playgroundParams.inferFormatAsString);
+		}
+
 		url.hash = `data=${encoded}`;
 		history.replaceState(null, '', url);
 		setSharedSnapshot({
