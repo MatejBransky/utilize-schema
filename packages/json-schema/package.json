@@ -39,12 +39,18 @@
 			"types": "./dist/node.d.ts",
 			"default": "./dist/node.mjs"
 		},
+		"./validate/ajv": {
+			"types": "./dist/validate/ajv.d.ts",
+			"default": "./dist/validate/ajv.mjs"
+		},
 		"./dist/index.mjs": "./dist/index.mjs",
 		"./dist/index.d.ts": "./dist/index.d.ts",
 		"./dist/formats.mjs": "./dist/formats.mjs",
 		"./dist/formats.d.ts": "./dist/formats.d.ts",
 		"./dist/node.mjs": "./dist/node.mjs",
 		"./dist/node.d.ts": "./dist/node.d.ts",
+		"./dist/validate/ajv.mjs": "./dist/validate/ajv.mjs",
+		"./dist/validate/ajv.d.ts": "./dist/validate/ajv.d.ts",
 		"./package.json": "./package.json"
 	},
 	"publishConfig": {
@@ -71,9 +77,23 @@
 		"@total-typescript/tsconfig": "catalog:",
 		"@types/json-schema": "7.0.15",
 		"@types/node": "catalog:",
+		"ajv": "catalog:",
+		"ajv-draft-04": "catalog:",
 		"tsdown": "catalog:",
 		"typescript": "catalog:",
 		"vitest": "catalog:"
+	},
+	"peerDependencies": {
+		"ajv": ">=8.17.1 <9",
+		"ajv-draft-04": ">=1.0.0 <2"
+	},
+	"peerDependenciesMeta": {
+		"ajv": {
+			"optional": true
+		},
+		"ajv-draft-04": {
+			"optional": true
+		}
 	},
 	"engines": {
 		"node": ">=22.19.0"

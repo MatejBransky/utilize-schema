@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -6,14 +6,16 @@ import type { ParseArgsOptionsConfig } from 'node:util';
 
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
+import type { JSONSchema } from '../src/model';
 import { runGeneratorCli } from '../src/node';
 import type { CliIo, GeneratorCli } from '../src/node';
+import type { SchemaValidationOptions, SchemaValidator } from '../src/validation';
 
 type TestFlags = {
 	'custom-flag': { type: 'boolean'; default: false };
 } & ParseArgsOptionsConfig;
 
-interface TestOptions {
+interface TestOptions extends SchemaValidationOptions {
 	mode: string;
 }
 
@@ -264,5 +266,89 @@ describe('runGeneratorCli', () => {
 			)
 		).toBe(1);
 		expect(cli.errors).toEqual(['invalid schema\n']);
+	});
+
+	test('does not write any output when a later input fails to compile', async () => {
+		writeFileSync(path.join(directory, 'a.json'), '{}');
+		writeFileSync(path.join(directory, 'b.json'), '{}');
+		const outputDirectory = path.join(directory, 'generated');
+		const cli = output();
+		const failingSecond = vi.fn(async (filePath: string) => {
+			if (path.basename(filePath) === 'b.json') {
+				throw new Error('invalid schema');
+			}
+
+			return 'code';
+		});
+
+		expect(
+			await runGeneratorCli(
+				['*.json', '--output', outputDirectory, '--cwd', directory],
+				cli.io(),
+				generator({ compileFile: failingSecond })
+			)
+		).toBe(1);
+		expect(existsSync(path.join(outputDirectory, 'a.generated.ts'))).toBe(false);
+		expect(cli.errors).toEqual(['invalid schema\n']);
+	});
+
+	test('--validate injects the built-in Ajv validator', async () => {
+		let received: SchemaValidator | undefined;
+		const capturing = vi.fn(
+			async (
+				_schema: JSONSchema | boolean,
+				options: TestOptions & { cwd: string; fileName: string }
+			) => {
+				received = options.validateSchema;
+				return 'code';
+			}
+		);
+		const cli = output();
+
+		expect(
+			await runGeneratorCli(
+				['--validate'],
+				cli.io('{"type":"string"}'),
+				generator({ compileSchema: capturing })
+			)
+		).toBe(0);
+		expect(typeof received).toBe('function');
+	});
+
+	test('loads --validator from a module and passes it to the generator', async () => {
+		writeFileSync(
+			path.join(directory, 'validator.mjs'),
+			'export default () => [{ pointer: "/type", message: "not allowed" }];'
+		);
+		writeFileSync(path.join(directory, 'a.json'), '{}');
+		let received: SchemaValidator | undefined;
+		const capturing = vi.fn(async (_filePath: string, options: TestOptions) => {
+			received = options.validateSchema;
+			return 'code';
+		});
+		const cli = output();
+
+		expect(
+			await runGeneratorCli(
+				['a.json', '--cwd', directory, '--validator', './validator.mjs'],
+				cli.io(),
+				generator({ compileFile: capturing })
+			)
+		).toBe(0);
+		expect(typeof received).toBe('function');
+	});
+
+	test('reports a --validator module without a validator export', async () => {
+		writeFileSync(path.join(directory, 'empty.mjs'), 'export const other = 1;');
+		const cli = output();
+
+		expect(
+			await runGeneratorCli(
+				['--cwd', directory, '--validator', './empty.mjs'],
+				cli.io('{}'),
+				generator()
+			)
+		).toBe(1);
+		expect(cli.errors.join('')).toContain('must export a function');
 	});
 });

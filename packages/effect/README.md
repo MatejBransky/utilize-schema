@@ -125,6 +125,11 @@ Input can be a file, a directory or a glob; JSON and YAML are supported. Output
 defaults to stdout. Every generated file starts with a "do not edit" banner
 (`--no-banner` omits it).
 
+`--validate` checks each resolved document against the meta-schema of its
+dialect before generating; install `ajv` and `ajv-draft-04` to use it, or pass
+`--validator <module>` for another validator. See
+[docs/dialects.md](../../docs/dialects.md#schema-validation).
+
 ## Output
 
 For each standalone schema (root, `$defs`, `definitions`, referenced):

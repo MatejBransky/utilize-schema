@@ -5,6 +5,7 @@ import {
 	isEntrypoint,
 	readFormatAndDialectFlags,
 	runGeneratorCli,
+	validationCliHelp,
 } from '@utilize/json-schema/node';
 import type { CliIo } from '@utilize/json-schema/node';
 
@@ -28,6 +29,7 @@ Options:
                         annotate keeps format as metadata
   --no-banner           omit the generated-file banner
 ${dialectCliHelp}
+${validationCliHelp}
   -h, --help            show this help
 `;
 

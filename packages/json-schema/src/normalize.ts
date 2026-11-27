@@ -298,7 +298,15 @@ export function normalizeSchema(schema: unknown, dialect: DialectId | Dialect = 
 	});
 }
 
-function resolveDocumentDialect(schema: unknown, options: PrepareSchemaOptions): ResolvedDialect {
+/**
+ * Resolves the dialect of a document root, honoring a declared `$schema` and
+ * the dialect inherited from the referencing document. Shared with `parse` so
+ * optional validation checks the same dialect the normalizer will use.
+ */
+export function resolveDocumentDialect(
+	schema: unknown,
+	options: PrepareSchemaOptions
+): ResolvedDialect {
 	const resolved = resolveDialect(schema, options);
 
 	if (resolved.source === 'fallback' && options.inheritedDialect) {

@@ -261,6 +261,11 @@ defaults to stdout. Every generated file starts with a "do not edit" banner
 `.readonly()`, and `--runtime-import @utilize/zod/runtime` to import the
 `oneOf` helper instead of declaring it in every file.
 
+`--validate` checks each resolved document against the meta-schema of its
+dialect before generating; install `ajv` and `ajv-draft-04` to use it, or pass
+`--validator <module>` for another validator. See
+[docs/dialects.md](../../docs/dialects.md#schema-validation).
+
 ## Conformance
 
 The official JSON Schema Test Suite is pinned and run for all five dialects. The

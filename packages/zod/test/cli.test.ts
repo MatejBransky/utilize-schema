@@ -226,4 +226,99 @@ describe('CLI path handling', () => {
 		expect(isEntrypoint(real, pathToFileURL(join(directory, 'other.mjs')).href)).toBe(false);
 		expect(isEntrypoint(undefined, pathToFileURL(real).href)).toBe(false);
 	});
+
+	test('--validate rejects a schema that does not match its dialect', async () => {
+		const { io, stdout, stderr } = createIo(JSON.stringify({ title: 'Thing', type: 'nonsense' }));
+
+		const exitCode = await run(['--no-banner', '--validate'], io);
+
+		expect(exitCode).toBe(1);
+		expect(stdout()).toBe('');
+		expect(stderr()).toContain('Root.json is not a valid draft-07 JSON Schema');
+		expect(stderr()).toContain('/type must be equal to one of the allowed values');
+	});
+
+	test('--validate reads the dialect declared by $schema', async () => {
+		const { io, stderr } = createIo(
+			JSON.stringify({
+				$schema: 'https://json-schema.org/draft/2020-12/schema',
+				type: 'array',
+				items: [{ type: 'string' }],
+			})
+		);
+
+		const exitCode = await run(['--no-banner', '--validate'], io);
+
+		expect(exitCode).toBe(1);
+		expect(stderr()).toContain('Root.json is not a valid 2020-12 JSON Schema');
+		expect(stderr()).toContain('/items must be object,boolean');
+	});
+
+	test('--validate accepts a valid schema for its dialect', async () => {
+		const { io, stdout } = createIo(
+			JSON.stringify({
+				$schema: 'https://json-schema.org/draft/2020-12/schema',
+				type: 'array',
+				prefixItems: [{ type: 'string' }],
+			})
+		);
+
+		const exitCode = await run(['--no-banner', '--validate'], io);
+
+		expect(exitCode).toBe(0);
+		expect(stdout()).toContain('z.tuple(');
+	});
+
+	test('--validate checks referenced files with the root dialect', async () => {
+		const directory = await makeDirectory();
+		await writeFile(
+			join(directory, 'root.json'),
+			JSON.stringify({
+				$schema: 'https://json-schema.org/draft/2020-12/schema',
+				$ref: './address.json',
+			})
+		);
+		await writeFile(
+			join(directory, 'address.json'),
+			JSON.stringify({ type: 'object', properties: [] })
+		);
+		const { io, stderr } = createIo();
+
+		const exitCode = await run(['--validate', join(directory, 'root.json')], io);
+
+		expect(exitCode).toBe(1);
+		expect(stderr()).toContain('address.json is not a valid 2020-12 JSON Schema');
+		expect(stderr()).toContain('/properties must be object');
+	});
+
+	test('--validate writes no outputs when one file is invalid', async () => {
+		const directory = await makeDirectory();
+		const output = join(directory, 'generated');
+		await writeFile(join(directory, 'a.json'), JSON.stringify({ type: 'string' }));
+		await writeFile(join(directory, 'b.json'), JSON.stringify({ type: 'nonsense' }));
+		const { io, stderr } = createIo();
+
+		const exitCode = await run(['--validate', '--input', directory, '--output', output], io);
+
+		expect(exitCode).toBe(1);
+		expect(stderr()).toContain('b.json is not a valid draft-07 JSON Schema');
+		await expect(readFile(join(output, 'a.generated.ts'), 'utf8')).rejects.toThrow();
+	});
+
+	test('--validator replaces the built-in validator', async () => {
+		const directory = await makeDirectory();
+		await writeFile(
+			join(directory, 'validator.mjs'),
+			'export default (schema) => schema.type === "string" ? [{ pointer: "/type", message: "strings are not allowed" }] : [];'
+		);
+		const { io, stderr } = createIo(JSON.stringify({ type: 'string' }));
+
+		const exitCode = await run(
+			['--no-banner', '--cwd', directory, '--validator', './validator.mjs'],
+			io
+		);
+
+		expect(exitCode).toBe(1);
+		expect(stderr()).toContain('/type strings are not allowed');
+	});
 });

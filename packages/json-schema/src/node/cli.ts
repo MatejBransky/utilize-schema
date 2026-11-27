@@ -1,6 +1,6 @@
 import { existsSync, globSync, mkdirSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import type { ParseArgsOptionDescriptor, ParseArgsOptionsConfig } from 'node:util';
 
@@ -9,6 +9,7 @@ import { formatIssue } from '../dialect';
 import type { DialectIssue, DialectOptions } from '../dialect';
 import type { JSONSchema } from '../model';
 import { expectDefined } from '../utils';
+import type { SchemaValidator } from '../validation';
 import { parseSchemaSource } from './compile';
 
 export interface Writable {
@@ -22,12 +23,19 @@ export interface CliIo {
 	stdin?: string;
 }
 
+/** Help lines for the shared `--validate` and `--validator` flags. */
+export const validationCliHelp = `  --validate            validate each schema against its dialect's meta-schema
+  --validator <module>  import a custom validator instead of the built-in Ajv
+                        (implies --validate)`;
+
 /** The flags every generator CLI accepts, next to its own. */
 const commonFlags = {
 	input: { type: 'string', short: 'i' },
 	output: { type: 'string', short: 'o' },
 	cwd: { type: 'string' },
 	'no-banner': { type: 'boolean', default: false },
+	validate: { type: 'boolean', default: false },
+	validator: { type: 'string' },
 	help: { type: 'boolean', short: 'h', default: false },
 } as const;
 
@@ -98,7 +106,7 @@ export type CliOptionsResult<Options> =
 export interface GeneratorCli<Flags extends ParseArgsOptionsConfig, Options> {
 	/** Printed for `--help`. */
 	help: string;
-	/** The generator's own `parseArgs` options. `input`, `output`, `cwd`, `no-banner` and `help` are added. */
+	/** The generator's own `parseArgs` options. The shared flags, including `--validate`, are added. */
 	parseOptions: Flags;
 	/** Turns the parsed options into compile options. */
 	readOptions(values: CliFlagValues<Flags>, io: CliIo): CliOptionsResult<Options>;
@@ -149,12 +157,21 @@ export async function runGeneratorCli<Flags extends ParseArgsOptionsConfig, Opti
 		return fail(io, options.error);
 	}
 
+	const cwd = path.resolve(values.cwd ?? process.cwd());
+	let validateSchema: SchemaValidator | undefined;
+
+	try {
+		validateSchema = await validationFromFlags(values, cwd);
+	} catch (error) {
+		return fail(io, errorMessage(error));
+	}
+
 	const run: CliRun<Options> = {
-		cwd: path.resolve(values.cwd ?? process.cwd()),
+		cwd,
 		input: values.input ?? positionals[0],
 		output: values.output ?? positionals[1],
 		banner: values['no-banner'] ? false : undefined,
-		options: options.options,
+		options: withValidator(options.options, validateSchema),
 	};
 
 	try {
@@ -172,6 +189,91 @@ function errorMessage(error: unknown): string {
 	}
 
 	return String(error);
+}
+
+/** The validated outcome of `--validate` and `--validator`. */
+interface ValidationFlags {
+	validate?: boolean;
+	validator?: string;
+}
+
+const missingAjvMessage =
+	'The --validate flag needs the optional "ajv" and "ajv-draft-04" packages. Install them, or pass --validator <module>.';
+
+async function validationFromFlags(
+	{ validate, validator }: ValidationFlags,
+	cwd: string
+): Promise<SchemaValidator | undefined> {
+	if (validator !== undefined) {
+		return loadValidator(validator, cwd);
+	}
+
+	if (!validate) {
+		return undefined;
+	}
+
+	try {
+		const { ajvValidator } = await import('../validate/ajv');
+
+		return ajvValidator;
+	} catch (error) {
+		throw new Error(`${missingAjvMessage}\n${errorMessage(error)}`, { cause: error });
+	}
+}
+
+/** Adds the validator to a generator's own compile options without widening them. */
+function withValidator<Options>(options: Options, validator: SchemaValidator | undefined): Options {
+	return validator ? { ...options, validateSchema: validator } : options;
+}
+
+/** Imports a validator module: a path resolved against `cwd`, or a package specifier. */
+async function loadValidator(specifier: string, cwd: string): Promise<SchemaValidator> {
+	const target = isModulePath(specifier)
+		? pathToFileURL(path.resolve(cwd, specifier)).href
+		: specifier;
+	let loaded: unknown;
+
+	try {
+		loaded = await import(target);
+	} catch (error) {
+		throw new Error(`Could not load the validator "${specifier}": ${errorMessage(error)}`, {
+			cause: error,
+		});
+	}
+
+	const validator = validatorExport(loaded);
+
+	if (!validator) {
+		throw new TypeError(
+			`The validator "${specifier}" must export a function as its default export or as "validateSchema".`
+		);
+	}
+
+	return validator;
+}
+
+function isModulePath(specifier: string): boolean {
+	return specifier.startsWith('.') || path.isAbsolute(specifier);
+}
+
+function validatorExport(loaded: unknown): SchemaValidator | undefined {
+	if (typeof loaded !== 'object' || loaded === null) {
+		return undefined;
+	}
+
+	const candidate: unknown = 'default' in loaded ? loaded.default : undefined;
+
+	if (isSchemaValidator(candidate)) {
+		return candidate;
+	}
+
+	const named: unknown = 'validateSchema' in loaded ? loaded.validateSchema : undefined;
+
+	return isSchemaValidator(named) ? named : undefined;
+}
+
+function isSchemaValidator(value: unknown): value is SchemaValidator {
+	return typeof value === 'function';
 }
 
 /** What one CLI run compiles, read from its flags and arguments. */
@@ -245,14 +347,33 @@ async function compileInputFiles<Flags extends ParseArgsOptionsConfig, Options>(
 		);
 	}
 
+	const compiled: CompiledOutput[] = [];
+
 	for (const [index, file] of files.entries()) {
 		const target = expectDefined(targets[index]);
 
-		writeFile(target, cli.withBanner(await cli.compileFile(file.path, run.options), run.banner));
-		io.stderr.write(`${file.path} -> ${target}\n`);
+		compiled.push({
+			source: file.path,
+			target,
+			content: cli.withBanner(await cli.compileFile(file.path, run.options), run.banner),
+		});
+	}
+
+	// Compile every input before writing any, so a schema that fails validation
+	// or generation does not leave a half-updated output directory.
+	for (const { source, target, content } of compiled) {
+		writeFile(target, content);
+		io.stderr.write(`${source} -> ${target}\n`);
 	}
 
 	return 0;
+}
+
+/** One compiled module waiting to be written. */
+interface CompiledOutput {
+	source: string;
+	target: string;
+	content: string;
 }
 
 /**

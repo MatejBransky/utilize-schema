@@ -96,6 +96,72 @@ utilize-effect --fallback-dialect draft-06 schema.yaml
 specification only says they are ignored. They are reported as
 `ignored-ref-siblings` with the default `keywordPolicy: 'warn'`.
 
+## Schema validation
+
+The parser checks keywords against the dialect, but it does not reject a schema
+whose values have the wrong shape: `{"type": "nonsense"}` currently generates a
+permissive `z.unknown()`. Validation is an opt-in step that checks every
+resolved document against its dialect's meta-schema:
+
+```sh
+pnpm add -D ajv ajv-draft-04
+utilize-zod --validate schema.json
+```
+
+```text
+schema.json is not a valid draft-07 JSON Schema:
+  /type must be equal to one of the allowed values
+  /type must be array
+```
+
+`--validate` uses Ajv and dispatches to the draft the parser resolved:
+draft-04 (`ajv-draft-04`), draft-06, draft-07, 2019-09 or 2020-12. A document
+without `$schema` is validated with the root's dialect, and `--dialect` /
+`--fallback-dialect` apply exactly as they do to generation. Every resolved
+document is checked, including `$ref` targets, and all findings are reported
+before anything is generated. A directory or glob run writes no output when any
+file fails, because every input is compiled before the first write.
+
+Ajv is an optional peer dependency of `@utilize/json-schema`, so only the
+built-in validator needs it.
+
+### In code
+
+Pass any validator with `validateSchema`; the callback gets the resolved
+dialect, so an adapter can dispatch the same way:
+
+```ts
+import { compile } from '@utilize/zod';
+
+await compile({
+  input: './schema.json',
+  validateSchema: (schema, { dialect }) => myValidator(schema, dialect),
+});
+```
+
+Return every `SchemaValidationFinding` (`pointer`, `message`, optional
+`keyword`). A non-empty result throws `SchemaValidationError` with one report
+per document. The built-in adapter is exported too:
+
+```ts
+import { ajvValidator } from '@utilize/json-schema/validate/ajv';
+```
+
+A document that embeds resources of another dialect is checked as a whole
+against the document's dialect; the parser still tracks each embedded resource
+for generation.
+
+### Another validator
+
+`--validator <module>` implies `--validate` and replaces Ajv. The module can be
+a path relative to `--cwd` or a package specifier, and must export the function
+as its default export or as `validateSchema`:
+
+```js
+// validator.mjs
+export default (schema, { dialect, filePath }) => [];
+```
+
 ## Generation
 
 Generators read the dialect from each node instead of guessing it from the

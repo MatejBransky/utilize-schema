@@ -186,6 +186,12 @@ directory or stdout. Generated files start with a "do not edit" banner
 `--dialect`, `--fallback-dialect` and `--keyword-policy`; see
 [docs/dialects.md](./docs/dialects.md) for the dialect flags.
 
+`--validate` checks every resolved document against the meta-schema of the
+dialect its `$schema` selects, and stops before writing anything when a schema
+is invalid. It needs the optional `ajv` and `ajv-draft-04` packages; pass
+`--validator <module>` to use another validator instead. See
+[docs/dialects.md](./docs/dialects.md#schema-validation).
+
 ---
 
 <a id="playground"></a>

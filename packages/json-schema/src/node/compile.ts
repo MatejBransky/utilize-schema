@@ -133,6 +133,7 @@ export function parseForCompile(
 		cwd: options.cwd,
 		fileName: options.fileName,
 		externalSchemas: options.externalSchemas,
+		validateSchema: options.validateSchema,
 		...pickDialectOptions(options),
 		onDialectIssue: options.onDialectIssue ?? warnDialectIssue,
 	});

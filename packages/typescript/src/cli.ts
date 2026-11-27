@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { isEntrypoint, runGeneratorCli } from '@utilize/json-schema/node';
+import { isEntrypoint, runGeneratorCli, validationCliHelp } from '@utilize/json-schema/node';
 import type { CliIo } from '@utilize/json-schema/node';
 
 import { compileFile, compileSchema, withBanner } from './compile';
@@ -19,6 +19,7 @@ Options:
   -o, --output <path>   output file or directory
   --cwd <path>          directory used to resolve paths
   --no-banner           omit the generated-file banner
+${validationCliHelp}
   -h, --help            show this help
 `;
 
