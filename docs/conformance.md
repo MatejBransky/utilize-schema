@@ -12,24 +12,27 @@ Every project here runs the official
 
 ## Runtime generators
 
-`@utilize/zod` and `@utilize/effect` generate runtime validators. Both pass every
-draft-04, draft-06 and draft-07 case in the pinned suite (`e2a68a1`):
+`@utilize/zod` and `@utilize/effect` generate runtime validators and pass every
+case in all five released dialects in the pinned suite (`e2a68a1`):
 
-| Dialect   |         Zod cases |      Effect cases |
-| --------- | ----------------: | ----------------: |
-| draft-04  |         194 / 194 |         194 / 194 |
-| draft-06  |         263 / 263 |         263 / 263 |
-| draft-07  |         304 / 304 |         304 / 304 |
-| 2019-09   |         377 / 417 |         375 / 417 |
-| 2020-12   |         376 / 431 |         374 / 431 |
-| **Total** | **1,514 / 1,609** | **1,510 / 1,609** |
+| Dialect  |     Cases |    Assertions |
+| -------- | --------: | ------------: |
+| draft-04 | 194 / 194 |     911 / 911 |
+| draft-06 | 263 / 263 | 1,218 / 1,218 |
+| draft-07 | 304 / 304 | 1,655 / 1,655 |
+| 2019-09  | 417 / 417 | 2,043 / 2,043 |
+| 2020-12  | 431 / 431 | 2,082 / 2,082 |
 
-Format cases run in the mode they are tagged for: `format-annotation` with
-`formatMode: 'annotate'`, `format-assertion` with `formatMode: 'assert'`. Cases
-that need external schemas are served from memory through `externalSchemas`.
+Both generators keep native Zod and Effect schemas for types, defaults and
+transformations. Schemas that use dynamic references, `unevaluated*` annotations
+or a custom validation vocabulary also import the browser-safe
+`@utilize/json-schema/runtime` guard, which validates the original input before
+the native decoder runs.
 
-The remaining gaps are dynamic/recursive references, full `unevaluated*`
-annotation propagation, and a few vocabulary/annotation cases.
+- Format cases run in the mode they are tagged for: `format-annotation` with
+  `formatMode: 'annotate'`, `format-assertion` with `formatMode: 'assert'`.
+- Cases that need external schemas are served from memory through
+  `externalSchemas`.
 
 The per-dialect numbers are recorded in
 [`packages/zod/test/suite/baseline.ts`](../packages/zod/test/suite/baseline.ts)

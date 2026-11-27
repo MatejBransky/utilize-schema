@@ -329,7 +329,6 @@ function normalizeNode(
 	normalizeUnevaluatedKeywords(node, dialect, source);
 
 	if (dialect.unevaluated) {
-		rejectUnsupportedReferences(node);
 		normalizeDependentKeywords(node);
 	}
 }
@@ -365,17 +364,6 @@ function normalizeUnevaluatedKeywords(
 		node.items = node.unevaluatedItems;
 	} else if (Array.isArray(node.items) && node.additionalItems === undefined) {
 		node.additionalItems = node.unevaluatedItems;
-	}
-}
-
-function rejectUnsupportedReferences(node: Record<string, unknown>): void {
-	// These keywords are valid in the dialect, but no generator supports them
-	// yet. `keywordPolicy` only covers keywords from other dialects, so this
-	// always fails instead of producing code that is looser than the schema.
-	for (const keyword of ['$recursiveRef', '$dynamicRef']) {
-		if (node[keyword] !== undefined) {
-			throw new UnsupportedSchemaFeatureError(keyword);
-		}
 	}
 }
 

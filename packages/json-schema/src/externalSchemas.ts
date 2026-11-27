@@ -84,9 +84,33 @@ function indexIdentifiers(
 	const identifier = ignoresSiblings ? undefined : identifierOf(schema);
 	const nextBase = registerIdentifier(identifier, baseUri, schema, index);
 
+	if (!ignoresSiblings) {
+		indexAnchors(schema, nextBase, index);
+	}
+
 	for (const value of schemaChildren(schema)) {
 		if (isJSONSchemaObject(value)) {
 			indexIdentifiers(nextBase, value, index, seen, nodeDialect);
+		}
+	}
+}
+
+function indexAnchors(
+	schema: JSONSchema,
+	baseUri: string,
+	index: Map<string, JSONSchema | boolean>
+): void {
+	for (const keyword of ['$anchor', '$dynamicAnchor'] as const) {
+		const anchor = schema[keyword];
+
+		if (typeof anchor !== 'string' || anchor === '') {
+			continue;
+		}
+
+		const uri = normalizeUri(`${baseUri}#${anchor}`);
+
+		if (!index.has(uri)) {
+			index.set(uri, schema);
 		}
 	}
 }

@@ -19,6 +19,9 @@ runtime generators. It never emits a target schema.
   validators and the `@utilize/json-schema/node` entry — CLI runner, flags,
   JSON/YAML and file/glob input, `compilePaths` — are what the three generator
   packages build on.
+- **Advanced validation runtime.** `@utilize/json-schema/runtime` validates
+  dynamic references, unevaluated annotations and custom vocabularies before a
+  generated Zod or Effect decoder runs.
 - **88% line coverage.**
 
 ```sh
@@ -39,6 +42,7 @@ root[Meta]; // parent, reference, fileName, dialect, …
 - [Usage](#usage)
 - [External schemas by URI](#external-schemas-by-uri)
 - [Dialects](#dialects)
+- [Runtime guard](#runtime-guard)
 - [Benchmarks](#benchmarks)
 
 </details>
@@ -146,6 +150,18 @@ await parse(schema, {
 ```
 
 See [docs/dialects.md](../../docs/dialects.md) for the keyword matrix.
+
+## Runtime guard
+
+Generated Zod and Effect schemas import `createJsonSchemaValidator` from
+`@utilize/json-schema/runtime` when the source uses dynamic references,
+`unevaluated*` annotations or a custom validation vocabulary. The guard receives
+a self-contained bundle of the original schema documents, validates the raw
+input, and returns whether it matches. It does not mutate data, load remote
+resources or evaluate generated code, so it also works in browsers.
+
+The target schema remains responsible for the decoded output type, defaults,
+metadata and transformations.
 
 ## Benchmarks
 

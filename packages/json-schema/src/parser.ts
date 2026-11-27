@@ -7,10 +7,17 @@ import { indexExternalSchemas, normalizeUri } from './externalSchemas';
 import type { ExternalSchemas } from './externalSchemas';
 import { createSchemaIndex, schemaChildren } from './identifiers';
 import { link } from './linker';
-import { isJSONSchema, isJSONSchemaObject, isParsedJSONSchema } from './model';
+import {
+	isJSONSchema,
+	isJSONSchemaObject,
+	isParsedJSONSchema,
+	withSourceCatalog,
+	withSourceDocument,
+} from './model';
 import type { JSONSchema, ParsedJSONSchema, ParsedJSONSchemaObject } from './model';
 import { prepareSchema } from './normalize';
 import type { DialectMap } from './normalize';
+import { mayRequireRuntimeGuard } from './runtimeSchema';
 
 type SchemaPath = string;
 
@@ -48,10 +55,11 @@ export async function parse(
 	// `$RefParser` reads them as paths. Indexing clones each document, so parsing
 	// can normalize and link in place without leaving leftovers on the caller's
 	// schema.
-	const provided = indexExternalSchemas(
-		{ ...options.externalSchemas, [cwd]: schema },
-		{ ...options, fallbackDialect: rootDialect }
-	);
+	const sourceSchemas = { ...options.externalSchemas, [cwd]: schema };
+	const provided = indexExternalSchemas(sourceSchemas, {
+		...options,
+		fallbackDialect: rootDialect,
+	});
 	// `indexExternalSchemas` normalizes its keys, so look the root up the same way.
 	const input = provided.get(normalizeUri(cwd));
 
@@ -66,6 +74,7 @@ export async function parse(
 	// node twice and report its dialect issues twice, so keep the entry that
 	// contains the others.
 	const documentEntries = outerEntries(entries);
+	const preserveSources = prepareSourceCapture(input, sourceSchemas, documentEntries);
 
 	let rootDialects: DialectMap | undefined;
 	const issues: DialectIssue[] = [];
@@ -84,9 +93,14 @@ export async function parse(
 	// Every document is normalized and indexed before linking, so a `$ref` can
 	// resolve to an `$id` declared in a file that is linked later.
 	const documents = documentEntries.map(([filePath, entrySchema]) => {
-		const isRootSchema = entrySchema === rootSchema;
-		const prefixPath = isRootSchema ? '#' : filePath.replace(cwd, '');
-		const fileName = isRootSchema ? rootFileName : (filePath.split(/[\\/]/).at(-1) ?? 'Unknown');
+		const { isRootSchema, prefixPath, fileName } = documentIdentity(
+			filePath,
+			entrySchema,
+			rootSchema,
+			cwd,
+			rootFileName
+		);
+		captureSourceDocument(entrySchema, filePath, preserveSources);
 
 		// A referenced file without `$schema` inherits the root's dialect.
 		const dialects = isJSONSchemaObject(entrySchema)
@@ -177,6 +191,52 @@ export async function parse(
 		referencedSchemas,
 		issues,
 	};
+}
+
+function prepareSourceCapture(
+	input: JSONSchema | boolean,
+	sourceSchemas: ExternalSchemas,
+	documents: [string, JSONSchema | boolean][]
+): boolean {
+	const providedNeedsSources = Object.values(sourceSchemas).some(mayRequireRuntimeGuard);
+	const preserveSources =
+		providedNeedsSources || documents.some(([, schema]) => mayRequireRuntimeGuard(schema));
+
+	if (preserveSources && isJSONSchemaObject(input)) {
+		withSourceCatalog(
+			input,
+			Object.entries(sourceSchemas).map(([uri, schema]) => ({
+				uri,
+				schema: structuredClone(schema),
+			}))
+		);
+	}
+
+	return preserveSources;
+}
+
+function documentIdentity(
+	filePath: string,
+	entrySchema: JSONSchema | boolean,
+	rootSchema: JSONSchema | boolean | null,
+	cwd: string,
+	rootFileName: string
+) {
+	const isRootSchema = entrySchema === rootSchema;
+	const prefixPath = isRootSchema ? '#' : filePath.replace(cwd, '');
+	const fileName = isRootSchema ? rootFileName : (filePath.split(/[\\/]/).at(-1) ?? 'Unknown');
+
+	return { isRootSchema, prefixPath, fileName };
+}
+
+function captureSourceDocument(
+	entrySchema: JSONSchema | boolean,
+	filePath: string,
+	preserveSources: boolean
+): void {
+	if (preserveSources && isJSONSchemaObject(entrySchema)) {
+		withSourceDocument(entrySchema, { uri: filePath, schema: structuredClone(entrySchema) });
+	}
 }
 
 async function resolveDocuments(

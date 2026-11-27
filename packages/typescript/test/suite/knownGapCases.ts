@@ -131,139 +131,59 @@ export const knownGapCases = {
 	},
 	'dynamicRef.json :: $dynamicRef avoids the root of each schema, but scopes are still registered (2020)':
 		{
-			gaps: {
-				'2020-12':
-					'crashes: "$dynamicRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-			},
+			typeGaps: ['2020-12'],
 		},
 	'dynamicRef.json :: $dynamicRef points to a boolean schema': {
-		gaps: {
-			'2020-12':
-				'crashes: "$dynamicRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-		},
+		typeGaps: ['2020-12'],
 	},
 	'dynamicRef.json :: $dynamicRef skips over intermediate resources - direct reference (2020)': {
-		gaps: {
-			'2020-12':
-				'crashes: "$dynamicRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-		},
+		typeGaps: ['2020-12'],
 	},
 	'dynamicRef.json :: $ref and $dynamicAnchor are independent of order - $defs first (2020)': {
-		gaps: {
-			'2020-12':
-				'crashes: "$dynamicRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-		},
+		typeGaps: ['2020-12'],
 	},
 	'dynamicRef.json :: $ref and $dynamicAnchor are independent of order - $ref first (2020)': {
-		gaps: {
-			'2020-12':
-				'crashes: "$dynamicRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-		},
+		typeGaps: ['2020-12'],
 	},
 	'dynamicRef.json :: $ref to $dynamicRef finds detached $dynamicAnchor (2020)': {
-		gaps: {
-			'2020-12':
-				'crashes: "$dynamicRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-		},
+		typeGaps: ['2020-12'],
 	},
 	'dynamicRef.json :: A $dynamicRef resolves to the first $dynamicAnchor still in scope that is encountered when the schema is evaluated (2020)':
 		{
-			gaps: {
-				'2020-12':
-					'crashes: "$dynamicRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-			},
+			typeGaps: ['2020-12'],
 		},
 	'dynamicRef.json :: A $dynamicRef that initially resolves to a schema with a matching $dynamicAnchor resolves to the first $dynamicAnchor in the dynamic scope':
 		{
-			gaps: {
-				'2020-12':
-					'crashes: "$dynamicRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-			},
-		},
-	'dynamicRef.json :: A $dynamicRef that initially resolves to a schema without a matching $dynamicAnchor behaves like a normal $ref to $anchor':
-		{
-			gaps: {
-				'2020-12':
-					'crashes: "$dynamicRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-			},
+			typeGaps: ['2020-12'],
 		},
 	'dynamicRef.json :: A $dynamicRef to a $dynamicAnchor in the same schema resource behaves like a normal $ref to an $anchor (2020)':
 		{
-			gaps: {
-				'2020-12':
-					'crashes: "$dynamicRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-			},
+			typeGaps: ['2020-12'],
 		},
 	'dynamicRef.json :: A $dynamicRef to an $anchor in the same schema resource behaves like a normal $ref to an $anchor':
 		{
-			gaps: {
-				'2020-12':
-					'crashes: "$dynamicRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-			},
-		},
-	'dynamicRef.json :: A $dynamicRef with a non-matching $dynamicAnchor in the same schema resource behaves like a normal $ref to $anchor':
-		{
-			gaps: {
-				'2020-12':
-					'crashes: "$dynamicRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-			},
+			typeGaps: ['2020-12'],
 		},
 	"dynamicRef.json :: A $dynamicRef with intermediate scopes that don't include a matching $dynamicAnchor does not affect dynamic scope resolution (2020)":
 		{
-			gaps: {
-				'2020-12':
-					'crashes: "$dynamicRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-			},
-		},
-	'dynamicRef.json :: A $dynamicRef without a matching $dynamicAnchor in the same schema resource behaves like a normal $ref to $anchor':
-		{
-			gaps: {
-				'2020-12':
-					'crashes: "$dynamicRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-			},
+			typeGaps: ['2020-12'],
 		},
 	'dynamicRef.json :: A $dynamicRef without anchor in fragment behaves identical to $ref': {
-		gaps: {
-			'2020-12':
-				'crashes: "$dynamicRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-		},
+		typeGaps: ['2020-12'],
 	},
-	'dynamicRef.json :: A $ref to a $dynamicAnchor in the same schema resource behaves like a normal $ref to an $anchor':
-		{
-			gaps: {
-				'2020-12': 'crashes: Could not resolve $ref "#items".',
-			},
-		},
-	'dynamicRef.json :: An $anchor with the same name as a $dynamicAnchor is not used for dynamic scope resolution (2020)':
-		{
-			gaps: {
-				'2020-12':
-					'crashes: "$dynamicRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-			},
-		},
 	'dynamicRef.json :: after leaving a dynamic scope, it is not used by a $dynamicRef (2020)': {
-		gaps: {
-			'2020-12':
-				'crashes: "$dynamicRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-		},
+		typeGaps: ['2020-12'],
 	},
 	'dynamicRef.json :: multiple dynamic paths to the $dynamicRef keyword (2020)': {
-		gaps: {
-			'2020-12':
-				'crashes: "$dynamicRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-		},
+		typeGaps: ['2020-12'],
 	},
 	'dynamicRef.json :: strict-tree schema, guards against misspelled properties (2020)': {
 		gaps: {
-			'2020-12':
-				'crashes: "$dynamicRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
+			'2020-12': 'rejects valid instance 1',
 		},
 	},
 	'dynamicRef.json :: tests for implementation dynamic anchor and reference link (2020)': {
-		gaps: {
-			'2020-12':
-				'crashes: "$dynamicRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-		},
+		typeGaps: ['2020-12'],
 	},
 	'id-legacy.json :: simple URN base URI with $ref via the URN (id)': {
 		gaps: {
@@ -555,47 +475,23 @@ export const knownGapCases = {
 		typeGaps: ['2019-09', '2020-12', 'draft-06', 'draft-07'],
 	},
 	'recursiveRef.json :: $recursiveRef with $recursiveAnchor: false works like $ref': {
-		gaps: {
-			'2019-09':
-				'crashes: "$recursiveRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-		},
-	},
-	'recursiveRef.json :: $recursiveRef with nesting': {
-		gaps: {
-			'2019-09':
-				'crashes: "$recursiveRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-		},
+		typeGaps: ['2019-09'],
 	},
 	'recursiveRef.json :: $recursiveRef with no $recursiveAnchor in the initial target schema resource':
 		{
-			gaps: {
-				'2019-09':
-					'crashes: "$recursiveRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-			},
+			typeGaps: ['2019-09'],
 		},
 	'recursiveRef.json :: $recursiveRef with no $recursiveAnchor in the outer schema resource': {
-		gaps: {
-			'2019-09':
-				'crashes: "$recursiveRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-		},
+		typeGaps: ['2019-09'],
 	},
 	'recursiveRef.json :: $recursiveRef with no $recursiveAnchor works like $ref': {
-		gaps: {
-			'2019-09':
-				'crashes: "$recursiveRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-		},
+		typeGaps: ['2019-09'],
 	},
 	'recursiveRef.json :: $recursiveRef without $recursiveAnchor works like $ref': {
-		gaps: {
-			'2019-09':
-				'crashes: "$recursiveRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-		},
+		typeGaps: ['2019-09'],
 	},
 	'recursiveRef.json :: $recursiveRef without using nesting': {
-		gaps: {
-			'2019-09':
-				'crashes: "$recursiveRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-		},
+		typeGaps: ['2019-09'],
 	},
 	'recursiveRef.json :: $ref with $recursiveAnchor': {
 		gaps: {
@@ -605,16 +501,10 @@ export const knownGapCases = {
 	},
 	'recursiveRef.json :: dynamic $recursiveRef destination (not predictable at schema compile time)':
 		{
-			gaps: {
-				'2019-09':
-					'crashes: "$recursiveRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-			},
+			typeGaps: ['2019-09'],
 		},
 	'recursiveRef.json :: multiple dynamic paths to the $recursiveRef keyword': {
-		gaps: {
-			'2019-09':
-				'crashes: "$recursiveRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
-		},
+		typeGaps: ['2019-09'],
 	},
 	'ref.json :: ref applies alongside sibling keywords': {
 		typeGaps: ['2019-09', '2020-12'],
@@ -702,14 +592,12 @@ export const knownGapCases = {
 	},
 	'unevaluatedItems.json :: unevaluatedItems with $dynamicRef (2020-12)': {
 		gaps: {
-			'2020-12':
-				'crashes: "$dynamicRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
+			'2020-12': 'rejects valid instance 0',
 		},
 	},
 	'unevaluatedItems.json :: unevaluatedItems with $recursiveRef': {
 		gaps: {
-			'2019-09':
-				'crashes: "$recursiveRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
+			'2019-09': 'rejects valid instance 0',
 		},
 	},
 	'unevaluatedItems.json :: unevaluatedItems with $ref': {
@@ -863,14 +751,12 @@ export const knownGapCases = {
 	},
 	'unevaluatedProperties.json :: unevaluatedProperties with $dynamicRef (2020)': {
 		gaps: {
-			'2020-12':
-				'crashes: "$dynamicRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
+			'2020-12': 'rejects valid instance 0',
 		},
 	},
 	'unevaluatedProperties.json :: unevaluatedProperties with $recursiveRef': {
 		gaps: {
-			'2019-09':
-				'crashes: "$recursiveRef" is not supported. The parser understands draft-04, draft-06, draft-07, 2019-09 and 2020-12 schemas, but this keyword has no generator yet.',
+			'2019-09': 'rejects valid instance 0',
 		},
 	},
 	'unevaluatedProperties.json :: unevaluatedProperties with $ref': {

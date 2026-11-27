@@ -93,6 +93,32 @@ test('serves identifiers declared inside a provided document', async () => {
 	expect(name[Meta].reference).toMatchObject({ type: 'string' });
 });
 
+test('serves a dynamic anchor declared inside a provided document', async () => {
+	const parsed = await parse(
+		{ $ref: 'https://example.com/bundle.json#name' },
+		{
+			cwd: __dirname + '/',
+			fileName: 'Root.json',
+			dialect: '2020-12',
+			externalSchemas: {
+				'https://example.com/bundle.json': {
+					$defs: {
+						name: Object.assign({ type: 'string' } satisfies JSONSchema, {
+							$dynamicAnchor: 'name',
+						}),
+					},
+				},
+			},
+		}
+	);
+
+	if (!isParsedJSONSchemaObject(parsed.root)) {
+		throw new TypeError('Expected the root document to be an object');
+	}
+
+	expect(parsed.root[Meta].reference).toMatchObject({ type: 'string' });
+});
+
 test('reports a nested identifier once when it is also referenced directly', async () => {
 	const bundle = Object.assign(
 		{ $id: 'https://example.com/bundle.json', prefixItems: [{}] } satisfies JSONSchema,

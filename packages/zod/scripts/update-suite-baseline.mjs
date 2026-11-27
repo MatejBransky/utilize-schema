@@ -18,6 +18,9 @@ const { z } = require('zod');
 const { parse } = await import(
 	pathToFileURL(join(root, 'packages/json-schema/dist/index.mjs')).href
 );
+const { createJsonSchemaValidator } = await import(
+	pathToFileURL(join(root, 'packages/json-schema/dist/runtime.mjs')).href
+);
 const { generate } = await import(pathToFileURL(join(root, 'packages/zod/dist/index.mjs')).href);
 const { knownFailures } = await import(
 	pathToFileURL(join(root, 'packages/zod/test/suite/knownFailures.ts')).href
@@ -51,7 +54,7 @@ async function compileForDialect(testCase, dialect) {
 		customNameResolver: nameRootSchema,
 	});
 
-	return evaluateGeneratedCode(code, { z });
+	return evaluateGeneratedCode(code, { z, createJsonSchemaValidator });
 }
 
 async function compile(schema, externalSchemas) {
@@ -62,7 +65,7 @@ async function compile(schema, externalSchemas) {
 	});
 	const code = generate(parsedRoot, { importZod: false, customNameResolver: nameRootSchema });
 
-	return evaluateGeneratedCode(code, { z });
+	return evaluateGeneratedCode(code, { z, createJsonSchemaValidator });
 }
 
 const files = loadSuiteFiles();
