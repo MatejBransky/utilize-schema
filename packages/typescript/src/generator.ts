@@ -26,6 +26,12 @@ export interface GenerateOptions {
 	customNameResolver?: CustomNameResolver;
 	/** Emits a caller-provided TypeScript type for a matching schema node. */
 	customSchemaResolver?: CustomSchemaResolver;
+	/**
+	 * Treats a schema with `format` and no inferred object or array shape as
+	 * `string` instead of `unknown`. Off by default because `format` only
+	 * applies to strings; non-string instances stay valid without `type`.
+	 */
+	inferFormatAsString?: boolean;
 }
 
 /**
@@ -52,6 +58,7 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 			return name;
 		},
 		customSchemaResolver: options.customSchemaResolver,
+		inferFormatAsString: options.inferFormatAsString,
 	};
 
 	if (!isParsedJSONSchemaObject(root)) {

@@ -77,6 +77,15 @@ describe('CLI', () => {
 		expect(stdout()).toContain('export type Root = string;');
 	});
 
+	test('--infer-format-as-string treats a format-only schema as string', async () => {
+		const { io, stdout } = createIo(JSON.stringify({ format: 'email' }));
+
+		const exitCode = await run(['--no-banner', '--infer-format-as-string'], io);
+
+		expect(exitCode).toBe(0);
+		expect(stdout()).toContain('export type Root = string;');
+	});
+
 	test('compiles a directory of JSON and YAML schemas into an output directory', async () => {
 		const directory = await makeDirectory();
 		const output = join(directory, 'generated');

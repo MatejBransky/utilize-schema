@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { isEntrypoint, runGeneratorCli, validationCliHelp } from '@utilize/json-schema/node';
-import type { CliIo } from '@utilize/json-schema/node';
+import type { CliFlagValues, CliIo } from '@utilize/json-schema/node';
 
 import { compileFile, compileSchema, withBanner } from './compile';
 
@@ -18,10 +18,17 @@ Options:
   -i, --input <path>    schema file, directory or glob
   -o, --output <path>   output file or directory
   --cwd <path>          directory used to resolve paths
+  --infer-format-as-string
+                        treat a schema with only a "format" as string
+                        instead of unknown
   --no-banner           omit the generated-file banner
 ${validationCliHelp}
   -h, --help            show this help
 `;
+
+const parseOptions = {
+	'infer-format-as-string': { type: 'boolean', default: false },
+} as const;
 
 export async function run(
 	argv: string[],
@@ -29,8 +36,11 @@ export async function run(
 ): Promise<number> {
 	return runGeneratorCli(argv, io, {
 		help: HELP,
-		parseOptions: {},
-		readOptions: () => ({ ok: true, options: {} }),
+		parseOptions,
+		readOptions: (values: CliFlagValues<typeof parseOptions>) => ({
+			ok: true,
+			options: { inferFormatAsString: values['infer-format-as-string'] },
+		}),
 		compileSchema,
 		compileFile,
 		withBanner,

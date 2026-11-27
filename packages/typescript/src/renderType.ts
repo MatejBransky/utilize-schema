@@ -20,6 +20,8 @@ export interface TypeContext {
 	nameOf(schema: ParsedJSONSchemaObject, ref: string): string;
 	/** Emits a caller-provided TypeScript type for a matching schema node. */
 	customSchemaResolver?: CustomSchemaResolver;
+	/** Treats a schema with only a `format` as `string` instead of `unknown`. */
+	inferFormatAsString?: boolean;
 }
 
 /**
@@ -310,6 +312,10 @@ function renderUntyped(
 
 	if (family === 'array') {
 		return renderArray(schema, context, level);
+	}
+
+	if (context.inferFormatAsString === true && schema.format !== undefined) {
+		return 'string';
 	}
 
 	return 'unknown';

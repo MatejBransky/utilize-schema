@@ -31,6 +31,12 @@ export interface CompileOptions extends SchemaValidationOptions {
 	customNameResolver?: CustomNameResolver;
 	/** Emits a caller-provided TypeScript type for a matching schema node. */
 	customSchemaResolver?: CustomSchemaResolver;
+	/**
+	 * Treats a schema with `format` and no inferred object or array shape as
+	 * `string` instead of `unknown`. Off by default because `format` only
+	 * applies to strings; non-string instances stay valid without `type`.
+	 */
+	inferFormatAsString?: boolean;
 	/** Runs a formatter (for example Prettier) over the generated code. */
 	format?: CodeFormatter | false;
 	/** Header prepended to the generated file. Pass `false` to omit it. */
@@ -44,6 +50,7 @@ export interface CompileSchemaOptions extends SchemaValidationOptions {
 	fileName: string;
 	customNameResolver?: CustomNameResolver;
 	customSchemaResolver?: CustomSchemaResolver;
+	inferFormatAsString?: boolean;
 	format?: CodeFormatter | false;
 	/** Documents served for absolute `$ref` URIs, keyed by retrieval URI. */
 	externalSchemas?: ExternalSchemas;
@@ -66,6 +73,7 @@ export async function compile(options: CompileOptions): Promise<void> {
 	const code = await compileFile(inputPath, {
 		customNameResolver: options.customNameResolver,
 		customSchemaResolver: options.customSchemaResolver,
+		inferFormatAsString: options.inferFormatAsString,
 		format: options.format,
 		externalSchemas: options.externalSchemas,
 		validateSchema: options.validateSchema,
@@ -89,6 +97,7 @@ export async function compileSchema(
 	const code = generate(root, {
 		customNameResolver: options.customNameResolver,
 		customSchemaResolver: options.customSchemaResolver,
+		inferFormatAsString: options.inferFormatAsString,
 	});
 
 	return options.format ? options.format(code) : code;

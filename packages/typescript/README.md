@@ -83,9 +83,13 @@ memory, `customNameResolver(schema, usedNames)` to rename a
 declaration, `customSchemaResolver(schema)` to return a TypeScript type for a
 schema node, `validateSchema(schema, { dialect, filePath })` to reject an
 invalid document before generation (see
-[docs/dialects.md](../../docs/dialects.md#schema-validation)), and
-`format(code)` to run a synchronous or asynchronous formatter over the
-generated code. The schema resolver is called for every object node
+[docs/dialects.md](../../docs/dialects.md#schema-validation)),
+`inferFormatAsString` to treat a schema with only a `format` as `string` instead
+of `unknown`, and `format(code)` to run a synchronous or asynchronous formatter
+over the generated code. The inference is off by default because `format` only
+applies to strings, so a non-string instance is still valid without `type`;
+enable it when your schemas use `format` as an implicit string hint. The schema
+resolver is called for every object node
 (including `$ref` nodes and the per-type copies of a `type` list, never boolean
 schemas) before the built-in renderer. The returned type replaces the node's
 type, while its JSDoc comment and the `?` of a non-required property are kept:
@@ -117,7 +121,8 @@ cat schema.yaml | utilize-typescript > schema.generated.ts
 
 Input can be a file, a directory or a glob; JSON and YAML are supported. Output
 defaults to stdout. Every generated file starts with a "do not edit" banner
-(`--no-banner` omits it).
+(`--no-banner` omits it). `--infer-format-as-string` enables the format inference
+described above.
 
 `--validate` checks each resolved document against the meta-schema of its
 dialect before generating; install `ajv` to use it (draft-04 schemas also
