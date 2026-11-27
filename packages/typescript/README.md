@@ -81,8 +81,11 @@ await compile({
 `compile()` accepts `externalSchemas` to serve absolute `$ref` URIs from
 memory, `customNameResolver(schema, usedNames)` to rename a
 declaration, `customSchemaResolver(schema)` to return a TypeScript type for a
-schema node, and `format(code)` to run a synchronous or asynchronous formatter
-over the generated code. The schema resolver is called for every object node
+schema node, `validateSchema(schema, { dialect, filePath })` to reject an
+invalid document before generation (see
+[docs/dialects.md](../../docs/dialects.md#schema-validation)), and
+`format(code)` to run a synchronous or asynchronous formatter over the
+generated code. The schema resolver is called for every object node
 (including `$ref` nodes and the per-type copies of a `type` list, never boolean
 schemas) before the built-in renderer. The returned type replaces the node's
 type, while its JSDoc comment and the `?` of a non-required property are kept:

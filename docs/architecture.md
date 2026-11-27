@@ -39,5 +39,9 @@ generators share:
   generator `compile()` functions and their CLIs: reading JSON and YAML,
   file/glob/directory input, `compilePaths`, `parseForCompile`, the generated
   file banner, and `runGeneratorCli` with the flags every CLI accepts.
+- The **`@utilize/json-schema/validate/ajv` entry** holds the optional Ajv
+  adapter behind `--validate` and the `validateSchema` option. It imports `ajv`
+  and `ajv-draft-04` lazily, which are optional peer dependencies, so a caller
+  that does not validate never loads them.
 - `@utilize/zod`, `@utilize/effect` and `@utilize/typescript` add only the code
   emitter and the target-specific handling on top.

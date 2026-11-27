@@ -16,3 +16,7 @@ targets) against the meta-schema of its dialect — draft-04, draft-06, draft-07
 built-in validator and is an optional peer dependency (`ajv` and
 `ajv-draft-04`); `--validator <module>` replaces it with any function, so Ajv
 stays out of the install for callers that do not validate.
+
+`@utilize/json-schema` exports the adapter as the new `./validate/ajv` entry and
+the validation types, `SchemaValidator` and `SchemaValidationError`, from the
+main entry.

@@ -111,6 +111,11 @@ Options:
   `hostname` are stricter than their target helpers.
 - `format(code)` — optional synchronous or asynchronous formatter (for example
   Prettier) applied to the generated code before the banner is prepended.
+- `validateSchema(schema, { dialect, filePath })` — run an optional validator on
+  every resolved document before generation. Any finding throws
+  `SchemaValidationError` with one report per document. See
+  [docs/dialects.md](../../docs/dialects.md#schema-validation) for the finding
+  shape and the Ajv adapter.
 - `importEffect` — emit `import { Schema } from 'effect';`; on by default.
 
 ## CLI

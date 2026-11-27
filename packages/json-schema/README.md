@@ -177,7 +177,7 @@ await parse(schema, {
 Return every `SchemaValidationFinding` (`pointer`, `message`, optional
 `keyword`). Any finding throws `SchemaValidationError`, which carries one
 report per document. The callback runs on the root, every `$ref` target and
-every provided external schema, before normalization.
+every provided external schema the document reaches, before normalization.
 
 An Ajv adapter is included behind the optional `ajv` and `ajv-draft-04` peer
 dependencies:
