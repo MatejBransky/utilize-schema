@@ -46,6 +46,15 @@ describe('CLI options', () => {
 		expect(stdout()).toContain('export type Root = string;');
 	});
 
+	test('defaults to spec inference for an untyped schema', async () => {
+		const { io, stdout } = createIo(JSON.stringify({ format: 'email' }));
+
+		const exitCode = await run(['--no-banner'], io);
+
+		expect(exitCode).toBe(0);
+		expect(stdout()).toContain('export type Root = unknown;');
+	});
+
 	test('--inference pragmatic infers a format-only schema as string', async () => {
 		const { io, stdout } = createIo(JSON.stringify({ format: 'email' }));
 

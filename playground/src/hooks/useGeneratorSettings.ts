@@ -18,11 +18,14 @@ export function useGeneratorSettings(initial: UrlState) {
 	useSettingsUrl(target, keywordPolicy, formatMode, inference);
 
 	function applyGenerator(id: TargetId) {
+		const nextInference = id === 'typescript' ? inference : 'spec';
+
 		setTarget(id);
+		setInference(nextInference);
 		updateUrl(
 			{
 				[playgroundParams.generator]: id,
-				[playgroundParams.inference]: id === 'typescript' ? String(inference) : null,
+				[playgroundParams.inference]: id === 'typescript' ? inference : null,
 			},
 			'push'
 		);

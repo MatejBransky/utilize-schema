@@ -134,13 +134,15 @@ subschemas that do not declare the same property.
 `format` only applies to strings. A schema that would otherwise be `unknown`
 stays `unknown` by default; `inference: 'pragmatic'` opts into treating the
 keyword family as the intended type (`format` → `string`, `minimum` → `number`,
-`contains` → `array`).
+`contains` → `array`, `minProperties` → `object`). Object-family keywords include
+`dependencies` and `dependentSchemas`, which apply only to objects.
 
 Validation-only keywords (`minLength`, `pattern`, `minimum`, `uniqueItems`,
 `minItems`, `not`, `if`/`then`/`else`, `dependencies`, …) have no equivalent in
 a TypeScript type. In `spec` mode they are ignored; `pragmatic` inference only
-uses the keyword family to choose `string`, `number` or `array` and still cannot
-enforce the constraint. They are not silently dropped from a schema: use
+uses the keyword family to choose `string`, `number`, `array` or `object` and
+still cannot enforce the constraint. They are not silently dropped from a
+schema: use
 [`@utilize/zod`](../packages/zod) or [`@utilize/effect`](../packages/effect) when
 you need runtime validation.
 

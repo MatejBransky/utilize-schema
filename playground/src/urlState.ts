@@ -1,7 +1,7 @@
 import type { KeywordPolicy } from '@utilize/json-schema';
 
 import type { SchemaFile } from './bundle';
-import type { InferenceMode } from './generateCode';
+import type { InferenceMode } from '@utilize/typescript';
 import { exampleData } from './examples';
 import type { Example } from './examples';
 import { isFormatMode } from './formatMode';

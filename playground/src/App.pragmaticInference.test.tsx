@@ -5,6 +5,7 @@ import { render } from 'vitest-browser-react';
 
 import App from './App';
 import './polyfills';
+import { expectAgentSnapshotLabels } from './test/agentAssertions';
 import { generatedCode } from './test/domQueries';
 import { resetAppState, seedWorkspace, WORKSPACE_STORAGE_KEY } from './test/savedState';
 import { typescriptEmailWorkspace } from './test/workspaceFixtures';
@@ -62,8 +63,7 @@ test('an agent can toggle TypeScript pragmatic inference', async () => {
 	const agent = createAgent({ allow: () => true });
 	const screen = await render(<App />);
 
-	const labels = agent.snapshot().map((entry) => entry.label);
-	expect(labels).toContain('Pragmatic inference');
+	expectAgentSnapshotLabels(agent, ['Pragmatic inference']);
 
 	const result = await agent.act({
 		steps: [{ ref: 'Pragmatic inference', action: 'setChecked', args: [true] }],

@@ -26,7 +26,7 @@ const expectedLabels = [
 	'GitHub',
 ];
 
-export function expectAgentSnapshotLabels(agent: TestAgent) {
+export function expectAgentSnapshotLabels(agent: TestAgent, extraLabels: string[] = []) {
 	const components = agent
 		.snapshot()
 		.filter((entry) => !entry.offPage && entry.component !== 'more');
@@ -37,7 +37,7 @@ export function expectAgentSnapshotLabels(agent: TestAgent) {
 
 	const labels = components.map((entry) => entry.label);
 	expect(new Set(labels).size).toBe(labels.length);
-	for (const label of expectedLabels) {
+	for (const label of [...expectedLabels, ...extraLabels]) {
 		expect(labels, `${label} is missing from the snapshot`).toContain(label);
 	}
 }

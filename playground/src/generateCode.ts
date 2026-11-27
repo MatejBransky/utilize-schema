@@ -2,6 +2,8 @@ import { generate as generateEffect } from '@utilize/effect';
 import { Meta } from '@utilize/json-schema';
 import type { ParsedJSONSchema } from '@utilize/json-schema';
 import { generate as generateTypeScript } from '@utilize/typescript';
+import type { InferenceMode } from '@utilize/typescript';
+export type { InferenceMode } from '@utilize/typescript';
 
 import { generate as generateZod } from '@utilize/zod';
 
@@ -32,8 +34,6 @@ const runtimeGenerators: Record<
 	effect: (root, formatMode, options) =>
 		generateEffect(root, { importEffect: true, formatMode, ...options?.effect }),
 };
-
-export type InferenceMode = 'spec' | 'pragmatic';
 
 export interface GenerateCodeSettings {
 	inference?: InferenceMode;

@@ -5,7 +5,7 @@ import type { KeywordPolicy } from '@utilize/json-schema';
 
 import type { SchemaFile } from '../bundle';
 import type { FormatMode } from '../formatMode';
-import type { InferenceMode } from '../generateCode';
+import type { InferenceMode } from '@utilize/typescript';
 import type { MonacoEditorHandle } from '../monaco/MonacoEditor';
 import type { TargetId } from '../targets';
 
