@@ -125,10 +125,73 @@ describe('$schema versions', () => {
 		);
 	});
 
-	test('unsupported 2020-12 features fail loudly', async () => {
-		await expect(generateCode(unsupportedFeatureSchema)).rejects.toThrow(
-			/"\$dynamicRef" is not supported/
+	test('emits a runtime guard for 2020-12 dynamic references', async () => {
+		await expect(generateCode(unsupportedFeatureSchema)).resolves.toContain(
+			'createJsonSchemaValidator'
 		);
+	});
+
+	test('validates recursive dynamic references before decoding', async () => {
+		const Root = await compileToZod({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			$dynamicAnchor: 'node',
+			type: 'object',
+			properties: {
+				value: { type: 'string' },
+				next: Object.assign<JSONSchema, { $dynamicRef: string }>({}, { $dynamicRef: '#node' }),
+			},
+			required: ['value'],
+			additionalProperties: false,
+		});
+
+		expect(Root.safeParse({ value: 'root', next: { value: 'child' } }).success).toBe(true);
+		expect(Root.safeParse({ value: 'root', next: { value: 1 } }).success).toBe(false);
+		expect(Root.safeParse({ value: 'root', extra: true }).success).toBe(false);
+	});
+
+	test('guard preserves typed additionalProperties decoding', async () => {
+		const Root = await compileToZod({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'object',
+			properties: { id: { type: 'string' } },
+			additionalProperties: { type: 'string' },
+			unevaluatedProperties: false,
+		});
+
+		expect(Root.safeParse({ id: 'x', extra: 'y' })).toMatchObject({
+			success: true,
+			data: { id: 'x', extra: 'y' },
+		});
+		expect(Root.safeParse({ id: 'x', extra: 1 }).success).toBe(false);
+	});
+
+	test('guard preserves patternProperties decoding', async () => {
+		const Root = await compileToZod({
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'object',
+			patternProperties: { '^S_': { type: 'string' } },
+			unevaluatedProperties: false,
+		});
+
+		expect(Root.safeParse({ S_name: 'a' })).toMatchObject({
+			success: true,
+			data: { S_name: 'a' },
+		});
+		expect(Root.safeParse({ S_name: 1 }).success).toBe(false);
+		expect(Root.safeParse({ other: 'a' }).success).toBe(false);
+	});
+
+	test('validates unevaluated properties across allOf branches', async () => {
+		const Root = await compileToZod({
+			$schema: 'https://json-schema.org/draft/2019-09/schema',
+			type: 'object',
+			properties: { foo: { type: 'string' } },
+			allOf: [{ properties: { bar: { type: 'number' } } }],
+			unevaluatedProperties: false,
+		});
+
+		expect(Root.safeParse({ foo: 'x', bar: 1 }).success).toBe(true);
+		expect(Root.safeParse({ foo: 'x', baz: true }).success).toBe(false);
 	});
 
 	test('2020-12 unevaluatedProperties maps to additionalProperties', async () => {

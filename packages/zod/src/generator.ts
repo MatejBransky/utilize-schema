@@ -1,5 +1,7 @@
 import {
+	allocateRuntimeNames,
 	collectStandaloneSchemas,
+	createRuntimeGuard,
 	dialectOf,
 	expectDefined,
 	formatBody,
@@ -64,36 +66,85 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		return generatePrimitive(root, options);
 	}
 
-	const { copies, hoisted } = findInlineCopies(collectStandaloneSchemas(root).schemas, (schema) =>
-		isResolvedByCaller(options.customSchemaResolver, schema)
-	);
-	const { schemas: standaloneSchemas, edges } = collectStandaloneSchemas(root, {
-		inlineCopies: copies,
-	});
-	const { schemas: cyclicSchemas, unsupported } = findCyclicSchemas(edges, standaloneSchemas);
+	const {
+		runtimeGuard,
+		generationRoot,
+		copies,
+		broken,
+		sorted,
+		cyclicSchemas,
+		names,
+		typeNames,
+		aliases,
+		formatNames,
+		usedNames,
+		internalNames,
+		validatorName,
+	} = prepareGeneration();
 
-	if (unsupported.length > 0) {
-		throw unsupportedUnionCycleError(unsupported);
+	function prepareGeneration() {
+		if (typeof root !== 'object' || root === null) {
+			throw new TypeError('Expected an object schema');
+		}
+
+		const runtimeGuard = createRuntimeGuard(root);
+		const generationRoot =
+			runtimeGuard && typeof runtimeGuard.shape === 'object' && runtimeGuard.shape !== null
+				? runtimeGuard.shape
+				: root;
+		const { copies, hoisted } = findInlineCopies(
+			collectStandaloneSchemas(generationRoot).schemas,
+			(schema) => isResolvedByCaller(options.customSchemaResolver, schema)
+		);
+		const { schemas: standaloneSchemas, edges } = collectStandaloneSchemas(generationRoot, {
+			inlineCopies: copies,
+		});
+		const { schemas: cyclicSchemas, unsupported } = findCyclicSchemas(edges, standaloneSchemas);
+
+		if (unsupported.length > 0) {
+			throw unsupportedUnionCycleError(unsupported);
+		}
+
+		const broken = breakReferenceCycles(edges, new Set(standaloneSchemas), copies);
+		const sorted = toposort(broken.edges)
+			.filter((schema): schema is ParsedJSONSchemaObject => schema !== null)
+			.filter((schema) => standaloneSchemas.includes(schema))
+			.reverse();
+		const hoistedSet = new Set(hoisted);
+		const { names, typeNames } = nameDeclarations(
+			[...sorted, ...standaloneSchemas.filter((schema) => !sorted.includes(schema))].filter(
+				(schema) => !hoistedSet.has(schema)
+			),
+			hoisted,
+			options
+		);
+		const aliases = new Map<ParsedJSONSchemaObject, string>();
+		const formatNames = new Map<string, string>();
+		const usedNames = usedNamesFor(names.values(), typeNames);
+		const { internalNames, validatorName } = allocateRuntimeNames(
+			runtimeGuard,
+			sorted,
+			(schema) => names.get(schema)?.schema ?? 'Schema',
+			typeNames,
+			usedNames
+		);
+
+		return {
+			runtimeGuard,
+			generationRoot,
+			copies,
+			broken,
+			sorted,
+			cyclicSchemas,
+			names,
+			typeNames,
+			aliases,
+			formatNames,
+			usedNames,
+			internalNames,
+			validatorName,
+		};
 	}
-
-	const broken = breakReferenceCycles(edges, new Set(standaloneSchemas), copies);
-
-	const sorted = toposort(broken.edges)
-		.filter((schema): schema is ParsedJSONSchemaObject => schema !== null)
-		.filter((schema) => standaloneSchemas.includes(schema))
-		.reverse();
-
-	const hoistedSet = new Set(hoisted);
-	const { names, typeNames } = nameDeclarations(
-		[...sorted, ...standaloneSchemas.filter((schema) => !sorted.includes(schema))].filter(
-			(schema) => !hoistedSet.has(schema)
-		),
-		hoisted,
-		options
-	);
-	const aliases = new Map<ParsedJSONSchemaObject, string>();
-	const formatNames = new Map<string, string>();
-	const usedNames = usedNamesFor(names.values(), typeNames);
 
 	function namesOf(schema: ParsedJSONSchemaObject): DeclarationNames {
 		const declarationNames = names.get(schema);
@@ -110,15 +161,15 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		readOnlyKeyword: options.readOnlyKeyword,
 		formatMap: options.formatMap,
 		formatMode: options.formatMode,
-		nameOf: (schema) => namesOf(schema).schema,
+		nameOf: (schema) => internalNames.get(schema) ?? namesOf(schema).schema,
 		declarationOf: (schema) => copies.get(schema),
-		dialect: dialectOf(root),
+		dialect: dialectOf(generationRoot),
 		customSchemaResolver: options.customSchemaResolver,
 		formatOf: (format) => formatNameFor(format, formatNames, usedNames),
 	};
 
 	const valueTypeContext: ValueTypeContext = {
-		dialect: dialectOf(root),
+		dialect: dialectOf(generationRoot),
 		customSchemaResolver: options.customSchemaResolver,
 		aliasFor: (schema) => {
 			if (!cyclicSchemas.has(schema)) {
@@ -139,34 +190,79 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 		readOnlyKeyword: options.readOnlyKeyword,
 	};
 
-	const code: string[] = [];
-	if (options.importZod ?? true) {
-		code.push(ts`import { z } from 'zod';${NEWLINE}`);
-	}
+	return renderCode();
 
-	for (const schema of sorted) {
-		const { schema: schemaName, type: typeName } = namesOf(schema);
-		const alias = valueTypeContext.aliasFor(schema);
-		const zodExpression = generateSchema(schema, context);
+	function renderCode(): string {
+		const code: string[] = [];
+		renderImports(code);
+		renderDeclarations(code);
 
-		if (alias) {
-			code.push(
-				renderValueTypeDeclaration(alias, schema, valueTypeContext),
-				ts`export const ${schemaName}: z.ZodType<${alias}> = ${zodExpression};`
-			);
-		} else {
-			code.push(ts`export const ${schemaName} = ${zodExpression};`);
+		if (runtimeGuard && validatorName) {
+			renderGuardedDeclarations(code, validatorName);
 		}
 
-		code.push(ts`export type ${typeName} = z.infer<typeof ${schemaName}>;`, NEWLINE);
+		const importIndex = importIndexFor(options) + (runtimeGuard ? 1 : 0);
+		code.splice(importIndex, 0, ...formatConstantsFor(formatNames));
+		code.splice(importIndex, 0, ...oneOfLines(context.usesOneOf, options.runtimeImport));
+
+		return code.join(NEWLINE);
 	}
 
-	const importIndex = importIndexFor(options);
+	function renderImports(code: string[]): void {
+		if (options.importZod ?? true) {
+			code.push(ts`import { z } from 'zod';${NEWLINE}`);
+		}
 
-	code.splice(importIndex, 0, ...formatConstantsFor(formatNames));
-	code.splice(importIndex, 0, ...oneOfLines(context.usesOneOf, options.runtimeImport));
+		if (runtimeGuard && validatorName) {
+			code.push(
+				ts`import { createJsonSchemaValidator } from '@utilize/json-schema/runtime';${NEWLINE}`,
+				ts`const ${validatorName} = createJsonSchemaValidator(${JSON.stringify(JSON.stringify(runtimeGuard.bundle))});`
+			);
+		}
+	}
 
-	return code.join(NEWLINE);
+	function renderDeclarations(code: string[]): void {
+		for (const schema of sorted) {
+			const { schema: schemaName, type: typeName } = namesOf(schema);
+			const alias = valueTypeContext.aliasFor(schema);
+			const zodExpression = generateSchema(schema, context);
+			const targetName = internalNames.get(schema) ?? schemaName;
+			const declaration = runtimeGuard ? 'const' : 'export const';
+
+			if (alias) {
+				code.push(
+					renderValueTypeDeclaration(alias, schema, valueTypeContext),
+					ts`${declaration} ${targetName}: z.ZodType<${alias}> = ${zodExpression};`
+				);
+			} else {
+				code.push(ts`${declaration} ${targetName} = ${zodExpression};`);
+			}
+
+			if (!runtimeGuard) {
+				code.push(ts`export type ${typeName} = z.infer<typeof ${schemaName}>;`, NEWLINE);
+			}
+		}
+	}
+
+	function renderGuardedDeclarations(code: string[], validator: string): void {
+		for (const schema of sorted) {
+			const { schema: schemaName, type: typeName } = namesOf(schema);
+			const internalName = expectDefined(internalNames.get(schema));
+			const ref = runtimeGuard?.refFor(schema) ?? '';
+			const guarded = ts`z.any().superRefine((value, ctx) => {
+        if (!${validator}(value, ${JSON.stringify(ref)})) {
+          ctx.addIssue({ code: 'custom', message: 'Value does not match the JSON Schema.' });
+        }
+      }).pipe(${internalName})`;
+			const guardedType = `z.ZodType<z.output<typeof ${internalName}>, z.input<typeof ${internalName}>>`;
+
+			code.push(
+				ts`export const ${schemaName}: ${guardedType} = ${guarded} as ${guardedType};`,
+				ts`export type ${typeName} = z.infer<typeof ${schemaName}>;`,
+				NEWLINE
+			);
+		}
+	}
 }
 
 function generatePrimitive(

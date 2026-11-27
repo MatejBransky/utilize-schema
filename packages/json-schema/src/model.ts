@@ -16,13 +16,27 @@ export interface JSONSchema extends JSONSchema7 {
 	unevaluatedProperties?: boolean | JSONSchema;
 	unevaluatedItems?: boolean | JSONSchema;
 	$recursiveRef?: string;
+	$recursiveAnchor?: boolean;
 	$dynamicRef?: string;
+	$dynamicAnchor?: string;
+	$vocabulary?: Record<string, boolean>;
 	minContains?: number;
 	maxContains?: number;
 }
 export type JSONSchemaTypeName = JSONSchema7TypeName;
 
 export const Meta = Symbol('Meta');
+
+/** Original document snapshot and retrieval URI, attached before normalization. */
+export const Source = Symbol('Source');
+export const SourceCatalog = Symbol('SourceCatalog');
+
+export interface SourceDocument {
+	uri: string;
+	schema: JSONSchema | boolean;
+}
+
+export type SourceCatalog = readonly SourceDocument[];
 
 export interface SchemaKeysType<Schema extends JSONSchema> {
 	const?: any;
@@ -165,4 +179,56 @@ function defineSourceMeta<T extends object>(
 		configurable: true,
 		value: meta,
 	});
+}
+
+/** Attaches the pre-normalization document snapshot to a document root. */
+export function withSourceDocument<T extends object>(value: T, source: SourceDocument): T {
+	Object.defineProperty(value, Source, {
+		enumerable: false,
+		configurable: true,
+		value: source,
+	});
+
+	return value;
+}
+
+export function sourceDocumentOf(value: unknown): SourceDocument | undefined {
+	if (typeof value !== 'object' || value === null) {
+		return undefined;
+	}
+
+	const source: unknown = Object.getOwnPropertyDescriptor(value, Source)?.value;
+
+	return isSourceDocument(source) ? source : undefined;
+}
+
+export function withSourceCatalog<T extends object>(value: T, catalog: SourceCatalog): T {
+	Object.defineProperty(value, SourceCatalog, {
+		enumerable: false,
+		configurable: true,
+		value: catalog,
+	});
+
+	return value;
+}
+
+export function sourceCatalogOf(value: unknown): SourceCatalog | undefined {
+	if (typeof value !== 'object' || value === null) {
+		return undefined;
+	}
+
+	const catalog: unknown = Object.getOwnPropertyDescriptor(value, SourceCatalog)?.value;
+
+	return Array.isArray(catalog) && catalog.every(isSourceDocument) ? catalog : undefined;
+}
+
+function isSourceDocument(value: unknown): value is SourceDocument {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'uri' in value &&
+		typeof value.uri === 'string' &&
+		'schema' in value &&
+		isJSONSchema(value.schema)
+	);
 }

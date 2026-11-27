@@ -13,10 +13,6 @@
  * on any change, and `pnpm badge:suite` reads this object to render
  * `.github/badges/suite-zod-<dialect>.svg`.
  */
-export const baseline = {
-	'draft-04': { cases: 194, passing: 194, instances: 911, passingInstances: 911 },
-	'draft-06': { cases: 263, passing: 263, instances: 1218, passingInstances: 1218 },
-	'draft-07': { cases: 304, passing: 304, instances: 1655, passingInstances: 1655 },
-	'2019-09': { cases: 417, passing: 377, instances: 2043, passingInstances: 1959 },
-	'2020-12': { cases: 431, passing: 376, instances: 2082, passingInstances: 1984 },
-} as const;
+import { runtimeBaseline } from '@utilize/test-utils/suite/runtimeBaseline';
+
+export const baseline = runtimeBaseline;

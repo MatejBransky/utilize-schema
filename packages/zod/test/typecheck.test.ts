@@ -266,6 +266,18 @@ const booleanRefSchema = {
 	$defs: { allowed: true, denied: false },
 } satisfies JSONSchema;
 
+const dynamicRefSchema = {
+	$schema: 'https://json-schema.org/draft/2020-12/schema',
+	$dynamicAnchor: 'node',
+	type: 'object',
+	properties: {
+		value: { type: 'string' },
+		next: Object.assign<JSONSchema, { $dynamicRef: string }>({}, { $dynamicRef: '#node' }),
+	},
+	required: ['value'],
+	additionalProperties: false,
+} satisfies JSONSchema;
+
 const patternPropertiesSchema: JSONSchema = {
 	type: 'object',
 	patternProperties: { '^a': { type: 'string' } },
@@ -307,6 +319,7 @@ describe('generated recursive schemas type-check', () => {
 				'SiblingAllOf.ts': siblingAllOfSchema,
 				'SiblingAnyOf.ts': siblingAnyOfSchema,
 				'BooleanRef.ts': booleanRefSchema,
+				'DynamicRef.ts': dynamicRefSchema,
 				'PatternProperties.ts': patternPropertiesSchema,
 				'RecursivePatternProperties.ts': recursivePatternPropertiesSchema,
 				'InlineCopyCycle.ts': inlineCopyCycleSchema,

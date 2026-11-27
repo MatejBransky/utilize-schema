@@ -5,6 +5,8 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 
+import type { JSONSchema } from '@utilize/json-schema';
+
 import { compile } from './test-utils';
 import type { CompileOptions, TestSchema } from './test-utils';
 
@@ -206,6 +208,7 @@ describe('generated schemas type-check', () => {
 				'RecursiveStructuredLiteral.ts': recursiveStructuredLiteral,
 				'Nested.ts': nested,
 				'BooleanRefs.ts': booleanRefs,
+				'DynamicRef.ts': dynamicRefSchema,
 				'Unevaluated.ts': unevaluated,
 				'PatternProperties.ts': patternProperties,
 				'PatternPropertiesWithRequired.ts': patternPropertiesWithRequired,
@@ -304,6 +307,18 @@ describe('generated schemas type-check', () => {
 });
 
 const dateTime: TestSchema = { type: 'string', format: 'date-time' };
+
+const dynamicRefSchema: TestSchema = {
+	$schema: 'https://json-schema.org/draft/2020-12/schema',
+	$dynamicAnchor: 'node',
+	type: 'object',
+	properties: {
+		value: { type: 'string' },
+		next: Object.assign<JSONSchema, { $dynamicRef: string }>({}, { $dynamicRef: '#node' }),
+	},
+	required: ['value'],
+	additionalProperties: false,
+};
 
 async function typeCheck(schemas: Record<string, TestSchema>, options: CompileOptions = {}) {
 	const directory = await mkdtemp(join(__dirname, '__generated__-'));

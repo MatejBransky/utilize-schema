@@ -393,13 +393,11 @@ describe('prepareSchema', () => {
 		expect(issues.map((issue) => issue.keyword)).toEqual(['exclusiveMinimum']);
 	});
 
-	test('still rejects unsupported keywords of the dialect with keywordPolicy ignore', () => {
-		expect(() =>
-			prepareSchema(
-				{ $schema: twentyTwentyTwelve, $dynamicRef: '#node' },
-				{ keywordPolicy: 'ignore' }
-			)
-		).toThrow(/"\$dynamicRef" is not supported/);
+	test('preserves dynamic references for the runtime validator', () => {
+		const schema = { $schema: twentyTwentyTwelve, $dynamicRef: '#node' };
+
+		expect(() => prepareSchema(schema, { keywordPolicy: 'ignore' })).not.toThrow();
+		expect(schema.$dynamicRef).toBe('#node');
 	});
 
 	test('warns about $ref siblings that draft-07 ignores', () => {

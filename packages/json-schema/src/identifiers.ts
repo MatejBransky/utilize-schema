@@ -96,14 +96,25 @@ export function createSchemaIndex(): SchemaIndex & {
 		const id = identifierOf(node, dialect, ignoresSiblings);
 		const nextBase = indexIdentifier(node, id, baseUri);
 
-		if (!ignoresSiblings && typeof node.$anchor === 'string' && node.$anchor.length > 0) {
-			anchors.set(`${nextBase}#${node.$anchor}`, node);
-		}
-
+		indexAnchors(node, nextBase, ignoresSiblings);
 		bases.set(node, nextBase);
 
 		for (const child of schemaChildren(node)) {
 			walk(child, nextBase, dialect, nodeDialects);
+		}
+	}
+
+	function indexAnchors(node: JSONSchema, baseUri: string, ignoresSiblings: boolean): void {
+		if (ignoresSiblings) {
+			return;
+		}
+
+		if (typeof node.$anchor === 'string' && node.$anchor.length > 0) {
+			anchors.set(`${baseUri}#${node.$anchor}`, node);
+		}
+
+		if (typeof node.$dynamicAnchor === 'string' && node.$dynamicAnchor.length > 0) {
+			anchors.set(`${baseUri}#${node.$dynamicAnchor}`, node);
 		}
 	}
 

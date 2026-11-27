@@ -1,4 +1,5 @@
 import { parse } from '@utilize/json-schema';
+import { createJsonSchemaValidator } from '@utilize/json-schema/runtime';
 import type { DialectId, ExternalSchemas, JSONSchema } from '@utilize/json-schema';
 import { evaluateGeneratedCode, nameRootSchema } from '@utilize/test-utils/suite/evaluate';
 import { suiteDirectory } from '@utilize/test-utils/suite/loadSuite';
@@ -36,5 +37,5 @@ export async function compileToEffectSchema(
 		customNameResolver: nameRootSchema,
 	});
 
-	return evaluateGeneratedCode(code, { Schema });
+	return evaluateGeneratedCode(code, { Schema, createJsonSchemaValidator });
 }

@@ -15,6 +15,9 @@ import { reasonFor } from './suiteReasons.mjs';
 const root = resolve(import.meta.dirname, '..');
 
 const { parse } = await import(pathToFileURL(join(root, '../json-schema/dist/index.mjs')).href);
+const { createJsonSchemaValidator } = await import(
+	pathToFileURL(join(root, '../json-schema/dist/runtime.mjs')).href
+);
 const { generate } = await import(pathToFileURL(join(root, 'dist/index.mjs')).href);
 
 function formatModeFor(testCase) {
@@ -40,7 +43,7 @@ async function compileToSchema(schema, externalSchemas, formatMode, dialect) {
 		customNameResolver: nameRootSchema,
 	});
 
-	return evaluateGeneratedCode(code, { Schema });
+	return evaluateGeneratedCode(code, { Schema, createJsonSchemaValidator });
 }
 
 function isValid(schema, value) {

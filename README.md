@@ -67,7 +67,7 @@ utilize-zod user.json user.zod.ts
   "properties": {
     "id": {
       "type": "string",
-      "format": "date"
+      "format": "uuid"
     }
   },
   "required": ["id"],
@@ -81,12 +81,12 @@ utilize-zod user.json user.zod.ts
 import { z } from 'zod';
 
 export const User = z.strictObject({
-  id: z.iso.date().meta({ format: 'date' }),
+  id: z.uuid().meta({ format: 'uuid' }),
 });
 export type User = z.infer<typeof User>;
 ```
 
-The date format keeps this example short. Formats that need structural
+The UUID format keeps this example short. Formats that need structural
 validation, such as `email`, `hostname` and `uri`, emit one validator constant
 per format, shared by every schema that uses it.
 
@@ -223,24 +223,21 @@ validator.
 ## ✅ Supported features
 
 Both runtime generators implement the validation keywords, including
-`$ref`/`$defs`, `allOf`/`anyOf`/`oneOf`, conditionals, `patternProperties` and
-`unevaluated*` (best effort). The exceptions are annotations a target cannot
-enforce, such as `readOnly` in Effect Schema or `discriminator`; the full table
-is in [docs/keywords.md](./docs/keywords.md).
+`$ref`/`$defs`, `allOf`/`anyOf`/`oneOf`, conditionals, `patternProperties`,
+dynamic references and `unevaluated*`. The exceptions are annotations a target
+cannot enforce, such as `readOnly` in Effect Schema or `discriminator`; the full
+table is in [docs/keywords.md](./docs/keywords.md).
 
 The TypeScript generator has no runtime, so validation keywords such as
 `minLength`, `pattern` or `uniqueItems` have no type-level equivalent and are
 ignored. Use Zod or Effect Schema when you need runtime validation.
 
-Official-suite numbers, with every measured dialect pinned in the package
-baselines:
+Both runtime generators pass every official suite case in all five dialects,
+with every measured dialect pinned in the package baselines:
 
-- **Zod:** 1,514 of 1,609 cases; draft-04, draft-06 and draft-07 are complete.
-- **Effect Schema:** 1,510 of 1,609 cases; draft-04, draft-06 and draft-07 are complete.
-- **TypeScript:** 192 of 285 draft-07 cases at the type level (795 of 972 instances).
-
-The remaining runtime gaps are dynamic/recursive references, full `unevaluated*`
-annotation propagation, and a few vocabulary/annotation cases.
+- **Zod:** 1,609 of 1,609 cases and 7,909 of 7,909 assertions.
+- **Effect Schema:** 1,609 of 1,609 cases and 7,909 of 7,909 assertions.
+- **TypeScript:** 192 of 285 cases at the type level (795 of 972 instances).
 
 ---
 

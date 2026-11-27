@@ -65,11 +65,14 @@ regression fails the suite instead of drifting silently.
 | `if` / `then` / `else`                       | ✅  | ✅            | Supported                                                                             |
 | `discriminator`                              | ✅  | —             | Zod emits a discriminated union; Effect ignores the annotation                        |
 | `$ref`                                       | ✅  | ✅            | Local, external, cyclic and `$id`/`$anchor` based; boolean targets supported          |
+| `$recursiveRef` / `$dynamicRef`              | ✅  | ✅            | Validated by the shared runtime guard with dynamic resource scope                     |
+| `$recursiveAnchor` / `$dynamicAnchor`        | ✅  | ✅            | Registered for runtime dynamic-scope resolution                                       |
+| `$vocabulary`                                | ✅  | ✅            | Custom metaschemas may disable the validation vocabulary                              |
 | `$defs` / `definitions`                      | ✅  | ✅            | Supported                                                                             |
 | `$id` / `$anchor`                            | ✅  | ✅            | Establishes the base URI and resolves fragment identifiers                            |
 | `examples`                                   | ✅  | ✅            | Kept as metadata                                                                      |
 | `$schema`                                    | ✅  | ✅            | Detects draft-04/06/07/2019-09/2020-12 and normalizes newer keywords                  |
-| `unevaluatedProperties` / `unevaluatedItems` | ✅  | ✅            | Mapped to `additionalProperties` / the items rest (best effort)                       |
+| `unevaluatedProperties` / `unevaluatedItems` | ✅  | ✅            | Validated by the shared runtime guard with annotation propagation                     |
 
 `✅` supported, `❌` rejected with a clear error, `—` accepted but only kept as
 an annotation.
@@ -80,14 +83,19 @@ not silently dropped, and `{ minLength: 2, minimum: 5 }` checks both strings and
 numbers while still accepting every other JSON type.
 
 2020-12 `prefixItems` maps to the tuple form of `items`, and
-`dependentRequired`/`dependentSchemas` map to `dependencies`. `unevaluatedProperties`
-and `unevaluatedItems` map to `additionalProperties` / the items rest when those
-are not set, which covers schemas that do not rely on properties evaluated by
-applicators. The runtime generators intersect `$ref` siblings in 2019-09 and
-2020-12, and ignore them in draft-07 and older, as those dialects define.
-Unknown `$schema` values fall back to draft-07. 2019-09/2020-12 keywords without
-a generator (`$recursiveRef`, `$dynamicRef`) fail with
-`UnsupportedSchemaFeatureError`.
+`dependentRequired`/`dependentSchemas` map to `dependencies`. The runtime
+generators intersect `$ref` siblings in 2019-09 and 2020-12, and ignore them in
+draft-07 and older, as those dialects define.
+
+Schemas using `$recursiveRef`, `$dynamicRef`, `unevaluatedProperties` or
+`unevaluatedItems` also import `@utilize/json-schema/runtime`. The guard validates
+the original input with dynamic resource scope and annotation propagation before
+the native Zod or Effect decoder runs. A custom metaschema can disable the
+validation vocabulary; the guard and the native projection honor that choice.
+Defaults run after this validation, so a missing value that the original schema
+rejects is not filled by a native default.
+Unknown `$schema` values without a provided metaschema still fall back to
+draft-07.
 
 ## Effect Schema specifics
 
@@ -96,10 +104,6 @@ Effect has no schema constructor for negation, conditionals or "contains", so
 `Schema.makeFilter` checks that evaluate the subschemas with `Schema.is`.
 `dependentRequired` and `dependentSchemas` are normalized to `dependencies`
 before generation.
-
-`unevaluatedProperties` and `unevaluatedItems` are normalized to
-`additionalProperties` and the items rest before generation, as a best effort
-for schemas that do not rely on properties evaluated by applicators.
 
 The generator throws `UnsupportedEffectSchemaFeatureError` only for a schema it
 cannot express: a `pattern` that is not valid in Unicode mode, and an `allOf`

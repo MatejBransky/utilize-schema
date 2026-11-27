@@ -1,6 +1,8 @@
 import {
 	allocateName,
+	allocateRuntimeNames,
 	collectStandaloneSchemas,
+	createRuntimeGuard,
 	dialectOf,
 	expectDefined,
 	formatNameFor,
@@ -40,21 +42,78 @@ export type { CustomSchemaResolver, GenerateOptions } from './context';
  * recursive and mutually recursive schemas work without a topological sort.
  */
 export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}): string {
-	const objectRoot = isParsedJSONSchemaObject(root) ? root : undefined;
-	const collected = objectRoot
-		? collectStandaloneSchemas(objectRoot)
-		: { schemas: [], edges: [] satisfies SchemaEdge[] };
-	const standalone = collected.schemas.filter((schema) => schema !== objectRoot);
-	const cyclic = findCyclicSchemas(collected.edges, collected.schemas);
-	const valueAliases = new Map<ParsedJSONSchemaObject, string>();
-
-	const { rootNames, definitionNames, typeNames } = nameDeclarations(
+	const {
+		runtimeGuard,
+		generationRoot,
 		objectRoot,
 		standalone,
-		options
-	);
+		cyclic,
+		valueAliases,
+		rootNames,
+		definitionNames,
+		typeNames,
+		formatNames,
+		usedNames,
+		declaredSchemas,
+		internalNames,
+		validatorName,
+	} = prepareGeneration();
+
+	function prepareGeneration() {
+		const runtimeGuard = createRuntimeGuard(root);
+		const generationRoot = runtimeGuard?.shape ?? root;
+		const objectRoot = isParsedJSONSchemaObject(generationRoot) ? generationRoot : undefined;
+		const collected = objectRoot
+			? collectStandaloneSchemas(objectRoot)
+			: { schemas: [], edges: [] satisfies SchemaEdge[] };
+		const standalone = collected.schemas.filter((schema) => schema !== objectRoot);
+		const cyclic = findCyclicSchemas(collected.edges, collected.schemas);
+		const valueAliases = new Map<ParsedJSONSchemaObject, string>();
+		const { rootNames, definitionNames, typeNames } = nameDeclarations(
+			objectRoot,
+			standalone,
+			options
+		);
+		const formatNames = new Map<string, string>();
+		const usedNames = new Set(RESERVED_NAMES);
+
+		for (const names of [...definitionNames.values(), rootNames]) {
+			usedNames.add(names.schema);
+			usedNames.add(names.type);
+		}
+
+		const declaredSchemas = objectRoot ? [...standalone, objectRoot] : [];
+		const { internalNames, validatorName } = allocateRuntimeNames(
+			runtimeGuard,
+			declaredSchemas,
+			(schema) =>
+				schema === objectRoot
+					? rootNames.schema
+					: expectDefined(definitionNames.get(schema)).schema,
+			typeNames,
+			usedNames
+		);
+
+		return {
+			runtimeGuard,
+			generationRoot,
+			objectRoot,
+			standalone,
+			cyclic,
+			valueAliases,
+			rootNames,
+			definitionNames,
+			typeNames,
+			formatNames,
+			usedNames,
+			declaredSchemas,
+			internalNames,
+			validatorName,
+		};
+	}
+
 	const valueTypeContext: ValueTypeContext = {
-		dialect: dialectOf(root),
+		dialect: dialectOf(generationRoot),
 		customSchemaResolver: options.customSchemaResolver,
 		aliasFor(schema) {
 			return cyclic.has(schema) || hasStructuredLiteral(schema) ? aliasOf(schema) : undefined;
@@ -63,14 +122,6 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 			return expectDefined(namesOf(schema)).type;
 		},
 	};
-
-	const formatNames = new Map<string, string>();
-	const usedNames = new Set(RESERVED_NAMES);
-
-	for (const names of [...definitionNames.values(), rootNames]) {
-		usedNames.add(names.schema);
-		usedNames.add(names.type);
-	}
 
 	let jsonLiteralName: string | undefined;
 
@@ -88,44 +139,93 @@ export function generate(root: ParsedJSONSchema, options: GenerateOptions = {}):
 				throw new UnresolvedReferenceError(ref);
 			}
 
-			return names.schema;
+			return internalNames.get(schema) ?? names.schema;
 		},
 		isCyclic(schema) {
 			return cyclic.has(schema);
 		},
-		dialect: dialectOf(root),
+		dialect: dialectOf(generationRoot),
 		formatMode: options.formatMode,
 		generateSchema,
 		customSchemaResolver: options.customSchemaResolver,
 	};
 
-	const declarations: string[] = [];
+	return renderParts();
 
-	for (const schema of standalone) {
-		declarations.push(renderDeclaration(expectDefined(definitionNames.get(schema)), schema));
+	function renderDeclarations(): string[] {
+		const declarations: string[] = [];
+
+		if (runtimeGuard && validatorName) {
+			for (const schema of declaredSchemas) {
+				declarations.push(renderInternalDeclaration(schema));
+			}
+
+			for (const schema of declaredSchemas) {
+				declarations.push(renderGuardedDeclaration(schema, validatorName));
+			}
+
+			return declarations;
+		}
+
+		for (const schema of standalone) {
+			declarations.push(renderDeclaration(expectDefined(definitionNames.get(schema)), schema));
+		}
+
+		declarations.push(renderDeclaration(rootNames, generationRoot));
+		return declarations;
 	}
 
-	declarations.push(renderDeclaration(rootNames, root));
+	function renderParts(): string {
+		const declarations = renderDeclarations();
+		const parts: string[] = [];
 
-	const parts: string[] = [];
+		if (options.importEffect ?? true) {
+			parts.push("import { Schema } from 'effect';");
+		}
 
-	if (options.importEffect ?? true) {
-		parts.push("import { Schema } from 'effect';");
+		if (runtimeGuard && validatorName) {
+			parts.push(
+				"import { createJsonSchemaValidator } from '@utilize/json-schema/runtime';",
+				`const ${validatorName} = createJsonSchemaValidator(${JSON.stringify(JSON.stringify(runtimeGuard.bundle))});`
+			);
+		}
+
+		// Rendering declarations registered the formats they use.
+		for (const [format, name] of formatNames) {
+			parts.push(`const ${name} = ${expectDefined(formatCheck(format))};`);
+		}
+
+		if (jsonLiteralName !== undefined) {
+			parts.push(`const ${jsonLiteralName} = ${jsonLiteralHelper()};`);
+		}
+
+		parts.push(...declarations);
+		return `${parts.join('\n\n')}\n`;
 	}
 
-	// Declarations rendered above registered the formats they use, so the
-	// constants can be emitted once, before any schema that references them.
-	for (const [format, name] of formatNames) {
-		parts.push(`const ${name} = ${expectDefined(formatCheck(format))};`);
+	function renderInternalDeclaration(schema: ParsedJSONSchemaObject): string {
+		const alias = valueTypeContext.aliasFor(schema);
+		const expression = generateSchema(schema, context);
+		const internalName = expectDefined(internalNames.get(schema));
+		const declaration =
+			alias === undefined
+				? `const ${internalName} = ${expression};`
+				: `const ${internalName}: Schema.Codec<${alias}> = ${expression};`;
+
+		return alias === undefined
+			? declaration
+			: [renderValueTypeDeclaration(alias, schema, valueTypeContext), declaration].join('\n\n');
 	}
 
-	if (jsonLiteralName !== undefined) {
-		parts.push(`const ${jsonLiteralName} = ${jsonLiteralHelper()};`);
+	function renderGuardedDeclaration(schema: ParsedJSONSchemaObject, validator: string): string {
+		const names = expectDefined(namesOf(schema));
+		const internalName = expectDefined(internalNames.get(schema));
+		const ref = runtimeGuard?.refFor(schema) ?? '';
+		const source = `Schema.Unknown.check(Schema.makeFilter((value) => ${validator}(value, ${JSON.stringify(ref)}) ? undefined : 'Value does not match the JSON Schema'))`;
+		const expression = `Schema.decodeTo(${internalName})(${source})`;
+
+		return `export const ${names.schema} = ${expression};\n\nexport type ${names.type} = typeof ${names.schema}.Type;`;
 	}
-
-	parts.push(...declarations);
-
-	return `${parts.join('\n\n')}\n`;
 
 	function renderDeclaration(names: DeclarationNames, schema: ParsedJSONSchema): string {
 		const object = isParsedJSONSchemaObject(schema) ? schema : undefined;

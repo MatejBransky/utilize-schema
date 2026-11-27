@@ -51,10 +51,9 @@ export function evaluateGeneratedCode<T>(code: string, scope: Record<string, unk
 
 	// `stripTypeScriptTypes` removes type-only declarations but keeps the ESM
 	// `export const` syntax, which the function body cannot contain.
-	const javascript = stripTypeScriptTypes(code, { mode: 'strip' }).replaceAll(
-		/^export const /gm,
-		'const '
-	);
+	const javascript = stripTypeScriptTypes(code, { mode: 'strip' })
+		.replaceAll(/^import .*;\n/gm, '')
+		.replaceAll(/^export const /gm, 'const ');
 
 	return evaluateModule<T>(names, `${javascript}\nreturn Root;`, values);
 }
