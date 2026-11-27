@@ -267,7 +267,8 @@ defaults to stdout. Every generated file starts with a "do not edit" banner
 `oneOf` helper instead of declaring it in every file.
 
 `--validate` checks each resolved document against the meta-schema of its
-dialect before generating; install `ajv` and `ajv-draft-04` to use it, or pass
+dialect before generating; install `ajv` to use it (draft-04 documents also
+need `ajv-draft-04`, which is loaded only for them), or pass
 `--validator <module>` for another validator. See
 [docs/dialects.md](../../docs/dialects.md#schema-validation).
 

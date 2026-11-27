@@ -40,8 +40,8 @@ generators share:
   file/glob/directory input, `compilePaths`, `parseForCompile`, the generated
   file banner, and `runGeneratorCli` with the flags every CLI accepts.
 - The **`@utilize/json-schema/validate/ajv` entry** holds the optional Ajv
-  adapter behind `--validate` and the `validateSchema` option. It imports `ajv`
-  and `ajv-draft-04` lazily, which are optional peer dependencies, so a caller
-  that does not validate never loads them.
+  adapter behind `--validate` and the `validateSchema` option. The adapter loads
+  only when validation is asked for, and `ajv-draft-04` only when a draft-04
+  document is checked; both are optional peer dependencies.
 - `@utilize/zod`, `@utilize/effect` and `@utilize/typescript` add only the code
   emitter and the target-specific handling on top.

@@ -104,7 +104,7 @@ permissive `z.unknown()`. Validation is an opt-in step that checks every
 resolved document against its dialect's meta-schema:
 
 ```sh
-pnpm add -D ajv ajv-draft-04
+pnpm add -D ajv
 utilize-zod --validate schema.json
 ```
 
@@ -115,15 +115,20 @@ schema.json is not a valid draft-07 JSON Schema:
 ```
 
 `--validate` uses Ajv and dispatches to the draft the parser resolved:
-draft-04 (`ajv-draft-04`), draft-06, draft-07, 2019-09 or 2020-12. A document
-without `$schema` is validated with the root's dialect, and `--dialect` /
-`--fallback-dialect` apply exactly as they do to generation. Every resolved
-document is checked, including `$ref` targets, and all findings are reported
-before anything is generated. A directory or glob run writes no output when any
-file fails, because every input is compiled before the first write.
+draft-06, draft-07, 2019-09 or 2020-12. A document without `$schema` is
+validated with the root's dialect, and `--dialect` / `--fallback-dialect` apply
+exactly as they do to generation. Every resolved document is checked, including
+`$ref` targets, and all findings are reported before anything is generated. A
+directory or glob run writes no output when any file fails, because every input
+is compiled before the first write.
 
-Ajv is an optional peer dependency of `@utilize/json-schema`, so only the
-built-in validator needs it.
+Draft-04 is the one dialect Ajv 8 dropped, so validating a draft-04 document
+needs the companion `ajv-draft-04` package (`pnpm add -D ajv-draft-04`). The
+adapter imports it only when it actually validates a draft-04 document, so
+schemas of the other four dialects need `ajv` alone.
+
+Both are optional peer dependencies of `@utilize/json-schema`, so only the
+built-in validator needs them.
 
 ### In code
 

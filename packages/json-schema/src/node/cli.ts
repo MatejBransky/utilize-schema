@@ -198,7 +198,7 @@ interface ValidationFlags {
 }
 
 const missingAjvMessage =
-	'The --validate flag needs the optional "ajv" and "ajv-draft-04" packages. Install them, or pass --validator <module>.';
+	'The --validate flag needs the optional "ajv" package. Install it, or pass --validator <module>.';
 
 async function validationFromFlags(
 	{ validate, validator }: ValidationFlags,

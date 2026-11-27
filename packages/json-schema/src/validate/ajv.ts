@@ -1,6 +1,5 @@
 import Ajv from 'ajv';
 import type { ErrorObject } from 'ajv';
-import AjvDraft04 from 'ajv-draft-04';
 import Ajv2019 from 'ajv/dist/2019.js';
 import Ajv2020 from 'ajv/dist/2020.js';
 import draft06MetaSchema from 'ajv/dist/refs/json-schema-draft-06.json' with { type: 'json' };
@@ -8,13 +7,11 @@ import draft06MetaSchema from 'ajv/dist/refs/json-schema-draft-06.json' with { t
 import type { DialectId } from '../dialect';
 import { isJSONSchema } from '../model';
 import type { JSONSchema } from '../model';
-import type { SchemaValidationContext, SchemaValidationFinding } from '../validation';
-
-/** A validator that finishes synchronously, as Ajv does. */
-export type SyncSchemaValidator = (
-	schema: unknown,
-	context: SchemaValidationContext
-) => SchemaValidationFinding[];
+import type {
+	SchemaValidationContext,
+	SchemaValidationFinding,
+	SchemaValidator,
+} from '../validation';
 
 const ajvOptions = {
 	strict: false,
@@ -31,26 +28,25 @@ const metaSchemas: Record<DialectId, string> = {
 	'2020-12': 'https://json-schema.org/draft/2020-12/schema',
 };
 
-// One instance per draft, because the meta-schemas and keyword sets differ.
-// Ajv caches compiled schemas, so reusing them keeps validation cheap.
-const factories: Record<DialectId, () => Ajv> = {
-	'draft-04': () => new AjvDraft04(ajvOptions),
-	'draft-06': createDraft06,
-	'draft-07': () => new Ajv(ajvOptions),
-	'2019-09': () => new Ajv2019(ajvOptions),
-	'2020-12': () => new Ajv2020(ajvOptions),
-};
+const missingDraft04Message =
+	'Validating a draft-04 document needs the optional "ajv-draft-04" package, because Ajv 8 dropped draft-04. Install it, or pass another validator.';
 
-const instances = new Map<DialectId, Ajv>();
+// One instance per draft, because the meta-schemas and keyword sets differ.
+// Ajv caches compiled schemas, so reusing them keeps validation cheap. The
+// promise is cached too, so the lazy `ajv-draft-04` import runs once.
+const instances = new Map<DialectId, Promise<Ajv>>();
 
 /**
  * Validates a schema document against the meta-schema of the dialect the parser
  * resolved for it. This is the built-in validator behind the CLIs'
  * `--validate` flag; pass another `SchemaValidator` when Ajv is not wanted.
  */
-export const ajvValidator: SyncSchemaValidator = (schema, context) => validate(schema, context);
+export const ajvValidator: SchemaValidator = validate;
 
-function validate(schema: unknown, context: SchemaValidationContext): SchemaValidationFinding[] {
+async function validate(
+	schema: unknown,
+	context: SchemaValidationContext
+): Promise<SchemaValidationFinding[]> {
 	if (!isJSONSchema(schema)) {
 		return [{ pointer: '', message: 'must be an object or a boolean', keyword: 'type' }];
 	}
@@ -63,7 +59,7 @@ function validate(schema: unknown, context: SchemaValidationContext): SchemaVali
 			: [];
 	}
 
-	const ajv = ajvFor(context.dialect);
+	const ajv = await ajvFor(context.dialect);
 	const valid = ajv.validateSchema(withDialectMetaSchema(schema, context.dialect));
 
 	if (valid === true) {
@@ -135,17 +131,55 @@ function withDialectMetaSchema(
 	return { ...schema, $schema: metaSchemas[dialect] };
 }
 
-function ajvFor(dialect: DialectId): Ajv {
+async function ajvFor(dialect: DialectId): Promise<Ajv> {
 	const cached = instances.get(dialect);
 
 	if (cached) {
 		return cached;
 	}
 
-	const created = factories[dialect]();
+	const created = createAjv(dialect);
 	instances.set(dialect, created);
 
-	return created;
+	try {
+		return await created;
+	} catch (error) {
+		// A missing optional package should not poison the next attempt.
+		instances.delete(dialect);
+		throw error;
+	}
+}
+
+async function createAjv(dialect: DialectId): Promise<Ajv> {
+	switch (dialect) {
+		case 'draft-04':
+			return createDraft04();
+		case 'draft-06':
+			return createDraft06();
+		case 'draft-07':
+			return new Ajv(ajvOptions);
+		case '2019-09':
+			return new Ajv2019(ajvOptions);
+		case '2020-12':
+			return new Ajv2020(ajvOptions);
+	}
+}
+
+/**
+ * Draft-04 is the only dialect that needs an extra package: Ajv 8 removed it,
+ * so the companion `ajv-draft-04` supplies its vocabulary and meta-schema. It
+ * is imported only when a draft-04 document is validated, so every other
+ * dialect works with `ajv` alone.
+ */
+async function createDraft04(): Promise<Ajv> {
+	try {
+		const { default: AjvDraft04 } = await import('ajv-draft-04');
+
+		return new AjvDraft04(ajvOptions);
+	} catch (error) {
+		const reason = error instanceof Error ? error.message : String(error);
+		throw new Error(`${missingDraft04Message}\n${reason}`, { cause: error });
+	}
 }
 
 /** Ajv 8 ships the draft-06 meta-schema as data rather than registering it. */

@@ -179,15 +179,16 @@ Return every `SchemaValidationFinding` (`pointer`, `message`, optional
 report per document. The callback runs on the root, every `$ref` target and
 every provided external schema the document reaches, before normalization.
 
-An Ajv adapter is included behind the optional `ajv` and `ajv-draft-04` peer
-dependencies:
+An Ajv adapter is included behind the optional `ajv` peer dependency:
 
 ```ts
 import { ajvValidator } from '@utilize/json-schema/validate/ajv';
 ```
 
 It dispatches per dialect: draft-04, draft-06, draft-07, 2019-09 and 2020-12.
-The CLIs use it for `--validate`; `--validator <module>` replaces it. See
+The CLIs use it for `--validate`; `--validator <module>` replaces it. Draft-04
+is the one dialect Ajv 8 dropped, so the adapter lazily imports the optional
+`ajv-draft-04` package only when it validates a draft-04 document. See
 [docs/dialects.md](../../docs/dialects.md#schema-validation) for the CLI and
 the module contract.
 
