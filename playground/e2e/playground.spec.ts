@@ -513,6 +513,14 @@ test('the validation panel can be collapsed', async ({ page }) => {
 	await toggle.click();
 	await expect(toggle).toHaveAttribute('aria-expanded', 'false');
 	await expect(body).toHaveAttribute('hidden');
+	await expect
+		.poll(() => body.evaluate((element) => element.getBoundingClientRect().height))
+		.toBe(0);
+	await expect
+		.poll(() =>
+			page.getByTestId('problems').evaluate((element) => element.getBoundingClientRect().height)
+		)
+		.toBeLessThan(40);
 
 	await toggle.click();
 	await expect(toggle).toHaveAttribute('aria-expanded', 'true');

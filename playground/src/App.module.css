@@ -320,6 +320,7 @@
 }
 
 .editorFill[hidden],
+.problemsBody[hidden],
 .resultBody[hidden] {
 	display: none;
 }
