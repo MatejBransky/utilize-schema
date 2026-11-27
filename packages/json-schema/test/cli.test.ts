@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { JSONSchema } from '../src/model';
 import { runGeneratorCli } from '../src/node';
 import type { CliIo, GeneratorCli } from '../src/node';
+import { SchemaValidationError } from '../src/validation';
 import type { SchemaValidationOptions, SchemaValidator } from '../src/validation';
 
 type TestFlags = {
@@ -290,6 +291,33 @@ describe('runGeneratorCli', () => {
 		).toBe(1);
 		expect(existsSync(path.join(outputDirectory, 'a.generated.ts'))).toBe(false);
 		expect(cli.errors).toEqual(['invalid schema\n']);
+	});
+
+	test('reports every invalid document in a directory run', async () => {
+		writeFileSync(path.join(directory, 'a.json'), '{}');
+		writeFileSync(path.join(directory, 'b.json'), '{}');
+		const outputDirectory = path.join(directory, 'generated');
+		const cli = output();
+		const failing = vi.fn(async (filePath: string) => {
+			throw new SchemaValidationError([
+				{
+					filePath: path.basename(filePath),
+					dialect: 'draft-07',
+					findings: [{ pointer: '/type', message: 'must be array', keyword: 'type' }],
+				},
+			]);
+		});
+
+		expect(
+			await runGeneratorCli(
+				['*.json', '--output', outputDirectory, '--cwd', directory],
+				cli.io(),
+				generator({ compileFile: failing })
+			)
+		).toBe(1);
+		expect(cli.errors.join('')).toContain('a.json is not a valid draft-07 JSON Schema:');
+		expect(cli.errors.join('')).toContain('b.json is not a valid draft-07 JSON Schema:');
+		expect(existsSync(path.join(outputDirectory, 'a.generated.ts'))).toBe(false);
 	});
 
 	test('--validate injects the built-in Ajv validator', async () => {

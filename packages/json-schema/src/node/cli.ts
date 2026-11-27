@@ -9,7 +9,8 @@ import { formatIssue } from '../dialect';
 import type { DialectIssue, DialectOptions } from '../dialect';
 import type { JSONSchema } from '../model';
 import { expectDefined } from '../utils';
-import type { SchemaValidator } from '../validation';
+import { SchemaValidationError } from '../validation';
+import type { SchemaValidationReport, SchemaValidator } from '../validation';
 import { parseSchemaSource } from './compile';
 
 export interface Writable {
@@ -327,14 +328,7 @@ async function compileInputFiles<Flags extends ParseArgsOptionsConfig, Options>(
 	}
 
 	if (!output) {
-		if (files.length > 1) {
-			return fail(io, 'An output directory is required when compiling several files.');
-		}
-
-		io.stdout.write(
-			cli.withBanner(await cli.compileFile(expectDefined(files[0]).path, run.options), run.banner)
-		);
-		return 0;
+		return await compileToStdout(cli, run, files, io);
 	}
 
 	const targets = outputTargets(files, output, cwd);
@@ -348,15 +342,22 @@ async function compileInputFiles<Flags extends ParseArgsOptionsConfig, Options>(
 	}
 
 	const compiled: CompiledOutput[] = [];
+	const reports: SchemaValidationReport[] = [];
 
 	for (const [index, file] of files.entries()) {
 		const target = expectDefined(targets[index]);
+		const content = await captureValidation(
+			async () => await cli.compileFile(file.path, run.options),
+			reports
+		);
 
-		compiled.push({
-			source: file.path,
-			target,
-			content: cli.withBanner(await cli.compileFile(file.path, run.options), run.banner),
-		});
+		if (content !== undefined) {
+			compiled.push({ source: file.path, target, content: cli.withBanner(content, run.banner) });
+		}
+	}
+
+	if (reports.length > 0) {
+		throw new SchemaValidationError(reports);
 	}
 
 	// Compile every input before writing any, so a schema that fails validation
@@ -367,6 +368,46 @@ async function compileInputFiles<Flags extends ParseArgsOptionsConfig, Options>(
 	}
 
 	return 0;
+}
+
+/** Compiles one file to stdout; several inputs need an output directory. */
+async function compileToStdout<Flags extends ParseArgsOptionsConfig, Options>(
+	cli: GeneratorCli<Flags, Options>,
+	run: CliRun<Options>,
+	files: InputFile[],
+	io: CliIo
+): Promise<number> {
+	if (files.length > 1) {
+		return fail(io, 'An output directory is required when compiling several files.');
+	}
+
+	io.stdout.write(
+		cli.withBanner(await cli.compileFile(expectDefined(files[0]).path, run.options), run.banner)
+	);
+
+	return 0;
+}
+
+/**
+ * Runs one compile, collecting validation findings instead of stopping at the
+ * first invalid document so a whole run reports them all. Any other error
+ * still stops the run.
+ */
+async function captureValidation(
+	compile: () => Promise<string>,
+	reports: SchemaValidationReport[]
+): Promise<string | undefined> {
+	try {
+		return await compile();
+	} catch (error) {
+		if (!(error instanceof SchemaValidationError)) {
+			throw error;
+		}
+
+		reports.push(...error.reports);
+
+		return undefined;
+	}
 }
 
 /** One compiled module waiting to be written. */
