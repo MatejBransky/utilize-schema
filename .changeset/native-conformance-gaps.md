@@ -1,7 +1,7 @@
 ---
-"@utilize/json-schema": patch
-"@utilize/zod": patch
-"@utilize/effect": patch
+"@utilize/json-schema": minor
+"@utilize/zod": minor
+"@utilize/effect": minor
 "@utilize/typescript": patch
 ---
 

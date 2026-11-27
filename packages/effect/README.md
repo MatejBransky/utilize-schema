@@ -234,8 +234,8 @@ Today it passes **1,510 of 1,609 cases** across the five dialects, including eve
 draft-04, draft-06 and draft-07 case. Format cases run in the mode they are tagged
 for, so both the annotation and the assertion cases are measured; cases that need
 external schemas are served from `externalSchemas`. The remaining 2019-09 and
-2020-12 gaps are dynamic/recursive references and full `unevaluated*` annotation
-propagation.
+2020-12 gaps are dynamic/recursive references, full `unevaluated*` annotation
+propagation, and a few vocabulary/annotation cases.
 
 Draft-07 has no known gaps. A future gap is recorded in
 `test/suite/knownFailures.ts` and `test/suite/knownFailureInstances.ts`. Refresh

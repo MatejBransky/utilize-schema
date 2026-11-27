@@ -28,8 +28,8 @@ Format cases run in the mode they are tagged for: `format-annotation` with
 `formatMode: 'annotate'`, `format-assertion` with `formatMode: 'assert'`. Cases
 that need external schemas are served from memory through `externalSchemas`.
 
-The remaining gaps are dynamic/recursive references and full `unevaluated*`
-annotation propagation.
+The remaining gaps are dynamic/recursive references, full `unevaluated*`
+annotation propagation, and a few vocabulary/annotation cases.
 
 The per-dialect numbers are recorded in
 [`packages/zod/test/suite/baseline.ts`](../packages/zod/test/suite/baseline.ts)

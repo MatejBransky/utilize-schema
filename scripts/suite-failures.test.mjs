@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { remainingRuntimeFailures2019 } from '../packages/test-utils/src/suite/remainingRuntimeFailures.ts';
+
 import { collectDialectFailures, renderDialectFailures } from './suite-failures.mjs';
 
 const files = [
@@ -66,4 +68,27 @@ void test('renderDialectFailures renders the generated module', () => {
 	assert.match(source, /export const knownFailuresByDialect: KnownFailuresByDialect = \{/);
 	assert.match(source, /\t"draft-04": \[\n\t\t"sample\.json :: case \(1 failed\)",\n\t\],/);
 	assert.match(source, /\};\n$/);
+});
+
+void test('renderDialectFailures shares the remaining runtime failures', () => {
+	const source = renderDialectFailures(
+		{ '2019-09': [...remainingRuntimeFailures2019, 'sample.json :: case (1 failed)'] },
+		'node script.mjs'
+	);
+
+	assert.match(
+		source,
+		/import \{ remainingRuntimeFailures2019 \} from '@utilize\/test-utils\/suite\/remainingRuntimeFailures';/
+	);
+	assert.match(source, /\t\t\.\.\.remainingRuntimeFailures2019,/);
+	assert.match(source, /"sample\.json :: case \(1 failed\)",/);
+	assert.doesNotMatch(source, new RegExp(JSON.stringify(remainingRuntimeFailures2019[0])));
+});
+
+void test('renderDialectFailures rejects a partially fixed shared list', () => {
+	assert.throws(
+		() =>
+			renderDialectFailures({ '2019-09': [remainingRuntimeFailures2019[0]] }, 'node script.mjs'),
+		/Update remainingRuntimeFailures\.ts/
+	);
 });
