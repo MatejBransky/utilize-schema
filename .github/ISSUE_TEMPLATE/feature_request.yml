@@ -1,8 +1,14 @@
 name: Feature request
-description: Propose a generator, option or playground change.
+description: Propose a generator, option, or playground change.
 title: '[feat]: '
-labels: [enhancement]
+labels: ['enhancement']
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Feature requests are not triaged by the bug bot. They are reviewed by a
+        maintainer directly.
+
   - type: textarea
     id: problem
     attributes:
@@ -10,15 +16,39 @@ body:
       description: The schema or workflow where the current output is not enough.
     validations:
       required: true
+
   - type: textarea
     id: proposal
     attributes:
       label: Proposed behavior
-      description: Expected output, new option, or UI change.
+      description: Expected output, new option, or UI change. A small schema and the expected output help.
+      render: text
     validations:
       required: true
+
   - type: input
     id: playground
     attributes:
       label: Playground link (optional)
       description: Share a workspace with the schema that should produce the new output.
+      placeholder: https://matejbransky.github.io/utilize-schema/#...
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Workarounds, other generators, or why the current behavior is insufficient.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked `docs/dialects.md` and the package README for existing support.
+          required: true
+        - label: I searched existing issues and did not find a duplicate.
+          required: true

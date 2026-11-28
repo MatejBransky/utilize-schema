@@ -43,6 +43,7 @@
 		"ci:publish": "pnpm changeset publish",
 		"verify": "pnpm build:dev && pnpm check:format && pnpm check:lint && pnpm check:types && pnpm ci:test",
 		"security": "pnpm audit --audit-level=high",
+		"triage:test": "node --test scripts/triage/*.test.mjs",
 		"fallow": "fallow",
 		"fallow:audit": "fallow audit",
 		"fallow:audit:ci": "fallow audit --format json --quiet --output-file .fallow/audit.json && node scripts/fallow-gate.mjs --warn .fallow/audit.json",
@@ -57,6 +58,7 @@
 	"devDependencies": {
 		"@changesets/cli": "3.0.3",
 		"@cloudflare/oxlint-config": "catalog:",
+		"@opencode/cli": "2.4.2",
 		"@vitest/coverage-v8": "catalog:",
 		"@vitest/ui": "catalog:",
 		"fallow": "catalog:",

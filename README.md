@@ -283,6 +283,7 @@ annotation propagation, and a few vocabulary/annotation cases.
 - Run tests: `pnpm test`
 - Run the full check: `pnpm verify`
 - Rebuild the hosted reports locally: `pnpm build:dev && pnpm --filter playground build && pnpm reports`
+- Bug reports are triaged automatically; see [docs/triage.md](./docs/triage.md) for the bot's labels and retry flow.
 
 Tooling: pnpm workspaces, [tsdown](https://tsdown.dev/) for builds,
 [Vitest](https://vitest.dev/) for tests, [oxlint](https://oxc.rs/docs/guide/usage/linter)

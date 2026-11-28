@@ -14,6 +14,11 @@ packages/zod/test/snapshots/*.generated.ts
 
 .playwright-mcp/
 
+# Triage bot working directory (report.md and temporary reproductions) and the
+# preview release manifest. The bot commits with `git add -A`.
+/triage/
+/preview-release.json
+
 coverage/
 .fallow/
 fallow-results.sarif
