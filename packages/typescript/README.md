@@ -20,9 +20,10 @@ when you want types without a schema runtime.
   to narrow at the boundary.
 - **Recursive types are first-class.** Interfaces and deferred aliases; a cycle
   TypeScript cannot express fails with `UnsupportedCircularTypeError`.
-- **Ahead of `json-schema-to-typescript` on every dialect.** Same harness, same
-  pinned suite: 963 of 1,530 cases (62%) versus 546 (35%), and 4,033 of 5,133
-  instances (78%) versus 2,808 (54%). See [Conformance](#conformance).
+- **Higher type-level conformance than `json-schema-to-typescript` on every
+  dialect.** Same harness, same pinned suite: 963 of 1,530 cases (62%) versus 546
+  (35%), and 4,033 of 5,133 instances (78%) versus 2,808 (54%). See
+  [Conformance](#conformance).
 - **67% type-level score.** 192 of 285 draft-07 cases; the 81 type gaps are
   keywords a type cannot express, not bugs. 97% line coverage.
 - **The output imports nothing.** It compiles with `tsc --strict` as part of CI.
@@ -227,13 +228,13 @@ json-schema-to-typescript. Both leave type gaps — invalid instances accepted,
 usually because a keyword has no type-level equivalent (427 here, 224 for the
 competitor). This generator keeps such a schema `unknown`, while the competitor
 narrows more eagerly, so its remaining failures land on the structural side.
-That narrowing is the biggest single source of the gap: `{ format: "email" }` or
-`{ minimum: 3 }` becomes a `string`/object type, so spec-valid numbers and
-objects are rejected. `$id`/`$anchor`/relative `$ref` resolution, output without
-a `Root` declaration and boolean schemas account for another share. The
-competitor's own baseline uses an older suite revision and adds mutation cases,
-so compare the two columns here, not the absolute number with its published
-score. The full methodology and baseline are in
+That narrowing is the biggest single source of the gap: `{ format: "email" }`
+and `{ minimum: 3 }` both become an object index signature, so spec-valid
+numbers, strings and arrays are rejected. `$id`/`$anchor`/relative `$ref`
+resolution, output without a `Root` declaration and boolean schemas account for
+another share. The competitor's own baseline uses an older suite revision and
+adds mutation cases, so compare the two columns here, not the absolute number
+with its published score. The full methodology and baseline are in
 [docs/conformance.md](../../docs/conformance.md#type-level-comparison).
 
 The generator is checked against the official

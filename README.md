@@ -270,6 +270,8 @@ annotation propagation, and a few vocabulary/annotation cases.
   rules and how the conformance numbers add up.
 - [Conformance comparison](./docs/conformance.md) — how the generators compare
   with json-schema-to-typescript.
+- [TypeScript vs json-schema-to-typescript](./docs/typescript-vs-json-schema-to-typescript.md)
+  — an example-by-example look at where each generator is more precise.
 
 ---
 

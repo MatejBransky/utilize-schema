@@ -8,7 +8,8 @@ the project this repository started from.
 Every measured project here runs the official
 [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
 The runtime generators are validated with values; the two type-level generators
-are measured with the compiler.
+are measured with the compiler. The tools emit different artifacts, so read the
+numbers as a description of what each project measures, not as a ranking.
 
 ## Runtime generators
 
@@ -77,10 +78,11 @@ its failures:
   TypeScript, output without a `Root` declaration, or a spec-valid instance
   rejected by the generated type. A large share comes from its inference rule: a
   schema with only a keyword that constrains one JSON type (`format`, `minimum`,
-  `contains`, `if`, `not`, …) is narrowed to that type, so spec-valid instances
-  of the other types are rejected. For example, `{ maximum: 3 }` becomes an
-  object type and `{ format: "email" }` becomes `string`. `@utilize/typescript`
-  keeps such a schema as `unknown`. Most of the remaining crashes are
+  `contains`, `if`, `not`, …) is narrowed to an object index signature, so
+  spec-valid numbers, strings and arrays are rejected. For example, both
+  `{ maximum: 3 }` and `{ format: "email" }` become
+  `{ [k: string]: unknown }`. `@utilize/typescript` keeps such a schema as
+  `unknown`. Most of the remaining structural gaps are
   `$id`/`$anchor`/relative `$ref` resolution, output without a `Root`
   declaration, and boolean schemas.
 

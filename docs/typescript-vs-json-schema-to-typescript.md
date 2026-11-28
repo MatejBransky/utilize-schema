@@ -215,25 +215,23 @@ The comparison is not one-sided. The pinned release does more in several places:
 
 ## What accounts for the gap
 
-The current run has 431 cases where `@utilize/typescript` passes and
-json-schema-to-typescript does not, and 14 in the other direction. An approximate
-classification of the 431:
+The cases where `@utilize/typescript` passes and json-schema-to-typescript does
+not fall into these groups, in default `spec` mode:
 
-| Source                                                                                                | Cases |
-| ----------------------------------------------------------------------------------------------------- | ----: |
-| A keyword applied to one type is narrowed to that type (`format`, `minimum`, `contains`, `if`, `not`) |   145 |
-| `$id` / `$anchor` / relative `$ref` resolution                                                        |   115 |
-| Shape inference on `if`, `contains`, `not`, `items`, `allOf`, `anyOf`                                 |    78 |
-| `unevaluated*` cases                                                                                  |    41 |
-| Boolean schemas                                                                                       |     8 |
-| Other                                                                                                 |    44 |
+- A keyword applied to one type is narrowed to that type (`format`, `minimum`,
+  `contains`, `if`, `not`).
+- `$id` / `$anchor` / relative `$ref` resolution.
+- Shape inference on `if`, `contains`, `not`, `items`, `allOf`, `anyOf`.
+- `unevaluated*` cases.
+- Boolean schemas.
+- Other differences in how an untyped schema is read.
 
-The counts are a guide, not a second baseline, and they describe default `spec`
-mode. Pragmatic inference would give up most of the 145 format/scalar wins by
-rejecting the spec-valid instances of other types. The important part is that
-only a minority are cases where we express a constraint the competitor cannot.
-Most are cases where the competitor produces a narrower type than the
-specification justifies.
+Pragmatic inference would give up most of the format/scalar wins by rejecting
+the spec-valid instances of other types. The important part is that only a
+minority are cases where we express a constraint the competitor cannot. Most are
+cases where the competitor produces a narrower type than the specification
+justifies. The per-case numbers are in the two baselines and in the suite test
+output, which lists every failing and type-gap key.
 
 ## What the numbers mean
 
