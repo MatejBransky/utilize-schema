@@ -1,5 +1,64 @@
 # @utilize/typescript
 
+## 0.6.0
+
+### Minor Changes
+
+- 60be53c: Add opt-in JSON Schema validation before generation. `parse` and every
+  `compile` accept a `validateSchema` callback that receives each resolved
+  document together with the dialect the parser resolved for it, and a finding
+  throws `SchemaValidationError` with one report per document.
+
+  The CLIs gain `--validate`, which checks every document (including `$ref`
+  targets) against the meta-schema of its dialect — draft-04, draft-06, draft-07,
+  2019-09 or 2020-12 — and writes nothing when a schema is invalid. Ajv backs the
+  built-in validator and is an optional peer dependency; `--validator <module>`
+  replaces it with any function, so Ajv stays out of the install for callers that
+  do not validate. Draft-04 schemas also need `ajv-draft-04`.
+
+  `@utilize/json-schema` exports the adapter as the new `./validate/ajv` entry and
+  the validation API from the main entry: `SchemaValidator`, the finding, context
+  and report types, `SchemaValidationError`, and `resolveDocumentDialect`, which
+  resolves a document's dialect the way `parse` does.
+
+- d6876f8: Add opt-in `inference: 'pragmatic'` (and `--inference pragmatic`) to read an
+  untyped schema's keyword family as the intended type: `format` becomes `string`,
+  `minimum` becomes `number`, `contains` becomes `array`, and so on. The default
+  stays `spec`, which keeps those schemas `unknown` because the keywords only
+  constrain one instance type.
+
+### Patch Changes
+
+- 27958a0: Reach full draft-07 conformance in both runtime generators. Zod and Effect now
+  validate every `format-assertion` case, including RFC 3339 date-time, email and
+  IDNA hostnames, URI and IRI references, JSON Pointers, regular expressions and
+  URI Templates. Complex validators are emitted once per format and shared by
+  every schema in the module that uses them.
+
+  Format assertions now follow the JSON Schema definitions rather than the target's
+  looser helpers. Values such as a bare `time` without an RFC 3339 offset, or a
+  URL-shaped `uri` that is not a valid RFC 3986 URI, can now be rejected. Generated
+  modules that use email or URI formats contain the shared validator source.
+
+  The parser resolves URNs, tag URIs and other in-document identifiers before an
+  external read, and both runtime generators handle typeless recursive roots and
+  tuple references. Generated Zod schemas also support keyword-only object and
+  array cycles without an explicit `type`. The TypeScript generator inherits the
+  same reference fixes, raising its draft-07 baseline to 192 of 285 cases.
+
+- 5b4734f: Fix native JSON Schema conformance gaps without introducing a custom runtime: resolve draft-04 legacy `id` references, align UUID/duration/hostname format semantics with the specification, and handle Effect `dependentRequired`/`dependentSchemas` on objects without an explicit `type`.
+- 36b46ac: Add `isJSONSchema`, `isJSONSchemaObject`, `isParsedJSONSchema` and `isParsedJSONSchemaObject` runtime guards so callers can narrow raw and linked schema values without unsafe type assertions, plus `reachesThrough` for shared graph traversal.
+
+  Type boolean schema documents correctly through `readSchema`, `parseSchemaSource`, `parseForCompile` and each generator's `compileSchema`, share the file-reading and parse paths through `bindCompileFile` and `withParsedSchema`, and export the CLI flag value types used by the public `GeneratorCli` signature. `schemaRecord` now accepts a `JSONSchema` instead of the broad `object`, and `withSourceMeta` now rejects a source without metadata instead of silently producing an unmarked copy.
+
+- Updated dependencies [27958a0]
+- Updated dependencies [d770676]
+- Updated dependencies [5b4734f]
+- Updated dependencies [60be53c]
+- Updated dependencies [9862f23]
+- Updated dependencies [36b46ac]
+  - @utilize/json-schema@0.8.0
+
 ## 0.5.0
 
 ### Minor Changes

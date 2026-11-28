@@ -1,6 +1,6 @@
 {
 	"name": "@utilize/typescript",
-	"version": "0.5.0",
+	"version": "0.6.0",
 	"description": "TypeScript type generator for JSON Schema.",
 	"keywords": [
 		"codegen",
