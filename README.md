@@ -288,6 +288,7 @@ compile.
 - Clone the repo, run `pnpm install`
 - See [CONTRIBUTING.md](./CONTRIBUTING.md) for details
 - Run tests: `pnpm test`
+- Bug reports are triaged automatically; see [docs/triage.md](./docs/triage.md) for the bot's labels and retry flow.
 
 ---
 

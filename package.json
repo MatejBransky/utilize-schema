@@ -36,6 +36,7 @@
 		"ci:publish": "pnpm changeset publish",
 		"verify": "pnpm build:dev && pnpm check:format && pnpm check:lint && pnpm check:types && pnpm ci:test",
 		"security": "pnpm audit --audit-level=high",
+		"triage:test": "node --test scripts/triage/*.test.mjs",
 		"example": "pnpm --filter playground dev"
 	},
 	"devDependencies": {

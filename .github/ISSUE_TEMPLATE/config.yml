@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Dialect and keyword support
+    url: https://github.com/MatejBransky/utilize-schema/blob/main/docs/dialects.md
+    about: Check which keywords are supported per dialect before filing a bug.
+  - name: Conformance status
+    url: https://github.com/MatejBransky/utilize-schema/blob/main/docs/conformance.md
+    about: See how each generator is measured against the official JSON Schema Test Suite.

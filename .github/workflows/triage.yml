@@ -1,0 +1,127 @@
+name: Triage
+
+on:
+  issues:
+    types: [opened, reopened, closed]
+  issue_comment:
+    types: [created]
+
+# The job reads with GITHUB_TOKEN. The agent step never receives a write token:
+# the App token is created only after the agent process exits, and the apply
+# step uses it for comments, labels, branches, and pull requests.
+permissions: {}
+
+concurrency:
+  group: triage-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  triage:
+    name: Triage issue
+    # Only bug reports are triaged. The bug report template applies the `bug`
+    # label at creation time, which is the only point where the bot sees an
+    # `opened` event.
+    #
+    # The variable guards keep the workflow a no-op until the model, App, and
+    # bot login are configured.
+    if: |
+      github.event.issue.pull_request == null &&
+      contains(github.event.issue.labels.*.name, 'bug') &&
+      vars.TRIAGE_MODEL &&
+      vars.TRIAGE_BOT_LOGIN &&
+      vars.TRIAGE_APP_CLIENT_ID &&
+      (
+        github.event_name == 'issues' ||
+        (
+          github.event.comment &&
+          github.event.comment.user.login != vars.TRIAGE_BOT_LOGIN &&
+          github.event.comment.user.login != 'github-actions[bot]'
+        )
+      )
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+
+    steps:
+      - name: Check triage configuration
+        env:
+          TRIAGE_MODEL: ${{ vars.TRIAGE_MODEL }}
+          TRIAGE_MODEL_API_KEY: ${{ secrets.TRIAGE_MODEL_API_KEY }}
+          TRIAGE_APP_CLIENT_ID: ${{ vars.TRIAGE_APP_CLIENT_ID }}
+          TRIAGE_APP_PRIVATE_KEY: ${{ secrets.TRIAGE_APP_PRIVATE_KEY }}
+        run: |
+          test -n "$TRIAGE_MODEL" || { echo "TRIAGE_MODEL is not set"; exit 1; }
+          test -n "$TRIAGE_MODEL_API_KEY" || { echo "TRIAGE_MODEL_API_KEY is not set"; exit 1; }
+          test -n "$TRIAGE_APP_CLIENT_ID" || { echo "TRIAGE_APP_CLIENT_ID is not set"; exit 1; }
+          test -n "$TRIAGE_APP_PRIVATE_KEY" || { echo "TRIAGE_APP_PRIVATE_KEY is not set"; exit 1; }
+
+      - name: Checkout code repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The bot diffs against the local `main` ref and pushes a branch.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build:dev
+
+      - name: Test triage scripts
+        run: pnpm triage:test
+
+      # Pin the agent CLI so a new OpenCode release cannot change the bot
+      # behaviour between runs. Update this deliberately.
+      - name: Install OpenCode
+        run: npm install --global @opencode/cli@2.4.2
+
+      # The agent has the read token and the model key, nothing else. It writes
+      # triage/gh-<n>/decision.json, result.json, and report.md.
+      - name: Run triage agent
+        id: agent
+        run: node scripts/triage/run.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TRIAGE_BOT_LOGIN: ${{ vars.TRIAGE_BOT_LOGIN }}
+          TRIAGE_MODEL: ${{ vars.TRIAGE_MODEL }}
+          TRIAGE_MODEL_BASE_URL: ${{ vars.TRIAGE_MODEL_BASE_URL }}
+          TRIAGE_OPENCODE_CONFIG: ${{ vars.TRIAGE_OPENCODE_CONFIG }}
+          TRIAGE_MODEL_API_KEY: ${{ secrets.TRIAGE_MODEL_API_KEY }}
+
+      # Created only after the agent exits, so the agent process cannot read it
+      # from its environment or from the parent process.
+      - name: Create triage app token
+        id: triage-token
+        if: always() && steps.agent.outcome != 'skipped'
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.TRIAGE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.TRIAGE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-issues: write
+          permission-pull-requests: write
+
+      # Applies the agent's result: commit, branch, PR, comment, labels. Runs
+      # even when the agent failed, so the issue gets a failure comment.
+      - name: Apply triage result
+        if: always() && steps.agent.outcome != 'skipped'
+        run: node scripts/triage/apply.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TRIAGE_WRITE_TOKEN: ${{ steps.triage-token.outputs.token }}
+          TRIAGE_MODEL: ${{ vars.TRIAGE_MODEL }}
+          TRIAGE_MODEL_API_KEY: ${{ secrets.TRIAGE_MODEL_API_KEY }}

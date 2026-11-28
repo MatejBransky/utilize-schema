@@ -124,6 +124,12 @@ only changes the catalog entry. Use `pnpm add --save-catalog` for a new shared d
 
 ## Reporting Issues
 
+Bug reports opened with the **Bug report** template are triaged automatically.
+The bot reproduces the report as a failing test, decides whether the behavior
+is intended, and may open a pull request with a fix. See
+[docs/triage.md](./docs/triage.md) for the labels, the retry flow, and how to
+stop the bot.
+
 - Please include:
   - A clear description of the problem.
   - Steps to reproduce.

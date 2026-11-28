@@ -1,0 +1,45 @@
+name: Feature request
+description: Suggest a keyword, a generator option, or a playground feature.
+title: '[feat]: '
+labels: ['enhancement']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feature requests are not triaged by the bug bot. They are reviewed by a
+        maintainer directly.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe the use case, not only the proposed API.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should the generator or parser do instead? A small schema and the expected output help.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Workarounds, other generators, or why the current behavior is insufficient.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked `docs/dialects.md` and the package README for existing support.
+          required: true
+        - label: I searched existing issues and did not find a duplicate.
+          required: true

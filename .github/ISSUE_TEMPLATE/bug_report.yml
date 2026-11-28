@@ -1,0 +1,103 @@
+name: Bug report
+description: Report a bug in a parser, a generator, or the playground.
+title: '[bug]: '
+# Applied at creation time. The Triage workflow only runs for `bug` issues and
+# the action ignores `labeled` events, so this label is what opts the issue in.
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. A small schema and the expected output let the
+        triage bot reproduce the bug without guessing.
+
+        **Security issues:** do not open a public issue. Follow
+        [SECURITY.md](https://github.com/MatejBransky/utilize-schema/blob/main/SECURITY.md).
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      description: Where does the bug show up?
+      options:
+        - '@utilize/json-schema (parse, link, dialect)'
+        - '@utilize/zod'
+        - '@utilize/effect'
+        - '@utilize/typescript'
+        - playground
+        - not sure
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The `@utilize/*` version, or the commit if you run from source.
+      placeholder: '@utilize/zod 0.10.0'
+    validations:
+      required: true
+
+  - type: textarea
+    id: schema
+    attributes:
+      label: JSON Schema
+      description: The smallest schema that triggers the bug.
+      render: json
+      placeholder: |
+        {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {}
+        }
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected output or behavior
+      description: The generated code or validation result you expected.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual output or behavior
+      description: The generated code, error, or validation result you got. Include the full error and stack trace if there is one.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: The command or test that shows the bug, if it is not obvious from the schema above.
+      render: shell
+      placeholder: |
+        pnpm --filter @utilize/zod build
+        node repro.mjs
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Node version, package manager, OS, and any generator options (`formatMode`, `runtimeImport`, custom resolver) that matter.
+      render: text
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+        - label: I can reproduce this on the latest release or `main`.
+          required: true
