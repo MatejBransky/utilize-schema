@@ -1,12 +1,12 @@
-import { expectDefined } from '@utilize/json-schema';
-
-import { commandOutput } from '../process';
-
 import { execFileSync } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
+
+import { expectDefined } from '@utilize/json-schema';
+
+import { commandOutput } from '../process';
 
 const require = createRequire(import.meta.url);
 const tsc = join(dirname(require.resolve('typescript/package.json')), 'bin/tsc');
@@ -49,12 +49,12 @@ const ROOT_DECLARATION = /^export (?:interface|type|enum|const enum) Root\b/m;
 
 /**
  * Appends one typed constant per suite instance to generated declarations.
- * Valid instances are plain declarations; invalid instances get a
- * `@ts-expect-error` directive, so a single `tsc` run checks both directions.
+ * Valid instances are plain declarations; invalid instances get an expect-error
+ * directive, so a single `tsc` run checks both directions.
  *
- * A generator that emits no `Root` declaration cannot be scored: an
- * `@ts-expect-error` would swallow the missing name and make an invalid
- * instance look rejected. Treat that output as a compile failure instead.
+ * A generator that emits no `Root` declaration cannot be scored: an expect-error
+ * directive would swallow the missing name and make an invalid instance look
+ * rejected. Treat that output as a compile failure instead.
  */
 export function appendInstances(
 	code: string,
