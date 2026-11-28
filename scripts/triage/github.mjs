@@ -1,3 +1,4 @@
+// fallow-ignore-file security-sink -- every request goes to the fixed https://api.github.com origin; the dynamic parts are repository names, numeric issue/PR numbers, and URL-encoded label names
 /**
  * GitHub API and git helpers for the triage bot.
  *

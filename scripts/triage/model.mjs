@@ -1,3 +1,4 @@
+// fallow-ignore-file security-sink -- the only secret-shaped literal is OpenCode's `{env:TRIAGE_MODEL_API_KEY}` template, never a credential
 /**
  * Model configuration for the triage bot.
  *
