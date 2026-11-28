@@ -6,7 +6,9 @@ import { readFile } from 'node:fs/promises';
 
 export function required(name) {
 	const value = process.env[name];
-	if (!value) throw new Error(`${name} is not set.`);
+	if (!value) {
+		throw new Error(`${name} is not set.`);
+	}
 	return value;
 }
 
@@ -20,7 +22,9 @@ export function parseBotLogins(value) {
 export function redact(text, secrets) {
 	let output = String(text ?? '');
 	for (const secret of secrets) {
-		if (secret) output = output.split(secret).join('[redacted]');
+		if (secret) {
+			output = output.split(secret).join('[redacted]');
+		}
 	}
 	return output;
 }
@@ -34,11 +38,20 @@ export async function readOptional(path) {
 	}
 }
 
+export async function readEvent(eventPath) {
+	const payload = JSON.parse(await readFile(eventPath, 'utf8'));
+	return { payload, issue: payload.issue };
+}
+
 export function runUrl() {
 	const server = process.env.GITHUB_SERVER_URL ?? 'https://github.com';
 	const repo = process.env.GITHUB_REPOSITORY;
 	const runId = process.env.GITHUB_RUN_ID;
-	return server && repo && runId ? `${server}/${repo}/actions/runs/${runId}` : null;
+	return repo && runId ? `${server}/${repo}/actions/runs/${runId}` : null;
+}
+
+export function when(condition, value) {
+	return condition ? [value] : [];
 }
 
 const FORBIDDEN_CHANGES = [
@@ -65,26 +78,40 @@ export function assertSafeChanges(files) {
 }
 
 export function assertChangeset(result, files) {
-	if (!result.fixed) return;
-	if (!files.some((file) => file.startsWith('packages/'))) return;
-	if (files.some((file) => file.startsWith('.changeset/') && file.endsWith('.md'))) return;
+	if (!result.fixed) {
+		return;
+	}
+	if (!files.some((file) => file.startsWith('packages/'))) {
+		return;
+	}
+	if (files.some((file) => file.startsWith('.changeset/') && file.endsWith('.md'))) {
+		return;
+	}
 	throw new Error(
 		'The fix changes packages/ but no .changeset/*.md was added. Add a changeset before finishing.'
 	);
 }
 
+async function fileContainsSecret(file, needles) {
+	let content;
+	try {
+		content = await readFile(file, 'utf8');
+	} catch {
+		return false;
+	}
+	if (content.length > 2_000_000) {
+		return false;
+	}
+	return needles.some((needle) => content.includes(needle));
+}
+
 export async function assertNoSecrets(files, secrets) {
 	const needles = secrets.filter((secret) => typeof secret === 'string' && secret.length >= 12);
-	if (needles.length === 0) return;
+	if (needles.length === 0) {
+		return;
+	}
 	for (const file of files) {
-		let content;
-		try {
-			content = await readFile(file, 'utf8');
-		} catch {
-			continue;
-		}
-		if (content.length > 2_000_000) continue;
-		if (needles.some((needle) => content.includes(needle))) {
+		if (await fileContainsSecret(file, needles)) {
 			throw new Error(
 				`A changed file (${file}) contains a credential. Refusing to commit or comment it.`
 			);

@@ -10,7 +10,7 @@ const comment = (body, login = 'reporter', association = 'NONE') => ({
 	author_association: association,
 });
 
-test('opened and reopened run a full triage', () => {
+void test('opened and reopened run a full triage', () => {
 	assert.deepEqual(route({ eventName: 'issues', action: 'opened', issue: issue() }), {
 		type: 'triage',
 		mode: 'triage',
@@ -23,14 +23,14 @@ test('opened and reopened run a full triage', () => {
 	});
 });
 
-test('closed cleans up the branch', () => {
+void test('closed cleans up the branch', () => {
 	assert.deepEqual(route({ eventName: 'issues', action: 'closed', issue: issue() }), {
 		type: 'cleanup',
 		issueNumber: 42,
 	});
 });
 
-test('ignores pull requests and unknown actions', () => {
+void test('ignores pull requests and unknown actions', () => {
 	assert.equal(
 		route({ eventName: 'issues', action: 'opened', issue: { ...issue(), pull_request: {} } }).type,
 		'skip'
@@ -38,7 +38,7 @@ test('ignores pull requests and unknown actions', () => {
 	assert.equal(route({ eventName: 'issues', action: 'labeled', issue: issue() }).type, 'skip');
 });
 
-test('ignores bot comments', () => {
+void test('ignores bot comments', () => {
 	const result = route({
 		eventName: 'issue_comment',
 		action: 'created',
@@ -49,7 +49,7 @@ test('ignores bot comments', () => {
 	assert.equal(result.type, 'skip');
 });
 
-test('re-triages actionable comments on a retriageable label', () => {
+void test('re-triages actionable comments on a retriageable label', () => {
 	const result = route({
 		eventName: 'issue_comment',
 		action: 'created',
@@ -59,7 +59,7 @@ test('re-triages actionable comments on a retriageable label', () => {
 	assert.deepEqual(result, { type: 'triage', mode: 'retriage', issueNumber: 42 });
 });
 
-test('does not re-triage a plain thank-you', () => {
+void test('does not re-triage a plain thank-you', () => {
 	const result = route({
 		eventName: 'issue_comment',
 		action: 'created',
@@ -69,7 +69,7 @@ test('does not re-triage a plain thank-you', () => {
 	assert.equal(result.type, 'skip');
 });
 
-test('maintainers can always re-triage', () => {
+void test('maintainers can always re-triage', () => {
 	const result = route({
 		eventName: 'issue_comment',
 		action: 'created',
@@ -79,7 +79,7 @@ test('maintainers can always re-triage', () => {
 	assert.deepEqual(result, { type: 'triage', mode: 'retriage', issueNumber: 42 });
 });
 
-test('terminal labels are ignored', () => {
+void test('terminal labels are ignored', () => {
 	const result = route({
 		eventName: 'issue_comment',
 		action: 'created',
@@ -89,12 +89,12 @@ test('terminal labels are ignored', () => {
 	assert.equal(result.type, 'skip');
 });
 
-test('currentTriageLabel finds the state label', () => {
+void test('currentTriageLabel finds the state label', () => {
 	assert.equal(currentTriageLabel(issue(['bug', LABELS.needsTriage])), LABELS.needsTriage);
 	assert.equal(currentTriageLabel(issue(['bug'])), null);
 });
 
-test('labelForResult maps outcomes', () => {
+void test('labelForResult maps outcomes', () => {
 	assert.equal(
 		labelForResult({ skipped: true, skippedReason: 'not-actionable' }),
 		LABELS.notActionable

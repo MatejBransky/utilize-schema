@@ -53,4 +53,6 @@ auditConfig:
 strictDepBuilds: true
 allowBuilds:
   '@swc/core': true
+  # The issue-triage agent CLI; its postinstall selects the platform binary.
+  '@opencode/cli': true
   esbuild: true

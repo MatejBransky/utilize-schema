@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { buildAgentEnv, parseModel } from './model.mjs';
 
-test('parses provider/model and an optional variant', () => {
+void test('parses provider/model and an optional variant', () => {
 	assert.deepEqual(parseModel('opencode-go/deepseek-v4.1-flash'), {
 		model: 'opencode-go/deepseek-v4.1-flash',
 		provider: 'opencode-go',
@@ -18,13 +18,13 @@ test('parses provider/model and an optional variant', () => {
 	});
 });
 
-test('rejects malformed model strings', () => {
+void test('rejects malformed model strings', () => {
 	assert.throws(() => parseModel('deepseek-v4.1-flash'));
 	assert.throws(() => parseModel('opencode-go/'));
 	assert.throws(() => parseModel('/deepseek-v4.1-flash'));
 });
 
-test('maps built-in providers to their API key env var', () => {
+void test('maps built-in providers to their API key env var', () => {
 	const env = buildAgentEnv({
 		model: 'opencode-go/deepseek-v4.1-flash',
 		apiKey: 'go-key',
@@ -36,7 +36,7 @@ test('maps built-in providers to their API key env var', () => {
 	assert.ok(JSON.parse(env.OPENCODE_CONFIG_CONTENT).permission);
 });
 
-test('maps anthropic and keeps the write token out', () => {
+void test('maps anthropic and keeps the write token out', () => {
 	const env = buildAgentEnv({
 		model: 'anthropic/claude-sonnet-4-6',
 		apiKey: 'anthropic-key',
@@ -47,7 +47,7 @@ test('maps anthropic and keeps the write token out', () => {
 	assert.equal(env.TRIAGE_APP_PRIVATE_KEY, undefined);
 });
 
-test('builds an openai-compatible config for a custom provider', () => {
+void test('builds an openai-compatible config for a custom provider', () => {
 	const env = buildAgentEnv({
 		model: 'custom/my-model',
 		apiKey: 'custom-key',
@@ -59,6 +59,6 @@ test('builds an openai-compatible config for a custom provider', () => {
 	assert.equal(config.provider.custom.models['my-model'].name, 'my-model');
 });
 
-test('rejects an unknown provider without a base URL or config', () => {
+void test('rejects an unknown provider without a base URL or config', () => {
 	assert.throws(() => buildAgentEnv({ model: 'unknown/model', apiKey: 'key', baseEnv: {} }));
 });

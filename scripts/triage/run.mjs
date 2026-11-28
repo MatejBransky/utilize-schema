@@ -7,16 +7,23 @@
  * creates that token after this process exits.
  */
 
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { join } from 'node:path';
 
+import opencodePackage from '@opencode/cli/package.json' with { type: 'json' };
+
 import { buildPrompt, runAgent } from './agent.mjs';
-import * as gh from './github.mjs';
+import { currentBranch, fetchIssue } from './github.mjs';
 import { buildAgentEnv } from './model.mjs';
 import { currentTriageLabel, route } from './router.mjs';
-import { parseBotLogins, redact, required } from './util.mjs';
+import { parseBotLogins, readEvent, redact, required } from './util.mjs';
 
 const cwd = process.cwd();
+const require = createRequire(import.meta.url);
+const OPENCODE_BIN =
+	process.env.TRIAGE_OPENCODE_BIN ??
+	require.resolve(`@opencode/cli/${opencodePackage.bin.opencode.replace(/^\.\//, '')}`);
 let context = null;
 
 async function main() {
@@ -28,8 +35,7 @@ async function main() {
 	const apiKey = required('TRIAGE_MODEL_API_KEY');
 	const botLogins = parseBotLogins(process.env.TRIAGE_BOT_LOGIN);
 
-	const payload = JSON.parse(await readFile(eventPath, 'utf8'));
-	const issue = payload.issue;
+	const { payload, issue } = await readEvent(eventPath);
 	if (!issue) {
 		console.log('No issue in the event payload; nothing to do.');
 		return;
@@ -42,7 +48,7 @@ async function main() {
 	context = { triageDir, apiKey, readToken };
 
 	const currentLabel = currentTriageLabel(issue);
-	const startBranch = await gh.currentBranch(cwd);
+	const startBranch = await currentBranch(cwd);
 	const decision = route({
 		eventName,
 		action: payload.action,
@@ -56,9 +62,11 @@ async function main() {
 	);
 	console.log('Route:', decision);
 
-	if (decision.type !== 'triage') return;
+	if (decision.type !== 'triage') {
+		return;
+	}
 
-	const issueDetails = await gh.fetchIssue(repo, issueNumber, readToken);
+	const issueDetails = await fetchIssue(repo, issueNumber, readToken);
 	await writeFile(join(triageDir, 'issue.json'), `${JSON.stringify(issueDetails, null, 2)}\n`);
 
 	const prompt = buildPrompt({ issueNumber, issueDetails, mode: decision.mode, triageDir });
@@ -77,14 +85,17 @@ async function main() {
 		model,
 		env: agentEnv,
 		cwd,
+		bin: OPENCODE_BIN,
 		logPath: join(triageDir, 'opencode.jsonl'),
 	});
 	if (run.exitCode !== 0) {
-		throw new Error(`OpenCode exited with ${run.exitCode}.\n\n${run.stderr.slice(-8_000)}`);
+		throw new Error(`OpenCode exited with ${run.exitCode}.\n\n${run.stderr.slice(-8000)}`);
 	}
 }
 
-main().catch(async (error) => {
+try {
+	await main();
+} catch (error) {
 	const secrets = [process.env.TRIAGE_MODEL_API_KEY, process.env.GITHUB_TOKEN].filter(Boolean);
 	const message = redact(error?.stack ?? String(error), secrets);
 	console.error(message);
@@ -97,4 +108,4 @@ main().catch(async (error) => {
 		}
 	}
 	process.exitCode = 1;
-});
+}

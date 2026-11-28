@@ -30,8 +30,37 @@ async function request(path, { token, method = 'GET', body } = {}) {
 		const text = await response.text();
 		throw new Error(`GitHub ${method} ${path} failed with ${response.status}: ${text}`);
 	}
-	if (response.status === 204) return null;
+	if (response.status === 204) {
+		return null;
+	}
 	return response.json();
+}
+
+function loginOf(user) {
+	return user?.login ?? 'unknown';
+}
+
+function mapComment(comment) {
+	return {
+		author: loginOf(comment.user),
+		authorAssociation: comment.author_association,
+		body: comment.body ?? '',
+		createdAt: comment.created_at,
+	};
+}
+
+function mapIssueDetails(issue, comments) {
+	return {
+		number: issue.number,
+		title: issue.title,
+		body: issue.body ?? '',
+		state: issue.state,
+		url: issue.html_url,
+		author: loginOf(issue.user),
+		labels: (issue.labels ?? []).map((label) => label.name),
+		createdAt: issue.created_at,
+		comments: (comments ?? []).map(mapComment),
+	};
 }
 
 export async function fetchIssue(repo, issueNumber, token) {
@@ -39,22 +68,7 @@ export async function fetchIssue(repo, issueNumber, token) {
 		request(`/repos/${repo}/issues/${issueNumber}`, { token }),
 		request(`/repos/${repo}/issues/${issueNumber}/comments?per_page=100`, { token }),
 	]);
-	return {
-		number: issue.number,
-		title: issue.title,
-		body: issue.body ?? '',
-		state: issue.state,
-		url: issue.html_url,
-		author: issue.user?.login ?? 'unknown',
-		labels: (issue.labels ?? []).map((label) => label.name),
-		createdAt: issue.created_at,
-		comments: (comments ?? []).map((comment) => ({
-			author: comment.user?.login ?? 'unknown',
-			authorAssociation: comment.author_association,
-			body: comment.body ?? '',
-			createdAt: comment.created_at,
-		})),
-	};
+	return mapIssueDetails(issue, comments);
 }
 
 export async function postComment(repo, issueNumber, body, token) {
@@ -66,7 +80,9 @@ export async function postComment(repo, issueNumber, body, token) {
 }
 
 export async function addLabels(repo, issueNumber, labels, token) {
-	if (!labels || labels.length === 0) return;
+	if (!labels || labels.length === 0) {
+		return;
+	}
 	return request(`/repos/${repo}/issues/${issueNumber}/labels`, {
 		token,
 		method: 'POST',
@@ -74,20 +90,26 @@ export async function addLabels(repo, issueNumber, labels, token) {
 	});
 }
 
-export async function removeLabel(repo, issueNumber, label, token) {
+async function removeLabel(repo, issueNumber, label, token) {
 	try {
 		await request(`/repos/${repo}/issues/${issueNumber}/labels/${encodeURIComponent(label)}`, {
 			token,
 			method: 'DELETE',
 		});
 	} catch (error) {
-		if (!/\b404\b/.test(error.message)) throw error;
+		if (!/\b404\b/.test(error.message)) {
+			throw error;
+		}
 	}
 }
 
 export async function swapLabel(repo, issueNumber, oldLabel, newLabel, token) {
-	if (oldLabel && oldLabel !== newLabel) await removeLabel(repo, issueNumber, oldLabel, token);
-	if (newLabel) await addLabels(repo, issueNumber, [newLabel], token);
+	if (oldLabel && oldLabel !== newLabel) {
+		await removeLabel(repo, issueNumber, oldLabel, token);
+	}
+	if (newLabel) {
+		await addLabels(repo, issueNumber, [newLabel], token);
+	}
 }
 
 export async function findPullRequest(repo, branch, token) {
@@ -96,7 +118,9 @@ export async function findPullRequest(repo, branch, token) {
 		`/repos/${repo}/pulls?head=${encodeURIComponent(`${owner}:${branch}`)}&state=open`,
 		{ token }
 	);
-	if (!Array.isArray(pulls) || pulls.length === 0) return null;
+	if (!Array.isArray(pulls) || pulls.length === 0) {
+		return null;
+	}
 	return pulls[0];
 }
 
@@ -116,7 +140,9 @@ export async function deleteBranch(repo, branch, token) {
 		});
 	} catch (error) {
 		// 404/422 both mean the branch is already gone.
-		if (!/\b(404|422)\b/.test(error.message)) throw error;
+		if (!/\b(404|422)\b/.test(error.message)) {
+			throw error;
+		}
 	}
 }
 
@@ -151,7 +177,7 @@ function parseStatus(stdout) {
 		});
 }
 
-export async function statusFiles(cwd) {
+async function statusFiles(cwd) {
 	return parseStatus(await git(['status', '--porcelain', '-uall'], { cwd }));
 }
 
@@ -165,12 +191,14 @@ export async function changedFiles(cwd, base = 'main') {
 		.map((line) => line.trim())
 		.filter(Boolean);
 	const untracked = await statusFiles(cwd);
-	return [...new Set([...tracked, ...untracked])].sort();
+	return [...new Set([...tracked, ...untracked])].sort((a, b) => a.localeCompare(b));
 }
 
 export async function commitAll(cwd, message) {
 	await git(['add', '-A'], { cwd });
-	if ((await statusFiles(cwd)).length === 0) return false;
+	if ((await statusFiles(cwd)).length === 0) {
+		return false;
+	}
 	await git(
 		[
 			'-c',

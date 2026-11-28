@@ -75,12 +75,64 @@ export function parseModel(model) {
 }
 
 function parseUserConfig(value) {
-	if (!value) return null;
+	if (!value) {
+		return null;
+	}
 	try {
 		return JSON.parse(value);
 	} catch (error) {
-		throw new Error(`TRIAGE_OPENCODE_CONFIG is not valid JSON: ${error.message}`);
+		throw new Error(`TRIAGE_OPENCODE_CONFIG is not valid JSON: ${error.message}`, { cause: error });
 	}
+}
+
+function applyProviderKey(env, provider, apiKey) {
+	const envName = PROVIDER_ENV[provider];
+	if (!envName) {
+		return;
+	}
+	env[envName] = apiKey;
+	for (const alias of EXTRA_ENV_ALIASES[provider] ?? []) {
+		env[alias] = apiKey;
+	}
+}
+
+function buildProviderConfig({ provider, modelId, baseUrl, parsedConfig }) {
+	if (parsedConfig) {
+		return parsedConfig;
+	}
+	if (!baseUrl || PROVIDER_ENV[provider]) {
+		return {};
+	}
+	return {
+		provider: {
+			[provider]: {
+				npm: '@ai-sdk/openai-compatible',
+				name: provider,
+				options: {
+					baseURL: baseUrl,
+					apiKey: '{env:TRIAGE_MODEL_API_KEY}',
+				},
+				models: {
+					[modelId]: { name: modelId },
+				},
+			},
+		},
+	};
+}
+
+function mergePermissions(permission) {
+	const user =
+		permission && typeof permission === 'object' && !Array.isArray(permission) ? permission : {};
+	const bash =
+		user.bash && typeof user.bash === 'object' && !Array.isArray(user.bash) ? user.bash : {};
+	return {
+		...SAFE_PERMISSIONS,
+		...user,
+		bash: {
+			...SAFE_PERMISSIONS.bash,
+			...bash,
+		},
+	};
 }
 
 /**
@@ -96,59 +148,18 @@ export function buildAgentEnv({ model, apiKey, baseUrl, userConfig, baseEnv = pr
 	delete env.INPUT_TRIAGE_APP_PRIVATE_KEY;
 
 	env.TRIAGE_MODEL_API_KEY = apiKey;
-
-	const envName = PROVIDER_ENV[provider];
-	if (envName) {
-		env[envName] = apiKey;
-		for (const alias of EXTRA_ENV_ALIASES[provider] ?? []) env[alias] = apiKey;
-	}
+	applyProviderKey(env, provider, apiKey);
 
 	const parsedConfig = parseUserConfig(userConfig);
-	let config = parsedConfig ?? {};
-
-	if (!parsedConfig && baseUrl && !envName) {
-		config = {
-			provider: {
-				[provider]: {
-					npm: '@ai-sdk/openai-compatible',
-					name: provider,
-					options: {
-						baseURL: baseUrl,
-						apiKey: '{env:TRIAGE_MODEL_API_KEY}',
-					},
-					models: {
-						[modelId]: { name: modelId },
-					},
-				},
-			},
-		};
-	}
-
-	if (!envName && !parsedConfig && !baseUrl) {
+	const hasBuiltinProvider = Boolean(PROVIDER_ENV[provider]);
+	if (!hasBuiltinProvider && !parsedConfig && !baseUrl) {
 		throw new Error(
 			`Unsupported provider "${provider}". Set TRIAGE_MODEL_BASE_URL for an OpenAI-compatible endpoint, or TRIAGE_OPENCODE_CONFIG with a full provider config.`
 		);
 	}
 
-	const userPermission =
-		config.permission && typeof config.permission === 'object' && !Array.isArray(config.permission)
-			? config.permission
-			: {};
-	const userBash =
-		userPermission.bash &&
-		typeof userPermission.bash === 'object' &&
-		!Array.isArray(userPermission.bash)
-			? userPermission.bash
-			: {};
-	config.permission = {
-		...SAFE_PERMISSIONS,
-		...userPermission,
-		bash: {
-			...SAFE_PERMISSIONS.bash,
-			...userBash,
-		},
-	};
-
+	const config = buildProviderConfig({ provider, modelId, baseUrl, parsedConfig });
+	config.permission = mergePermissions(config.permission);
 	env.OPENCODE_CONFIG_CONTENT = JSON.stringify(config);
 	return env;
 }

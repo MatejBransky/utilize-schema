@@ -21,7 +21,7 @@ const PRIORITIES = new Set(['- P0', '- P1', '- P2', '- P3']);
 
 export function buildPrompt({ issueNumber, issueDetails, mode, triageDir }) {
 	const title = String(issueDetails.title ?? '')
-		.replace(/\s+/g, ' ')
+		.replaceAll(/\s+/g, ' ')
 		.slice(0, 200);
 	const retriage =
 		mode === 'retriage'
@@ -71,10 +71,18 @@ Rules:
  * Run `opencode run` non-interactively. The child receives the filtered env
  * built by buildAgentEnv(), so it never sees the GitHub write token.
  */
-export function runAgent({ prompt, model, env, cwd, logPath, timeoutMs = 45 * 60 * 1000 }) {
+export function runAgent({
+	prompt,
+	model,
+	env,
+	cwd,
+	logPath,
+	bin = 'opencode',
+	timeoutMs = 45 * 60 * 1000,
+}) {
 	return new Promise((resolve, reject) => {
 		const child = spawn(
-			'opencode',
+			bin,
 			['run', '--standalone', '--auto', '--archived', '--format', 'json', '--model', model, prompt],
 			{ cwd, env, stdio: ['ignore', 'pipe', 'pipe'] }
 		);
@@ -83,7 +91,9 @@ export function runAgent({ prompt, model, env, cwd, logPath, timeoutMs = 45 * 60
 		let stderr = '';
 		let settled = false;
 		const finish = (fn, value) => {
-			if (settled) return;
+			if (settled) {
+				return;
+			}
 			settled = true;
 			clearTimeout(timer);
 			log.end();
@@ -95,7 +105,7 @@ export function runAgent({ prompt, model, env, cwd, logPath, timeoutMs = 45 * 60
 			setTimeout(() => child.kill('SIGKILL'), 10_000).unref();
 			finish(
 				reject,
-				new Error(`OpenCode timed out after ${Math.round(timeoutMs / 60000)} minutes.`)
+				new Error(`OpenCode timed out after ${Math.round(timeoutMs / 60_000)} minutes.`)
 			);
 		}, timeoutMs);
 		timer.unref?.();
@@ -110,38 +120,31 @@ export function runAgent({ prompt, model, env, cwd, logPath, timeoutMs = 45 * 60
 	});
 }
 
-export function normalizeResult(input) {
-	if (!input || typeof input !== 'object') throw new Error('result.json is not an object.');
+function normalizeString(value) {
+	return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
 
-	const result = {
-		reproducible: Boolean(input.reproducible),
-		skipped: Boolean(input.skipped),
-		skippedReason: input.skippedReason ?? null,
-		confidence: input.confidence ?? null,
-		verdict: input.verdict ?? 'unclear',
-		fixed: Boolean(input.fixed),
-		commitMessage:
-			typeof input.commitMessage === 'string' && input.commitMessage.trim()
-				? input.commitMessage.trim()
-				: null,
-		test: typeof input.test === 'string' && input.test.trim() ? input.test.trim() : null,
-		checks: Array.isArray(input.checks)
-			? input.checks.filter((item) => typeof item === 'string' && item.trim())
-			: [],
-		changeset:
-			typeof input.changeset === 'string' && input.changeset.trim() ? input.changeset.trim() : null,
-		priority: PRIORITIES.has(input.priority) ? input.priority : null,
-		packages: Array.isArray(input.packages)
-			? input.packages
-					.filter((item) => typeof item === 'string' && item.trim())
-					.map((item) => {
-						const name = item.trim();
-						const bare = name.startsWith('pkg:') ? name.slice(4).trim() : name;
-						return `pkg: ${bare}`;
-					})
-			: [],
-	};
+function normalizeChecks(value) {
+	if (!Array.isArray(value)) {
+		return [];
+	}
+	return value.filter((item) => typeof item === 'string' && item.trim());
+}
 
+function normalizePackages(value) {
+	if (!Array.isArray(value)) {
+		return [];
+	}
+	return value
+		.filter((item) => typeof item === 'string' && item.trim())
+		.map((item) => {
+			const name = item.trim();
+			const bare = name.startsWith('pkg:') ? name.slice(4).trim() : name;
+			return `pkg: ${bare}`;
+		});
+}
+
+function validateResult(result) {
 	if (result.skipped && !SKIP_REASONS.has(result.skippedReason)) {
 		throw new Error(
 			`result.json has skipped=true but skippedReason="${result.skippedReason}". Use one of: ${[...SKIP_REASONS].join(', ')}.`
@@ -153,6 +156,29 @@ export function normalizeResult(input) {
 	if (!VERDICTS.has(result.verdict)) {
 		throw new Error(`result.json has invalid verdict "${result.verdict}".`);
 	}
+}
+
+export function normalizeResult(input) {
+	if (!input || typeof input !== 'object') {
+		throw new Error('result.json is not an object.');
+	}
+
+	const result = {
+		reproducible: Boolean(input.reproducible),
+		skipped: Boolean(input.skipped),
+		skippedReason: input.skippedReason ?? null,
+		confidence: input.confidence ?? null,
+		verdict: input.verdict ?? 'unclear',
+		fixed: Boolean(input.fixed),
+		commitMessage: normalizeString(input.commitMessage),
+		test: normalizeString(input.test),
+		checks: normalizeChecks(input.checks),
+		changeset: normalizeString(input.changeset),
+		priority: PRIORITIES.has(input.priority) ? input.priority : null,
+		packages: normalizePackages(input.packages),
+	};
+
+	validateResult(result);
 	return result;
 }
 
@@ -162,7 +188,7 @@ export async function readResult(triageDir) {
 	try {
 		parsed = JSON.parse(raw);
 	} catch (error) {
-		throw new Error(`result.json is not valid JSON: ${error.message}`);
+		throw new Error(`result.json is not valid JSON: ${error.message}`, { cause: error });
 	}
 	return normalizeResult(parsed);
 }

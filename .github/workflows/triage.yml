@@ -84,11 +84,6 @@ jobs:
       - name: Test triage scripts
         run: pnpm triage:test
 
-      # Pin the agent CLI so a new OpenCode release cannot change the bot
-      # behaviour between runs. Update this deliberately.
-      - name: Install OpenCode
-        run: npm install --global @opencode/cli@2.4.2
-
       # The agent has the read token and the model key, nothing else. It writes
       # triage/gh-<n>/decision.json, result.json, and report.md.
       - name: Run triage agent

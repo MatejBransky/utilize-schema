@@ -164,8 +164,8 @@ already know, and review the PR. Change `TRIAGE_MODEL` and
 `TRIAGE_MODEL_API_KEY` to switch providers; no workflow or code change is
 needed.
 
-The agent CLI is pinned in the workflow (`@opencode/cli@2.4.2`). Update the pin
-deliberately, after a test run.
+The agent CLI is pinned in the root `package.json` (`@opencode/cli@2.4.2`)
+and installed by `pnpm install`. Update the pin deliberately, after a test run.
 
 ## State machine
 
@@ -229,8 +229,8 @@ The bot opens PRs directly (`auto-PR`). An `intended-behavior` verdict maps to
 
 - **Model quality varies.** A model that cannot call tools reliably will not
   finish the pipeline; test a new model before switching the default.
-- **OpenCode is pinned.** A new CLI release is adopted by changing the version
-  in the workflow.
+- **OpenCode is pinned.** A new CLI release is adopted by changing the
+  `@opencode/cli` version in the root `package.json`.
 - **No preview releases.** The bot opens a PR directly. Reporter confirmation
   happens in the PR thread; `triage: fix pending` is reserved.
 - **No playground browser tests.** The runner does not install Playwright.
