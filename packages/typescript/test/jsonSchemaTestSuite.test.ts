@@ -3,10 +3,9 @@ import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 
-import { DRAFT_7, isCompatible, OTHER_DIALECTS } from '@utilize/test-utils/suite/compatibility';
+import { DRAFT_7, OTHER_DIALECTS } from '@utilize/test-utils/suite/compatibility';
 import { loadSuiteFiles, suiteCaseKey } from '@utilize/test-utils/suite/loadSuite';
-import { measureCases } from '@utilize/test-utils/suite/measure';
-import type { RunnableCase } from '@utilize/test-utils/suite/measure';
+import { measureCases, selectCases } from '@utilize/test-utils/suite/measure';
 
 import { baseline } from './suite/baseline';
 import { renderCaseModule } from './suite/generateCase';
@@ -192,27 +191,11 @@ afterAll(() => {
 
 describe('JSON Schema Test Suite (draft-07, type level)', () => {
 	test('matches the recorded conformance baseline', async () => {
-		const runnable: RunnableCase[] = [];
+		const { runnable, total, skippedDialect, skippedFormat } = selectCases(files, DRAFT_7);
 
-		for (const file of files) {
-			for (const testCase of file.cases) {
-				stats.cases++;
-
-				if (!isCompatible(testCase.compatibility, DRAFT_7)) {
-					stats.skippedDialect++;
-					continue;
-				}
-
-				// A type cannot check a format either way, so assertion cases are
-				// measured by the runtime generators instead of here.
-				if (testCase.tags?.includes('format-assertion')) {
-					stats.skippedFormat++;
-					continue;
-				}
-
-				runnable.push({ testCase, key: suiteCaseKey(file, testCase) });
-			}
-		}
+		stats.cases = total;
+		stats.skippedDialect = skippedDialect;
+		stats.skippedFormat = skippedFormat;
 
 		const measurement = await measureCases(runnable, {
 			render: renderCaseModule,
@@ -289,21 +272,7 @@ describe('other dialects', () => {
 		const token = OTHER_DIALECTS[dialect];
 
 		test(`${dialect} matches the recorded baseline`, async () => {
-			const runnable: RunnableCase[] = [];
-
-			for (const file of files) {
-				for (const testCase of file.cases) {
-					if (!isCompatible(testCase.compatibility, token)) {
-						continue;
-					}
-
-					if (testCase.tags?.includes('format-assertion')) {
-						continue;
-					}
-
-					runnable.push({ testCase, key: suiteCaseKey(file, testCase) });
-				}
-			}
+			const { runnable } = selectCases(files, token);
 
 			const measurement = await measureCases(runnable, {
 				render: (testCase) => renderCaseModule(testCase, dialect),

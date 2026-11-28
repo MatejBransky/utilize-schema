@@ -1,11 +1,59 @@
+import { isCompatible } from './compatibility';
+import { suiteCaseKey } from './loadSuite';
 import { typecheckCases } from './typecheck';
 
-import type { SuiteCase } from './loadSuite';
+import type { Dialect } from './compatibility';
+import type { SuiteCase, SuiteFile } from './loadSuite';
 import type { CaseModule, TypecheckModule, TypecheckResults } from './typecheck';
 
 export interface RunnableCase {
 	testCase: SuiteCase;
 	key: string;
+}
+
+export interface CaseSelection {
+	/** The cases the type-level runner measures for the dialect. */
+	runnable: RunnableCase[];
+	/** Every case in the suite, including the ones the dialect or the tags skip. */
+	total: number;
+	skippedDialect: number;
+	skippedFormat: number;
+}
+
+/**
+ * Selects the cases one type-level runner measures. Both `@utilize/typescript`
+ * and the pinned competitors call this, so the comparison cannot drift through
+ * a copied selection step.
+ */
+export function selectCases(files: readonly SuiteFile[], dialect: Dialect): CaseSelection {
+	const runnable: RunnableCase[] = [];
+	let skippedDialect = 0;
+	let skippedFormat = 0;
+
+	for (const file of files) {
+		for (const testCase of file.cases) {
+			if (!isCompatible(testCase.compatibility, dialect)) {
+				skippedDialect++;
+				continue;
+			}
+
+			// A type cannot check a format either way, so assertion cases are
+			// measured by the runtime generators instead of here.
+			if (testCase.tags?.includes('format-assertion')) {
+				skippedFormat++;
+				continue;
+			}
+
+			runnable.push({ testCase, key: suiteCaseKey(file, testCase) });
+		}
+	}
+
+	return {
+		runnable,
+		total: runnable.length + skippedDialect + skippedFormat,
+		skippedDialect,
+		skippedFormat,
+	};
 }
 
 export interface CaseFailure {

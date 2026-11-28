@@ -3,24 +3,24 @@ import { join } from 'node:path';
 
 import { describe, expect, test } from 'vitest';
 
-import { DRAFT_7, isCompatible, OTHER_DIALECTS } from '../src/suite/compatibility';
+import { DRAFT_7, OTHER_DIALECTS } from '../src/suite/compatibility';
 import type { Dialect } from '../src/suite/compatibility';
 import { baseline } from '../src/suite/jsonSchemaToTypescriptBaseline';
 import type { DialectStats } from '../src/suite/jsonSchemaToTypescriptBaseline';
 import { renderJsonSchemaToTypescriptCase } from '../src/suite/jsonSchemaToTypescript';
-import { loadSuiteFiles, suiteCaseKey } from '../src/suite/loadSuite';
-import { measureCases } from '../src/suite/measure';
-import type { CaseFailure, RunnableCase } from '../src/suite/measure';
+import { loadSuiteFiles } from '../src/suite/loadSuite';
+import { measureCases, selectCases } from '../src/suite/measure';
+import type { CaseFailure } from '../src/suite/measure';
 
 /**
  * Runs the official JSON Schema Test Suite through json-schema-to-typescript
  * with the same type-level method as `@utilize/typescript`.
  *
- * Both generators are compiled from the same pinned suite revision, skip the
- * same `format-assertion` cases, serve `externalSchemas` from memory, and write
- * every instance as a typed constant that one `tsc --strict` run checks. A case
- * passes when no valid instance is rejected and no invalid instance is
- * accepted.
+ * Both generators are compiled from the same pinned suite revision, select their
+ * cases with the shared `selectCases` helper, serve `externalSchemas` from
+ * memory, and write every instance as a typed constant that one `tsc --strict`
+ * run checks. A case passes when no valid instance is rejected and no invalid
+ * instance is accepted.
  *
  * This is a comparison baseline, not a gate on the competitor: the numbers
  * record what the pinned json-schema-to-typescript version does. Update them on
@@ -47,22 +47,7 @@ const DIALECTS = {
 const DIALECT_NAMES = ['draft-04', 'draft-06', 'draft-07', '2019-09', '2020-12'] as const;
 
 async function measure(token: Dialect): Promise<DialectMeasurement> {
-	const runnable: RunnableCase[] = [];
-
-	for (const file of files) {
-		for (const testCase of file.cases) {
-			if (!isCompatible(testCase.compatibility, token)) {
-				continue;
-			}
-
-			if (testCase.tags?.includes('format-assertion')) {
-				continue;
-			}
-
-			runnable.push({ testCase, key: suiteCaseKey(file, testCase) });
-		}
-	}
-
+	const { runnable } = selectCases(files, token);
 	const measurement = await measureCases(runnable, { render: renderJsonSchemaToTypescriptCase });
 
 	return {
