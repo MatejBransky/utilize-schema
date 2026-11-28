@@ -1,16 +1,32 @@
 import { execFileSync } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 
 import { expectDefined } from '@utilize/json-schema';
 
-import { commandOutput } from '../test-utils';
-
-import type { CaseModule } from './generateCase';
+import { commandOutput } from '../process';
 
 const require = createRequire(import.meta.url);
 const tsc = join(dirname(require.resolve('typescript/package.json')), 'bin/tsc');
+
+export interface InstanceLine {
+	/** Position of the instance in the suite case. */
+	index: number;
+	valid: boolean;
+	/** 1-based line of the `const` declaration that must type-check. */
+	line: number;
+	/** 1-based line of the directive that must be consumed, for invalid instances. */
+	directiveLine?: number;
+}
+
+export interface CaseModule {
+	code: string;
+	/** Last line that belongs to the generated schema declarations. */
+	schemaLines: number;
+	instances: InstanceLine[];
+}
 
 export interface TypecheckModule {
 	key: string;
@@ -29,6 +45,43 @@ export interface TypecheckResults {
 }
 
 const DIAGNOSTIC = /^(.*)\((\d+),(\d+)\): error (TS\d+): (.*)$/;
+const ROOT_DECLARATION = /^export (?:interface|type|enum|const enum) Root\b/m;
+
+/**
+ * Appends one typed constant per suite instance to generated declarations.
+ * Valid instances are plain declarations; invalid instances get an expect-error
+ * directive, so a single `tsc` run checks both directions.
+ *
+ * A generator that emits no `Root` declaration cannot be scored: an expect-error
+ * directive would swallow the missing name and make an invalid instance look
+ * rejected. Treat that output as a compile failure instead.
+ */
+export function appendInstances(
+	code: string,
+	tests: readonly { valid: boolean; data: unknown }[]
+): CaseModule {
+	if (!ROOT_DECLARATION.test(code)) {
+		throw new Error('Generated code does not declare Root');
+	}
+
+	const lines = code.trimEnd().split('\n');
+	const schemaLines = lines.length;
+	const instances: InstanceLine[] = [];
+
+	for (const [index, suiteTest] of tests.entries()) {
+		let directiveLine: number | undefined;
+
+		if (!suiteTest.valid) {
+			lines.push(`// @ts-expect-error -- invalid instance ${index}`);
+			directiveLine = lines.length;
+		}
+
+		lines.push(`const instance${index}: Root = ${JSON.stringify(suiteTest.data)};`);
+		instances.push({ index, valid: suiteTest.valid, line: lines.length, directiveLine });
+	}
+
+	return { code: `${lines.join('\n')}\n`, schemaLines, instances };
+}
 
 /**
  * Type-checks every case module in one compiler run. A module is a self
@@ -37,7 +90,7 @@ const DIAGNOSTIC = /^(.*)\((\d+),(\d+)\): error (TS\d+): (.*)$/;
  * instance.
  */
 export async function typecheckCases(modules: TypecheckModule[]): Promise<TypecheckResults> {
-	const directory = await mkdtemp(join(__dirname, '__suite__-'));
+	const directory = await mkdtemp(join(tmpdir(), 'utilize-suite-'));
 	const byPath = new Map<string, TypecheckModule>();
 	const files: string[] = [];
 	const results: TypecheckResults = {

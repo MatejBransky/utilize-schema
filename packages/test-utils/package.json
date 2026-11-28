@@ -6,13 +6,16 @@
 	"type": "module",
 	"exports": {
 		"./code": "./src/code.ts",
+		"./process": "./src/process.ts",
 		"./setup": "./src/setup.ts",
 		"./suite/*": "./src/suite/*.ts"
 	},
 	"scripts": {
 		"check:types": "tsc --noEmit",
 		"test": "vitest",
-		"ci:test": "vitest run"
+		"test:suite": "vitest run test/jsonSchemaToTypescript.test.ts",
+		"ci:test": "vitest run",
+		"update:suite-baseline": "node scripts/update-suite-baseline.mjs"
 	},
 	"dependencies": {
 		"@utilize/json-schema": "workspace:*",
@@ -22,6 +25,7 @@
 	"devDependencies": {
 		"@total-typescript/tsconfig": "catalog:",
 		"@types/node": "catalog:",
+		"json-schema-to-typescript": "16.0.0",
 		"typescript": "catalog:",
 		"vitest": "catalog:"
 	},
