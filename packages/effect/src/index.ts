@@ -9,12 +9,8 @@ export {
 	type CompileOptions,
 	type CompileSchemaOptions,
 } from './compile';
-export {
-	generate,
-	type CustomSchemaResolver,
-	type FormatMode,
-	type GenerateOptions,
-} from './generator';
+export { generate } from './generator';
+export type { CustomSchemaResolver, FormatMode, GenerateOptions } from './context';
 export { UnresolvedReferenceError, UnsupportedEffectSchemaFeatureError } from './errors';
 export {
 	mapName,
@@ -22,4 +18,4 @@ export {
 	toSafeString,
 	type CustomNameResolver,
 	type NameMapper,
-} from './resolveName';
+} from '@utilize/json-schema';

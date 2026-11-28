@@ -1,59 +1,95 @@
 import {
-	type DialectOptions,
-	type JSONSchema,
+	expectDefined,
+	isParsedJSONSchemaObject,
 	Meta,
 	parse,
-	type ParsedJSONSchemaObject,
+	resolveDialect,
 } from '@utilize/json-schema';
-import { format as formatCode } from 'oxfmt';
-import { type z } from 'zod';
+import type { DialectOptions, JSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
+import type { z } from 'zod';
+
+import { formatSource, ts } from '@utilize/test-utils/code';
 
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { generate, type GenerateOptions } from '../src/generator';
+import { generate } from '../src/generator';
+import type { GenerateOptions } from '../src/generator';
 import type { CustomSchemaResolver, FormatMap, FormatMode } from '../src/generators/types';
 
 /** Generator options a test can override; the rest keep their test defaults. */
-type TestGenerateOptions = Pick<GenerateOptions, 'schemaName' | 'typeName' | 'runtimeImport'>;
+export type TestGenerateOptions = Pick<
+	GenerateOptions,
+	'schemaName' | 'typeName' | 'runtimeImport'
+>;
 
-/**
- * A tagged template literal function for expected TypeScript code. Code is
- * compared with whitespace normalized, so the generated output does not need
- * to be formatted.
- */
-export const ts = (strings: TemplateStringsArray, ...values: unknown[]) =>
-	formatSource(String.raw(strings, ...values));
+export { ts };
 
-const formatOptions = {
-	bracketSpacing: true,
-	endOfLine: 'lf',
-	semi: true,
-	singleQuote: true,
-	trailingComma: 'es5',
-	useTabs: true,
-	objectWrap: 'collapse',
-} as const;
-
-function formatSource(code: string) {
-	return formatCode('code.ts', code, formatOptions).then((result) => result.code);
+/** Adds raw keywords the public model does not declare yet to a typed fixture. */
+export function schemaWithExtensions(
+	schema: JSONSchema,
+	extensions: Record<string, unknown>
+): JSONSchema {
+	return Object.assign(schema, extensions);
 }
 
-export function normalizeCode(code: string): string {
-	return code.replace(/\r\n?/g, '\n').trim();
-}
-
-export function withMeta(obj: JSONSchema, meta: Partial<Meta> = {}) {
-	Object.defineProperty(obj, Meta, {
-		enumerable: false,
-		value: { ...meta },
-		writable: true,
+/** Builds the linked shape unit tests need without running the parser. */
+export function parsedSchema(schema: JSONSchema): ParsedJSONSchemaObject {
+	Object.defineProperty(schema, Meta, {
 		configurable: true,
+		value: {
+			fileName: 'test.json',
+			filePath: __dirname,
+			path: [],
+			parent: null,
+			dialect: resolveDialect({}).dialect.id,
+			dialectSource: 'fallback',
+		},
 	});
-	return obj as ParsedJSONSchemaObject;
+
+	if (!isParsedJSONSchemaObject(schema)) {
+		throw new Error('Fixture did not become a parsed schema.');
+	}
+
+	return schema;
 }
 
-export interface CompileOptions extends TestGenerateOptions {
+export interface ProcessFailure {
+	stdout?: string;
+	stderr?: string;
+}
+
+function isProcessFailure(value: unknown): value is ProcessFailure {
+	if (typeof value !== 'object' || value === null) {
+		return false;
+	}
+
+	if ('stdout' in value && typeof value.stdout !== 'string') {
+		return false;
+	}
+
+	if ('stderr' in value && typeof value.stderr !== 'string') {
+		return false;
+	}
+
+	return true;
+}
+
+/** Reads the optional captured output from a failed child process. */
+export function errorOutput(error: unknown): ProcessFailure {
+	return isProcessFailure(error) ? error : {};
+}
+
+function isZodType(value: unknown): value is z.ZodType {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'safeParse' in value &&
+		typeof value.safeParse === 'function'
+	);
+}
+
+export interface TestCompileOptions extends TestGenerateOptions {
 	importZod?: boolean;
 	cwd?: string;
 	fileName?: string;
@@ -63,7 +99,10 @@ export interface CompileOptions extends TestGenerateOptions {
 	customSchemaResolver?: CustomSchemaResolver;
 }
 
-export async function compile(schema: JSONSchema, options?: CompileOptions & DialectOptions) {
+export async function generateCode(
+	schema: JSONSchema,
+	options?: TestCompileOptions & DialectOptions
+) {
 	const parsed = await parse(schema, {
 		cwd: options?.cwd ?? __dirname + '/',
 		fileName: options?.fileName ?? 'Root.json',
@@ -93,15 +132,31 @@ export async function compile(schema: JSONSchema, options?: CompileOptions & Dia
  */
 export async function compileModule(
 	schema: JSONSchema,
-	options?: CompileOptions & DialectOptions
+	options?: TestCompileOptions & DialectOptions
 ): Promise<Record<string, z.ZodType>> {
-	const code = await compile(schema, { ...options, importZod: true });
+	const code = await generateCode(schema, { ...options, importZod: true });
 	const directory = await mkdtemp(join(__dirname, '__generated__-'));
 
 	try {
 		const filePath = join(directory, 'schema.ts');
 		await writeFile(filePath, code);
-		return (await import(filePath)) as Record<string, z.ZodType>;
+		const loaded: unknown = await import(filePath);
+
+		if (typeof loaded !== 'object' || loaded === null || Array.isArray(loaded)) {
+			throw new Error('Generated module did not evaluate to an object.');
+		}
+
+		const module: Record<string, z.ZodType> = {};
+
+		for (const [name, value] of Object.entries(loaded)) {
+			if (!isZodType(value)) {
+				throw new Error(`Generated export "${name}" is not a Zod schema.`);
+			}
+
+			module[name] = value;
+		}
+
+		return module;
 	} finally {
 		await rm(directory, { recursive: true, force: true });
 	}
@@ -109,8 +164,8 @@ export async function compileModule(
 
 export async function compileToZod(
 	schema: JSONSchema,
-	options?: CompileOptions & DialectOptions
+	options?: TestCompileOptions & DialectOptions
 ): Promise<z.ZodType> {
 	const module = await compileModule(schema, options);
-	return module.Root!;
+	return expectDefined(module.Root);
 }

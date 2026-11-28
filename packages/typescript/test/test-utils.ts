@@ -1,13 +1,10 @@
-import {
-	type JSONSchema,
-	Meta,
-	type ParsedJSONSchema,
-	type ParsedJSONSchemaObject,
-	parse,
-} from '@utilize/json-schema';
-import { format as formatCode } from 'oxfmt';
+import { isParsedJSONSchemaObject, Meta, parse } from '@utilize/json-schema';
+import type { JSONSchema, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
+import { formatSource, ts } from '@utilize/test-utils/code';
+import { commandOutput } from '@utilize/test-utils/process';
 
-import { generate, type GenerateOptions } from '../src/generator';
+import { generate } from '../src/generator';
+import type { GenerateOptions } from '../src/generator';
 
 /** JSON Schema 2020-12 keywords that the draft-07 based `JSONSchema` type lacks. */
 export type TestSchema = JSONSchema & {
@@ -21,33 +18,9 @@ export type TestSchema = JSONSchema & {
 	dependentSchemas?: Record<string, JSONSchema>;
 };
 
-/**
- * A tagged template literal function for expected TypeScript code. Code is
- * compared with whitespace normalized, so the generated output does not need
- * to be formatted.
- */
-export const ts = (strings: TemplateStringsArray, ...values: unknown[]) =>
-	formatSource(String.raw(strings, ...values));
+export { commandOutput, ts };
 
-const formatOptions = {
-	bracketSpacing: true,
-	endOfLine: 'lf',
-	semi: true,
-	singleQuote: true,
-	trailingComma: 'es5',
-	useTabs: true,
-	objectWrap: 'collapse',
-} as const;
-
-function formatSource(code: string) {
-	return formatCode('code.ts', code, formatOptions).then((result) => result.code);
-}
-
-export function normalizeCode(code: string): string {
-	return code.replace(/\r\n?/g, '\n').trim();
-}
-
-export function withMeta(obj: JSONSchema, meta: Partial<Meta> = {}) {
+export function withMeta(obj: JSONSchema, meta: Partial<Meta> = {}): ParsedJSONSchemaObject {
 	Object.defineProperty(obj, Meta, {
 		enumerable: false,
 		value: { ...meta },
@@ -55,14 +28,18 @@ export function withMeta(obj: JSONSchema, meta: Partial<Meta> = {}) {
 		configurable: true,
 	});
 
-	return obj as ParsedJSONSchemaObject;
+	if (!isParsedJSONSchemaObject(obj)) {
+		throw new Error('Expected schema metadata to be attached');
+	}
+
+	return obj;
 }
 
 export interface CompileOptions extends GenerateOptions {
 	fileName?: string;
 }
 
-export async function parseSchema(
+async function parseSchema(
 	schema: TestSchema,
 	options: { fileName?: string } = {}
 ): Promise<ParsedJSONSchema> {

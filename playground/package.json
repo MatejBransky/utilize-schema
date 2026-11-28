@@ -12,20 +12,23 @@
 		"ci:test": "vitest run"
 	},
 	"dependencies": {
-		"@ui-sdk/core": "0.1.0-beta.3",
-		"@ui-sdk/react": "0.1.0-beta.3",
+		"@ui-sdk/core": "0.1.0-beta.13",
+		"@ui-sdk/react": "0.1.0-beta.13",
 		"@utilize/effect": "workspace:*",
 		"@utilize/json-schema": "workspace:*",
 		"@utilize/typescript": "workspace:*",
 		"@utilize/zod": "workspace:*",
-		"ajv": "8.20.0",
-		"ajv-draft-04": "1.0.0",
+		"ajv": "catalog:",
+		"ajv-draft-04": "catalog:",
 		"buffer": "6.0.3",
+		"effect": "catalog:",
+		"es-module-lexer": "2.3.2",
 		"monaco-editor": "0.57.0",
 		"path-browserify": "1.0.1",
 		"prettier": "3.10.1",
 		"react": "19.3.1",
-		"react-dom": "19.3.1"
+		"react-dom": "19.3.1",
+		"zod": "catalog:"
 	},
 	"devDependencies": {
 		"@types/node": "catalog:",
@@ -33,13 +36,11 @@
 		"@types/react": "19.3.0",
 		"@types/react-dom": "19.3.0",
 		"@vitejs/plugin-react-swc": "4.3.3",
-		"@vitest/browser-playwright": "5.1.0",
-		"effect": "catalog:",
+		"@vitest/browser-playwright": "5.1.1",
 		"playwright": "1.65.1",
 		"typescript": "catalog:",
 		"vite": "8.3.8",
 		"vitest": "catalog:",
-		"vitest-browser-react": "2.3.0",
-		"zod": "catalog:"
+		"vitest-browser-react": "2.3.0"
 	}
 }

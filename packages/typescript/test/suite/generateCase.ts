@@ -1,25 +1,11 @@
-import { type JSONSchema, Meta, parse } from '@utilize/json-schema';
+import { Meta, parse } from '@utilize/json-schema';
+import type { DialectId } from '@utilize/json-schema';
+import { appendInstances } from '@utilize/test-utils/suite/typecheck';
+import type { CaseModule } from '@utilize/test-utils/suite/typecheck';
 
 import { generate } from '../../src/generator';
 
-import type { SuiteCase } from './loadSuite';
-
-export interface InstanceLine {
-	/** Position of the instance in the suite case. */
-	index: number;
-	valid: boolean;
-	/** 1-based line of the `const` declaration that must type-check. */
-	line: number;
-	/** 1-based line of the directive that must be consumed, for invalid instances. */
-	directiveLine?: number;
-}
-
-export interface CaseModule {
-	code: string;
-	/** Last line that belongs to the generated schema declarations. */
-	schemaLines: number;
-	instances: InstanceLine[];
-}
+import type { SuiteCase } from '@utilize/test-utils/suite/loadSuite';
 
 /**
  * Generates the types for a suite case and appends one typed constant per
@@ -29,11 +15,15 @@ export interface CaseModule {
  * The root is always named `Root`, because suite schemas often have a `title` or
  * `$id` that would otherwise become the declaration name.
  */
-export async function renderCaseModule(testCase: SuiteCase): Promise<CaseModule> {
-	const { root } = await parse(testCase.schema as JSONSchema, {
+export async function renderCaseModule(
+	testCase: SuiteCase,
+	dialect?: DialectId
+): Promise<CaseModule> {
+	const { root } = await parse(testCase.schema, {
 		cwd: __dirname + '/',
 		fileName: 'Root.json',
 		externalSchemas: testCase.externalSchemas,
+		dialect,
 	});
 
 	const code = generate(root, {
@@ -41,21 +31,5 @@ export async function renderCaseModule(testCase: SuiteCase): Promise<CaseModule>
 			schema[Meta]?.parent === null && schema[Meta]?.fileName === 'Root.json' ? 'Root' : undefined,
 	});
 
-	const lines = code.trimEnd().split('\n');
-	const schemaLines = lines.length;
-	const instances: InstanceLine[] = [];
-
-	for (const [index, suiteTest] of testCase.tests.entries()) {
-		let directiveLine: number | undefined;
-
-		if (!suiteTest.valid) {
-			lines.push(`// @ts-expect-error -- invalid instance ${index}`);
-			directiveLine = lines.length;
-		}
-
-		lines.push(`const instance${index}: Root = ${JSON.stringify(suiteTest.data)};`);
-		instances.push({ index, valid: suiteTest.valid, line: lines.length, directiveLine });
-	}
-
-	return { code: `${lines.join('\n')}\n`, schemaLines, instances };
+	return appendInstances(code, testCase.tests);
 }

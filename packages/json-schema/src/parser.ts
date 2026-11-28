@@ -1,16 +1,26 @@
 import { $RefParser } from '@apidevtools/json-schema-ref-parser';
+import type { $Refs } from '@apidevtools/json-schema-ref-parser';
 
-import type { DialectIssue, DialectOptions } from './dialect';
+import type { DialectId, DialectIssue, DialectOptions } from './dialect';
 import { resolveDialect } from './dialect';
-import { type ExternalSchemas, indexExternalSchemas, normalizeUri } from './externalSchemas';
+import { indexExternalSchemas, normalizeUri } from './externalSchemas';
+import type { ExternalSchemas } from './externalSchemas';
 import { createSchemaIndex, schemaChildren } from './identifiers';
 import { link } from './linker';
-import { Meta, type JSONSchema, type ParsedJSONSchema } from './model';
-import { type DialectMap, prepareSchema } from './normalize';
+import { isJSONSchema, isJSONSchemaObject, isParsedJSONSchema } from './model';
+import type { JSONSchema, ParsedJSONSchema, ParsedJSONSchemaObject } from './model';
+import { prepareSchema, resolveDocumentDialect } from './normalize';
+import type { DialectMap } from './normalize';
+import { SchemaValidationError } from './validation';
+import type {
+	SchemaValidationOptions,
+	SchemaValidationReport,
+	SchemaValidator,
+} from './validation';
 
 type SchemaPath = string;
 
-export interface ParseOptions extends DialectOptions {
+export interface ParseOptions extends DialectOptions, SchemaValidationOptions {
 	cwd: string;
 	fileName: string;
 	/**
@@ -22,7 +32,7 @@ export interface ParseOptions extends DialectOptions {
 }
 
 export async function parse(
-	schema: JSONSchema,
+	schema: JSONSchema | boolean,
 	options: ParseOptions
 ): Promise<{
 	root: ParsedJSONSchema;
@@ -39,44 +49,29 @@ export async function parse(
 	}
 
 	const parser = new $RefParser();
-	// Parsing normalizes and links in place. Clone the input so the same schema
-	// object can be compiled again, and with another dialect, without leftovers.
-	const input = structuredClone(schema);
-
-	const provided = options.externalSchemas
-		? indexExternalSchemas(options.externalSchemas)
-		: undefined;
-	const providedSchema = (url: string) => provided?.get(url) ?? provided?.get(normalizeUri(url));
-
-	const $refs = await parser.resolve(
-		cwd,
-		input,
-		provided
-			? {
-					resolve: {
-						external: true,
-						// Runs before the built-in file and HTTP resolvers, so a provided
-						// URI is served from memory instead of being fetched.
-						provided: {
-							order: 1,
-							canRead: (file: { url: string }) => providedSchema(file.url) !== undefined,
-							// A boolean schema is a valid document, but the resolver type
-							// only admits objects.
-							read: (file: { url: string }) => providedSchema(file.url) as JSONSchema,
-						},
-					},
-				}
-			: {}
+	const rootDialect = resolveDialect(schema, options).dialect.id;
+	// Pre-index cloned documents so opaque in-document IDs resolve before
+	// `$RefParser` reads them as paths. Indexing clones each document, so parsing
+	// can normalize and link in place without leaving leftovers on the caller's
+	// schema.
+	const provided = indexExternalSchemas(
+		{ ...options.externalSchemas, [cwd]: schema },
+		{ ...options, fallbackDialect: rootDialect }
 	);
+	// `indexExternalSchemas` normalizes its keys, so look the root up the same way.
+	const input = provided.get(normalizeUri(cwd));
 
-	const entries = Object.entries($refs.values()) as Array<[SchemaPath, JSONSchema]>;
-	// `$RefParser` registers a nested `$id` as its own entry whose value is a node
+	if (input === undefined) {
+		throw new Error(`Provided schema is missing its root document: ${cwd}`);
+	}
+
+	const $refs = await resolveDocuments(parser, cwd, input, provided, rootDialect);
+
+	const entries = schemaEntries($refs.values()); // `$RefParser` registers a nested `$id` as its own entry whose value is a node
 	// inside another document. Preparing and linking both would normalize that
 	// node twice and report its dialect issues twice, so keep the entry that
 	// contains the others.
 	const documentEntries = outerEntries(entries);
-
-	const rootDialect = resolveDialect(schema, options).dialect.id;
 
 	let rootDialects: DialectMap | undefined;
 	const issues: DialectIssue[] = [];
@@ -89,7 +84,19 @@ export async function parse(
 	// a root pointer and would return its target, which loses the root node and
 	// its metadata. The root document is the object handed to `resolve`.
 	const rootDocument = entries.find(([, value]) => value === input)?.[1];
-	const rootSchema = rootDocument ?? ($refs.get('#') as JSONSchema);
+	const rootSchema = rootDocument ?? schemaFromRootPointer($refs.get('#'));
+	const validationReports = await validateDocuments(options.validateSchema, documentEntries, {
+		cwd,
+		rootFileName,
+		rootSchema,
+		rootDialect,
+		options,
+	});
+
+	if (validationReports.length > 0) {
+		throw new SchemaValidationError(validationReports);
+	}
+
 	const identifiers = createSchemaIndex();
 
 	// Every document is normalized and indexed before linking, so a `$ref` can
@@ -100,17 +107,19 @@ export async function parse(
 		const fileName = isRootSchema ? rootFileName : (filePath.split(/[\\/]/).at(-1) ?? 'Unknown');
 
 		// A referenced file without `$schema` inherits the root's dialect.
-		const dialects = prepareSchema(entrySchema, {
-			dialect: options.dialect,
-			fallbackDialect: options.fallbackDialect,
-			inheritedDialect: isRootSchema ? undefined : rootDialect,
-			unknownDialect: options.unknownDialect,
-			keywordPolicy: options.keywordPolicy,
-			onDialectIssue,
-			filePath: prefixPath,
-		});
+		const dialects = isJSONSchemaObject(entrySchema)
+			? prepareSchema(entrySchema, {
+					dialect: options.dialect,
+					fallbackDialect: options.fallbackDialect,
+					inheritedDialect: isRootSchema ? undefined : rootDialect,
+					unknownDialect: options.unknownDialect,
+					keywordPolicy: options.keywordPolicy,
+					onDialectIssue,
+					filePath: prefixPath,
+				})
+			: undefined;
 
-		if (isRootSchema) {
+		if (isRootSchema && dialects) {
 			rootDialects = dialects;
 		}
 
@@ -120,6 +129,10 @@ export async function parse(
 	});
 
 	for (const { entrySchema, prefixPath, fileName, dialects } of documents) {
+		if (!isJSONSchemaObject(entrySchema)) {
+			continue;
+		}
+
 		link({
 			schema: entrySchema,
 			parent: null,
@@ -133,11 +146,9 @@ export async function parse(
 		});
 	}
 
-	const root = rootSchema as unknown as ParsedJSONSchema;
-
-	if (typeof root === 'object' && root !== null && !Object.hasOwnProperty.call(root, Meta)) {
+	const root = linkedRoot(rootSchema, (schema) =>
 		link({
-			schema: root,
+			schema,
 			parent: null,
 			fileName: rootFileName,
 			filePath: '#',
@@ -146,17 +157,267 @@ export async function parse(
 			identifiers,
 			stack: new Set(),
 			dialects: rootDialects,
-		});
+		})
+	);
+	const referencedSchemas: ParsedJSONSchema[] = [];
+
+	for (const [, entrySchema] of documentEntries) {
+		if (entrySchema !== root && isParsedJSONSchema(entrySchema)) {
+			referencedSchemas.push(entrySchema);
+		}
+	}
+
+	function linkedSchema(value: unknown): ParsedJSONSchema {
+		if (isParsedJSONSchema(value)) {
+			return value;
+		}
+
+		if (isJSONSchemaObject(value)) {
+			return link({
+				schema: value,
+				parent: null,
+				fileName: rootFileName,
+				filePath: '#',
+				path: [],
+				$refs,
+				identifiers,
+				stack: new Set(),
+				dialects: rootDialects,
+			});
+		}
+
+		throw new TypeError('The referenced schema has not been linked');
 	}
 
 	return {
 		root,
-		get: ($ref: string) => $refs.get($ref) as unknown as ParsedJSONSchema,
-		referencedSchemas: documentEntries
-			.filter(([, entrySchema]) => entrySchema !== root)
-			.map(([, entrySchema]) => entrySchema) as ParsedJSONSchema[],
+		get: ($ref: string) => linkedSchema($refs.get($ref)),
+		referencedSchemas,
 		issues,
 	};
+}
+
+async function resolveDocuments(
+	parser: $RefParser,
+	cwd: string,
+	input: JSONSchema | boolean,
+	provided: Map<string, JSONSchema | boolean>,
+	rootDialect: DialectId
+): Promise<$Refs> {
+	const providedSchema = (url: string) => provided.get(url) ?? provided.get(normalizeUri(url));
+
+	const legacyIdAliases = new WeakSet<object>();
+	const ignoredLegacyIds = new WeakMap<object, string>();
+
+	for (const document of provided.values()) {
+		addLegacyIdAliases(document, rootDialect, legacyIdAliases, ignoredLegacyIds, new WeakSet());
+	}
+
+	try {
+		return await parser.resolve(cwd, input, {
+			resolve: {
+				external: true,
+				// Provided URIs and identifiers must win over file and HTTP reads.
+				provided: {
+					order: 1,
+					canRead: (file: { url: string }) => providedSchema(file.url) !== undefined,
+					// A boolean schema is a valid document, but the resolver type only
+					// admits objects, so hand it to the JSON parser as source.
+					read: (file: { url: string }) => {
+						const providedDocument = providedSchema(file.url);
+
+						if (providedDocument === undefined) {
+							throw new Error(`Provided schema not found: ${file.url}`);
+						}
+
+						return isJSONSchemaObject(providedDocument)
+							? providedDocument
+							: String(providedDocument);
+					},
+				},
+			},
+		});
+	} finally {
+		for (const document of provided.values()) {
+			removeLegacyIdAliases(document, legacyIdAliases, ignoredLegacyIds, new WeakSet());
+		}
+	}
+}
+
+/**
+ * `$RefParser` follows `$id` but not the draft-04 `id`. Expose the same base
+ * URI under `$id` while it resolves external documents, then remove only the
+ * aliases we added before normalization and linking.
+ */
+function addLegacyIdAliases(
+	node: unknown,
+	inheritedDialect: DialectId,
+	aliases: WeakSet<object>,
+	ignored: WeakMap<object, string>,
+	seen: WeakSet<object>
+): void {
+	if (Array.isArray(node)) {
+		for (const item of node) {
+			addLegacyIdAliases(item, inheritedDialect, aliases, ignored, seen);
+		}
+
+		return;
+	}
+
+	if (!isJSONSchemaObject(node) || seen.has(node)) {
+		return;
+	}
+
+	seen.add(node);
+
+	const dialect = resolveDialect(node, { fallbackDialect: inheritedDialect }).dialect.id;
+	prepareLegacyId(node, dialect, aliases, ignored);
+
+	for (const child of schemaChildren(node)) {
+		addLegacyIdAliases(child, dialect, aliases, ignored, seen);
+	}
+}
+
+function prepareLegacyId(
+	node: JSONSchema,
+	dialect: DialectId,
+	aliases: WeakSet<object>,
+	ignored: WeakMap<object, string>
+): void {
+	if (dialect !== 'draft-04' || typeof node.id !== 'string') {
+		return;
+	}
+
+	if (typeof node.$ref === 'string') {
+		ignored.set(node, node.id);
+		delete node.id;
+		return;
+	}
+
+	if (node.$id === undefined) {
+		node.$id = node.id;
+		aliases.add(node);
+	}
+}
+
+function removeLegacyIdAliases(
+	node: unknown,
+	aliases: WeakSet<object>,
+	ignored: WeakMap<object, string>,
+	seen: WeakSet<object>
+): void {
+	if (Array.isArray(node)) {
+		for (const item of node) {
+			removeLegacyIdAliases(item, aliases, ignored, seen);
+		}
+
+		return;
+	}
+
+	if (!isJSONSchemaObject(node) || seen.has(node)) {
+		return;
+	}
+
+	seen.add(node);
+
+	if (aliases.has(node)) {
+		delete node.$id;
+	}
+
+	const id = ignored.get(node);
+
+	if (id !== undefined) {
+		node.id = id;
+	}
+
+	for (const child of schemaChildren(node)) {
+		removeLegacyIdAliases(child, aliases, ignored, seen);
+	}
+}
+
+/** What one optional validation pass needs from the parse that started it. */
+interface ValidationRun {
+	cwd: string;
+	rootFileName: string;
+	rootSchema: JSONSchema | boolean | null;
+	rootDialect: DialectId;
+	options: ParseOptions;
+}
+
+/**
+ * Runs the optional validator on every resolved document, before normalization
+ * rewrites draft-specific keyword shapes (such as draft-04 `exclusiveMinimum`).
+ * A referenced file without `$schema` is validated with the root dialect, just
+ * as the normalizer will assign it.
+ */
+async function validateDocuments(
+	validator: SchemaValidator | undefined,
+	entries: [SchemaPath, JSONSchema | boolean][],
+	{ cwd, rootFileName, rootSchema, rootDialect, options }: ValidationRun
+): Promise<SchemaValidationReport[]> {
+	if (!validator) {
+		return [];
+	}
+
+	const reports: SchemaValidationReport[] = [];
+
+	for (const [filePath, entrySchema] of entries) {
+		const isRootSchema = entrySchema === rootSchema;
+		const resolved = resolveDocumentDialect(entrySchema, {
+			...options,
+			inheritedDialect: isRootSchema ? undefined : rootDialect,
+		});
+		const documentPath = isRootSchema ? rootFileName : filePath.replace(cwd, '') || filePath;
+		const findings = await validator(entrySchema, {
+			filePath: documentPath,
+			dialect: resolved.dialect.id,
+		});
+
+		if (findings.length > 0) {
+			reports.push({ filePath: documentPath, dialect: resolved.dialect.id, findings });
+		}
+	}
+
+	return reports;
+}
+
+function schemaEntries(values: unknown): [SchemaPath, JSONSchema | boolean][] {
+	const entries: [SchemaPath, JSONSchema | boolean][] = [];
+
+	if (!isJSONSchemaObject(values)) {
+		throw new TypeError('Expected a map of schema documents');
+	}
+
+	for (const [filePath, schema] of Object.entries(values)) {
+		if (isJSONSchema(schema)) {
+			entries.push([filePath, schema]);
+		}
+	}
+
+	return entries;
+}
+
+function linkedRoot(
+	rootSchema: JSONSchema | boolean | null,
+	linkRoot: (schema: JSONSchema) => ParsedJSONSchemaObject
+): ParsedJSONSchema {
+	if (isParsedJSONSchema(rootSchema)) {
+		return rootSchema;
+	}
+
+	if (isJSONSchemaObject(rootSchema)) {
+		return linkRoot(rootSchema);
+	}
+
+	return rootSchema;
+}
+
+function schemaFromRootPointer(value: unknown): JSONSchema | boolean | null {
+	if (value === null || isJSONSchema(value)) {
+		return value;
+	}
+
+	throw new TypeError('The root schema is not a schema');
 }
 
 /**
@@ -164,8 +425,10 @@ export async function parse(
  * duplicate entries for the same document. A nested `$id` is registered as its
  * own URI, but prepare and link already reach the node through its document.
  */
-function outerEntries(entries: Array<[SchemaPath, JSONSchema]>): Array<[SchemaPath, JSONSchema]> {
-	const descendants = new Map<JSONSchema, Set<unknown>>();
+function outerEntries(
+	entries: [SchemaPath, JSONSchema | boolean][]
+): [SchemaPath, JSONSchema | boolean][] {
+	const descendants = new Map<JSONSchema | boolean, Set<unknown>>();
 
 	for (const [, entrySchema] of entries) {
 		if (!descendants.has(entrySchema)) {
@@ -176,7 +439,7 @@ function outerEntries(entries: Array<[SchemaPath, JSONSchema]>): Array<[SchemaPa
 		}
 	}
 
-	const seen = new Set<JSONSchema>();
+	const seen = new Set<JSONSchema | boolean>();
 
 	return entries.filter(([, entrySchema]) => {
 		if (seen.has(entrySchema)) {
@@ -201,13 +464,13 @@ function markSchemaNodes(node: unknown, nodes: Set<unknown>): void {
 		return;
 	}
 
-	if (typeof node !== 'object' || node === null || nodes.has(node)) {
+	if (!isJSONSchemaObject(node) || nodes.has(node)) {
 		return;
 	}
 
 	nodes.add(node);
 
-	for (const child of schemaChildren(node as Record<string, unknown>)) {
+	for (const child of schemaChildren(node)) {
 		markSchemaNodes(child, nodes);
 	}
 }

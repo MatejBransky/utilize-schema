@@ -2,24 +2,73 @@
 
 [![npm version](https://img.shields.io/npm/v/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
 [![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
+[![Unit test coverage](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/coverage-zod.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/CONTRIBUTING.md#coverage-badge)
 
-TypeScript/Zod code generator for JSON Schema. Converts a JSON Schema (with
-references, `$defs` and `definitions`) into standalone Zod schemas and
-TypeScript types.
+[![draft-04 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-zod-draft-04.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/zod/README.md#conformance)
+[![draft-06 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-zod-draft-06.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/zod/README.md#conformance)
+[![draft-07 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-zod-draft-07.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/zod/README.md#conformance)
+[![2019-09 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-zod-2019-09.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/zod/README.md#conformance)
+[![2020-12 conformance](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/suite-zod-2020-12.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/packages/zod/README.md#conformance)
 
-## Features
+Zod schemas and TypeScript types from JSON Schema, including `$ref`s, cycles and
+modular `$defs`. Every definition becomes a standalone schema, and the generated
+file imports `zod`.
 
-- Generates standalone Zod schemas for the root and all definitions
-- Infers TypeScript types from Zod schemas, including recursive ones
-- Handles local, external, cyclic, `$id` and `$anchor` based `$ref`s
-- Applies `$ref` siblings only in dialects that define them: 2019-09 and newer
-  intersect them, draft-07 and older ignore them
-- Validates `patternProperties`, including overlapping patterns and their
-  interaction with `additionalProperties`
-- Emits getters or typed `z.lazy()` for recursive schemas
-- Topologically sorts schemas by dependency
-- Supports most of JSON Schema Draft 7 (see the root README for keyword
-  coverage)
+- **Standalone output.** One schema per root, `$defs` and `definitions` entry,
+  topologically sorted, each with its `z.infer` type.
+- **Cycles handled.** Getters for object properties, typed `z.lazy()` where a
+  getter cannot defer the reference.
+- **Five dialects.** draft-04, draft-06, draft-07, 2019-09 and 2020-12;
+  `$ref` siblings apply only where the dialect defines them.
+- **100% of the official draft-07 suite.** 304 of 304 cases; 96% line coverage.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": ["id"]
+}
+```
+
+```ts
+export const User = z.object({ id: z.iso.date().meta({ format: 'date' }) });
+export type User = z.infer<typeof User>;
+```
+
+The date format keeps this example short. Formats that need structural
+validation, such as `email`, `hostname` and `uri`, are imported from
+`@utilize/json-schema/formats` as one validator per format, shared by every
+schema that uses it.
+
+```sh
+pnpm add zod @utilize/json-schema
+pnpm add -D @utilize/zod
+utilize-zod user.json user.zod.ts
+```
+
+`zod` 4.5 or newer is required. Try it in the
+[playground](https://matejbransky.github.io/utilize-schema/?generator=zod): open
+an example, switch between the three generators, and check how a test document
+validates against the generated schema.
+
+<details>
+<summary>Table of contents</summary>
+
+- [Usage](#usage)
+- [Options](#options)
+- [Output](#output)
+- [Naming](#naming)
+- [How it works](#how-it-works)
+- [CLI](#cli)
+- [Conformance](#conformance)
+- [Testing](#testing)
+
+</details>
 
 ## Usage
 
@@ -27,15 +76,9 @@ TypeScript types.
 import { compile } from '@utilize/zod';
 
 await compile({
-	input: './schema.json',
-	output: './schema.generated.ts',
+  input: './schema.json',
+  output: './schema.generated.ts',
 });
-```
-
-`@utilize/zod` requires `zod` 4.5 or newer as a peer dependency:
-
-```sh
-pnpm add zod
 ```
 
 ## Options
@@ -47,9 +90,14 @@ pnpm add zod
 - `readOnlyKeyword` — map `readOnly: true` to `.readonly()`. Off by default,
   because it freezes values and changes the inferred type.
 - `formatMode` — what `format` becomes in the generated code. `'assert'`
-  (default) turns known formats into validation (`.email()`, `.uuid()`,
-  `.iso.datetime()`, …); `'annotate'` keeps `format` as `.meta({ format })`.
-  Unknown formats stay annotations in both modes.
+  (default) turns known formats into validation (`.iso.date()`, `url` patterns,
+  RFC 3339 date-time and URI validators, …); `'annotate'` keeps `format` as
+  `.meta({ format })`. Unknown formats stay annotations in both modes. A format
+  that needs structural validation is imported once from
+  `@utilize/json-schema/formats` and reused by every property that uses it.
+  Validation follows the JSON Schema format definitions, so `time` requires an
+  RFC 3339 offset and `uri`, `email` and `hostname` are stricter than their
+  target helpers.
 - `formatMap` — map `format` names to your own Zod string expressions. An entry
   applies in both modes, so it can validate a format that `formatMode` would
   leave as an annotation. Formats you do not list follow `formatMode`.
@@ -97,6 +145,11 @@ pnpm add zod
   retrieval URI. A URI present here is read from memory instead of disk or the
   network. Identifiers declared inside a document (`$id`, or the draft-04 `id`)
   are served too.
+- `validateSchema(schema, { dialect, filePath })` — run an optional validator on
+  every resolved document before generation. Any finding throws
+  `SchemaValidationError` with one report per document. See
+  [docs/dialects.md](../../docs/dialects.md#schema-validation) for the finding
+  shape and the Ajv adapter.
 
 For custom pipelines, `compileFile()` and `compileSchema()` return the generated
 code without writing anything, and `withBanner()` applies the default header.
@@ -115,9 +168,9 @@ Recursive schemas are annotated so TypeScript can infer them:
 ```ts
 type TreeValue = { children?: TreeValue[] };
 export const Tree: z.ZodType<TreeValue> = z.object({
-	get children() {
-		return z.array(Tree).optional();
-	},
+  get children() {
+    return z.array(Tree).optional();
+  },
 });
 export type Tree = z.infer<typeof Tree>;
 ```
@@ -160,10 +213,10 @@ a suffix only has to describe the difference:
 
 ```ts
 await compile({
-	input: './schema.json',
-	output: './schema.generated.ts',
-	schemaName: (name) => `${name}Schema`,
-	typeName: (name) => `${name}Schema`,
+  input: './schema.json',
+  output: './schema.generated.ts',
+  schemaName: (name) => `${name}Schema`,
+  typeName: (name) => `${name}Schema`,
 });
 ```
 
@@ -213,11 +266,35 @@ defaults to stdout. Every generated file starts with a "do not edit" banner
 `.readonly()`, and `--runtime-import @utilize/zod/runtime` to import the
 `oneOf` helper instead of declaring it in every file.
 
+`--validate` checks each resolved document against the meta-schema of its
+dialect before generating; install `ajv` to use it (draft-04 schemas also
+need `ajv-draft-04`), or pass `--validator <module>` for another validator. See
+[docs/dialects.md](../../docs/dialects.md#schema-validation).
+
+## Conformance
+
+The official JSON Schema Test Suite is pinned and run for all five dialects. The
+badges link here:
+
+| Dialect  | Cases passing | Where the gaps are                                |
+| -------- | ------------- | ------------------------------------------------- |
+| draft-04 | 194 / 194     | —                                                 |
+| draft-06 | 263 / 263     | —                                                 |
+| draft-07 | 304 / 304     | —                                                 |
+| 2019-09  | 377 / 417     | [case list](test/suite/knownFailuresByDialect.ts) |
+| 2020-12  | 376 / 431     | [case list](test/suite/knownFailuresByDialect.ts) |
+
+Which keywords are implemented, and which are only kept as annotations, is in
+[docs/keywords.md](../../docs/keywords.md#runtime-generators). Every dialect is
+pinned case by case in `knownFailuresByDialect.ts`. Draft-07 has no known gaps;
+`knownFailures.ts` and `knownFailureInstances.ts` remain the place to record
+one.
+
 ## Testing
 
 ```sh
 pnpm test          # unit tests
-pnpm test:suite    # official JSON Schema Test Suite (draft-07)
+pnpm test:suite    # official JSON Schema Test Suite (all dialects)
 ```
 
 The generator is checked against the official
@@ -226,12 +303,18 @@ The suite is pinned to a commit and installed as a dev dependency. Each test
 case is compiled to a Zod schema in memory and every instance from the suite is
 run through `safeParse`.
 
-Today it passes **283 of 304 draft-07 cases (1,399 of 1,655 assertions)**. Format
-cases run in the mode they are tagged for, so both the annotation and the
-assertion cases are measured.
+All five dialects are measured: draft-04, draft-06, draft-07, 2019-09 and
+2020-12. Every dialect is pinned case by case in `knownFailuresByDialect.ts`.
+`test/suite/baseline.ts` records the counts the badges render.
 
-Cases the generator does not handle yet are listed in
-`test/suite/knownFailures.ts`, together with the exact instances that fail in
+Today it passes **1,514 of 1,609 cases** across the five dialects, including every
+draft-04, draft-06 and draft-07 case. Format cases run in the mode they are tagged
+for, so both the annotation and the assertion cases are measured. The remaining
+2019-09 and 2020-12 gaps are dynamic/recursive references, full `unevaluated*`
+annotation propagation, and a few vocabulary/annotation cases.
+
+Draft-07 has no known gaps. A future gap is recorded in
+`test/suite/knownFailures.ts`, together with its exact failing instances in
 `test/suite/knownFailureInstances.ts`. A fix or a regression changes that set,
 so the suite fails and the baseline has to be refreshed:
 
@@ -247,8 +330,3 @@ The runner prints the current totals at the end of every run.
 
 See [`docs/conformance.md`](../../docs/conformance.md) for how these numbers
 relate to json-schema-to-typescript.
-
-## When to use
-
-Use this package to automate Zod schema and TypeScript type generation from
-JSON Schema, including complex schemas with references and modular structure.

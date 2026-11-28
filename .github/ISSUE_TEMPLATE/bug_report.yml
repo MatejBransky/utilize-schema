@@ -1,15 +1,15 @@
 name: Bug report
 description: Report a bug in a parser, a generator, or the playground.
 title: '[bug]: '
-# Applied at creation time. The Triage workflow only runs for `bug` issues and
-# the action ignores `labeled` events, so this label is what opts the issue in.
+# Applied at creation time. The Triage workflow only runs for `bug` issues.
 labels: ['bug']
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for the report. A small schema and the expected output let the
-        triage bot reproduce the bug without guessing.
+        Thanks for the report. For a playground bug, click **Share** and paste
+        the URL; the link carries the whole workspace. A small schema and the
+        expected output let the triage bot reproduce the bug without guessing.
 
         **Security issues:** do not open a public issue. Follow
         [SECURITY.md](https://github.com/MatejBransky/utilize-schema/blob/main/SECURITY.md).
@@ -59,6 +59,9 @@ body:
       label: Expected output or behavior
       description: The generated code or validation result you expected.
       render: text
+      placeholder: |
+        Expected: z.string().email()
+        Actual: z.string()
     validations:
       required: true
 
@@ -70,6 +73,15 @@ body:
       render: text
     validations:
       required: true
+
+  - type: input
+    id: playground
+    attributes:
+      label: Playground link (optional)
+      description: Share URL from the hosted playground. Use a branch preview only if the bug cannot be reproduced on main.
+      placeholder: https://matejbransky.github.io/utilize-schema/#...
+    validations:
+      required: false
 
   - type: textarea
     id: reproduction

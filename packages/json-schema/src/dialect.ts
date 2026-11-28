@@ -1,11 +1,9 @@
 import { ANNOTATION_KEYWORDS } from './keywords';
-import { Meta, type ParsedJSONSchemaObject, type Path } from './model';
+import { isParsedJSONSchemaObject, Meta } from './model';
+import type { ParsedJSONSchemaObject, Path } from './model';
 import { isPlainObject } from './utils';
 
 export type DialectId = 'draft-04' | 'draft-06' | 'draft-07' | '2019-09' | '2020-12';
-
-/** @deprecated Use `DialectId`. */
-export type SchemaVersion = DialectId;
 
 /** Where the dialect of a schema node comes from. */
 export type DialectSource = 'declared' | 'inherited' | 'fallback' | 'forced';
@@ -233,10 +231,10 @@ const DRAFT_2020_KEYWORDS = new Set<string>([
 	'$dynamicAnchor',
 ]);
 
-const keywordsThatNeed: Array<{
+const keywordsThatNeed: {
 	keyword: string;
 	applies: (dialect: Dialect) => boolean;
-}> = [
+}[] = [
 	{ keyword: 'const', applies: (dialect) => dialect.keywords.has('const') },
 	{ keyword: 'contains', applies: (dialect) => dialect.keywords.has('contains') },
 	{ keyword: 'propertyNames', applies: (dialect) => dialect.keywords.has('propertyNames') },
@@ -328,7 +326,7 @@ export const dialects: Readonly<Record<DialectId, Dialect>> = Object.freeze({
 	},
 });
 
-const PATTERNS: ReadonlyArray<readonly [RegExp, DialectId]> = [
+const PATTERNS: readonly (readonly [RegExp, DialectId])[] = [
 	[/draft-04/, 'draft-04'],
 	[/draft-06/, 'draft-06'],
 	[/draft-07/, 'draft-07'],
@@ -354,11 +352,6 @@ export function detectDialect(schema: unknown): DetectedDialect | undefined {
 	}
 
 	return undefined;
-}
-
-/** @deprecated Use `detectDialect`. */
-export function detectSchemaVersion(schema: unknown, fallback: DialectId = 'draft-07'): DialectId {
-	return detectDialect(schema)?.dialect.id ?? fallback;
 }
 
 /**
@@ -400,8 +393,8 @@ export function dialectOf(
 	schema: ParsedJSONSchemaObject | unknown,
 	fallback: Dialect = dialects['draft-07']
 ): Dialect {
-	if (typeof schema === 'object' && schema !== null) {
-		const meta = (schema as ParsedJSONSchemaObject)[Meta];
+	if (isParsedJSONSchemaObject(schema)) {
+		const meta = schema[Meta];
 
 		if (meta?.dialect) {
 			return dialects[meta.dialect] ?? fallback;
@@ -415,7 +408,7 @@ export function isKeywordApplicable(dialect: Dialect, keyword: string): boolean 
 	return dialect.keywords.has(keyword);
 }
 
-type KeywordIssue = Pick<DialectIssue, 'kind' | 'keyword' | 'message'>;
+export type KeywordIssue = Pick<DialectIssue, 'kind' | 'keyword' | 'message'>;
 
 /** Lists every keyword of a node that does not belong to the dialect. */
 export function keywordIssues(schema: Record<string, unknown>, dialect: Dialect): KeywordIssue[] {
@@ -431,6 +424,18 @@ export function keywordIssues(schema: Record<string, unknown>, dialect: Dialect)
 		}
 	}
 
+	collectTupleItemsIssue(schema, dialect, issues);
+	collectExclusiveBoundIssues(schema, dialect, issues);
+	collectRefSiblingIssue(schema, dialect, issues);
+
+	return issues;
+}
+
+function collectTupleItemsIssue(
+	schema: Record<string, unknown>,
+	dialect: Dialect,
+	issues: KeywordIssue[]
+): void {
 	if (Array.isArray(schema.items) && dialect.tuple === 'prefixItems') {
 		issues.push({
 			kind: 'invalid-keyword',
@@ -438,7 +443,13 @@ export function keywordIssues(schema: Record<string, unknown>, dialect: Dialect)
 			message: `The tuple form of "items" was removed in ${dialect.id}; use "prefixItems".`,
 		});
 	}
+}
 
+function collectExclusiveBoundIssues(
+	schema: Record<string, unknown>,
+	dialect: Dialect,
+	issues: KeywordIssue[]
+): void {
 	for (const keyword of ['exclusiveMinimum', 'exclusiveMaximum'] as const) {
 		const value = schema[keyword];
 		const expected = dialect.exclusiveBounds === 'numeric' ? 'number' : 'boolean';
@@ -451,7 +462,13 @@ export function keywordIssues(schema: Record<string, unknown>, dialect: Dialect)
 			});
 		}
 	}
+}
 
+function collectRefSiblingIssue(
+	schema: Record<string, unknown>,
+	dialect: Dialect,
+	issues: KeywordIssue[]
+): void {
 	if (dialect.refSiblings === 'ignore' && typeof schema.$ref === 'string') {
 		const siblings = Object.keys(schema).filter(
 			(keyword) => keyword !== '$ref' && !ANNOTATION_KEYWORDS.has(keyword)
@@ -467,8 +484,6 @@ export function keywordIssues(schema: Record<string, unknown>, dialect: Dialect)
 			});
 		}
 	}
-
-	return issues;
 }
 
 /** Writes an issue to `console.warn`, for callers that want the default CLI-like output. */

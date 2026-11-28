@@ -1,8 +1,7 @@
-import type { JSONSchema } from '@utilize/json-schema';
-
 import { describe, expect, test } from 'vitest';
 
 import { compileModule, compileToSchema, decode } from './test-utils';
+import type { TestSchema } from './test-utils';
 
 describe('objects', () => {
 	test('rejects keys when additionalProperties is false', async () => {
@@ -41,13 +40,16 @@ describe('objects', () => {
 	});
 
 	test('validates properties whose names exist on Object.prototype', async () => {
-		const Root = await compileToSchema({
+		const stringSchema: TestSchema = { type: 'string' };
+		const numberSchema: TestSchema = { type: 'number' };
+		const schema: TestSchema = {
 			properties: {
-				['__proto__']: { type: 'number' },
-				toString: { properties: { length: { type: 'string' } } },
-				constructor: { type: 'number' },
+				['__proto__']: numberSchema,
+				toString: { properties: { length: stringSchema } },
+				constructor: numberSchema,
 			},
-		} as JSONSchema);
+		};
+		const Root = await compileToSchema(schema);
 
 		expect(decode(Root, {})).toEqual({});
 		expect(decode(Root, { ['__proto__']: 12 })).toEqual({ ['__proto__']: 12 });
@@ -62,7 +64,7 @@ describe('objects', () => {
 				{ type: 'object', properties: { ['__proto__']: { type: 'number' } } },
 				{ type: 'object', properties: { b: { type: 'string' } } },
 			],
-		} as JSONSchema);
+		});
 
 		expect(decode(Root, { b: 'x' })).toEqual({ b: 'x' });
 		expect(decode(Root, { b: 1 })).toBeUndefined();

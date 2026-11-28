@@ -2,6 +2,8 @@
 
 Thank you for your interest in contributing! We welcome bug reports, feature requests, and pull requests.
 
+Participation is covered by the [Code of Conduct](./CODE_OF_CONDUCT.md).
+
 ## Getting Started
 
 This repository requires Node.js 24 and pnpm 11. The exact pnpm version is
@@ -27,15 +29,15 @@ pinned in `package.json#packageManager`; Corepack can install it for you.
 
 ## Project Structure
 
-- `packages/json-schema`: Core JSON Schema utilities and parser.
+- `packages/json-schema`: Core JSON Schema utilities, parser and the runtime format validators generated schemas import.
 - `packages/zod`: Zod code generator and related logic.
 - `packages/effect`: Effect Schema code generator and related logic.
 - `packages/typescript`: TypeScript type generator (no runtime dependency).
 - `playground`: Browser app for editing multi-file schemas and previewing the generated Zod, Effect Schema or TypeScript code.
 
-Generators are pluggable: `packages/json-schema` owns parsing, linking and
-normalization, and each target package only maps the parsed tree to its own
-schema API. A new target follows the shape of `packages/typescript` — a
+Generators are pluggable: `packages/json-schema` owns parsing, linking,
+normalization and the target-neutral format validators, and each target package
+only maps the parsed tree to its own schema API. A new target follows the shape of `packages/typescript` — a
 `generate` function that returns a module with one declaration per standalone
 schema, plus a `compile` helper that reads a schema file and writes the
 generated module. See the
@@ -44,10 +46,21 @@ target needs to show up in the UI.
 
 ## Playground previews
 
-Every pull request gets a preview deployment of the playground on Vercel. The
-project uses the **Root Directory** `playground` and `playground/vercel.json`,
-so Vercel installs the pnpm workspace from the repository root and then builds
-only the playground (`playground/dist`).
+Only pull requests with the `Preview` label get a preview deployment of the
+playground on Vercel. Add the label when a live preview is needed; every new
+commit on that pull request refreshes the preview. Pull requests without the
+label do not create a Vercel deployment. Production is deployed to GitHub Pages
+from `main` by `.github/workflows/pages.yml`.
+
+The project uses the **Root Directory** `playground` and
+`playground/vercel.json`, so Vercel installs the pnpm workspace from the
+repository root and then builds only the playground (`playground/dist`).
+`git.deploymentEnabled: false` disables all automatic Vercel Git deployments,
+including production, so they do not consume the Hobby plan's daily limit.
+`.github/workflows/vercel-preview.yml` deploys labeled pull requests from the
+same repository through the Vercel CLI instead. The workflow runs the CLI from
+the repository root, so the linked project's Root Directory still decides what
+is built; do not add a second `vercel.json` at the root.
 
 Keep `vercel.json` inside the Root Directory: Vercel resolves its paths relative
 to it, so a `vercel.json` at the repository root would point at
@@ -59,8 +72,13 @@ To set this up on a fork or a new repository:
    `playground`.
 2. Keep the framework preset on Vite; `playground/vercel.json` supplies the
    build command and output directory.
-3. Do not add a custom domain to preview deployments, so every PR keeps its own
-   URL.
+3. Create a `Preview` label for pull requests that should get a preview.
+4. Add `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` as GitHub Actions
+   repository secrets. The token needs access to the Vercel project; the IDs
+   are available in `.vercel/project.json` after running `vercel link` or in
+   the Vercel dashboard.
+5. Do not add a custom domain to preview deployments, so every preview keeps its
+   own URL.
 
 ## Development Workflow
 
@@ -68,6 +86,96 @@ To set this up on a fork or a new repository:
 - Make sure all tests pass before submitting a PR.
 - Write or update tests for any new features or bug fixes.
 - Use TypeScript and follow the existing code style (oxlint and oxfmt).
+
+## What Fallow enforces here
+
+[Fallow](https://fallow.tools) checks unused code, dependency hygiene,
+duplication, import cycles, complexity and package boundaries from one
+repository graph.
+
+Run the changed-file audit before opening a PR:
+
+```sh
+pnpm fallow:audit
+```
+
+The audit uses `gate: new-only`, so findings that already existed do not block
+a change; findings the change introduces do. A finding that already exceeded a
+ceiling and grew counts as introduced (`audit.worsened: "error"`).
+
+Install the optional local pre-commit hook:
+
+```sh
+pnpm hooks:install
+```
+
+It audits staged content against `HEAD`. `git commit --no-verify` is available
+for a WIP commit that will be squashed, but it is not a way around a finding you
+disagree with. Fix the code or update `.fallowrc.jsonc` with a documented reason.
+
+The local gates and CI do not block on the same verdicts. The pre-commit hook
+and the Claude Code agent gate (`.claude/hooks/fallow-gate.sh`) are generated by
+fallow (`fallow hooks install`, `fallow agent install`) and block only a `fail`
+verdict. CI also fails on a `warn` verdict (see below). Almost every rule in
+`.fallowrc.jsonc` is `error`, so the difference is small, but a warn-level
+finding can pass both local gates and still fail CI. To run the same check as
+the `Fallow audit` job before you push:
+
+```sh
+pnpm fallow:audit:ci
+```
+
+To ask fallow why it reports something, or why it does not:
+
+- `pnpm exec fallow explain <issue-type>` explains a rule, with an example and
+  the fix.
+- `pnpm exec fallow dead-code --trace <file>:<export>`,
+  `--trace-dependency <name>` and `pnpm exec fallow dupes --trace
+  dup:<fingerprint>` show the evidence behind one finding.
+- `.mcp.json` registers the fallow MCP server (`pnpm exec fallow-mcp`), so an
+  MCP client such as Claude Code can run the same analyses as tools.
+- `AGENTS.md` has the full task map of fallow commands.
+
+The `Fallow audit` CI job runs on pull requests, posts a sticky comment with the
+findings, publishes a check run and uploads SARIF, and fails on introduced
+findings. It fails on warnings too: the action treats an audit verdict of `warn`
+as a pass by design, so the job reads the recorded result with
+`scripts/fallow-gate.mjs --warn`. A rule that is `warn` is a finding to fix, not
+background noise. The strict full-repository gate runs in the test job of the
+same workflow (see below), so a change cannot raise a measured score.
+
+Regenerate and check the health badge with:
+
+```sh
+pnpm fallow:badge
+pnpm check:fallow-badge
+```
+
+In every pull request and on every push to `main`, the `Run code quality tools
+and tests` job runs all unit tests with V8 coverage, merges their Istanbul data,
+and runs `fallow` in combined mode on the same coverage: dead code, duplication,
+maintainability and CRAP measured against real coverage, plus rule-pack policy
+and type-aware refinement from the configured tsconfigs. The run writes its JSON
+result, `scripts/fallow-gate.mjs --warn` fails the job when any gate in that
+result failed or warned (a machine format does not enforce its own exit code),
+and `fallow report` renders the same result as the job summary. The job summary
+also appends the score breakdown — the points each penalty deducts, the long
+functions behind the function-size penalty and the most-imported files behind
+the coupling penalty. The test job measures the long-function list once and
+uploads it with the test reports, so the Pages build renders the same breakdown
+at `/reports/fallow/health/` without analyzing the code again.
+
+`rule-packs/utilize-policy.jsonc` keeps generator source browser-safe: `node:*`
+imports are errors in the generator packages outside `compile.ts` and `cli.ts`.
+Policy violations are errors in both the audit and the full run.
+
+The `Fallow security gate` PR job runs `fallow security` twice: `--gate new`
+fails a change that adds a candidate on an added line, and `--gate
+newly-reachable` fails a change that makes an existing candidate reachable from
+an entry point. A candidate is a review trigger, not a proven exploit.
+
+`private-type-leaks` is an error: every type referenced by an exported
+signature must also be exported, so consumers can name it.
 
 ## Running Tests
 
@@ -97,6 +205,96 @@ To set this up on a fork or a new repository:
   ```sh
   pnpm --filter @utilize/typescript test:suite
   ```
+- Run the pinned json-schema-to-typescript comparison baseline:
+  ```sh
+  pnpm --filter @utilize/test-utils test:suite
+  ```
+
+## Coverage badge
+
+Each package README shows a badge with the unit test line coverage of that
+package's `src` folder, rounded down to a whole percent. The number includes
+the JSON Schema Test Suite run and the thin `cli.ts` entry points. The badges
+are SVG files in `.github/badges/`, committed to the repository.
+
+CI runs the tests once with coverage enabled (`pnpm ci:test:coverage`), checks
+`pnpm check:coverage-badge` against the `lcov.info` files from that run, and
+fails when a committed badge no longer matches. To fix it, build the packages,
+regenerate the badges and commit the result:
+
+```sh
+pnpm build:dev
+pnpm badge:coverage
+```
+
+## Conformance badges
+
+`@utilize/zod`, `@utilize/effect` and `@utilize/typescript` each show one badge
+per JSON Schema dialect: draft-04, draft-06, draft-07, 2019-09 and 2020-12.
+The repository README also shows the same five badges for the pinned
+`json-schema-to-typescript` competitor. The value is the share of compatible
+JSON Schema Test Suite cases where every expected result matches, rounded down.
+Known gaps stay in the denominator, so a badge cannot hide them. The type-level
+runners skip `format-assertion` cases, which a type cannot check, so their
+denominator is smaller.
+
+The numbers for the three generators live in
+`packages/*/test/suite/baseline.ts` and each package's suite test asserts them.
+Every dialect is also pinned case by case: the runtime generators record failing
+cases in `knownFailuresByDialect.ts`, and TypeScript uses `knownGapCases.ts` with
+curated reasons in `knownGaps.ts`. The runtime generators have no draft-07 gaps;
+their `knownFailures.ts` files stay as the place to record one.
+
+The `json-schema-to-typescript` row is the pinned competitor, measured by
+`@utilize/test-utils` through the same type-level runner and suite revision. Its
+baseline is
+`packages/test-utils/src/suite/jsonSchemaToTypescriptBaseline.ts`: counts only,
+because it records the competitor rather than gating it. When a count or a case
+changes, the test prints the measured numbers and failing keys; update the
+baseline and regenerate the list on purpose in the same pull request:
+
+```sh
+pnpm --filter @utilize/zod update:suite-baseline
+pnpm --filter @utilize/effect update:suite-baseline
+pnpm --filter @utilize/typescript update:suite-baseline
+pnpm --filter @utilize/test-utils update:suite-baseline
+```
+
+CI runs `pnpm check:suite-badge` and fails when a committed badge no longer
+matches the baseline. Regenerate the badges after a baseline change:
+
+```sh
+pnpm badge:suite
+```
+
+## Refactor benchmarks
+
+Performance-sensitive refactors in `packages/json-schema` must include an A/B
+benchmark in the pull request. Build the same benchmark entry at the baseline
+and candidate commits, then compare the bundled production output in one Node
+process:
+
+```sh
+# In the baseline checkout
+pnpm --filter @utilize/json-schema bench:build
+
+# In the candidate checkout
+pnpm --filter @utilize/json-schema bench:build
+BASELINE=/path/to/baseline/packages/json-schema/node_modules/.cache/utilize-bench/refactor.mjs
+CANDIDATE="$PWD/packages/json-schema/node_modules/.cache/utilize-bench/refactor.mjs"
+pnpm --filter @utilize/json-schema bench:compare "$BASELINE" "$CANDIDATE" prepare
+```
+
+The case is `prepare`, `index`, `external`, `link`, or `all`. The runner
+alternates baseline and candidate samples, performs 2,000 measured iterations
+after 300 warmup iterations, and fails when mean or median latency regresses by
+more than 5%. Run it three times and include the results in the PR description.
+
+When the baseline predates the harness, for example in the pull request that
+introduces it, copy the harness files and `bench:build` / `bench:compare`
+scripts from the candidate into the baseline checkout without changing its
+`src/`. Build the copied entry against the baseline source, then compare it with
+the candidate bundle.
 
 ## Dependency Versions
 
@@ -114,13 +312,19 @@ only changes the catalog entry. Use `pnpm add --save-catalog` for a new shared d
   ```sh
   pnpm check:lint
   ```
+- Lint configuration lives in `oxlint.config.ts` and extends
+  [`@cloudflare/oxlint-config`](https://github.com/cloudflare/oxlint-config).
+  Rules that the preset enabled but the codebase does not satisfy yet are
+  disabled with a tracking comment. Enable them one at a time as their findings
+  are fixed.
 
 ## Making a Pull Request
 
 1. Fork the repository and create your branch from `main`.
 2. Add your changes and tests.
 3. Ensure all tests pass and code is formatted.
-4. Open a pull request with a clear description of your changes.
+4. For a refactor, include three A/B benchmark runs and confirm there is no mean or median regression.
+5. Open a pull request with a clear description of your changes.
 
 ## Reporting Issues
 

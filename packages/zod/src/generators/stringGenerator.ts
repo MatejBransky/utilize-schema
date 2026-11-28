@@ -1,11 +1,14 @@
+import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
+import { hasFormatValidator } from '@utilize/json-schema';
+
 import { createGenerator } from './createGenerator';
-import type { FormatMap, FormatMode } from './types';
+import type { GeneratorContext } from './types';
 
 import { unicodePattern } from '../regex';
 import { ts } from '../utils';
 
-export const generator = createGenerator(
-	(schema) => {
+export const stringGenerator = createGenerator(
+	(schema): schema is ParsedJSONSchemaObject => {
 		if ('enum' in schema) {
 			return false;
 		}
@@ -41,23 +44,35 @@ export const generator = createGenerator(
  * otherwise `assert` uses the built-in mapping and `annotate` leaves the
  * expression as `z.string()` so `format` stays metadata.
  */
-function resolveFormat(
-	format: string,
-	{ formatMap, formatMode }: { formatMap?: FormatMap; formatMode?: FormatMode }
-) {
-	const mapped = ownValue(formatMap, format);
+function resolveFormat(format: string, context: GeneratorContext) {
+	const mapped = ownValue(context.formatMap, format);
 
 	if (mapped) {
 		return mapped;
 	}
 
-	return (formatMode ?? 'assert') === 'assert' ? formatExpression(format) : undefined;
+	return (context.formatMode ?? 'assert') === 'assert'
+		? formatExpression(format, context)
+		: undefined;
 }
 
-function formatExpression(format: string) {
-	const method = ownValue(formatToZodMethod, format);
+function formatExpression(format: string, context: GeneratorContext) {
+	const validationFormat =
+		format === 'hostname' &&
+		(context.dialect.id === 'draft-04' || context.dialect.id === 'draft-06')
+			? 'hostname-legacy'
+			: format;
+	const method = ownValue(formatToZodMethod, validationFormat);
 
-	return method ? ts`z${method}` : undefined;
+	if (method) {
+		return ts`z${method}`;
+	}
+
+	if (hasFormatValidator(validationFormat)) {
+		return `z.string().refine(${context.formatOf(validationFormat)}, { message: ${JSON.stringify(`Invalid ${format}`)} })`;
+	}
+
+	return undefined;
 }
 
 /**
@@ -93,11 +108,8 @@ function applyStringConstraints({ expression, schema }: StringConstraints) {
 	return expression;
 }
 
-export const formatToZodMethod: Record<string, string> = {
-	email: '.email()',
-	uuid: '.uuid()',
+const formatToZodMethod = {
 	url: '.url()',
-	uri: '.url()',
 	emoji: '.emoji()',
 	base64: '.base64()',
 	base64url: '.base64url()',
@@ -110,7 +122,4 @@ export const formatToZodMethod: Record<string, string> = {
 	cidrv4: '.cidrv4()',
 	cidrv6: '.cidrv6()',
 	date: '.iso.date()',
-	time: '.iso.time()',
-	'date-time': '.iso.datetime()',
-	duration: '.iso.duration()',
-};
+} satisfies Record<string, string>;

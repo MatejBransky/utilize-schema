@@ -1,17 +1,18 @@
+import { expectDefined } from '@utilize/json-schema';
 import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
-import { generateSchema } from './generateSchema';
+import type { ExpressionGenerator } from './createGenerator';
 
 import { NEWLINE, ts } from '../utils';
 
-export const generator = createGenerator<
-	ParsedJSONSchemaObject & {
-		allOf: ParsedJSONSchemaObject[];
-	}
->(
-	(schema) => Array.isArray(schema.allOf),
-	(schema, context) => {
+export type AllOfSchema = ParsedJSONSchemaObject & {
+	allOf: ParsedJSONSchemaObject[];
+};
+
+export const allOfGenerator: ExpressionGenerator = createGenerator<AllOfSchema>(
+	(schema): schema is AllOfSchema => Array.isArray(schema.allOf),
+	(schema, context, { generateSchema }) => {
 		if (schema.allOf.length === 0) {
 			return ts`z.never()`;
 		}
@@ -24,7 +25,7 @@ export const generator = createGenerator<
 
 		return rest.reduce(
 			(expression, next) => ts`z.intersection(${expression},${NEWLINE}${next})`,
-			first!
+			expectDefined(first)
 		);
 	}
 );

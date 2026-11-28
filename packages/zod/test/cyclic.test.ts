@@ -1,11 +1,11 @@
-import { type JSONSchema } from '@utilize/json-schema';
+import type { JSONSchema } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
-import { compile, compileToZod, ts } from './test-utils';
+import { generateCode, compileToZod, ts } from './test-utils';
 
 describe('cyclic references', () => {
 	test('mutual $defs cycle', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: { a: { $ref: '#/$defs/A' } },
 			$defs: {
@@ -43,7 +43,7 @@ describe('cyclic references', () => {
 	});
 
 	test('object and array cycle across files', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: { list: { $ref: './definitions/ListCycle.json' } },
 		});
@@ -71,7 +71,7 @@ describe('cyclic references', () => {
 	});
 
 	test('array definition that refers back to its root', async () => {
-		const result = await compile(metaSchemaLike);
+		const result = await generateCode(metaSchemaLike);
 
 		await expect(result).toMatchCode(ts`
       type RootValue = { items: RootValue | SchemaArrayValue } | boolean;
@@ -94,7 +94,7 @@ describe('cyclic references', () => {
 	});
 
 	test('array-to-array cycle', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: { a: { $ref: './definitions/ArrayPairA.json' } },
 		});
@@ -119,7 +119,7 @@ describe('cyclic references', () => {
 	});
 
 	test('recursive additionalProperties', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: { name: { type: 'string' } },
 			additionalProperties: { $ref: '#' },
@@ -157,7 +157,7 @@ describe('cyclic references', () => {
 	});
 
 	test('recursive record', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			additionalProperties: { $ref: '#' },
 		});
@@ -195,6 +195,143 @@ describe('cyclic references', () => {
         );
       export type Root = z.infer<typeof Root>;
     `);
+	});
+
+	test('value type object members keep optional, default, quoted and undeclared required keys', async () => {
+		const result = await generateCode({
+			type: 'object',
+			properties: {
+				plain: { type: 'string' },
+				withDefault: { type: 'number', default: 0 },
+				'order-id': { type: 'boolean' },
+				next: { $ref: '#' },
+			},
+			required: ['order-id', 'extra'],
+			additionalProperties: { type: 'number' },
+		});
+		const valueType = result.match(/interface RootValue \{[\s\S]*?\n\}/)?.[0];
+
+		expect(valueType?.trim()).toBe(
+			(
+				await ts`
+      interface RootValue {
+        plain?: string;
+        withDefault: number;
+        "order-id": boolean;
+        next?: RootValue;
+        extra: number;
+        [key: string]: string | number | boolean | RootValue | undefined;
+      }
+    `
+			).trim()
+		);
+	});
+
+	test('value type object members use an unknown index for pattern properties', async () => {
+		const result = await generateCode({
+			type: 'object',
+			properties: { name: { type: 'string' } },
+			patternProperties: { '^x-': { $ref: '#' } },
+			additionalProperties: { type: 'integer' },
+		});
+		const valueType = result.match(/interface RootValue \{[\s\S]*?\n\}/)?.[0];
+
+		expect(valueType?.trim()).toBe(
+			(
+				await ts`
+      interface RootValue {
+        name?: string;
+        [key: string]: unknown;
+      }
+    `
+			).trim()
+		);
+	});
+
+	test('value type object members make undeclared required keys never when additional properties are forbidden', async () => {
+		const result = await generateCode({
+			type: 'object',
+			properties: { next: { $ref: '#' } },
+			required: ['extra'],
+			additionalProperties: false,
+		});
+		const valueType = result.match(/type RootValue = \{[\s\S]*?\};/)?.[0];
+
+		expect(valueType?.trim()).toBe(
+			(
+				await ts`
+      type RootValue = { next?: RootValue; extra: never };
+    `
+			).trim()
+		);
+	});
+
+	test('read-only recursive type lists keep object and array wrappers', async () => {
+		const result = await generateCode(
+			{
+				$schema: 'https://json-schema.org/draft/2020-12/schema',
+				readOnly: true,
+				type: ['object', 'array', 'null'],
+				properties: {
+					name: { type: 'string' },
+					next: { $ref: '#' },
+				},
+				items: { type: ['string', 'number'] },
+				additionalProperties: { type: 'boolean' },
+			},
+			{ readOnlyKeyword: true }
+		);
+		const valueType = result.match(/type RootValue =[\s\S]*?;\n(?=export const)/)?.[0];
+
+		expect(valueType?.trim()).toBe(
+			(
+				await ts`
+      type RootValue =
+        | Readonly<{
+            name?: string;
+            next?: RootValue;
+            [key: string]: string | RootValue | boolean | undefined;
+          }>
+        | ReadonlyArray<string | number>
+        | null;
+    `
+			).trim()
+		);
+	});
+
+	test('recursive value type unions and intersections preserve branch rendering', async () => {
+		const union = await generateCode(
+			{
+				readOnly: true,
+				anyOf: [{ type: 'object', properties: { next: { $ref: '#' } } }, { type: 'string' }],
+			},
+			{ readOnlyKeyword: true }
+		);
+		const intersection = await generateCode(
+			{
+				readOnly: true,
+				allOf: [
+					{ type: 'object', properties: { next: { $ref: '#' } } },
+					{ type: 'object', properties: { flag: { type: 'boolean' } } },
+				],
+			},
+			{ readOnlyKeyword: true }
+		);
+
+		expect(union.match(/type RootValue =\s*[\s\S]*?;/)?.[0]?.trim()).toBe(
+			(
+				await ts`
+      type RootValue = { next?: RootValue } | string;
+    `
+			).trim()
+		);
+		expect(intersection.match(/type RootValue =\s*[\s\S]*?;/)?.[0]?.trim()).toBe(
+			(
+				await ts`
+      type RootValue = { next?: RootValue } & { flag?: boolean };
+    `
+			).trim()
+		);
 	});
 });
 
@@ -271,7 +408,7 @@ describe('recursive references at runtime', () => {
 describe('cycles without a type indirection', () => {
 	test('a sibling structural branch does not anchor the cycle', async () => {
 		await expect(
-			compile({
+			generateCode({
 				anyOf: [{ $ref: '#' }, { type: 'object' }],
 			})
 		).rejects.toThrow(/only passes through unions or aliases/);
@@ -279,7 +416,7 @@ describe('cycles without a type indirection', () => {
 
 	test('union-only cycle fails at compile time', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'object',
 				properties: { a: { $ref: '#/$defs/A' } },
 				$defs: {
@@ -310,7 +447,7 @@ const metaSchemaLike: JSONSchema = {
 
 describe('array-only cycles', () => {
 	test('emits lazy for a standalone array cycle', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: {
 				list: { type: 'array', items: { $ref: '#/properties/list' } },

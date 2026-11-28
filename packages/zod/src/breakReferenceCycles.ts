@@ -1,6 +1,6 @@
-import { type ParsedJSONSchemaObject, Meta } from '@utilize/json-schema';
+import { expectDefined, Meta } from '@utilize/json-schema';
+import type { ParsedJSONSchemaObject, SchemaEdge } from '@utilize/json-schema';
 
-import { type SchemaEdge } from './collectStandaloneSchemas';
 import type { InlineCopies } from './inlineCopies';
 import { isPropertyBacked } from './isPropertyBacked';
 
@@ -45,7 +45,7 @@ export function breakReferenceCycles(
 			return { edges: remaining, lazyRefs };
 		}
 
-		const backEdge = cycle.at(-1)!;
+		const backEdge = expectDefined(cycle.at(-1));
 		const refs = cycle
 			.map(([source]) => source)
 			.filter(isBreakable)
@@ -61,7 +61,8 @@ export function breakReferenceCycles(
 		const circularRef =
 			isBreakable(backEdge[0]) && isPropertyBacked(backEdge[0], standaloneSchemas, copies)
 				? backEdge[0]
-				: (refs.find((ref) => isPropertyBacked(ref, standaloneSchemas, copies)) ?? refs[0]!);
+				: (refs.find((ref) => isPropertyBacked(ref, standaloneSchemas, copies)) ??
+					expectDefined(refs[0]));
 
 		circularRef[Meta].isCircular = true;
 
@@ -69,7 +70,7 @@ export function breakReferenceCycles(
 			lazyRefs.add(circularRef);
 		}
 
-		const breakEdge = cycle.find(([source]) => source === circularRef)!;
+		const breakEdge = expectDefined(cycle.find(([source]) => source === circularRef));
 		remaining = remaining.filter((edge) => edge !== breakEdge);
 	}
 }

@@ -1,90 +1,180 @@
-# Utilize Schema Monorepo
+# Utilize Schema
 
-Generate robust, type-safe Zod or Effect Schema codecs — or plain TypeScript types — from JSON Schema, with first-class support for references, standalone definitions, and modern validation features.
+**Convert JSON Schema to Zod, Effect Schema, or plain TypeScript.** One parser
+resolves local, external and cyclic `$ref` links into standalone schemas and
+types for every dialect from draft-04 to 2020-12.
 
 [![Check](https://img.shields.io/github/actions/workflow/status/MatejBransky/utilize-schema/check.yml?branch=main&label=check)](https://github.com/MatejBransky/utilize-schema/actions/workflows/check.yml)
+[![Codebase health](.github/badges/fallow-health.svg)](CONTRIBUTING.md#what-fallow-enforces-here)
+[![npm version](https://img.shields.io/npm/v/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
 [![License](https://img.shields.io/github/license/MatejBransky/utilize-schema)](./LICENSE)
 
----
+<details>
+<summary>Table of contents</summary>
+
+- [Features](#features)
+- [Quick start](#quick-start)
+- [Packages](#packages)
+- [Usage](#usage)
+- [Playground](#playground)
+- [Supported features](#supported-features)
+- [Learn more](#learn-more)
+- [Contributing](#contributing)
+- [License](#license)
+
+</details>
+
+<a id="features"></a>
 
 ## ✨ Features
 
-- **Pluggable generators:** the parser is generator-agnostic, so a new target only needs a generator. `@utilize/zod`, `@utilize/effect` and `@utilize/typescript` share the same pipeline.
-- **$ref support:** Local, external, and cyclic references. External documents can be fetched or supplied in memory with `externalSchemas`. Each generator picks its own strategy: Zod uses getters or typed `z.lazy()`, Effect Schema always emits `Schema.suspend`, and the TypeScript generator emits recursive interfaces.
-- **Standalone schema generation:** Every definition gets its own schema or type.
-- **Configurable names:** rewrite generated Zod and Effect schema variables and types
-  with a callback, e.g. to suffix schemas with `Schema`.
-- **TypeScript-first:** Generates runtime schemas and TypeScript types, including recursive ones. `@utilize/typescript` emits the types alone, with no runtime dependency.
-- **Format is a choice:** both runtime generators validate known formats by default and keep `format` as metadata with `formatMode: 'annotate'`. `formatMap` overrides individual formats.
-- **Draft support:** Draft-04/06/07, with normalization for 2019-09 and 2020-12.
-- **Conformance:** all generators are tested against the official [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite) for draft-07 — Zod passes 283 of 304 cases (1,399 of 1,655 assertions), Effect Schema 286 of 304 cases (1,400 of 1,655 assertions), and TypeScript 191 of 285 cases at the type level; remaining gaps are tracked per keyword.
-- **Dialect-aware:** `$schema` is resolved per schema resource — the document root and every subschema with its own `$id`/`$schema` — not once per file. Supported dialects are draft-04, draft-06, draft-07, 2019-09 and 2020-12; nodes carry their dialect in metadata, and keywords outside it are reported as warnings by default and not applied to generated code. See [docs/dialects.md](./docs/dialects.md).
+- **Three targets, one pipeline.** `@utilize/zod`, `@utilize/effect` and
+  `@utilize/typescript` share the same parser, linker and naming rules, so they
+  agree on what a schema means.
+- **`$ref` links resolve.** Local, external and cyclic, including `$id` and
+  `$anchor`. External documents come from disk, HTTP, or memory with
+  `externalSchemas`.
+- **Every definition is standalone.** `$defs` and `definitions` each get their
+  own schema or type. Zod also orders them by dependency.
+- **Dialect-aware.** Draft-04/06/07 are read natively, 2019-09 and 2020-12 are
+  normalized. `$schema` is resolved per schema resource and `$ref` siblings are
+  applied only where the dialect defines them. The per-dialect rules are in
+  [docs/dialects.md](./docs/dialects.md).
+- **Proven on the official suite.** Draft-07 scores 304/304 cases for Zod,
+  304/304 for Effect Schema and 192/285 for TypeScript; five dialects are
+  measured. See [supported features](#supported-features).
+- **Types without runtime.** `@utilize/typescript` emits interfaces and aliases
+  only; the output imports nothing.
 
 ---
+
+<a id="quick-start"></a>
+
+## ⚡ Quick start
+
+```sh
+pnpm add zod @utilize/json-schema
+pnpm add -D @utilize/zod
+utilize-zod user.json user.zod.ts
+```
+
+Generated schemas import structural format validators from
+`@utilize/json-schema/formats`, so `@utilize/json-schema` is a runtime
+dependency of the app, not only a generator dependency.
+
+`user.json`:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": ["id"],
+  "additionalProperties": false
+}
+```
+
+`user.zod.ts` (banner omitted):
+
+```ts
+import { z } from 'zod';
+
+export const User = z.strictObject({
+  id: z.iso.date().meta({ format: 'date' }),
+});
+export type User = z.infer<typeof User>;
+```
+
+The date format keeps this example short. Formats that need structural
+validation, such as `email`, `hostname` and `uri`, are imported from
+`@utilize/json-schema/formats` as one validator per format, shared by every
+schema that uses it.
+
+The same three steps work for the other targets: `@utilize/effect` with
+`utilize-effect`, and `@utilize/typescript` with `utilize-typescript` (no runtime
+dependency). See [Usage](#usage) for the API and CLI; each package README
+lists the options.
+
+---
+
+<a id="packages"></a>
 
 ## 📦 Packages
 
-### [`@utilize/json-schema`](./packages/json-schema)
+- **[@utilize/json-schema](./packages/json-schema)** — Resolves `$ref`, links nodes with metadata, provides the CLI runner and compile helpers the three generators share, exports the runtime format validators generated schemas import, and the optional Ajv adapter at `./validate/ajv`.
 
-[![npm version](https://img.shields.io/npm/v/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
-[![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
+  [![npm version](https://img.shields.io/npm/v/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
+  [![weekly downloads](https://img.shields.io/npm/dw/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
+  [![coverage](.github/badges/coverage-json-schema.svg)](CONTRIBUTING.md#coverage-badge)
 
-> Core utilities for resolving $refs and linking JSON Schema. Provides a generator-agnostic pipeline for schema transformation.
+- **[@utilize/zod](./packages/zod)** — Emits Zod schemas and `z.infer` types.
 
-### [`@utilize/zod`](./packages/zod)
+  [![npm version](https://img.shields.io/npm/v/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
+  [![weekly downloads](https://img.shields.io/npm/dw/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
+  [![coverage](.github/badges/coverage-zod.svg)](CONTRIBUTING.md#coverage-badge)
 
-[![npm version](https://img.shields.io/npm/v/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
-[![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/zod)](https://www.npmjs.com/package/@utilize/zod)
+- **[@utilize/effect](./packages/effect)** — Emits Effect Schema codecs and types, with every `$ref` going through `Schema.suspend`.
 
-> Zod code generator. Walks the parsed JSON Schema and emits Zod schemas + TypeScript types.
+  [![npm version](https://img.shields.io/npm/v/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)
+  [![weekly downloads](https://img.shields.io/npm/dw/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)
+  [![coverage](.github/badges/coverage-effect.svg)](CONTRIBUTING.md#coverage-badge)
 
-### [`@utilize/effect`](./packages/effect)
+- **[@utilize/typescript](./packages/typescript)** — Emits interfaces and type aliases. No runtime dependency.
 
-[![npm version](https://img.shields.io/npm/v/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)
-[![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/effect)](https://www.npmjs.com/package/@utilize/effect)
+  [![npm version](https://img.shields.io/npm/v/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)
+  [![weekly downloads](https://img.shields.io/npm/dw/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)
+  [![coverage](.github/badges/coverage-typescript.svg)](CONTRIBUTING.md#coverage-badge)
 
-> Effect Schema code generator. Walks the parsed JSON Schema and emits Effect Schema codecs + TypeScript types, with every `$ref` emitted through `Schema.suspend`.
+The badges are committed to `.github/badges/` and checked in CI. Coverage is the
+line coverage of each package's `src`, including the JSON Schema Test Suite and
+the CLI entry points ([coverage badges](./CONTRIBUTING.md#coverage-badge)).
+Conformance is the share of compatible JSON Schema Test Suite cases where every
+expected result matches, with known gaps left in the denominator
+([conformance badges](./CONTRIBUTING.md#conformance-badges)). The
+`json-schema-to-typescript` row measures the pinned competitor through the same
+type-level runner, for a like-for-like comparison ([methodology](./docs/conformance.md)).
+Regenerate both with `pnpm badge:coverage` and `pnpm badge:suite`.
 
-### [`@utilize/typescript`](./packages/typescript)
+<details>
+<summary>Conformance badges for all five dialects</summary>
 
-[![npm version](https://img.shields.io/npm/v/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)
-[![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/typescript)](https://www.npmjs.com/package/@utilize/typescript)
+| Project                                                                             | draft-04                                                                                                                            | draft-06                                                                                                                            | draft-07                                                                                                                            | 2019-09                                                                                                                           | 2020-12                                                                                                                           |
+| ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| [`@utilize/zod`](./packages/zod)                                                    | [![draft-04 conformance](.github/badges/suite-zod-draft-04.svg)](./packages/zod/README.md#conformance)                              | [![draft-06 conformance](.github/badges/suite-zod-draft-06.svg)](./packages/zod/README.md#conformance)                              | [![draft-07 conformance](.github/badges/suite-zod-draft-07.svg)](./packages/zod/README.md#conformance)                              | [![2019-09 conformance](.github/badges/suite-zod-2019-09.svg)](./packages/zod/README.md#conformance)                              | [![2020-12 conformance](.github/badges/suite-zod-2020-12.svg)](./packages/zod/README.md#conformance)                              |
+| [`@utilize/effect`](./packages/effect)                                              | [![draft-04 conformance](.github/badges/suite-effect-draft-04.svg)](./packages/effect/README.md#conformance)                        | [![draft-06 conformance](.github/badges/suite-effect-draft-06.svg)](./packages/effect/README.md#conformance)                        | [![draft-07 conformance](.github/badges/suite-effect-draft-07.svg)](./packages/effect/README.md#conformance)                        | [![2019-09 conformance](.github/badges/suite-effect-2019-09.svg)](./packages/effect/README.md#conformance)                        | [![2020-12 conformance](.github/badges/suite-effect-2020-12.svg)](./packages/effect/README.md#conformance)                        |
+| [`@utilize/typescript`](./packages/typescript)                                      | [![draft-04 conformance](.github/badges/suite-typescript-draft-04.svg)](./packages/typescript/README.md#conformance)                | [![draft-06 conformance](.github/badges/suite-typescript-draft-06.svg)](./packages/typescript/README.md#conformance)                | [![draft-07 conformance](.github/badges/suite-typescript-draft-07.svg)](./packages/typescript/README.md#conformance)                | [![2019-09 conformance](.github/badges/suite-typescript-2019-09.svg)](./packages/typescript/README.md#conformance)                | [![2020-12 conformance](.github/badges/suite-typescript-2020-12.svg)](./packages/typescript/README.md#conformance)                |
+| [`json-schema-to-typescript`](https://github.com/bcherny/json-schema-to-typescript) | [![draft-04 conformance](.github/badges/suite-json-schema-to-typescript-draft-04.svg)](./docs/conformance.md#type-level-comparison) | [![draft-06 conformance](.github/badges/suite-json-schema-to-typescript-draft-06.svg)](./docs/conformance.md#type-level-comparison) | [![draft-07 conformance](.github/badges/suite-json-schema-to-typescript-draft-07.svg)](./docs/conformance.md#type-level-comparison) | [![2019-09 conformance](.github/badges/suite-json-schema-to-typescript-2019-09.svg)](./docs/conformance.md#type-level-comparison) | [![2020-12 conformance](.github/badges/suite-json-schema-to-typescript-2020-12.svg)](./docs/conformance.md#type-level-comparison) |
 
-> TypeScript type generator. Walks the parsed JSON Schema and emits interfaces and type aliases, with no runtime dependency.
+</details>
 
 ---
 
-```typescript
+<a id="usage"></a>
+
+## 📖 Usage
+
+### Programmatic API
+
+```ts
 import { compile as compileZod } from '@utilize/zod';
-import { compile as compileEffect } from '@utilize/effect';
-import { compile as compileTypescript } from '@utilize/typescript';
 
 await compileZod({
-	input: './schema.json',
-	output: './schema.zod.generated.ts',
-});
-
-await compileEffect({
-	input: './schema.json',
-	output: './schema.effect.generated.ts',
-});
-
-await compileTypescript({
-	input: './schema.json',
-	output: './schema.generated.ts',
+  input: './schema.json',
+  output: './schema.zod.generated.ts',
 });
 ```
 
-The runtime generators require their runtime as a peer dependency: `zod`
-(`>=4.5.0 <5`) and `effect` (`>=4.0.0 <5`); `@utilize/typescript` has no runtime
-dependency:
+`@utilize/effect` and `@utilize/typescript` export the same `compile`. All three
+accept `externalSchemas` to serve a document from memory instead of disk or the
+network; the runtime generators also take `formatMode`, and Zod maps individual
+formats with `formatMap`. Each package README documents the full options.
 
-```sh
-pnpm add zod effect
-```
-
-All three generators ship a CLI that accepts a file, directory or glob, reads
-JSON and YAML, and writes to a file, a directory or stdout:
+### CLI
 
 ```sh
 utilize-zod schema.json schema.generated.ts
@@ -93,204 +183,122 @@ utilize-typescript --input 'schemas/**/*.yaml' --output generated/
 cat schema.yaml | utilize-zod > schema.generated.ts
 ```
 
-Generated files start with a "do not edit" banner (`--no-banner` omits it). See
-the package READMEs for the remaining flags.
+The CLIs read JSON and YAML, take a file, directory or glob, and write a file,
+directory or stdout. Generated files start with a "do not edit" banner
+(`--no-banner` omits it). The runtime CLIs also accept `--format-mode`,
+`--dialect`, `--fallback-dialect` and `--keyword-policy`; see
+[docs/dialects.md](./docs/dialects.md) for the dialect flags.
+
+`--validate` checks every resolved document against the meta-schema of the
+dialect the parser resolves, and stops before writing anything when a schema is
+invalid. It needs the optional `ajv` package; pass `--validator <module>`
+to use another validator instead. Draft-04 schemas also need `ajv-draft-04`.
+See [docs/dialects.md](./docs/dialects.md#schema-validation).
+
+---
+
+<a id="playground"></a>
 
 ## 🧪 Playground
 
-The [`playground`](./playground) package is a browser app for editing multiple
-JSON Schema files with references, switching between the Zod, Effect Schema and
-TypeScript generators and watching the generated code and schema validation
-update live. It is deployed to GitHub Pages:
-<https://matejbransky.github.io/utilize-schema/>. Every pull request also gets a
-Vercel preview deployment of the playground.
+<p align="center">
+  <img src="docs/playground.png" alt="Playground with person.json split across referenced files, the generated Zod schema on the right, and below them a test-data editor next to the generated validator's decoded value" width="100%">
+</p>
+
+The [`playground`](./playground) is a browser app for editing multiple JSON
+Schema files with references. Switch between the three generators, change the
+keyword policy, the format mode or the TypeScript pragmatic inference,
+and watch the generated code update live.
+Start from one of the built-in examples: each comes with labelled valid and
+invalid test documents, so you can compare the generated code with what the
+validator does on the same screen.
+A test-data editor below the schemas runs the selected generator's validator and
+shows the decoded value, defaults included, or every issue with its JSON path;
+the TypeScript target emits types only, so the pane says there is no runtime
+validator.
+
+- Hosted: <https://matejbransky.github.io/utilize-schema/>
+- Reports: <https://matejbransky.github.io/utilize-schema/reports/>
+- Pull requests from this repository labeled `Preview` get a Vercel preview
+  deployment.
+
+<details>
+<summary>Watch the demo (20 s)</summary>
+
+<p align="center">
+  <img src="docs/playground.gif" alt="Dropping person.json and address.json onto the playground, choosing the Replace target, dropping a JSON document into the test data, then switching the Format mode to annotate and the generator to Effect Schema while the code and the validator result update" width="100%">
+</p>
+
+</details>
 
 ---
 
-## Architecture
+<a id="supported-features"></a>
 
-1. $ref resolver: resolves all $ref (local, external, cyclic)
-2. linker: annotates each node with metadata (parent, referenced schema, path)
-3. generator: one per target, emitting code and types for every standalone schema
-4. target specifics: cycle handling and type inference differ per generator — Zod
-   breaks cycles with getters/`z.lazy()` and derives value types, Effect Schema
-   emits every reference through `Schema.suspend` and annotates only the schemas
-   that take part in a cycle, and the TypeScript generator emits recursive
-   interfaces directly (TypeScript needs no annotation)
+## ✅ Supported features
 
----
+Both runtime generators implement the validation keywords, including
+`$ref`/`$defs`, `allOf`/`anyOf`/`oneOf`, conditionals, `patternProperties` and
+`unevaluated*` (best effort). The exceptions are annotations a target cannot
+enforce, such as `readOnly` in Effect Schema or `discriminator`; the full table
+is in [docs/keywords.md](./docs/keywords.md).
 
-## Supported features
+The TypeScript generator has no runtime, so validation keywords such as
+`minLength`, `pattern` or `uniqueItems` have no type-level equivalent and are
+ignored. Use Zod or Effect Schema when you need runtime validation.
 
-The Zod and Effect Schema generators accept the same input and are checked
-against each other by a differential test suite
-(`packages/effect/test/parity.test.ts`), so the table below is kept honest by
-CI. All three generators are also checked against the official JSON Schema Test
-Suite for draft-07:
+Official-suite numbers, with every measured dialect pinned in the package
+baselines:
 
-- **Zod:** 283 of 304 cases (1,399 of 1,655 assertions) pass.
-- **Effect Schema:** 286 of 304 cases (1,400 of 1,655 assertions) pass.
-- **TypeScript:** 191 of 285 cases pass at the type level.
+- **Zod:** 1,514 of 1,609 cases; draft-04, draft-06 and draft-07 are complete.
+- **Effect Schema:** 1,510 of 1,609 cases; draft-04, draft-06 and draft-07 are complete.
+- **TypeScript:** 192 of 285 draft-07 cases at the type level (795 of 972 instances).
 
-The runtime generators measure both format groups: `format-annotation` cases
-compile with `formatMode: 'annotate'` and `format-assertion` cases with
-`formatMode: 'assert'`, so all 304 draft-07 cases run. A type cannot check a
-format either way, so the TypeScript generator skips the 19 `format-assertion`
-cases instead. Cases that need external schemas are served from
-`externalSchemas`.
-
-The remaining gaps are recorded in each package's `test/suite/` directory:
-`knownFailures.ts` for the runtime generators, `knownGaps.ts` for the type-level
-runner.
-
-The TypeScript generator has no runtime: validation keywords such as
-`minLength`, `pattern` or `uniqueItems` have no type-level equivalent, so they
-are ignored. Its runner emits every suite instance as a typed constant and
-checks the whole set with one `tsc` pass. The rest are type-only gaps, the
-inference trade-off shared with json-schema-to-typescript, or shared parser
-gaps. See
-[`packages/typescript/README.md`](./packages/typescript/README.md#conformance)
-for the full numbers and methodology.
-
-| JSON Schema Keyword                          | Zod | Effect Schema | Notes                                                                                 |
-| -------------------------------------------- | --- | ------------- | ------------------------------------------------------------------------------------- |
-| `type`                                       | ✅  | ✅            | Full support, including unions of types                                               |
-| `enum`                                       | ✅  | ✅            | Zod deep-equals composites; Effect compares composites as canonical JSON              |
-| `const`                                      | ✅  | ✅            | Zod deep-equals composites; Effect compares composites as canonical JSON              |
-| `default`                                    | ✅  | ✅            | Zod decodes with `.default()`; Effect stores it as an annotation                      |
-| `description` / `title` / `deprecated`       | ✅  | ✅            | Zod `.meta({})`, Effect `.annotate({})`                                               |
-| `readOnly`                                   | ✅  | —             | Zod `.readonly()` with `readOnlyKeyword`; Effect keeps it as an annotation            |
-| `minimum` / `maximum`                        | ✅  | ✅            | Supported                                                                             |
-| `exclusiveMinimum` / `exclusiveMaximum`      | ✅  | ✅            | Supported (boolean draft-04 form included)                                            |
-| `multipleOf`                                 | ✅  | ✅            | Supported                                                                             |
-| `minLength` / `maxLength`                    | ✅  | ✅            | Effect counts code points, like JSON Schema                                           |
-| `pattern`                                    | ✅  | ✅            | Zod `.regex()`, Effect `Schema.isPattern`                                             |
-| `format`                                     | ✅  | ✅            | Asserted by default; `formatMode: 'annotate'` keeps it as metadata                    |
-| `properties`                                 | ✅  | ✅            | Supported                                                                             |
-| `required`                                   | ✅  | ✅            | Supported                                                                             |
-| `additionalProperties`                       | ✅  | ✅            | Zod `z.strictObject`/`.catchall`, Effect keeps excess keys and filters them           |
-| `minProperties` / `maxProperties`            | ✅  | ✅            | Counted on the input, so undeclared keys count too                                    |
-| `patternProperties`                          | ✅  | ✅            | Every matching pattern is validated, then `additionalProperties` applies              |
-| `propertyNames`                              | ✅  | ✅            | Supported                                                                             |
-| `items`                                      | ✅  | ✅            | Supported                                                                             |
-| `prefixItems`                                | ✅  | ✅            | 2020-12 syntax, also via the tuple form of `items`                                    |
-| `additionalItems`                            | ✅  | ✅            | Supported                                                                             |
-| `uniqueItems`                                | ✅  | ✅            | Key-order-insensitive comparison                                                      |
-| `contains`                                   | ✅  | ✅            | Supported                                                                             |
-| `minContains` / `maxContains`                | ✅  | ✅            | Counted with `contains` in 2019-09 and newer                                          |
-| `dependencies`                               | ✅  | ✅            | Also covers `dependentRequired` and `dependentSchemas`                                |
-| `allOf`                                      | ✅  | ✅            | Zod intersects any schemas; Effect merges object/scalar/array parts, filters the rest |
-| `anyOf`                                      | ✅  | ✅            | Supported                                                                             |
-| `oneOf`                                      | ✅  | ✅            | Zod requires exactly one match; Effect uses the exclusive union mode                  |
-| `not`                                        | ✅  | ✅            | Supported                                                                             |
-| `if` / `then` / `else`                       | ✅  | ✅            | Supported                                                                             |
-| `discriminator`                              | ✅  | —             | Zod emits a discriminated union; Effect ignores the annotation                        |
-| `$ref`                                       | ✅  | ✅            | Local, external, cyclic and `$id`/`$anchor` based; boolean targets supported          |
-| `$defs` / `definitions`                      | ✅  | ✅            | Supported                                                                             |
-| `$id` / `$anchor`                            | ✅  | ✅            | Establishes the base URI and resolves fragment identifiers                            |
-| `examples`                                   | ✅  | ✅            | Kept as metadata                                                                      |
-| `$schema`                                    | ✅  | ✅            | Detects draft-04/06/07/2019-09/2020-12 and normalizes newer keywords                  |
-| `unevaluatedProperties` / `unevaluatedItems` | ✅  | ✅            | Mapped to `additionalProperties` / the items rest (best effort)                       |
-
-`✅` supported, `❌` rejected with a clear error, `—` accepted but only kept as
-an annotation.
-
-The table covers the two runtime generators; keyword coverage for the TypeScript
-generator is in its README (`packages/typescript/README.md#keyword-coverage`).
-
-Zod and Effect Schema infer `type` from a single keyword family (object, array,
-string or number), so constraints such as `{ pattern }` or `{ required }`
-are not silently dropped.
-
-2020-12 `prefixItems` maps to the tuple form of `items`, and
-`dependentRequired`/`dependentSchemas` map to `dependencies`. `unevaluatedProperties`
-and `unevaluatedItems` map to `additionalProperties` / the items rest when those
-are not set, which covers schemas that do not rely on properties evaluated by
-applicators. Unknown `$schema` values fall back to draft-07. 2019-09/2020-12
-keywords without a generator (`$recursiveRef`, `$dynamicRef`) fail with
-`UnsupportedSchemaFeatureError`.
+The remaining runtime gaps are dynamic/recursive references, full `unevaluated*`
+annotation propagation, and a few vocabulary/annotation cases.
 
 ---
 
-## 🔁 Recursive schemas
+<a id="learn-more"></a>
 
-The generators support self-referencing and mutually recursive schemas, but
-they express the recursion differently.
+## 📚 Learn more
 
-**Zod** emits getters for recursion inside object properties:
-
-```ts
-type TreeValue = { name: string; children?: TreeValue[] };
-export const Tree: z.ZodType<TreeValue> = z.object({
-	name: z.string(),
-	get children() {
-		return z.array(Tree).optional();
-	},
-});
-export type Tree = z.infer<typeof Tree>;
-```
-
-Cycles that cannot be deferred with a getter — array items, tuples, records and
-recursive `additionalProperties` — are emitted as `z.lazy()` together with a
-generated value type. A cycle that only passes through unions or aliases has no
-value type TypeScript can express recursively, so generation fails with
-`UnsupportedCyclicReferenceError` instead of emitting code that does not
-type-check.
-
-**Effect Schema** always emits references as lazy schemas, so no dependency
-ordering is needed. Schemas that take part in a cycle get a value type and an
-explicit annotation, because an inferred `typeof X.Type` would reference itself
-and collapse to `any`:
-
-```ts
-type TreeValue = { name: string; children?: ReadonlyArray<TreeValue> };
-
-export const Tree: Schema.Codec<TreeValue> = Schema.StructWithRest(
-	Schema.Struct({
-		name: Schema.String,
-		children: Schema.optionalKey(Schema.Array(Schema.suspend(() => Tree))),
-	}),
-	[Schema.Record(Schema.String, Schema.Json)]
-);
-
-export type Tree = typeof Tree.Type;
-```
-
-**TypeScript** emits the recursive type directly, because interfaces and
-deferred aliases can refer to themselves:
-
-```ts
-export interface Tree {
-	name: string;
-	children?: Array<Tree>;
-	[key: string]: unknown;
-}
-```
-
-A cycle that only passes through aliases, unions or intersections — for example
-`type A = A | string` — has no type TypeScript can express, so generation fails
-with `UnsupportedCircularTypeError` instead of emitting code that does not
-compile.
+- [Architecture](./docs/architecture.md) — the parser, the linker and the three
+  generators.
+- [Recursive schemas](./docs/recursion.md) — how each target expresses cycles.
+- [Keyword coverage](./docs/keywords.md) — every keyword per target, the dialect
+  rules and how the conformance numbers add up.
+- [Conformance comparison](./docs/conformance.md) — how the generators compare
+  with json-schema-to-typescript.
+- [TypeScript vs json-schema-to-typescript](./docs/typescript-vs-json-schema-to-typescript.md)
+  — an example-by-example look at where each generator is more precise.
 
 ---
 
-## 🤔 Why Utilize Schema?
+<a id="contributing"></a>
 
-- **No more hand-written schemas:** Automate validation and types for Zod or Effect Schema, or generate TypeScript types alone.
-- **Handles real-world schemas:** Works with complex, modular, and referenced schemas.
-- **Pluggable targets:** The parser and linker are shared, so adding another target only means writing a generator.
-- **Well-tested, well-documented:** Inspired by the best of open-source codegen tools.
-
----
-
-## 🛠️ Contributing
+## 🛠 Contributing
 
 - Clone the repo, run `pnpm install`
-- See [CONTRIBUTING.md](./CONTRIBUTING.md) for details
 - Run tests: `pnpm test`
+- Run the full check: `pnpm verify`
+- Rebuild the hosted reports locally: `pnpm build:dev && pnpm --filter playground build && pnpm reports`
 - Bug reports are triaged automatically; see [docs/triage.md](./docs/triage.md) for the bot's labels and retry flow.
 
+Tooling: pnpm workspaces, [tsdown](https://tsdown.dev/) for builds,
+[Vitest](https://vitest.dev/) for tests, [oxlint](https://oxc.rs/docs/guide/usage/linter)
+and [oxfmt](https://oxc.rs/docs/guide/usage/formatter) for lint and format,
+[Changesets](https://github.com/changesets/changesets) for releases, and
+[fallow](https://fallow.tools/) for unused code, duplication, complexity,
+dependency and architecture checks (`pnpm fallow`, `pnpm fallow:audit`).
+
+The full guide, including changesets and release steps, is in
+[CONTRIBUTING.md](./CONTRIBUTING.md) and [RELEASING.md](./RELEASING.md).
+Participation is covered by the [Code of Conduct](./CODE_OF_CONDUCT.md).
+
 ---
+
+<a id="license"></a>
 
 ## 📄 License
 
@@ -300,4 +308,6 @@ MIT. See [LICENSE](./LICENSE).
 
 ## 🙏 Credits
 
-Inspired by [json-schema-to-typescript](https://github.com/bcherny/json-schema-to-typescript) and the Zod community. [`@utilize/typescript`](./packages/typescript) is a drop-in alternative to it, built on the same parser as the runtime generators.
+Inspired by [json-schema-to-typescript](https://github.com/bcherny/json-schema-to-typescript)
+and the Zod community. [`@utilize/typescript`](./packages/typescript) is a
+drop-in alternative to it, built on the same parser as the runtime generators.

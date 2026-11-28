@@ -10,6 +10,11 @@
 		<title>Utilize JSON Schema Playground</title>
 		<script>
 			(() => {
+				if (location.pathname.endsWith('/reports')) {
+					location.replace(`${location.pathname}/${location.search}${location.hash}`);
+					return;
+				}
+
 				const stored = localStorage.getItem('utilize-schema-theme');
 				const theme =
 					stored === 'light' || stored === 'dark'

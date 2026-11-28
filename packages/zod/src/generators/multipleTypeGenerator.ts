@@ -1,11 +1,8 @@
-import {
-	type JSONSchemaTypeName,
-	type ParsedJSONSchemaObject,
-	withSourceMeta,
-} from '@utilize/json-schema';
+import { withSourceMeta } from '@utilize/json-schema';
+import type { JSONSchemaTypeName, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
-import { generateSchema } from './generateSchema';
+import type { ExpressionGenerator } from './createGenerator';
 
 import { NEWLINE, ts } from '../utils';
 
@@ -23,13 +20,13 @@ const withoutUnionAnnotations = {
 	readOnly: undefined,
 };
 
-export const generator = createGenerator<
-	ParsedJSONSchemaObject & {
-		type: JSONSchemaTypeName[];
-	}
->(
-	(schema) => Array.isArray(schema.type),
-	(schema, context) => {
+export type MultipleTypeSchema = ParsedJSONSchemaObject & {
+	type: JSONSchemaTypeName[];
+};
+
+export const multipleTypeGenerator: ExpressionGenerator = createGenerator<MultipleTypeSchema>(
+	(schema): schema is MultipleTypeSchema => Array.isArray(schema.type),
+	(schema, context, { generateSchema }) => {
 		const subschemas = schema.type.map((type) =>
 			generateSchema(
 				withSourceMeta(schema, { ...schema, type, ...withoutUnionAnnotations }),

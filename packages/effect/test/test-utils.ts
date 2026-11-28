@@ -1,18 +1,13 @@
-import {
-	type DialectOptions,
-	type JSONSchema,
-	Meta,
-	parse,
-	type ParsedJSONSchemaObject,
-} from '@utilize/json-schema';
+import { expectDefined, parse } from '@utilize/json-schema';
+import type { DialectOptions, JSONSchema, NameMapper } from '@utilize/json-schema';
 import { Schema } from 'effect';
-import { format as formatCode } from 'oxfmt';
+import { formatSource, ts } from '@utilize/test-utils/code';
 
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { generate, type CustomSchemaResolver, type FormatMode } from '../src/generator';
-import type { NameMapper } from '../src/resolveName';
+import type { CustomSchemaResolver, FormatMode } from '../src/context';
+import { generate } from '../src/generator';
 
 /** JSON Schema 2020-12 keywords that the draft-07 based `JSONSchema` type lacks. */
 export type TestSchema = JSONSchema & {
@@ -22,47 +17,13 @@ export type TestSchema = JSONSchema & {
 	unevaluatedProperties?: boolean | JSONSchema;
 	unevaluatedItems?: boolean | JSONSchema;
 	dependentRequired?: Record<string, string[]>;
-	dependentSchemas?: Record<string, JSONSchema>;
+	dependentSchemas?: Record<string, JSONSchema | boolean>;
 };
 
 export type GeneratedSchema = Parameters<typeof Schema.decodeUnknownSync>[0];
+export type GeneratedModule = Record<string, GeneratedSchema>;
 
-/**
- * A tagged template literal function for expected TypeScript code. Code is
- * compared with whitespace normalized, so the generated output does not need
- * to be formatted.
- */
-export const ts = (strings: TemplateStringsArray, ...values: unknown[]) =>
-	formatSource(String.raw(strings, ...values));
-
-const formatOptions = {
-	bracketSpacing: true,
-	endOfLine: 'lf',
-	semi: true,
-	singleQuote: true,
-	trailingComma: 'es5',
-	useTabs: true,
-	objectWrap: 'collapse',
-} as const;
-
-function formatSource(code: string) {
-	return formatCode('code.ts', code, formatOptions).then((result) => result.code);
-}
-
-export function withMeta(obj: JSONSchema, meta: Partial<Meta> = {}) {
-	Object.defineProperty(obj, Meta, {
-		enumerable: false,
-		value: { ...meta },
-		writable: true,
-		configurable: true,
-	});
-
-	return obj as ParsedJSONSchemaObject;
-}
-
-export function normalizeCode(code: string): string {
-	return code.replace(/\r\n?/g, '\n').trim();
-}
+export { ts };
 
 export interface CompileOptions extends DialectOptions {
 	importEffect?: boolean;
@@ -102,14 +63,16 @@ export async function compile(schema: TestSchema, options: CompileOptions = {}) 
 export async function compileModule(
 	schema: TestSchema,
 	options?: CompileOptions
-): Promise<Record<string, GeneratedSchema>> {
+): Promise<GeneratedModule> {
 	const code = await compile(schema, { ...options, importEffect: true });
 	const directory = await mkdtemp(join(__dirname, '__generated__-'));
 
 	try {
 		const filePath = join(directory, 'schema.ts');
 		await writeFile(filePath, code);
-		return (await import(filePath)) as Record<string, GeneratedSchema>;
+		const module: unknown = await import(filePath);
+
+		return generatedSchemas(module);
 	} finally {
 		await rm(directory, { recursive: true, force: true });
 	}
@@ -120,13 +83,29 @@ export async function compileToSchema(
 	options?: CompileOptions
 ): Promise<GeneratedSchema> {
 	const module = await compileModule(schema, options);
-	return module.Root!;
+	return expectDefined(module.Root);
+}
+
+function generatedSchemas(module: unknown) {
+	const schemas: GeneratedModule = {};
+
+	if (typeof module !== 'object' || module === null) {
+		return schemas;
+	}
+
+	for (const [name, value] of Object.entries(module)) {
+		if (Schema.isSchema(value)) {
+			schemas[name] = Schema.make<GeneratedSchema>(value.ast);
+		}
+	}
+
+	return schemas;
 }
 
 /** Returns the decoded value, or `undefined` when decoding fails. */
-export function decode<A>(schema: GeneratedSchema, input: unknown): A | undefined {
+export function decode(schema: GeneratedSchema, input: unknown) {
 	try {
-		return Schema.decodeUnknownSync(schema)(input) as A;
+		return Schema.decodeUnknownSync(schema)(input);
 	} catch {
 		return undefined;
 	}

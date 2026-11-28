@@ -17,6 +17,17 @@ interface ParityCase {
 	invalid: unknown[];
 }
 
+function schemaFixture(schema: TestSchema): TestSchema {
+	return schema;
+}
+
+const stringSchema: TestSchema = { type: 'string' };
+const numberSchema: TestSchema = { type: 'number' };
+const objectWithLengthSchema: TestSchema = {
+	type: 'object',
+	properties: { length: stringSchema },
+};
+
 /**
  * The Zod generator is the reference implementation, so parity is checked by
  * running the same values through both generated schemas instead of asserting
@@ -226,7 +237,7 @@ const cases: ParityCase[] = [
 	},
 	{
 		name: 'unicode property escape in pattern',
-		schema: { type: 'string', pattern: '^\\p{Letter}+$' },
+		schema: { type: 'string', pattern: String.raw`^\p{Letter}+$` },
 		valid: ['abc', 'ěšč'],
 		invalid: ['123', 'a1', ''],
 	},
@@ -286,7 +297,7 @@ const cases: ParityCase[] = [
 				{ type: 'object', properties: { ['__proto__']: { type: 'number' } } },
 				{ type: 'object', properties: { b: { type: 'string' } } },
 			],
-		} as TestSchema,
+		},
 		valid: [{ b: 'x' }, { ['__proto__']: 12 }],
 		invalid: [{ b: 1 }, { ['__proto__']: 'text' }],
 	},
@@ -296,7 +307,7 @@ const cases: ParityCase[] = [
 			type: 'object',
 			properties: { ['__proto__']: { type: 'number' } },
 			required: ['__proto__'],
-		} as TestSchema,
+		},
 		valid: [{ ['__proto__']: 12 }, { ['__proto__']: 12, a: 'x' }],
 		invalid: [{}, { a: 'x' }, { ['__proto__']: 'text' }],
 	},
@@ -305,7 +316,7 @@ const cases: ParityCase[] = [
 		schema: {
 			type: 'object',
 			patternProperties: { '^__': { type: 'number' } },
-		} as TestSchema,
+		},
 		valid: [{ ['__proto__']: 12 }, {}],
 		invalid: [{ ['__proto__']: 'text' }],
 	},
@@ -314,19 +325,19 @@ const cases: ParityCase[] = [
 		schema: {
 			type: 'object',
 			additionalProperties: { type: 'number' },
-		} as TestSchema,
+		},
 		valid: [{ ['__proto__']: 12 }, { a: 1 }],
 		invalid: [{ ['__proto__']: 'text' }, { a: 'text' }],
 	},
 	{
 		name: 'prototype-named properties',
-		schema: {
+		schema: schemaFixture({
 			type: 'object',
 			properties: {
-				['toString']: { type: 'object', properties: { length: { type: 'string' } } },
-				['constructor']: { type: 'number' },
+				['toString']: objectWithLengthSchema,
+				['constructor']: numberSchema,
 			},
-		} as TestSchema,
+		}),
 		valid: [{}, { ['toString']: { length: 'x' }, ['constructor']: 1 }],
 		invalid: [{ ['toString']: { length: 37 } }, { ['constructor']: 'x' }],
 	},
@@ -335,13 +346,13 @@ const cases: ParityCase[] = [
 		schema: {
 			type: 'object',
 			required: ['toString', 'constructor'],
-		} as TestSchema,
+		},
 		valid: [{ ['toString']: 1, ['constructor']: 2 }],
 		invalid: [{}, { ['toString']: 1 }, { ['constructor']: 2 }],
 	},
 	{
 		name: 'required __proto__ property without a declaration',
-		schema: { type: 'object', required: ['__proto__'] } as TestSchema,
+		schema: { type: 'object', required: ['__proto__'] },
 		valid: [{ ['__proto__']: 12 }],
 		invalid: [{}],
 	},
@@ -522,16 +533,26 @@ describe('format handling', () => {
  * behaviour against the Zod helper instead of a hand-written expectation.
  */
 describe('format parity in assert mode', () => {
-	const formatCases: Array<{ format: string; valid: string[]; invalid: string[] }> = [
+	const formatCases: { format: string; valid: string[]; invalid: string[] }[] = [
 		{
 			format: 'time',
-			valid: ['12:00', '12:00:00', '23:59:59.5'],
-			invalid: ['12:00:00Z', '24:00', '99:99:99'],
+			valid: ['12:00:00Z', '12:00:00+01:00', '23:59:59.5Z'],
+			invalid: ['12:00', '12:00:00', '24:00:00Z', '99:99:99'],
 		},
 		{
 			format: 'date-time',
-			valid: ['2024-02-29T12:00:00Z', '2024-02-29T12:00:00.5Z'],
-			invalid: ['2024-02-29T12:00:00+01:00', '2023-02-29T12:00:00Z', '2024-02-29T99:99:99Z'],
+			valid: [
+				'2024-02-29T12:00:00Z',
+				'2024-02-29T12:00:00.5Z',
+				'2024-02-29T12:00:00+01:00',
+				'1998-12-31T15:59:60-08:00',
+			],
+			invalid: [
+				'2024-02-29T12:00:00',
+				'2023-02-29T12:00:00Z',
+				'1998-12-31T22:59:60Z',
+				'2024-02-29T99:99:99Z',
+			],
 		},
 		{
 			format: 'date',
@@ -613,14 +634,24 @@ describe('design differences', () => {
 
 async function loadRoot(
 	schema: TestSchema,
+	target: 'zod',
+	formatMode?: 'annotate' | 'assert'
+): Promise<z.ZodType>;
+async function loadRoot(
+	schema: TestSchema,
+	target: 'effect',
+	formatMode?: 'annotate' | 'assert'
+): Promise<Schema.Top>;
+async function loadRoot(
+	schema: TestSchema,
 	target: 'zod' | 'effect',
 	formatMode?: 'annotate' | 'assert'
-) {
+): Promise<z.ZodType | Schema.Top> {
 	const directory = await mkdtemp(join(__dirname, '__generated__-'));
 	const file = join(directory, `${target}.ts`);
 
 	try {
-		const { root } = await parse(schema as never, {
+		const { root } = await parse(schema, {
 			cwd: __dirname + '/',
 			fileName: 'Root.json',
 		});
@@ -631,14 +662,51 @@ async function loadRoot(
 
 		await writeFile(file, code);
 
-		const module = (await import(file)) as Record<string, unknown>;
+		const module: unknown = await import(file);
 
-		return module.Root as Parameters<typeof Schema.is>[0];
+		return target === 'zod' ? exportedZodSchema(module) : exportedEffectSchema(module);
 	} finally {
 		await rm(directory, { recursive: true, force: true });
 	}
 }
 
-function zodValid(schema: unknown, value: unknown): boolean {
-	return (schema as z.ZodType).safeParse(value).success;
+function exportedEffectSchema(module: unknown): Schema.Top {
+	if (typeof module !== 'object' || module === null || !('Root' in module)) {
+		throw new TypeError('Generated module did not export Root');
+	}
+
+	const root = module.Root;
+
+	if (!Schema.isSchema(root)) {
+		throw new TypeError('Root export is not an Effect schema');
+	}
+
+	return root;
+}
+
+function exportedZodSchema(module: unknown): z.ZodType {
+	if (typeof module !== 'object' || module === null || !('Root' in module)) {
+		throw new TypeError('Generated module did not export Root');
+	}
+
+	const root = module.Root;
+
+	if (!isZodSchema(root)) {
+		throw new TypeError('Root export is not a Zod schema');
+	}
+
+	return root;
+}
+
+function isZodSchema(value: unknown): value is z.ZodType {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'safeParse' in value &&
+		typeof value.safeParse === 'function'
+	);
+}
+
+function zodValid(schema: z.ZodType, value: unknown): boolean {
+	return schema.safeParse(value).success;
 }

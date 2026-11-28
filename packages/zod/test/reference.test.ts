@@ -1,12 +1,13 @@
-import { type JSONSchema } from '@utilize/json-schema';
+import { expectDefined } from '@utilize/json-schema';
+import type { JSONSchema } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
-import { compile, compileToZod, ts } from './test-utils';
+import { generateCode, compileModule, compileToZod, ts } from './test-utils';
 
 describe('reference', () => {
 	test('local $refs', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'object',
 				properties: {
 					field: { $ref: '#/$defs/MyType' },
@@ -37,14 +38,14 @@ describe('reference', () => {
 	});
 
 	test('self-referencing', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: {
 				field: { $ref: '#' },
 			},
 		});
 
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
       type RootValue = { field?: RootValue };
       export const Root: z.ZodType<RootValue> = z.object({
         get field() {
@@ -56,7 +57,7 @@ describe('reference', () => {
 	});
 
 	test('$ref used multiple times', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: {
 				field1: { $ref: '#/$defs/MyType' },
@@ -67,7 +68,7 @@ describe('reference', () => {
 			},
 		});
 
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
       export const MyType = z.boolean();
       export type MyType = z.infer<typeof MyType>;
 
@@ -80,7 +81,7 @@ describe('reference', () => {
 	});
 
 	test('external refs', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: {
 				name: { type: 'string' },
@@ -96,7 +97,7 @@ describe('reference', () => {
 			},
 		});
 
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
       export const OriginalDataType = z.enum([
         'UNKNOWN',
         'STRING',
@@ -147,7 +148,7 @@ describe('reference', () => {
 	});
 
 	test('cyclic reference', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: {
 				value: { type: 'string' },
@@ -156,7 +157,7 @@ describe('reference', () => {
 			required: ['value'],
 		});
 
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
       type RootValue = { value: string; next?: RootValue };
       export const Root: z.ZodType<RootValue> = z.object({
         value: z.string(),
@@ -169,7 +170,7 @@ describe('reference', () => {
 	});
 
 	test('self-reference nested in array items', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: {
 				children: { type: 'array', items: { $ref: '#' } },
@@ -188,7 +189,7 @@ describe('reference', () => {
 	});
 
 	test('self-reference nested in anyOf', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: {
 				parent: { anyOf: [{ $ref: '#' }, { type: 'null' }] },
@@ -207,7 +208,7 @@ describe('reference', () => {
 	});
 
 	test('cyclic reference across files', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 			properties: {
 				a: { $ref: './definitions/CycleA.json' },
@@ -234,6 +235,54 @@ describe('reference', () => {
       });
       export type Root = z.infer<typeof Root>;
     `);
+	});
+});
+
+describe('typeless recursive references', () => {
+	test.each([
+		'urn:uuid:deadbeef-1234-ffff-ffff-4321feebdaed',
+		'foo:bar/baz',
+		'tag:foo.example,2025:bar/baz',
+	])('resolves a self-reference through %s', async ($id) => {
+		const module = await compileModule({
+			$id,
+			minimum: 30,
+			properties: { foo: { $ref: $id } },
+		});
+		const Root = expectDefined(Object.values(module)[0]);
+
+		expect(Root.safeParse({ foo: 37 }).success).toBe(true);
+		expect(Root.safeParse({ foo: 12 }).success).toBe(false);
+		expect(Root.safeParse(37).success).toBe(true);
+		expect(Root.safeParse(12).success).toBe(false);
+	});
+
+	test('validates a root pointer reference recursively without a declared type', async () => {
+		const Root = await compileToZod({
+			properties: { foo: { $ref: '#' } },
+			additionalProperties: false,
+		});
+
+		expect(Root.safeParse({ foo: false }).success).toBe(true);
+		expect(Root.safeParse({ foo: { foo: false } }).success).toBe(true);
+		expect(Root.safeParse({ bar: false }).success).toBe(false);
+		expect(Root.safeParse({ foo: { bar: false } }).success).toBe(false);
+	});
+
+	test('resolves a URN resource with a nested pointer reference', async () => {
+		const Root = await compileToZod({
+			allOf: [{ $ref: 'urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed' }],
+			definitions: {
+				foo: {
+					$id: 'urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed',
+					definitions: { bar: { type: 'string' } },
+					allOf: [{ $ref: '#/definitions/bar' }],
+				},
+			},
+		});
+
+		expect(Root.safeParse('bar').success).toBe(true);
+		expect(Root.safeParse(12).success).toBe(false);
 	});
 });
 
@@ -295,7 +344,7 @@ describe('boolean references', () => {
 				allowed: true,
 				denied: false,
 			},
-		} as unknown as JSONSchema);
+		} satisfies JSONSchema);
 
 		expect(Root.safeParse({ allowed: 'anything' }).success).toBe(true);
 		expect(Root.safeParse({ denied: 'anything' }).success).toBe(false);

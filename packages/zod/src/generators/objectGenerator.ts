@@ -1,7 +1,9 @@
-import { Meta, type ParsedJSONSchemaObject } from '@utilize/json-schema';
+import { Meta } from '@utilize/json-schema';
+import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
-import { generateSchema } from './generateSchema';
+import type { ExpressionGenerator } from './createGenerator';
+import type { Recursion } from './createGenerator';
 import { protoInputCheck } from './protoProperty';
 import type { GeneratorContext } from './types';
 
@@ -10,36 +12,18 @@ import { isSchemaObject, NEWLINE, shapeKey, ts } from '../utils';
 
 const PROTO = '__proto__';
 
-export const generator = createGenerator(
-	(schema) => schema.type === 'object',
-	(schema, context) => {
+export type ObjectSchema = ParsedJSONSchemaObject & { type: 'object' };
+
+export const objectGenerator: ExpressionGenerator = createGenerator<ObjectSchema>(
+	(schema): schema is ObjectSchema => schema.type === 'object',
+	(schema, context, { generateSchema }) => {
 		const declaredProperties = schema.properties ?? {};
-		const properties = Object.entries(declaredProperties).map(([key, value]) => {
-			const keyExpression = shapeKey(key);
-			let optionalPart = '.optional()';
-
-			if (
-				typeof value === 'object' &&
-				value !== null &&
-				'default' in value &&
-				value.default !== undefined
-			) {
-				optionalPart = '';
-			}
-
-			if (schema.required?.includes(key)) {
-				optionalPart = '';
-			}
-
-			if (containsCircularRef(value, context)) {
-				return ts`get ${keyExpression}() {
-            return ${generateSchema(value, context)}${optionalPart};
-          }`;
-			}
-
-			return `${keyExpression}: ${generateSchema(value, context)}${optionalPart}`;
-		});
-		const propertiesPart = properties.join(`,${NEWLINE}`);
+		const propertiesPart = renderProperties(
+			declaredProperties,
+			schema.required,
+			context,
+			generateSchema
+		).join(`,${NEWLINE}`);
 		// `__proto__` is validated against the raw input below, because Zod's
 		// object parser skips that key in both the shape and the output.
 		const requiredWithoutProperties = (schema.required ?? []).filter(
@@ -47,18 +31,10 @@ export const generator = createGenerator(
 		);
 		const additionalProperties = schema.additionalProperties;
 		const patterns = Object.entries(schema.patternProperties ?? {});
-
 		// A required key that is not declared in `properties` is validated by a
 		// matching pattern, or by `additionalProperties`, not by the property
 		// placeholder itself.
-		const requiredValue =
-			patterns.length > 0
-				? ts`z.unknown()`
-				: additionalProperties === false
-					? ts`z.never()`
-					: isSchemaObject<ParsedJSONSchemaObject>(additionalProperties)
-						? generateSchema(additionalProperties, context)
-						: ts`z.unknown()`;
+		const requiredValue = requiredValueFor(patterns, additionalProperties, context, generateSchema);
 		const requiredPart = requiredWithoutProperties
 			.map((key) => `${shapeKey(key)}: ${requiredValue}`)
 			.join(`,${NEWLINE}`);
@@ -77,56 +53,125 @@ export const generator = createGenerator(
         }
       })`
 				: '';
-		const protoCheck = protoPropertyCheck(schema, context);
-		const withProtoCheck = (expression: string) => {
-			const checked =
-				protoCheck === ''
-					? expression
-					: ts`z.any().superRefine((value, ctx) => {
+		const expression = renderObjectExpression(
+			schema,
+			allProperties,
+			patterns,
+			additionalProperties,
+			requiredCheck,
+			context,
+			generateSchema
+		);
+		const protoCheck = protoPropertyCheck(schema, context, generateSchema);
+		const checked =
+			protoCheck === ''
+				? expression
+				: ts`z.any().superRefine((value, ctx) => {
         ${protoCheck}
       }).pipe(${expression})`;
 
-			// Zod finds a declared key with `key in input` and reads `input[key]`,
-			// so a name that exists on `Object.prototype` is validated against the
-			// inherited value when the input does not own it. A null-prototype
-			// clone hides the inherited names.
-			return needsPrototypeNamesClone(schema)
-				? ts`z.preprocess((value) =>
+		// Zod finds a declared key with `key in input` and reads `input[key]`,
+		// so a name that exists on `Object.prototype` is validated against the
+		// inherited value when the input does not own it. A null-prototype
+		// clone hides the inherited names.
+		return needsPrototypeNamesClone(schema)
+			? ts`z.preprocess((value) =>
         typeof value === 'object' && value !== null && !Array.isArray(value)
           ? Object.assign(Object.create(null), value)
           : value,
         ${checked}
       )`
-				: checked;
-		};
-
-		if (patterns.length > 0) {
-			return withProtoCheck(ts`z.looseObject({
-        ${allProperties}
-      })${patternRefinement(schema, patterns, context)}${requiredCheck}`);
-		}
-
-		const catchAllPart = isSchemaObject<ParsedJSONSchemaObject>(additionalProperties)
-			? ts`.catchall(${generateSchema(additionalProperties, context)})`
-			: '';
-
-		if (additionalProperties === false) {
-			return withProtoCheck(ts`z.strictObject({
-        ${allProperties}
-      })${requiredCheck}`);
-		}
-
-		if (additionalProperties === true) {
-			return withProtoCheck(ts`z.looseObject({
-        ${allProperties}
-      })${requiredCheck}`);
-		}
-
-		return withProtoCheck(ts`z.object({
-      ${allProperties}
-    })${catchAllPart}${requiredCheck}`);
+			: checked;
 	}
 );
+
+function renderProperties(
+	properties: Record<string, Exclude<ParsedJSONSchema, null>>,
+	required: string[] | undefined,
+	context: GeneratorContext,
+	generateSchema: Recursion['generateSchema']
+): string[] {
+	return Object.entries(properties).map(([key, value]) => {
+		const keyExpression = shapeKey(key);
+		let optionalPart = '.optional()';
+
+		if (
+			typeof value === 'object' &&
+			value !== null &&
+			'default' in value &&
+			value.default !== undefined
+		) {
+			optionalPart = '';
+		}
+
+		if (required?.includes(key)) {
+			optionalPart = '';
+		}
+
+		if (containsCircularRef(value, context)) {
+			return ts`get ${keyExpression}() {
+            return ${generateSchema(value, context)}${optionalPart};
+          }`;
+		}
+
+		return `${keyExpression}: ${generateSchema(value, context)}${optionalPart}`;
+	});
+}
+
+function requiredValueFor(
+	patterns: [string, ParsedJSONSchemaObject][],
+	additionalProperties: ParsedJSONSchemaObject['additionalProperties'],
+	context: GeneratorContext,
+	generateSchema: Recursion['generateSchema']
+): string {
+	if (patterns.length > 0) {
+		return ts`z.unknown()`;
+	}
+
+	if (additionalProperties === false) {
+		return ts`z.never()`;
+	}
+
+	return isSchemaObject<ParsedJSONSchemaObject>(additionalProperties)
+		? generateSchema(additionalProperties, context)
+		: ts`z.unknown()`;
+}
+
+function renderObjectExpression(
+	schema: ParsedJSONSchemaObject,
+	allProperties: string,
+	patterns: [string, ParsedJSONSchemaObject][],
+	additionalProperties: ParsedJSONSchemaObject['additionalProperties'],
+	requiredCheck: string,
+	context: GeneratorContext,
+	generateSchema: Recursion['generateSchema']
+): string {
+	if (patterns.length > 0) {
+		return ts`z.looseObject({
+        ${allProperties}
+      })${patternRefinement(schema, patterns, context, generateSchema)}${requiredCheck}`;
+	}
+
+	const catchAllPart = isSchemaObject<ParsedJSONSchemaObject>(additionalProperties)
+		? ts`.catchall(${generateSchema(additionalProperties, context)})`
+		: '';
+
+	if (additionalProperties === false) {
+		return ts`z.strictObject({
+        ${allProperties}
+      })${requiredCheck}`;
+	}
+
+	if (additionalProperties === true) {
+		return ts`z.looseObject({
+        ${allProperties}
+      })${requiredCheck}`;
+	}
+
+	return ts`z.object({
+      ${allProperties}
+    })${catchAllPart}${requiredCheck}`;
+}
 
 /**
  * Zod's object parser skips an own `__proto__` key: the shape never validates
@@ -139,7 +184,11 @@ export const generator = createGenerator(
  * too. The key is constant, so a pattern that matches it is known at
  * generation time.
  */
-function protoPropertyCheck(schema: ParsedJSONSchemaObject, context: GeneratorContext): string {
+function protoPropertyCheck(
+	schema: ParsedJSONSchemaObject,
+	context: GeneratorContext,
+	generateSchema: Recursion['generateSchema']
+): string {
 	const properties = schema.properties ?? {};
 	const declared = Object.hasOwn(properties, PROTO);
 	const required = schema.required?.includes(PROTO) ?? false;
@@ -148,26 +197,28 @@ function protoPropertyCheck(schema: ParsedJSONSchemaObject, context: GeneratorCo
 		unicodePattern(pattern, 'patternProperties').test(PROTO)
 	);
 	const additionalProperties = schema.additionalProperties;
-	// A matching pattern covers the key, so `additionalProperties` does not.
-	const additionalSchema =
-		!declared &&
-		matchingPatterns.length === 0 &&
-		isSchemaObject<ParsedJSONSchemaObject>(additionalProperties)
-			? generateSchema(additionalProperties, context)
-			: '';
-	// Without patterns, `z.strictObject` reports the key itself.
-	const additionalRejection =
-		!declared &&
-		matchingPatterns.length === 0 &&
-		patterns.length > 0 &&
-		additionalProperties === false;
+	const additionalSchema = protoAdditionalSchema(
+		declared,
+		matchingPatterns,
+		additionalProperties,
+		context,
+		generateSchema
+	);
+	const additionalRejection = protoAdditionalRejection(
+		declared,
+		matchingPatterns,
+		patterns,
+		additionalProperties
+	);
 
 	if (
-		!declared &&
-		!required &&
-		matchingPatterns.length === 0 &&
-		additionalSchema === '' &&
-		!additionalRejection
+		!needsProtoCheck(
+			declared,
+			required,
+			matchingPatterns.length,
+			additionalSchema,
+			additionalRejection
+		)
 	) {
 		return '';
 	}
@@ -181,6 +232,52 @@ function protoPropertyCheck(schema: ParsedJSONSchemaObject, context: GeneratorCo
 			additionalSchema,
 		].filter(Boolean),
 	});
+}
+
+function protoAdditionalSchema(
+	declared: boolean,
+	matchingPatterns: [string, ParsedJSONSchemaObject][],
+	additionalProperties: ParsedJSONSchemaObject['additionalProperties'],
+	context: GeneratorContext,
+	generateSchema: Recursion['generateSchema']
+): string {
+	// A matching pattern covers the key, so `additionalProperties` does not.
+	return !declared &&
+		matchingPatterns.length === 0 &&
+		isSchemaObject<ParsedJSONSchemaObject>(additionalProperties)
+		? generateSchema(additionalProperties, context)
+		: '';
+}
+
+function protoAdditionalRejection(
+	declared: boolean,
+	matchingPatterns: [string, ParsedJSONSchemaObject][],
+	patterns: [string, ParsedJSONSchemaObject][],
+	additionalProperties: ParsedJSONSchemaObject['additionalProperties']
+): boolean {
+	// Without patterns, `z.strictObject` reports the key itself.
+	return (
+		!declared &&
+		matchingPatterns.length === 0 &&
+		patterns.length > 0 &&
+		additionalProperties === false
+	);
+}
+
+function needsProtoCheck(
+	declared: boolean,
+	required: boolean,
+	matchingPatternCount: number,
+	additionalSchema: string,
+	additionalRejection: boolean
+): boolean {
+	return (
+		declared ||
+		required ||
+		matchingPatternCount > 0 ||
+		additionalSchema !== '' ||
+		additionalRejection
+	);
 }
 
 /** True when Zod could find a declared key on `Object.prototype`. */
@@ -198,8 +295,9 @@ function needsPrototypeNamesClone(schema: ParsedJSONSchemaObject): boolean {
  */
 function patternRefinement(
 	schema: ParsedJSONSchemaObject,
-	patterns: Array<[string, ParsedJSONSchemaObject]>,
-	context: GeneratorContext
+	patterns: [string, ParsedJSONSchemaObject][],
+	context: GeneratorContext,
+	generateSchema: Recursion['generateSchema']
 ): string {
 	const declared = Object.keys(schema.properties ?? {});
 	// An empty array literal is typed `never[]`, so `[].includes(key)` would not

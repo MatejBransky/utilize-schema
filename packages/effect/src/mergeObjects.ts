@@ -1,9 +1,5 @@
-import {
-	isPlainObject,
-	Meta,
-	type ParsedJSONSchema,
-	type ParsedJSONSchemaObject,
-} from '@utilize/json-schema';
+import { isParsedJSONSchemaObject, Meta, schemaRecord, withSourceMeta } from '@utilize/json-schema';
+import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { UnresolvedReferenceError } from './errors';
 import { ANNOTATION_KEYWORDS } from './keywords';
@@ -18,6 +14,33 @@ export type MergeResult =
 	| { merged: ParsedJSONSchemaObject | false }
 	| { merged?: undefined; reason: string };
 
+interface MergeState {
+	properties: Record<string, ParsedJSONSchema>;
+	propertyOwners: Map<string, number>;
+	required: Set<string>;
+	additionalProperties: ParsedJSONSchemaObject['additionalProperties'];
+	additionalOwner: number | undefined;
+	additionalDeclared: boolean;
+	source: ParsedJSONSchemaObject | undefined;
+}
+
+/** Metadata for a merge with no source member, such as an empty `allOf`. */
+const SYNTHETIC_SOURCE: ParsedJSONSchemaObject = {
+	[Meta]: {
+		fileName: 'Root.json',
+		filePath: 'Root.json',
+		path: [],
+		parent: null,
+		dialect: 'draft-07',
+		dialectSource: 'fallback',
+	},
+};
+
+type MergeMember =
+	| { kind: 'object'; schema: ParsedJSONSchemaObject }
+	| { kind: 'false' }
+	| { kind: 'reason'; reason: string };
+
 /**
  * Merges object subschemas into a single object schema, the way Effect
  * expresses an intersection. Returns `false` when a subschema is `false`, and a
@@ -25,89 +48,187 @@ export type MergeResult =
  * can choose between failing and another representation.
  */
 export function mergeObjectSchemas(schemas: ParsedJSONSchema[]): MergeResult {
-	// Without a prototype, `properties.__proto__ = ...` adds a property instead
-	// of replacing the prototype.
-	const properties: Record<string, ParsedJSONSchema> = Object.create(null);
-	const propertyOwners = new Map<string, number>();
-	const required = new Set<string>();
-	let additionalProperties: ParsedJSONSchemaObject['additionalProperties'];
-	let additionalOwner: number | undefined;
-	let additionalDeclared = false;
+	const state = createMergeState();
 
 	for (const [index, raw] of schemas.entries()) {
-		const dereferenced = dereference(raw);
+		const member = mergeableObject(raw);
 
-		if (dereferenced === false) {
+		if (member.kind === 'false') {
 			return { merged: false };
 		}
 
-		if (!isPlainObject(dereferenced)) {
-			return { reason: 'only object subschemas can be merged' };
+		if (member.kind === 'reason') {
+			return { reason: member.reason };
 		}
 
-		const schema = dereferenced as ParsedJSONSchemaObject;
-		const unmergeable = unmergeableReason(schema);
+		const reason = mergeObjectMember(state, member.schema, index);
 
-		if (unmergeable !== undefined) {
-			return { reason: unmergeable };
+		if (reason !== undefined) {
+			return { reason };
 		}
 
-		const declaredProperties = Object.entries(
-			(schema.properties ?? {}) as Record<string, ParsedJSONSchema>
-		);
-
-		// `additionalProperties` only considers the `properties` declared next to
-		// it, so merging it with properties from another subschema would accept
-		// keys the schema rejects.
-		if (additionalDeclared && additionalOwner !== index && declaredProperties.length > 0) {
-			return { reason: additionalPropertiesReason };
-		}
-
-		for (const [key, property] of declaredProperties) {
-			if (Object.hasOwn(properties, key)) {
-				return { reason: `property ${JSON.stringify(key)} is declared by more than one subschema` };
-			}
-
-			properties[key] = property;
-			propertyOwners.set(key, index);
-		}
-
-		for (const key of schema.required ?? []) {
-			if (typeof key === 'string') {
-				required.add(key);
-			}
-		}
-
-		const additional = schema.additionalProperties;
-
-		if (additional !== undefined && additional !== true) {
-			if (additionalDeclared && additionalProperties !== additional) {
-				return {
-					reason: 'every subschema would have to declare the same "additionalProperties"',
-				};
-			}
-
-			if ([...propertyOwners.values()].some((owner) => owner !== index)) {
-				return { reason: additionalPropertiesReason };
-			}
-
-			additionalProperties = additional;
-			additionalOwner = index;
-			additionalDeclared = true;
-		}
+		state.source ??= member.schema;
 	}
 
-	const merged: Record<string, unknown> = {
-		type: 'object',
+	return { merged: mergedObject(state) };
+}
+
+function createMergeState(): MergeState {
+	// Without a prototype, `properties.__proto__ = ...` adds a property instead
+	// of replacing the prototype.
+	const properties: MergeState['properties'] = {};
+	Object.setPrototypeOf(properties, null);
+
+	return {
 		properties,
-		required: [...required],
+		propertyOwners: new Map(),
+		required: new Set(),
+		additionalProperties: undefined,
+		additionalOwner: undefined,
+		additionalDeclared: false,
+		source: undefined,
+	};
+}
+
+function mergeableObject(raw: ParsedJSONSchema): MergeMember {
+	const dereferenced = dereference(raw);
+
+	if (dereferenced === false) {
+		return { kind: 'false' };
+	}
+
+	if (!isParsedJSONSchemaObject(dereferenced)) {
+		return { kind: 'reason', reason: 'only object subschemas can be merged' };
+	}
+
+	const schema = dereferenced;
+	const reason = unmergeableReason(schema);
+
+	return reason === undefined ? { kind: 'object', schema } : { kind: 'reason', reason };
+}
+
+function mergeObjectMember(
+	state: MergeState,
+	schema: ParsedJSONSchemaObject,
+	index: number
+): string | undefined {
+	const declaredProperties = Object.entries(schema.properties ?? {});
+	const additionalConflict = additionalPropertiesConflict(state, index, declaredProperties.length);
+
+	if (additionalConflict !== undefined) {
+		return additionalConflict;
+	}
+
+	const propertyConflict = mergeProperties(state, declaredProperties, index);
+
+	if (propertyConflict !== undefined) {
+		return propertyConflict;
+	}
+
+	mergeRequired(state, schema.required);
+	return mergeAdditionalProperties(state, schema.additionalProperties, index);
+}
+
+// `additionalProperties` only considers the `properties` declared next to
+// it, so merging it with properties from another subschema would accept
+// keys the schema rejects.
+function additionalPropertiesConflict(
+	state: MergeState,
+	index: number,
+	propertyCount: number
+): string | undefined {
+	if (state.additionalDeclared && state.additionalOwner !== index && propertyCount > 0) {
+		return additionalPropertiesReason;
+	}
+
+	return undefined;
+}
+
+function mergeProperties(
+	state: MergeState,
+	declaredProperties: [string, ParsedJSONSchema][],
+	index: number
+): string | undefined {
+	for (const [key, property] of declaredProperties) {
+		if (Object.hasOwn(state.properties, key)) {
+			return `property ${JSON.stringify(key)} is declared by more than one subschema`;
+		}
+
+		state.properties[key] = property;
+		state.propertyOwners.set(key, index);
+	}
+
+	return undefined;
+}
+
+function mergeRequired(state: MergeState, required: ParsedJSONSchemaObject['required']): void {
+	for (const key of required ?? []) {
+		if (typeof key === 'string') {
+			state.required.add(key);
+		}
+	}
+}
+
+function mergeAdditionalProperties(
+	state: MergeState,
+	additional: ParsedJSONSchemaObject['additionalProperties'],
+	index: number
+): string | undefined {
+	if (additional === undefined || additional === true) {
+		return undefined;
+	}
+
+	const conflict = additionalValueConflict(state, additional, index);
+
+	if (conflict !== undefined) {
+		return conflict;
+	}
+
+	state.additionalProperties = additional;
+	state.additionalOwner = index;
+	state.additionalDeclared = true;
+	return undefined;
+}
+
+function additionalValueConflict(
+	state: MergeState,
+	additional: ParsedJSONSchemaObject['additionalProperties'],
+	index: number
+): string | undefined {
+	if (!state.additionalDeclared) {
+		return undefined;
+	}
+
+	if (state.additionalProperties !== additional) {
+		return 'every subschema would have to declare the same "additionalProperties"';
+	}
+
+	if ([...state.propertyOwners.values()].some((owner) => owner !== index)) {
+		return additionalPropertiesReason;
+	}
+
+	return undefined;
+}
+
+interface MergedSchema {
+	type: 'object';
+	properties: MergeState['properties'];
+	required: string[];
+	additionalProperties?: MergeState['additionalProperties'];
+}
+
+function mergedObject(state: MergeState): ParsedJSONSchemaObject {
+	const merged: MergedSchema = {
+		type: 'object',
+		properties: state.properties,
+		required: [...state.required],
 	};
 
-	if (additionalDeclared) {
-		merged.additionalProperties = additionalProperties;
+	if (state.additionalDeclared) {
+		merged.additionalProperties = state.additionalProperties;
 	}
 
-	return { merged: merged as unknown as ParsedJSONSchemaObject };
+	return withSourceMeta(state.source ?? SYNTHETIC_SOURCE, merged);
 }
 
 function unmergeableReason(schema: ParsedJSONSchemaObject): string | undefined {
@@ -118,7 +239,7 @@ function unmergeableReason(schema: ParsedJSONSchemaObject): string | undefined {
 		return 'nested references cannot be merged';
 	}
 
-	const record = schema as unknown as Record<string, unknown>;
+	const record = schemaRecord(schema);
 	const keyword = Object.keys(schema).find(
 		(key) =>
 			record[key] !== undefined && !ANNOTATION_KEYWORDS.has(key) && !MERGEABLE_KEYWORDS.has(key)
@@ -128,12 +249,12 @@ function unmergeableReason(schema: ParsedJSONSchemaObject): string | undefined {
 }
 
 /** The target of a `$ref` node, or the node itself when it is not a reference. */
-export function dereference(schema: ParsedJSONSchema): ParsedJSONSchema {
-	if (!isPlainObject(schema) || typeof schema.$ref !== 'string') {
+function dereference(schema: ParsedJSONSchema): ParsedJSONSchema {
+	if (!isParsedJSONSchemaObject(schema) || typeof schema.$ref !== 'string') {
 		return schema;
 	}
 
-	const resolved = (schema as ParsedJSONSchemaObject)[Meta]?.reference;
+	const resolved = schema[Meta]?.reference;
 
 	if (resolved === undefined) {
 		throw new UnresolvedReferenceError(schema.$ref);

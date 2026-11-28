@@ -1,0 +1,466 @@
+// fallow configuration: https://fallow.tools/docs
+// Every entry says why it exists. Prefer fixing the code or the tool config
+// over adding an exception here, and never add one only to silence a real
+// finding.
+//
+// The policy is strict on purpose: every rule that reports a defect is `error`,
+// so it fails the commit hook, the pull request audit and the whole-project CI
+// job. A rule stays `warn` only when it reports a design or inventory signal
+// rather than a defect — styling taste, prop forwarding, feature-flag inventory,
+// static coverage gaps, and the two audit diff-risk items that describe a review
+// decision. Every such rule carries its reason next to the entry, and
+// `pnpm exec fallow suppressions` lists each suppression with its reason.
+{
+	"$schema": "./node_modules/fallow/schema.json",
+	"minimumVersion": "3.45.0",
+
+	// A source file Fallow cannot parse must fail the run instead of silently
+	// disappearing from every analysis.
+	"failOnParseError": true,
+
+	// The config may not inherit from another directory, an npm package or a
+	// URL: everything this project checks stays in this repository.
+	"sealed": true,
+
+	// Benchmark harnesses are developer tools, not production entry points.
+	"supportEntry": [
+		"packages/json-schema/bench/compareRefactor.mjs",
+		"packages/json-schema/bench/refactorEntry.ts",
+		"packages/json-schema/tsdown.bench.config.ts",
+	],
+
+	// Repository policy that boundaries cannot express.
+	"rulePacks": ["rule-packs/utilize-policy.jsonc"],
+
+	// The TypeScript checker confirms an unused export, type or class member
+	// before it is reported, so a declaration that an interface or an override
+	// requires is never reported. The projects are listed explicitly because a
+	// workspace root without a `tsconfig.json` gives the checker no project to
+	// load and every answer would be `no-project`.
+	//
+	// The dead-code pass starts the checker only when the syntactic pass has
+	// candidates to confirm. With no unused export there is nothing to ask, so
+	// `fallow dead-code --type-aware --format json` reports `"executed": false`
+	// and no selected tsconfigs, and `--type-aware-require complete` passes
+	// there without proving anything. The health pass (`fallow health
+	// --type-coupling`) does load every listed project.
+	//
+	// `require` stays `best-effort`. A `complete` requirement makes the whole
+	// run (`pnpm exec fallow`) fail with "gate type-aware-require failed" as
+	// soon as one project reports blocking diagnostics, and the type-coupling
+	// proof is still `Partial` here. Switch to `complete` only after
+	// `pnpm exec fallow --type-aware-require complete` passes on a full install
+	// (`fallow health --type-coupling --format json` lists each project's
+	// status under `_meta.type_aware.projects`).
+	"typeAware": {
+		"enabled": true,
+		"require": "best-effort",
+		"projects": [
+			"packages/json-schema/tsconfig.json",
+			"packages/zod/tsconfig.json",
+			"packages/effect/tsconfig.json",
+			"packages/typescript/tsconfig.json",
+			"packages/test-utils/tsconfig.json",
+			"playground/tsconfig.json",
+		],
+	},
+
+	// Mutation runs stay opt-in (`fallow mutation`) and unconfigured: Vitest is
+	// installed per workspace, not at the repository root, so a run from the root
+	// has no runner to resolve and `fallow doctor` reports that instead of
+	// pretending the guard is active.
+	//
+	// Commit hooks and PR CI judge only findings introduced by the change,
+	// while the full Fallow run in the test job gates the whole repository.
+	"audit": {
+		"gate": "new-only",
+		// A complexity finding that already exceeded a ceiling and grew counts
+		// as introduced: a change may not make existing risk worse.
+		"worsened": "error",
+	},
+
+	// No `publicPackages`. fallow already reads each package's `main`, `exports`
+	// and `bin`, so the public API of every published package counts as used
+	// (`fallow list --entry-points`). Listing the packages as public on top of
+	// that also stops fallow from reporting unused exports in their internal
+	// modules and tests, which hid 17 real findings.
+	//
+	// `includeEntryExports` stays `false` for the same reason: the entry files
+	// are the API surface, and checking their exports would report every public
+	// name as unused. A stray export in a framework route is still caught through
+	// the plugin `usedExports` rule.
+	//
+	// The `exports` maps of the published packages list each built file by name
+	// (`./dist/index.mjs`, ...) instead of a `./dist/*` wildcard: fallow maps a
+	// wildcard onto every `src` file of the package, which made each of them an
+	// entry point whose unused exports were never reported.
+
+	"ignoreExports": [
+		// Every generator package exposes the same API shape on purpose, so a user
+		// switches targets by changing only the import. The names are separate
+		// exports of separate packages, not two modules behind one barrel, so the
+		// shared name cannot resolve to the wrong one. Renaming them per target
+		// (`generateZod`, `ZodGenerateOptions`, …) would break that symmetry and
+		// every existing user.
+		{ "file": "packages/*/src/generator.ts", "exports": ["generate", "GenerateOptions"] },
+
+		// The playground's own copy of the `formatMode` option, used for its UI
+		// state across the Zod and Effect targets. It mirrors the generators'
+		// `FormatMode` instead of importing one of them, so the app does not tie a
+		// shared setting to a single target.
+		{ "file": "playground/src/formatMode.ts", "exports": ["FormatMode"] },
+	],
+
+	"duplicates": {
+		// No percentage threshold on purpose (0 = none, the default): the gate is
+		// zero clone groups. The bare `fallow` run fails on every clone group that
+		// is not listed in `ignoredClones`, whatever the threshold, and
+		// `fallow audit` fails on every clone group a change introduces (see
+		// `rules` below). The threshold only sets the exit code of
+		// `fallow dupes`, and any value above 0 would let that command pass with
+		// new copies under it. Duplication is 0 % today with the reviewed groups
+		// left out, so there is no old copy-paste a percentage would need to allow.
+		//
+		// `mode` stays at fallow's default (`mild`) and `near` stays off, which is
+		// the documented starting point: `semantic` also matches blocks that only
+		// look alike (54 groups, 1,177 lines here) and `near` adds functions that
+		// are 80 % similar (10 groups, 284 lines). A new exact copy already fails
+		// the run, so the stricter modes would mostly report shapes that are not
+		// copies.
+		"threshold": 0,
+
+		// `ignoreDefaults` stays `true`, so fallow's built-in duplicates ignores
+		// apply and every `*.test.*` file is left out of clone detection
+		// (`fallow dupes --explain-skipped` lists them). The zero-clone gate
+		// therefore covers production code and the non-test helpers under
+		// `test/`, not the test files themselves. This is on purpose: test
+		// files repeat the same arrange-and-assert shape for every case, and with
+		// `ignoreDefaults: false` fallow reports 98 clone groups, and every
+		// one of them involves a test file (mostly the per-target
+		// `schemaVersion`, `cli` and `parser` tests; two also include fixtures
+		// copied from `playground/src/examples.ts`).
+		// Shared test helpers belong in `packages/test-utils`, which is checked.
+
+		// No reviewed clone groups: the generator compile paths share core helpers.
+		"ignoredClones": [],
+
+		"ignore": [
+			// Generated by each package's `update:suite-baseline` script: the JSON
+			// Schema Test Suite tests that generator fails. Zod and Effect fail many
+			// of the same `format` tests, so the lists overlap, but each one records
+			// its own generator and changes on its own. Not code, so not copy-paste.
+			"packages/*/test/suite/knownFailureInstances.ts",
+		],
+	},
+
+	// The layering promised in the README: the core knows no generator, each
+	// generator knows only the core, and the playground may use every target.
+	// Tests, scripts, benchmarks and the private test-helper package stay outside
+	// the production zones. So do the build and test configs (`**/*.config.ts`:
+	// tsdown, Vite and Vitest run them in Node, and nothing in a zone imports
+	// them) and the playground's Vite HTML shell (`playground/*.html`), which
+	// only loads `src/main.tsx`.
+	"boundaries": {
+		"zones": [
+			{ "name": "core", "patterns": ["packages/json-schema/src/**"] },
+			{ "name": "zod", "patterns": ["packages/zod/src/**"] },
+			{ "name": "effect", "patterns": ["packages/effect/src/**"] },
+			{ "name": "typescript", "patterns": ["packages/typescript/src/**"] },
+			{ "name": "playground", "patterns": ["playground/src/**"] },
+		],
+		"rules": [
+			{ "from": "core", "allow": [] },
+			{ "from": "zod", "allow": ["core"] },
+			{ "from": "effect", "allow": ["core"] },
+			{ "from": "typescript", "allow": ["core"] },
+			{ "from": "playground", "allow": ["core", "zod", "effect", "typescript"] },
+		],
+		"coverage": {
+			"requireAllFiles": true,
+			"allowUnmatched": [
+				"**/test/**",
+				"**/scripts/**",
+				"**/bench/**",
+				"**/*.config.ts",
+				"playground/*.html",
+				"packages/test-utils/**",
+			],
+		},
+	},
+
+	"health": {
+		// The fallow defaults apply (cyclomatic 20, cognitive 15, CRAP 30, unit
+		// size 60) except for two ceilings that this repository can ratchet
+		// without a refactor:
+		//
+		// - cyclomatic 12 is the worst function today, so any function that grows
+		//   past it is new risk. The default 20 would let a function almost double
+		//   before the gate noticed.
+		// - file length 900 is a generous cap rather than a measurement. The
+		//   longest hand-written file in the repository is the TypeScript renderer
+		//   at 881 lines; the largest module the Effect generator owns after its
+		//   split is `object.ts` at 241. No file needs a per-file exception today.
+		//
+		// Test code is left out of the complexity checks and the health score
+		// only. A table-driven test or a `describe` block with many cases is long
+		// on purpose, and splitting it would make it harder to read, not easier.
+		// Dead-code checks still cover every test file. Duplication checks do not
+		// cover `*.test.*` files; see `duplicates` for why.
+		// `packages/test-utils` is the private package of shared test helpers;
+		// nothing published imports it.
+		"maxCyclomatic": 12,
+		"maxFileLines": 900,
+		"ignore": [
+			"**/test/**",
+			"**/*.test.ts",
+			"**/*.test.tsx",
+			"packages/test-utils/**",
+			// The barrel is the published API surface: it re-exports declarations
+			// that live in another module, and the tests import the module under
+			// test directly rather than the barrel. The health pass therefore
+			// cannot find a test path to those re-exports and reports each one as
+			// a coverage gap, while the dead-code pass still checks the barrel.
+			"packages/*/src/index.ts",
+			// The Vite shell and the module that mounts it are the runtime entry
+			// of the playground; a test would have to boot the whole app to reach
+			// them, and the browser tests already render every screen they own.
+			"playground/index.html",
+			"playground/src/main.tsx",
+			// Measurement plumbing is tooling; its branches implement reporting and
+			// fixture setup rather than production behavior.
+			"packages/json-schema/bench/**",
+			"packages/json-schema/tsdown.bench.config.ts",
+		],
+		"thresholdOverrides": [
+			{
+				// The component has no branch-heavy logic: the score is six Monaco
+				// lifecycle effects plus the imperative handle and ten props. Moving
+				// those effects into hooks would need thousands of real editor
+				// mount/update/unmount cycles with workers to benchmark honestly, so
+				// record the measured ceiling instead of inventing a microbenchmark.
+				"files": ["playground/src/monaco/MonacoEditor.tsx"],
+				"functions": ["MonacoEditor"],
+				"maxCognitive": 16,
+				"reason": "Monaco lifecycle hook density, measured at cognitive 16; refactoring requires a browser lifecycle benchmark.",
+			},
+		],
+	},
+
+	// The catalogue is admitted in full, including the two include-required
+	// categories (`hardcoded-secret`, `secret-to-network`) that a default run
+	// leaves out. A finding is still an unverified candidate; `fallow security`
+	// and the two CI gates decide whether it blocks.
+	"security": {
+		"categories": {
+			"include": [
+				"angular-trusted-html",
+				"cleartext-transport",
+				"code-injection",
+				"command-injection",
+				"dangerous-html",
+				"deprecated-cipher",
+				"dom-document-write",
+				"dynamic-module-load",
+				"dynamic-regex",
+				"electron-unsafe-webpreferences",
+				"hardcoded-secret",
+				"header-injection",
+				"insecure-cookie",
+				"insecure-randomness",
+				"insecure-temp-file",
+				"jquery-html",
+				"jwt-alg-none",
+				"jwt-verify-missing-algorithms",
+				"llm-call-injection",
+				"mass-assignment",
+				"mysql-multiple-statements",
+				"nextjs-open-redirect",
+				"nosql-injection",
+				"open-redirect",
+				"path-traversal",
+				"permissive-cors",
+				"postmessage-wildcard-origin",
+				"prototype-pollution",
+				"redos-regex",
+				"resource-amplification",
+				"route-send-file",
+				"secret-pii-log",
+				"secret-to-network",
+				"sql-injection",
+				"ssrf",
+				"ssti",
+				"template-escape-bypass",
+				"tls-validation-disabled",
+				"unsafe-buffer-alloc",
+				"unsafe-deserialization",
+				"weak-crypto",
+				"webview-injection",
+				"world-writable-permission",
+				"xpath-injection",
+				"xxe",
+				"zip-slip",
+			],
+		},
+	},
+
+	// Flag detection covers the built-in SDK patterns, the env prefixes and the
+	// config-object heuristic. The heuristic's only false positive was the CLI's
+	// own option map, which is now called `parseOptions` rather than `flags`, so
+	// a `feature*` / `flag*` object access is a real flag and gates.
+	"flags": {
+		"configObjectHeuristics": true,
+	},
+
+	"rules": {
+		// Dead code and dependency hygiene gate at `error`. Several of these
+		// default to `warn` (dev and optional dependencies, store, inject and
+		// component rules), so the entries are the policy rather than a restatement
+		// of the defaults, and a future default change cannot demote a check this
+		// repository relies on.
+		"unused-files": "error",
+		"unused-exports": "error",
+		"unused-types": "error",
+		"unused-dependencies": "error",
+		"unused-dev-dependencies": "error",
+		"unused-optional-dependencies": "error",
+		"unused-enum-members": "error",
+		"unused-class-members": "error",
+		"unused-protected-class-members": "error",
+		"unused-namespace-members": "error",
+		"unused-store-members": "error",
+		"unprovided-injects": "error",
+		"unrendered-components": "error",
+		"unused-component-props": "error",
+		"unused-component-emits": "error",
+		"unused-component-inputs": "error",
+		"unused-component-outputs": "error",
+		"unused-svelte-events": "error",
+		"unused-effect-layers": "error",
+		"unused-tagged-errors": "error",
+		"unproduced-catch-tags": "error",
+		"unused-server-actions": "error",
+		"unused-load-data-keys": "error",
+
+		// Every exported signature must be nameable by consumers.
+		"private-type-leaks": "error",
+
+		// A `@deprecated` export that the project still reaches is dead API: the
+		// two dialect aliases are gone, and a new one fails the run until its
+		// consumers move off it.
+		"deprecated-exports-in-use": "error",
+
+		// Dependency placement: a package that only types or tests use belongs in
+		// `devDependencies`, and production code may not import a dev dependency.
+		"type-only-dependencies": "error",
+		"test-only-dependencies": "error",
+		"dev-dependencies-in-production": "error",
+		"unlisted-dependencies": "error",
+		"unlisted-binaries": "error",
+
+		// Import graph health.
+		"unresolved-imports": "error",
+		"duplicate-exports": "error",
+		"duplicate-export-aliases": "error",
+		"circular-dependencies": "error",
+		"re-export-cycle": "error",
+		"package-cycle": "error",
+		"boundary-violation": "error",
+
+		// Catalog and override hygiene in `pnpm-workspace.yaml`.
+		"unused-catalog-entries": "error",
+		"empty-catalog-groups": "error",
+		"unresolved-catalog-references": "error",
+		"unused-dependency-overrides": "error",
+		"misconfigured-dependency-overrides": "error",
+
+		// Complexity gates. The thresholds live in `health` above.
+		"complexity-cyclomatic": "error",
+		"complexity-cognitive": "error",
+		"complexity-crap": "error",
+		"complexity-file-lines": "error",
+
+		// Test-signal integrity: a weakened test, a skipped case or a test-only
+		// branch in production code fails.
+		"weakened-tests": "error",
+		"test-only-branch": "error",
+
+		// Every runtime file and export has a test dependency path. The published
+		// barrels and the playground's Vite entry are excluded under `health.ignore`
+		// with the reason there: a test of a re-export would only assert that the
+		// barrel re-exports, and the browser tests already render every screen.
+		"coverage-gaps": "error",
+
+		// Suppressions must carry a reason, and a suppression that matches
+		// nothing is removed instead of accumulating.
+		"require-suppression-reason": "error",
+		"stale-suppressions": "error",
+
+		// Security candidates. The two heads in
+		// `packages/test-utils/src/suite/evaluate.ts` carry a suppression with
+		// the reason: the suite evaluates generated code in memory and no input
+		// comes from outside the test process.
+		"security-sink": "error",
+
+		// The repository policy pack is repository law, not an advisory.
+		"policy-violation": "error",
+
+		// Next.js / RSC structure, kept honest even while the playground is a
+		// plain Vite app.
+		"invalid-client-export": "error",
+		"mixed-client-server-barrel": "error",
+		"misplaced-directive": "error",
+		"route-collision": "error",
+		"dynamic-segment-name-conflict": "error",
+
+		// A change may not copy code, so a new clone group fails the audit. A
+		// copy that diverges from its reviewed siblings is reported too: it is
+		// how a shared block rots.
+		"introduced-clone-group": "error",
+		"diverged-clone-sibling": "error",
+
+		// Component-shape heuristics. Each one reports zero findings today, so the
+		// gate is free, and a new occurrence is a design decision the change makes
+		// on purpose: a prop forwarded unchanged through intermediate components,
+		// a component that only forwards `props`, three components with the same
+		// prop-name set, or an optional prop that no inspected caller passes.
+		"prop-drilling": "error",
+		"thin-wrapper": "error",
+		"duplicate-prop-shape": "error",
+		"absent-component-props": "error",
+
+		// A parameter that every visible call passes the same way, or an optional
+		// parameter that no call passes, is dead flexibility: the value belongs in
+		// the function or the parameter goes. The gate is free today after the
+		// three unused defaults and the narrow-only `issueBlock` argument were
+		// removed.
+		"constant-parameters": "error",
+
+		// CSS gates in full: a broken or dead reference, a drifted token, a
+		// repeated block and a selector that buries the cascade in `:not()` /
+		// `:has()` chains. The playground reaches zero findings after the tab
+		// state moved to a sibling selector and the root height moved to a
+		// zero-specificity `:where()`.
+		"css-broken-reference": "error",
+		"css-dead-surface": "error",
+		"css-token-drift": "error",
+		"css-duplicate-block": "error",
+		"css-selector-complexity": "error",
+
+		// A detected feature flag is a live branch in the product, so it gates:
+		// the run lists each one and a new flag is a decision the change makes on
+		// purpose. There are none today, and `fallow flags` reports the ones that
+		// can retire.
+		"feature-flags": "error",
+
+		// A Vite app has no `"use client"` root, so the detector reports that it
+		// measures nothing and finds nothing. The rule still gates, so the first
+		// secret that crosses a client boundary fails the run.
+		"security-client-server-leak": "error",
+
+		// Audit diff-risk items that describe the change for the reviewer: a new
+		// suppression and a new dependency are decisions a human verifies, and
+		// blocking them would only teach people to bypass the gate.
+		"added-suppression": "warn",
+		"added-dependency": "warn",
+	},
+}

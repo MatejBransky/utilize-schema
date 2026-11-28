@@ -1,13 +1,13 @@
 import { describe, expect, test } from 'vitest';
 
-import { compile, ts } from './test-utils';
+import { generateCode, ts } from './test-utils';
 
 describe('object generator', () => {
 	test('empty object', async () => {
-		const result = await compile({
+		const result = await generateCode({
 			type: 'object',
 		});
-		expect(result).toMatchCode(ts`
+		await expect(result).toMatchCode(ts`
       export const Root = z.object({})
       export type Root = z.infer<typeof Root>
     `);
@@ -15,7 +15,7 @@ describe('object generator', () => {
 
 	test('emits __proto__ as a computed key and checks the raw input', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'object',
 				properties: { ['__proto__']: { type: 'number' } },
 				required: ['__proto__'],

@@ -1,5 +1,152 @@
 # @utilize/zod
 
+## 0.13.0
+
+### Minor Changes
+
+- 27958a0: Reach full draft-07 conformance in both runtime generators. Zod and Effect now
+  validate every `format-assertion` case, including RFC 3339 date-time, email and
+  IDNA hostnames, URI and IRI references, JSON Pointers, regular expressions and
+  URI Templates. Complex validators are emitted once per format and shared by
+  every schema in the module that uses them.
+
+  Format assertions now follow the JSON Schema definitions rather than the target's
+  looser helpers. Values such as a bare `time` without an RFC 3339 offset, or a
+  URL-shaped `uri` that is not a valid RFC 3986 URI, can now be rejected. Generated
+  modules that use email or URI formats contain the shared validator source.
+
+  The parser resolves URNs, tag URIs and other in-document identifiers before an
+  external read, and both runtime generators handle typeless recursive roots and
+  tuple references. Generated Zod schemas also support keyword-only object and
+  array cycles without an explicit `type`. The TypeScript generator inherits the
+  same reference fixes, raising its draft-07 baseline to 192 of 285 cases.
+
+- d770676: Import structural format validators at runtime instead of inlining them.
+
+  Generated Zod and Effect schemas now import the validators for formats such as
+  `email`, `hostname`, `uri` and `date-time` from `@utilize/json-schema/formats`
+  (for example `formatEmail` and `formatUri`) instead of emitting a copy of each
+  body in every generated file. Apps that run generated schemas must keep
+  `@utilize/json-schema` as a runtime dependency; only the validators a file uses
+  survive bundling.
+
+  `@utilize/json-schema` exports the new `./formats` entry. `formatBody` is
+  removed; import the matching validator from that entry instead.
+
+- 5b4734f: Fix native JSON Schema conformance gaps without introducing a custom runtime: resolve draft-04 legacy `id` references, align UUID/duration/hostname format semantics with the specification, and handle Effect `dependentRequired`/`dependentSchemas` on objects without an explicit `type`.
+- 60be53c: Add opt-in JSON Schema validation before generation. `parse` and every
+  `compile` accept a `validateSchema` callback that receives each resolved
+  document together with the dialect the parser resolved for it, and a finding
+  throws `SchemaValidationError` with one report per document.
+
+  The CLIs gain `--validate`, which checks every document (including `$ref`
+  targets) against the meta-schema of its dialect — draft-04, draft-06, draft-07,
+  2019-09 or 2020-12 — and writes nothing when a schema is invalid. Ajv backs the
+  built-in validator and is an optional peer dependency; `--validator <module>`
+  replaces it with any function, so Ajv stays out of the install for callers that
+  do not validate. Draft-04 schemas also need `ajv-draft-04`.
+
+  `@utilize/json-schema` exports the adapter as the new `./validate/ajv` entry and
+  the validation API from the main entry: `SchemaValidator`, the finding, context
+  and report types, `SchemaValidationError`, and `resolveDocumentDialect`, which
+  resolves a document's dialect the way `parse` does.
+
+### Patch Changes
+
+- 9862f23: Keep UUID validation in the shared runtime entry and preserve generated field
+  types in the playground.
+
+  The playground now registers declarations for `@utilize/json-schema/formats`,
+  so Monaco resolves imported validators instead of falling back to `any`.
+
+  Zod and Effect schemas import every JSON Schema-specific format check from the
+  shared entry. UUID, JSON Pointer, URL and the pattern-based Effect formats no
+  longer emit inline regexes; target-native helpers such as `z.url()` stay native.
+
+- 36b46ac: Add `isJSONSchema`, `isJSONSchemaObject`, `isParsedJSONSchema` and `isParsedJSONSchemaObject` runtime guards so callers can narrow raw and linked schema values without unsafe type assertions, plus `reachesThrough` for shared graph traversal.
+
+  Type boolean schema documents correctly through `readSchema`, `parseSchemaSource`, `parseForCompile` and each generator's `compileSchema`, share the file-reading and parse paths through `bindCompileFile` and `withParsedSchema`, and export the CLI flag value types used by the public `GeneratorCli` signature. `schemaRecord` now accepts a `JSONSchema` instead of the broad `object`, and `withSourceMeta` now rejects a source without metadata instead of silently producing an unmarked copy.
+
+- Updated dependencies [27958a0]
+- Updated dependencies [d770676]
+- Updated dependencies [5b4734f]
+- Updated dependencies [60be53c]
+- Updated dependencies [9862f23]
+- Updated dependencies [36b46ac]
+  - @utilize/json-schema@0.8.0
+
+## 0.12.0
+
+### Minor Changes
+
+- 0939ed0: Export the types referenced by exported signatures so consumers can name them: `Writable` and `KeywordIssue` in `@utilize/json-schema`, `ObjectKeys` in `@utilize/effect`, `StandaloneSchemasResult` in `@utilize/typescript`, and the generator predicate, generate and test-option types in `@utilize/zod`. These types were already part of the emitted declarations; the export only makes them importable. The `private-type-leaks` rule now keeps that true.
+- bc6133c: Export `UnsupportedCyclicReferenceError` and `UnsupportedPatternError` from `@utilize/zod`, so code that calls the generator can catch them with `instanceof`, as it already can with the errors `@utilize/effect` and `@utilize/typescript` throw.
+
+### Patch Changes
+
+- 72afcad: List the built entry files by name in the `exports` map instead of a `./dist/*` wildcard. `@utilize/zod/dist/index.mjs`, `dist/runtime.mjs`, `dist/cli.mjs` (and `@utilize/json-schema/dist/index.mjs`, `dist/node.mjs`), with their `.d.ts` files, still resolve. Only the bundler's hashed chunk files, whose names change on every build, are no longer importable directly.
+- bab16d9: The CLI and the file-reading part of `compile` now come from `@utilize/json-schema/node`, so the three generators no longer keep their own copies, and they no longer depend on `js-yaml` directly. Flags, help text, exit codes, messages and generated files stay the same.
+- 41afe47: Add `expectDefined` for replacing non-null assertions with a throwing invariant, and narrow the Zod runtime helpers with it.
+- Updated dependencies [72afcad]
+- Updated dependencies [0939ed0]
+- Updated dependencies [338f308]
+- Updated dependencies [41afe47]
+- Updated dependencies [5d32982]
+- Updated dependencies [04c7a38]
+- Updated dependencies [4d5c1b2]
+- Updated dependencies [75e513a]
+- Updated dependencies [d9f8cf8]
+- Updated dependencies [91a0ef6]
+- Updated dependencies [24d44f0]
+- Updated dependencies [0b3806c]
+- Updated dependencies [48bae59]
+  - @utilize/json-schema@0.7.0
+
+## 0.11.1
+
+### Patch Changes
+
+- f012b77: Bump js-yaml from 5.4.2 to 5.5.0.
+
+## 0.11.0
+
+### Minor Changes
+
+- 00cd219: Support `minContains` and `maxContains` in the runtime generators. The parser no longer rejects them, and both generators count the items matching `contains`, applying the bounds only in 2019-09 and newer. `minContains: 0` allows an array without a match, and both keywords are ignored without `contains`. A plain `contains` keeps its single-match check and its message.
+
+  Zod also compiles `pattern` and `patternProperties` regular expressions in Unicode mode, so property escapes such as `\p{Letter}` match as the specification expects. A pattern that is not valid in Unicode mode (`\-`, `a{`, ...) now fails at generation time with an error that names the keyword and the pattern, instead of crashing while emitting code.
+
+  Effect now skips `contains` in dialects that do not have it (draft-04), as Zod does, so a schema whose ignored `contains` subschema Effect cannot express no longer fails to generate.
+
+- 19536a4: Add `externalSchemas` so absolute `$ref` URIs can be served from memory instead of disk or the network. The parser indexes identifiers declared inside a provided document (`$id`, or the draft-04 `id`), and the three `compile()` and `compileSchema()` APIs pass the option through.
+- d99505f: Keep the document root when the root is a `$ref`. `parse()` resolved the root pointer with `$refs.get('#')`, so `root` was the referenced value and `root[Meta]` described that value instead of the document. Generated code now emits the root as an alias to the referenced declaration instead of inlining or merging the target, and `referencedSchemas` no longer includes the root document.
+- 9f90e21: `format` is now switchable in both runtime generators and asserted by default,
+  so `@utilize/zod` and `@utilize/effect` agree on what a known format does.
+
+  Both generators turn known formats into validation (`format: "email"` becomes
+  `z.email()` or a `Schema.String.check(formatEmail)`), and keep unknown formats
+  as annotations. Pass `formatMode: 'annotate'` to keep `format` as metadata
+  (`.meta({ format })` / `.annotate({ format })`); both CLIs take
+  `--format-mode annotate|assert`. `formatMap` entries apply in both modes.
+
+  The Effect generator gains the format checks in this release, so schemas with a
+  known `format` now reject invalid values by default.
+
+### Patch Changes
+
+- 83be704: Add `narrowUntypedSchema`, the helper both runtime generators use to narrow a
+  subschema to the type of the value it is applied to (`propertyNames`, schema
+  dependencies and `not`/`if`/`then`/`else`). The Zod generator now calls it
+  instead of keeping its own copy, so the exclusion list and the type-specific
+  keyword gate cannot drift between the packages.
+- b17a201: Validate `__proto__` and other `Object.prototype` property names instead of letting Zod read the prototype chain. A `__proto__` property is emitted as a computed key and checked on the raw input (including `required`, `patternProperties`, `additionalProperties`, records and `const`/`enum` object values, since Zod's object and record parsers skip it). Object schemas that declare or require `toString`, `constructor` and similar names get a null-prototype clone of the input, so an absent key is no longer validated against the inherited value and is reported as missing when required. This fixes the two draft-07 prototype-name suite cases. The generated code relies on Zod 4.5's handling of a computed `__proto__` key, so the peer range is now `>=4.5.0 <5` instead of `>=4.0.0 <5`.
+- 5e0d94e: Apply keywords on a schema without `type` for every type they constrain. Each constrained type now gets its own guarded check, so `{ minLength: 2, minimum: 5 }` validates strings and numbers instead of falling back to `z.unknown()`, which accepted every value.
+- Updated dependencies [00cd219]
+- Updated dependencies [19536a4]
+- Updated dependencies [d99505f]
+- Updated dependencies [83be704]
+  - @utilize/json-schema@0.6.0
+
 ## 0.10.0
 
 ### Minor Changes

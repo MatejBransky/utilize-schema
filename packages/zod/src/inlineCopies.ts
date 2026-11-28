@@ -1,6 +1,13 @@
-import { dialectOf, isPlainObject, Meta, type ParsedJSONSchemaObject } from '@utilize/json-schema';
+import {
+	childSchemasOf,
+	dialectOf,
+	expectDefined,
+	isParsedJSONSchemaObject,
+	isPlainObject,
+	Meta,
+} from '@utilize/json-schema';
+import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
-import { childSchemasOf } from './collectStandaloneSchemas';
 import { withoutAlwaysValidAnyOf } from './generators/alwaysValidAnyOf';
 import { ignoresRefSiblings } from './generators/generateSchema';
 
@@ -194,7 +201,6 @@ function hoistRepeatedSchemas(
 	// decides every schema before the schemas inside it.
 	const repeated = [...occurrences]
 		.filter(([key, schemas]) => schemas.length > 1 && !declarations.has(key))
-		// eslint-disable-next-line unicorn/no-array-sort -- spread creates a fresh array
 		.sort(([a], [b]) => b.length - a.length);
 
 	for (const [, schemas] of repeated) {
@@ -204,7 +210,7 @@ function hoistRepeatedSchemas(
 			continue;
 		}
 
-		const source = generated[0]!;
+		const source = expectDefined(generated[0]);
 		const declaration = declarationFrom(source);
 		hoisted.set(declaration, source);
 
@@ -213,13 +219,10 @@ function hoistRepeatedSchemas(
 		}
 	}
 
-	return (
-		[...hoisted]
-			.map(([declaration, source]) => ({ declaration, position: order.get(source)! }))
-			// eslint-disable-next-line unicorn/no-array-sort -- map creates a fresh array
-			.sort((a, b) => a.position - b.position)
-			.map(({ declaration }) => declaration)
-	);
+	return [...hoisted]
+		.map(([declaration, source]) => ({ declaration, position: expectDefined(order.get(source)) }))
+		.sort((a, b) => a.position - b.position)
+		.map(({ declaration }) => declaration);
 }
 
 /**
@@ -237,7 +240,7 @@ function declarationFrom(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject
 		value: meta,
 	});
 
-	return declaration as ParsedJSONSchemaObject;
+	return declaration;
 }
 
 /**
@@ -297,7 +300,13 @@ class StructuralKeys {
 		let key = this.keys.get(value);
 
 		if (key === undefined) {
-			key = Array.isArray(value) ? this.ofArray(value) : this.ofObject(value);
+			if (Array.isArray(value)) {
+				key = this.ofArray(value);
+			} else if (isPlainObject(value)) {
+				key = this.ofObject(value);
+			} else {
+				key = `#${this.identityOf(value)}`;
+			}
 			this.keys.set(value, key);
 		}
 
@@ -308,14 +317,13 @@ class StructuralKeys {
 		return `[${values.map((value) => this.of(value)).join(',')}]`;
 	}
 
-	private ofObject(value: object): string {
+	private ofObject(value: Record<string, unknown>): string {
 		if (!isPlainObject(value)) {
 			return `#${this.identityOf(value)}`;
 		}
 
-		const meta = (value as Partial<ParsedJSONSchemaObject>)[Meta];
+		const meta = isParsedJSONSchemaObject(value) ? value[Meta] : undefined;
 		const keywords = Object.keys(value);
-		// eslint-disable-next-line unicorn/no-array-sort -- Object.keys returns a fresh array
 		keywords.sort();
 		const entries = keywords.map(
 			(keyword) => `${JSON.stringify(keyword)}:${this.ofEntry(value, keyword, meta)}`

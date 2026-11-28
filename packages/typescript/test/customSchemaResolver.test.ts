@@ -4,8 +4,12 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { compile as compileToFile, type CustomSchemaResolver } from '../src';
+import { compile as compileToFile } from '../src';
+import type { CustomSchemaResolver } from '../src';
 import { compile, ts } from './test-utils';
+
+const dateTimeResolver: CustomSchemaResolver = (schema) =>
+	schema.format === 'date-time' ? 'Date' : undefined;
 
 describe('customSchemaResolver', () => {
 	test('replaces a matching property with a custom TypeScript type', async () => {
@@ -51,8 +55,6 @@ describe('customSchemaResolver', () => {
 
 	test('is passed on by compile()', async () => {
 		// Typed with the package export, so dropping the export fails `check:types`.
-		const dateTimeResolver: CustomSchemaResolver = (schema) =>
-			schema.format === 'date-time' ? 'Date' : undefined;
 		const directory = await mkdtemp(join(tmpdir(), 'utilize-typescript-resolver-'));
 
 		try {

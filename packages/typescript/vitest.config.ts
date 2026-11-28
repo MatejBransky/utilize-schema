@@ -1,12 +1,14 @@
 import { defineConfig } from 'vitest/config';
 
-const isGitHubActions = process.env.GITHUB_ACTIONS === 'true';
+import { createReporters } from '../../scripts/vitest-reporters.mjs';
 
 export default defineConfig({
 	test: {
-		setupFiles: [__dirname + '/test/setup.ts'],
-		reporters: isGitHubActions
-			? ['default', ['github-actions', { jobSummary: { title: '@utilize/typescript tests' } }]]
-			: ['default'],
+		setupFiles: ['./test/setup.ts'],
+		reporters: createReporters('@utilize/typescript tests', 'typescript'),
+		coverage: {
+			include: ['src/**'],
+			reporter: ['lcov', 'json'],
+		},
 	},
 });

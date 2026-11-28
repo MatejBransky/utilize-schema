@@ -1,4 +1,4 @@
-import { type JSONSchema } from '@utilize/json-schema';
+import type { JSONSchema } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
 import { execFileSync } from 'node:child_process';
@@ -6,7 +6,8 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 
-import { compile, type CompileOptions } from './test-utils';
+import { generateCode, schemaWithExtensions } from './test-utils';
+import type { TestCompileOptions } from './test-utils';
 
 const require = createRequire(import.meta.url);
 const tsc = join(dirname(require.resolve('typescript/package.json')), 'bin/tsc');
@@ -39,7 +40,7 @@ const inlineCopyCycleSchema: JSONSchema = {
 const refWithIgnoredLiteralSchema: JSONSchema = {
 	type: 'object',
 	properties: {
-		kind: { $ref: '#/definitions/Kind', type: 'string', const: 'a' } as JSONSchema,
+		kind: { $ref: '#/definitions/Kind', type: 'string', const: 'a' },
 		next: { $ref: '#' },
 	},
 	definitions: { Kind: { type: 'string' } },
@@ -50,8 +51,8 @@ const refWithIgnoredCombinatorSchema: JSONSchema = {
 	$schema: 'http://json-schema.org/draft-07/schema#',
 	type: 'object',
 	properties: {
-		kind: { $ref: '#/definitions/Kind', const: 'a', minLength: 1 } as JSONSchema,
-		tag: { $ref: '#/definitions/Kind', allOf: [{ const: 'b' }], type: 'string' } as JSONSchema,
+		kind: { $ref: '#/definitions/Kind', const: 'a', minLength: 1 },
+		tag: { $ref: '#/definitions/Kind', allOf: [{ const: 'b' }], type: 'string' },
 		next: { $ref: '#' },
 	},
 	definitions: { Kind: { type: 'string' } },
@@ -66,7 +67,7 @@ const refWithAppliedCombinatorSchema = {
 		next: { $ref: '#' },
 	},
 	$defs: { Kind: { type: 'string' } },
-} as unknown as JSONSchema;
+} satisfies JSONSchema;
 
 /** Both arrays of the recursive schema are hoisted into one declaration. */
 const hoistedCycleSchema: JSONSchema = {
@@ -222,24 +223,28 @@ const prefixItemsSchema = {
 	type: 'array',
 	prefixItems: [{ type: 'string' }],
 	items: { type: 'number' },
-} as unknown as JSONSchema;
+} satisfies JSONSchema;
 
-const dependentRequiredSchema = {
-	$schema: 'https://json-schema.org/draft/2020-12/schema',
-	type: 'object',
-	properties: {
-		a: { type: 'string' },
-		b: { type: 'string' },
+const dependentRequiredSchema = schemaWithExtensions(
+	{
+		$schema: 'https://json-schema.org/draft/2020-12/schema',
+		type: 'object',
+		properties: {
+			a: { type: 'string' },
+			b: { type: 'string' },
+		},
 	},
-	dependentRequired: { a: ['b'] },
-} as unknown as JSONSchema;
+	{ dependentRequired: { a: ['b'] } }
+);
 
-const draft04ExclusiveSchema = {
-	$schema: 'http://json-schema.org/draft-04/schema#',
-	type: 'number',
-	minimum: 0,
-	exclusiveMinimum: true,
-} as unknown as JSONSchema;
+const draft04ExclusiveSchema = schemaWithExtensions(
+	{
+		$schema: 'http://json-schema.org/draft-04/schema#',
+		type: 'number',
+		minimum: 0,
+	},
+	{ exclusiveMinimum: true }
+);
 
 const siblingAllOfSchema: JSONSchema = {
 	allOf: [{ type: 'object', properties: { a: { type: 'string' } }, required: ['a'] }],
@@ -259,7 +264,7 @@ const booleanRefSchema = {
 		denied: { $ref: '#/$defs/denied' },
 	},
 	$defs: { allowed: true, denied: false },
-} as unknown as JSONSchema;
+} satisfies JSONSchema;
 
 const patternPropertiesSchema: JSONSchema = {
 	type: 'object',
@@ -310,6 +315,15 @@ describe('generated recursive schemas type-check', () => {
 				'RefWithAppliedCombinator.ts': refWithAppliedCombinatorSchema,
 				'HoistedCycle.ts': hoistedCycleSchema,
 				'HoistedLazyCycle.ts': hoistedLazyCycleSchema,
+				'TypelessRootPointer.ts': {
+					properties: { foo: { $ref: '#' } },
+					additionalProperties: false,
+				},
+				'TypelessUrn.ts': {
+					$id: 'urn:uuid:deadbeef-1234-ffff-ffff-4321feebdaed',
+					minimum: 30,
+					properties: { foo: { $ref: 'urn:uuid:deadbeef-1234-ffff-ffff-4321feebdaed' } },
+				},
 			})
 		).resolves.toBeUndefined();
 	});
@@ -420,13 +434,13 @@ describe('generated recursive schemas type-check', () => {
 
 describe('value types of $ref siblings', () => {
 	test('draft-07 renders only the reference', async () => {
-		await expect(compile(refWithIgnoredCombinatorSchema)).resolves.toContain(
+		await expect(generateCode(refWithIgnoredCombinatorSchema)).resolves.toContain(
 			'type RootValue = { kind?: Kind; tag?: Kind; next?: RootValue };'
 		);
 	});
 
 	test('2019-09 intersects the reference with its siblings', async () => {
-		await expect(compile(refWithAppliedCombinatorSchema)).resolves.toContain(
+		await expect(generateCode(refWithAppliedCombinatorSchema)).resolves.toContain(
 			"type RootValue = { kind?: Kind & ('a' & unknown); next?: RootValue };"
 		);
 	});
@@ -434,13 +448,13 @@ describe('value types of $ref siblings', () => {
 
 const dateTime: JSONSchema = { type: 'string', format: 'date-time' };
 
-async function typeCheck(schemas: Record<string, JSONSchema>, options: CompileOptions = {}) {
+async function typeCheck(schemas: Record<string, JSONSchema>, options: TestCompileOptions = {}) {
 	const directory = await mkdtemp(join(__dirname, '__generated__-'));
 	const files: string[] = [];
 
 	try {
 		for (const [name, schema] of Object.entries(schemas)) {
-			const code = await compile(schema, { importZod: true, ...options });
+			const code = await generateCode(schema, { importZod: true, ...options });
 			const file = join(directory, name);
 			await writeFile(file, code);
 			files.push(file);

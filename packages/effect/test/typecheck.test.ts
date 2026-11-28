@@ -5,7 +5,8 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 
-import { compile, type CompileOptions, type TestSchema } from './test-utils';
+import { compile } from './test-utils';
+import type { CompileOptions, TestSchema } from './test-utils';
 
 const require = createRequire(import.meta.url);
 const tsc = join(dirname(require.resolve('typescript/package.json')), 'bin/tsc');
@@ -110,24 +111,24 @@ const unevaluated = {
 	unevaluatedProperties: false,
 } as TestSchema;
 
-const booleanRefs = {
+const booleanRefs: TestSchema = {
 	type: 'object',
 	properties: {
 		allowed: { $ref: '#/$defs/allowed' },
 		denied: { $ref: '#/$defs/denied' },
 	},
-	$defs: { allowed: true, denied: false },
-} as unknown as TestSchema;
+};
+Object.assign(booleanRefs, { $defs: { allowed: true, denied: false } });
 
 const structuredLiterals: TestSchema = {
 	enum: [6, 'foo', [], true, { foo: 12 }],
-} as TestSchema;
+};
 
 const structuredConst: TestSchema = {
 	const: { foo: 'bar', baz: 'bax' },
-} as unknown as TestSchema;
+};
 
-const structuredArrayConst: TestSchema = { const: [{ foo: 'bar' }] } as unknown as TestSchema;
+const structuredArrayConst: TestSchema = { const: [{ foo: 'bar' }] };
 
 const recursiveStructuredLiteral: TestSchema = {
 	title: 'Node',
@@ -137,7 +138,7 @@ const recursiveStructuredLiteral: TestSchema = {
 		children: { type: 'array', items: { $ref: '#' } },
 	},
 	required: ['tag'],
-} as unknown as TestSchema;
+};
 
 const nested: TestSchema = {
 	$schema: 'https://json-schema.org/draft/2020-12/schema',
@@ -210,6 +211,19 @@ describe('generated schemas type-check', () => {
 				'PatternPropertiesWithRequired.ts': patternPropertiesWithRequired,
 				'RecursivePatternRecord.ts': recursivePatternRecord,
 				'ClosedRecursivePatternObject.ts': closedRecursivePatternObject,
+				'UntypedTupleRef.ts': {
+					items: [{ type: 'integer' }, { $ref: '#/items/0' }],
+				},
+				'UrnNestedPointer.ts': {
+					allOf: [{ $ref: 'urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed' }],
+					definitions: {
+						foo: {
+							$id: 'urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed',
+							definitions: { bar: { type: 'string' } },
+							allOf: [{ $ref: '#/definitions/bar' }],
+						},
+					},
+				},
 			})
 		).resolves.toBeUndefined();
 	});
@@ -324,13 +338,29 @@ async function typeCheck(schemas: Record<string, TestSchema>, options: CompileOp
 				{ encoding: 'utf8', stdio: 'pipe' }
 			);
 		} catch (error) {
-			const output = error as { stdout?: string; stderr?: string };
-
-			throw new Error(`tsc failed:\n${output.stdout ?? ''}${output.stderr ?? ''}`, {
-				cause: error,
-			});
+			throw new Error(
+				`tsc failed:\n${outputField(error, 'stdout') ?? ''}${outputField(error, 'stderr') ?? ''}`,
+				{ cause: error }
+			);
 		}
 	} finally {
 		await rm(directory, { recursive: true, force: true });
 	}
+}
+
+function outputField(error: unknown, field: 'stdout' | 'stderr'): string | undefined {
+	if (typeof error !== 'object' || error === null) {
+		return undefined;
+	}
+
+	const value =
+		field === 'stdout'
+			? 'stdout' in error
+				? error.stdout
+				: undefined
+			: 'stderr' in error
+				? error.stderr
+				: undefined;
+
+	return typeof value === 'string' ? value : undefined;
 }

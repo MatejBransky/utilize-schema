@@ -1,11 +1,17 @@
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 
+import { DRAFT_7, OTHER_DIALECTS } from '@utilize/test-utils/suite/compatibility';
+import { loadSuiteFiles, suiteCaseKey } from '@utilize/test-utils/suite/loadSuite';
+import { measureCases, selectCases } from '@utilize/test-utils/suite/measure';
+
 import { baseline } from './suite/baseline';
-import { DRAFT_7, isCompatible } from './suite/compatibility';
 import { renderCaseModule } from './suite/generateCase';
 import { knownGaps } from './suite/knownGaps';
-import { loadSuiteFiles, type SuiteCase, suiteCaseKey } from './suite/loadSuite';
-import { typecheckCases, type TypecheckModule } from './suite/typecheck';
+import { knownGapCases } from './suite/knownGapCases';
+import type { CaseGaps, GapDialect } from './suite/knownGapCases';
 
 /**
  * Runs the official JSON Schema Test Suite against the generated TypeScript
@@ -18,10 +24,11 @@ import { typecheckCases, type TypecheckModule } from './suite/typecheck';
  *
  * Three kinds of gaps are reported separately:
  *
- * - **Type gaps** — the invalid instance is rejected only by a keyword a type
- *   cannot express (`minimum`, `pattern`, `format`, `dependencies`, …). These
- *   are inherent to the target, and json-schema-to-typescript records the same
- *   kind of gap in its own baseline.
+ * - **Type gaps** — the invalid instance is accepted because the only
+ *   constraint that would reject it is a keyword a type cannot express
+ *   (`minimum`, `pattern`, `format`, `dependencies`, …). These are inherent to
+ *   the target, and json-schema-to-typescript records the same kind of gap in
+ *   its own baseline.
  * - **Inference gaps** — a schema without `type` infers the intended type from
  *   its keywords, so instances of other JSON types are rejected. This is a
  *   deliberate trade-off shared with json-schema-to-typescript: without it,
@@ -35,7 +42,126 @@ import { typecheckCases, type TypecheckModule } from './suite/typecheck';
  * when conformance improves.
  */
 
+// The generated module uses `satisfies` so it keeps its literal evidence; the
+// tests read it through the owner contract.
+const gapCases: Record<string, CaseGaps> = knownGapCases;
 const files = loadSuiteFiles();
+const UPDATE_BASELINE = process.env.UPDATE_SUITE_BASELINE === '1';
+const dialectGaps: Record<string, DialectGapData> = {};
+
+interface DialectGapData {
+	gaps: { key: string; reason: string }[];
+	typeGaps: string[];
+}
+
+function isOtherDialect(dialect: string): dialect is keyof typeof OTHER_DIALECTS {
+	return Object.hasOwn(OTHER_DIALECTS, dialect);
+}
+
+function isGapDialect(dialect: string): dialect is GapDialect {
+	return dialect === 'draft-07' || isOtherDialect(dialect);
+}
+
+afterAll(() => {
+	if (!UPDATE_BASELINE) {
+		return;
+	}
+
+	if (Object.keys(dialectGaps).length !== 1 + Object.keys(OTHER_DIALECTS).length) {
+		console.error('Not writing test/suite/knownGapCases.ts: not every dialect was measured.');
+		process.exitCode = 1;
+		return;
+	}
+
+	writeFileSync(join(__dirname, 'suite/knownGapCases.ts'), renderKnownGapCases(dialectGaps));
+	console.log('wrote test/suite/knownGapCases.ts');
+});
+
+function gapsForDialect(dialect: GapDialect): string[] {
+	return Object.entries(gapCases)
+		.flatMap(([key, entry]) => {
+			const reason = entry.gaps?.[dialect];
+
+			return reason === undefined ? [] : [`${key}: ${reason}`];
+		})
+		.sort();
+}
+
+function typeGapsForDialect(dialect: GapDialect): string[] {
+	return Object.entries(gapCases)
+		.filter(([, entry]) => entry.typeGaps?.includes(dialect))
+		.map(([key]) => key)
+		.sort();
+}
+
+function renderKnownGapCases(data: Record<string, DialectGapData>): string {
+	const cases = new Map<string, CaseGaps>();
+
+	for (const [dialect, entry] of Object.entries(data)) {
+		if (!isGapDialect(dialect)) {
+			continue;
+		}
+
+		for (const { key, reason } of entry.gaps) {
+			const value = cases.get(key) ?? {};
+
+			value.gaps ??= {};
+			value.gaps[dialect] = reason;
+			cases.set(key, value);
+		}
+
+		for (const key of entry.typeGaps) {
+			const value = cases.get(key) ?? {};
+
+			value.typeGaps ??= [];
+			value.typeGaps.push(dialect);
+			cases.set(key, value);
+		}
+	}
+
+	const body = [...cases.keys()]
+		.sort()
+		.map((key) => {
+			const entry = cases.get(key) ?? {};
+			const lines = [`\t${JSON.stringify(key)}: {`];
+
+			if (entry.gaps) {
+				const gaps = Object.entries(entry.gaps)
+					.map(
+						([dialect, reason]) => `\t\t\t${JSON.stringify(dialect)}: ${JSON.stringify(reason)},`
+					)
+					.join('\n');
+				lines.push(`\t\tgaps: {\n${gaps}\n\t\t},`);
+			}
+
+			if (entry.typeGaps) {
+				const typeGaps = entry.typeGaps
+					.sort()
+					.map((dialect) => `\t\t\t${JSON.stringify(dialect)},`)
+					.join('\n');
+				lines.push(`\t\ttypeGaps: [\n${typeGaps}\n\t\t],`);
+			}
+
+			lines.push('\t},');
+			return lines.join('\n');
+		})
+		.join('\n');
+
+	return `// Generated by \`pnpm --filter @utilize/typescript update:suite-baseline\`; do not edit by hand.
+export type GapDialect = 'draft-04' | 'draft-06' | 'draft-07' | '2019-09' | '2020-12';
+
+export interface CaseGaps {
+	/** Dialects where the case crashes, emits invalid TypeScript or rejects a valid instance. */
+	gaps?: Partial<Record<GapDialect, string>>;
+	/** Dialects where the case differs only because an invalid instance is accepted. */
+	typeGaps?: GapDialect[];
+}
+
+export const knownGapCases = {
+${body}
+} satisfies Record<string, CaseGaps>;
+`;
+}
 
 const stats = {
 	cases: 0,
@@ -63,101 +189,36 @@ afterAll(() => {
 	console.log(report.join('\n'));
 });
 
-interface RunnableCase {
-	testCase: SuiteCase;
-	key: string;
-}
-
 describe('JSON Schema Test Suite (draft-07, type level)', () => {
 	test('matches the recorded conformance baseline', async () => {
-		const runnable: RunnableCase[] = [];
+		const { runnable, total, skippedDialect, skippedFormat } = selectCases(files, DRAFT_7);
 
-		for (const file of files) {
-			for (const testCase of file.cases) {
-				stats.cases++;
+		stats.cases = total;
+		stats.skippedDialect = skippedDialect;
+		stats.skippedFormat = skippedFormat;
 
-				if (!isCompatible(testCase.compatibility, DRAFT_7)) {
-					stats.skippedDialect++;
-					continue;
-				}
+		const measurement = await measureCases(runnable, {
+			render: renderCaseModule,
+			formatCrash: (message) => message.replaceAll(`${__dirname}/suite/`, ''),
+		});
+		const { failures, typeGapKeys } = measurement;
 
-				// A type cannot check a format either way, so assertion cases are
-				// measured by the runtime generators instead of here.
-				if (testCase.tags?.includes('format-assertion')) {
-					stats.skippedFormat++;
-					continue;
-				}
+		stats.conformant = measurement.passing;
+		stats.typeGaps = measurement.typeGaps;
+		stats.known = measurement.gaps;
+		stats.assertions = measurement.instances;
+		stats.passedAssertions = measurement.passingInstances;
+		stats.validAssertions = measurement.validInstances;
+		stats.validPassed = measurement.passingValidInstances;
+		stats.invalidAssertions = measurement.invalidInstances;
+		stats.invalidPassed = measurement.passingInvalidInstances;
 
-				runnable.push({ testCase, key: suiteCaseKey(file, testCase) });
-			}
-		}
-
-		const modules: TypecheckModule[] = [];
-		const crashes = new Map<string, string>();
-
-		for (const { testCase, key } of runnable) {
-			try {
-				modules.push({ key, module: await renderCaseModule(testCase) });
-			} catch (error) {
-				crashes.set(key, error instanceof Error ? error.message : String(error));
-			}
-		}
-
-		const results = await typecheckCases(modules);
-		const failures = new Map<string, string[]>();
-
-		for (const { key } of runnable) {
-			const reasons: string[] = [];
-			const crash = crashes.get(key);
-
-			if (crash !== undefined) {
-				reasons.push(`crashes: ${crash.split('\n')[0]}`);
-			}
-
-			for (const message of results.invalidModules.get(key) ?? []) {
-				reasons.push(`invalid TypeScript: ${message}`);
-			}
-
-			for (const index of results.validRejected.get(key) ?? []) {
-				reasons.push(`rejects valid instance ${index}`);
-			}
-
-			if (reasons.length > 0) {
-				failures.set(key, reasons);
-				continue;
-			}
-
-			if ((results.invalidAccepted.get(key) ?? []).length > 0) {
-				stats.typeGaps++;
-				continue;
-			}
-
-			stats.conformant++;
-		}
-
-		stats.assertions = modules.reduce((total, entry) => total + entry.module.instances.length, 0);
-		stats.known = failures.size;
-
-		for (const entry of modules) {
-			const rejectedValid = new Set(results.validRejected.get(entry.key) ?? []);
-			const acceptedInvalid = new Set(results.invalidAccepted.get(entry.key) ?? []);
-
-			for (const instance of entry.module.instances) {
-				const failed = instance.valid
-					? rejectedValid.has(instance.index)
-					: acceptedInvalid.has(instance.index);
-
-				if (instance.valid) {
-					stats.validAssertions++;
-					stats.validPassed += failed ? 0 : 1;
-				} else {
-					stats.invalidAssertions++;
-					stats.invalidPassed += failed ? 0 : 1;
-				}
-
-				stats.passedAssertions += failed ? 0 : 1;
-			}
-		}
+		dialectGaps['draft-07'] = {
+			gaps: failures
+				.map(({ key, reasons }) => ({ key, reason: reasons.join('; ') }))
+				.sort((left, right) => left.key.localeCompare(right.key)),
+			typeGaps: [...typeGapKeys].sort(),
+		};
 
 		report = [
 			[
@@ -168,23 +229,93 @@ describe('JSON Schema Test Suite (draft-07, type level)', () => {
 				`${stats.typeGaps} type gaps`,
 				`${stats.known} known gaps`,
 				`${stats.skippedFormat} skipped (format assertion)`,
-				`${stats.skippedDialect} filtered out (other dialects)`,
+				`${stats.skippedDialect} outside this dialect (measured in the baseline)`,
 			].join(' · '),
 		];
 
-		if (failures.size > 0 && process.env.SUITE_VERBOSE === '1') {
+		if (measurement.gaps > 0 && process.env.SUITE_VERBOSE === '1') {
 			report.push(
 				'Known gaps that still apply:',
-				...[...failures].map(([key, reasons]) => `  - ${key}: ${reasons.join('; ')}`)
+				...failures.map(({ key, reasons }) => `  - ${key}: ${reasons.join('; ')}`)
 			);
 		}
 
-		expect(results.unattributed).toEqual([]);
-		// eslint-disable-next-line unicorn/no-array-sort -- both arrays are fresh
-		expect([...failures.keys()].sort()).toEqual(Object.keys(knownGaps).sort());
-		expect(stats.conformant).toBe(baseline.conformant);
-		expect(stats.typeGaps).toBe(baseline.typeGaps);
-	});
+		expect(failures.map(({ key }) => key).sort()).toEqual(Object.keys(knownGaps).sort());
+
+		if (!UPDATE_BASELINE) {
+			expect(
+				dialectGaps['draft-07'].gaps.map(({ key, reason }) => `${key}: ${reason}`).sort()
+			).toEqual(gapsForDialect('draft-07'));
+			expect(dialectGaps['draft-07'].typeGaps).toEqual(typeGapsForDialect('draft-07'));
+			expect(
+				{
+					cases: runnable.length,
+					passing: stats.conformant,
+					typeGaps: stats.typeGaps,
+					gaps: stats.known,
+					instances: stats.assertions,
+					passingInstances: stats.passedAssertions,
+				},
+				[
+					`Known gap cases (${measurement.gaps}):`,
+					...failures.map(({ key }) => key).sort(),
+					`Type gap cases (${typeGapKeys.length}):`,
+					...typeGapKeys.sort(),
+				].join('\n')
+			).toEqual(baseline['draft-07']);
+		}
+	}, 120_000);
+});
+
+describe('other dialects', () => {
+	for (const dialect of Object.keys(OTHER_DIALECTS).filter(isOtherDialect)) {
+		const token = OTHER_DIALECTS[dialect];
+
+		test(`${dialect} matches the recorded baseline`, async () => {
+			const { runnable } = selectCases(files, token);
+
+			const measurement = await measureCases(runnable, {
+				render: (testCase) => renderCaseModule(testCase, dialect),
+				// Paths under the suite directory would make the recorded list
+				// depend on the machine that generated it.
+				formatCrash: (message) => message.replaceAll(`${__dirname}/suite/`, ''),
+			});
+			const { typeGapKeys } = measurement;
+			const gaps = measurement.failures.map(({ key, reasons }) => `${key}: ${reasons.join('; ')}`);
+
+			dialectGaps[dialect] = {
+				gaps: measurement.failures
+					.map(({ key, reasons }) => ({ key, reason: reasons.join('; ') }))
+					.sort((left, right) => left.key.localeCompare(right.key)),
+				typeGaps: [...typeGapKeys].sort(),
+			};
+
+			if (UPDATE_BASELINE) {
+				return;
+			}
+
+			const failureMessage = [
+				`Failing ${dialect} cases (${measurement.gaps}):`,
+				...gaps,
+				`Type gap cases (${typeGapKeys.length}):`,
+				...typeGapKeys.sort(),
+			].join('\n');
+
+			expect(
+				{
+					cases: runnable.length,
+					passing: measurement.passing,
+					typeGaps: measurement.typeGaps,
+					gaps: measurement.gaps,
+					instances: measurement.instances,
+					passingInstances: measurement.passingInstances,
+				},
+				failureMessage
+			).toEqual(baseline[dialect]);
+			expect([...gaps].sort(), failureMessage).toEqual(gapsForDialect(dialect));
+			expect([...typeGapKeys].sort(), failureMessage).toEqual(typeGapsForDialect(dialect));
+		}, 120_000);
+	}
 });
 
 describe('known gaps', () => {

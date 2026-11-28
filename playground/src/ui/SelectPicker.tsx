@@ -17,7 +17,7 @@ export interface PickerOption {
 	disabled?: boolean;
 }
 
-interface SelectPickerProps {
+export interface SelectPickerProps {
 	label: string;
 	placeholder: string;
 	value: string | null;

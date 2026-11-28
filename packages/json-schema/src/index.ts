@@ -1,6 +1,9 @@
 export * from './cliOptions';
+export * from './collectStandaloneSchemas';
 export * from './contains';
 export * from './externalSchemas';
+export * from './formatRuntime';
+export * from './graph';
 export {
 	type DetectedDialect,
 	type Dialect,
@@ -12,9 +15,7 @@ export {
 	type DialectSource,
 	type KeywordPolicy,
 	type ResolvedDialect,
-	type SchemaVersion,
 	detectDialect,
-	detectSchemaVersion,
 	dialectOf,
 	formatIssue,
 	isKeywordApplicable,
@@ -28,4 +29,6 @@ export * from './model';
 export * from './narrow';
 export * from './normalize';
 export * from './parser';
+export * from './resolveName';
 export * from './utils';
+export * from './validation';

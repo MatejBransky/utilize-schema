@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 
 import { compileSchema, mapName } from '../src';
 
-import { compile, ts } from './test-utils';
+import { generateCode, ts } from './test-utils';
 
 const schemaSuffix = (name: string) => `${name}Schema`;
 
@@ -21,7 +21,7 @@ const personAndPersonSchema = {
 
 describe('name mapping', () => {
 	test('suffixes the schema variable and keeps the type name', async () => {
-		await expect(compile({ type: 'string', title: 'Foobar' }, { schemaName: schemaSuffix }))
+		await expect(generateCode({ type: 'string', title: 'Foobar' }, { schemaName: schemaSuffix }))
 			.toMatchCode(ts`
       export const FoobarSchema = z.string().meta({ title: 'Foobar' });
       export type Foobar = z.infer<typeof FoobarSchema>;
@@ -29,7 +29,7 @@ describe('name mapping', () => {
 	});
 
 	test('suffixes the type and keeps the schema variable name', async () => {
-		await expect(compile({ type: 'string', title: 'Foobar' }, { typeName: schemaSuffix }))
+		await expect(generateCode({ type: 'string', title: 'Foobar' }, { typeName: schemaSuffix }))
 			.toMatchCode(ts`
       export const Foobar = z.string().meta({ title: 'Foobar' });
       export type FoobarSchema = z.infer<typeof Foobar>;
@@ -38,7 +38,7 @@ describe('name mapping', () => {
 
 	test('uses one name when both mappers return it', async () => {
 		await expect(
-			compile(
+			generateCode(
 				{ type: 'string', title: 'Foobar' },
 				{ schemaName: schemaSuffix, typeName: schemaSuffix }
 			)
@@ -50,7 +50,7 @@ describe('name mapping', () => {
 
 	test('renames $ref targets', async () => {
 		await expect(
-			compile(
+			generateCode(
 				{
 					type: 'object',
 					properties: { field: { $ref: '#/$defs/MyType' } },
@@ -69,7 +69,7 @@ describe('name mapping', () => {
 
 	test('keeps mapped names unique', async () => {
 		await expect(
-			compile(
+			generateCode(
 				{
 					type: 'object',
 					properties: { field: { $ref: '#/$defs/MyType' } },
@@ -87,8 +87,9 @@ describe('name mapping', () => {
 	});
 
 	test('keeps a mapped name a valid identifier', async () => {
-		await expect(compile({ type: 'string', title: 'Foobar' }, { typeName: () => 'foobar-schema' }))
-			.toMatchCode(ts`
+		await expect(
+			generateCode({ type: 'string', title: 'Foobar' }, { typeName: () => 'foobar-schema' })
+		).toMatchCode(ts`
       export const Foobar = z.string().meta({ title: 'Foobar' });
       export type FoobarSchema = z.infer<typeof Foobar>;
     `);
@@ -96,7 +97,7 @@ describe('name mapping', () => {
 
 	test('renames cyclic value aliases with the schema variable', async () => {
 		await expect(
-			compile(
+			generateCode(
 				{ type: 'object', properties: { field: { $ref: '#' } } },
 				{ schemaName: schemaSuffix }
 			)
@@ -112,7 +113,7 @@ describe('name mapping', () => {
 	});
 
 	test("does not let a mapped schema variable take another schema's resolved name", async () => {
-		await expect(compile(personAndPersonSchema, { schemaName: schemaSuffix })).toMatchCode(ts`
+		await expect(generateCode(personAndPersonSchema, { schemaName: schemaSuffix })).toMatchCode(ts`
       export const PersonSchemaSchema = z.number();
       export type PersonSchema = z.infer<typeof PersonSchemaSchema>;
 
@@ -128,7 +129,7 @@ describe('name mapping', () => {
 	});
 
 	test("does not let a mapped type take another schema's resolved name", async () => {
-		await expect(compile(personAndPersonSchema, { typeName: schemaSuffix })).toMatchCode(ts`
+		await expect(generateCode(personAndPersonSchema, { typeName: schemaSuffix })).toMatchCode(ts`
       export const PersonSchema = z.number();
       export type PersonSchemaSchema = z.infer<typeof PersonSchema>;
 
@@ -145,7 +146,7 @@ describe('name mapping', () => {
 
 	test('gives a schema and its type one name when both mappers agree, even after a collision', async () => {
 		await expect(
-			compile(personAndPersonSchema, { schemaName: schemaSuffix, typeName: schemaSuffix })
+			generateCode(personAndPersonSchema, { schemaName: schemaSuffix, typeName: schemaSuffix })
 		).toMatchCode(ts`
       export const PersonSchemaSchema = z.number();
       export type PersonSchemaSchema = z.infer<typeof PersonSchemaSchema>;
@@ -163,7 +164,7 @@ describe('name mapping', () => {
 
 	test('keeps the casing of a mapped name that is already an identifier', async () => {
 		await expect(
-			compile(
+			generateCode(
 				{ type: 'string', title: 'Foobar' },
 				{ schemaName: (name) => `${name.charAt(0).toLowerCase()}${name.slice(1)}Schema` }
 			)
@@ -174,7 +175,7 @@ describe('name mapping', () => {
 	});
 
 	test('does not let a mapped schema variable shadow the zod import', async () => {
-		await expect(compile({ type: 'string', title: 'Foobar' }, { schemaName: () => 'z' }))
+		await expect(generateCode({ type: 'string', title: 'Foobar' }, { schemaName: () => 'z' }))
 			.toMatchCode(ts`
       export const z1 = z.string().meta({ title: 'Foobar' });
       export type Foobar = z.infer<typeof z1>;
@@ -183,7 +184,7 @@ describe('name mapping', () => {
 
 	test('keeps a cyclic value alias apart from the exported types', async () => {
 		await expect(
-			compile(
+			generateCode(
 				{
 					type: 'object',
 					properties: { self: { $ref: '#' }, other: { $ref: '#/$defs/RootSchemaValue' } },

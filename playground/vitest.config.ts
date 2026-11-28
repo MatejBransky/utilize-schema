@@ -2,23 +2,30 @@ import { playwright } from '@vitest/browser-playwright';
 import { defineConfig, mergeConfig } from 'vitest/config';
 
 import viteConfig from './vite.config.ts';
-
-const isGitHubActions = process.env.GITHUB_ACTIONS === 'true';
+import { createReporters } from '../scripts/vitest-reporters.mjs';
 
 /**
  * Tests that need a real browser: React rendering with `vitest-browser-react`,
- * the Monaco TypeScript worker, and drag and drop (`DataTransfer`). Everything
- * else runs in Node, so CI only pays the Chromium startup for this project.
+ * the Monaco TypeScript worker and transpile path, and drag and drop
+ * (`DataTransfer`). Everything else runs in Node, so CI only pays the Chromium
+ * startup for this project.
  */
-const browserTests = ['src/**/*.test.tsx', 'src/drop.test.ts', 'src/monaco/types.test.ts'];
+const browserTests = [
+	'src/**/*.test.tsx',
+	'src/drop.test.ts',
+	'src/monaco/transpile.test.ts',
+	'src/monaco/types.test.ts',
+];
 
 export default mergeConfig(
 	viteConfig,
 	defineConfig({
 		test: {
-			reporters: isGitHubActions
-				? ['default', ['github-actions', { jobSummary: { title: 'playground browser tests' } }]]
-				: ['default'],
+			reporters: createReporters('playground browser tests', 'playground'),
+			coverage: {
+				include: ['src/**'],
+				reporter: ['lcov', 'json'],
+			},
 			projects: [
 				{
 					extends: true,

@@ -8,20 +8,32 @@ saveExact: true
 # Shared dependency versions. Upgrade here once; packages reference "catalog:".
 catalog:
   '@apidevtools/json-schema-ref-parser': 16.0.8
+  '@cloudflare/oxlint-config': 0.2.0
   '@total-typescript/tsconfig': 1.0.4
   '@types/node': 24.19.2
-  effect: 4.1.4
-  oxfmt: 0.78.0
-  oxlint: 1.93.0
+  '@vitest/coverage-v8': 5.1.1
+  '@vitest/ui': 5.1.1
+  ajv: 8.20.0
+  ajv-draft-04: 1.0.0
+  effect: 4.1.5
+  fallow: 3.45.0
+  fallow-type-aware: 3.45.0
+  oxfmt: 0.79.0
+  oxlint: 1.94.0
   tsdown: 0.23.7
+  tsrs: 7.1.0-beta.tsrs5
   typescript: 7.0.2
-  vitest: 5.1.0
+  vitest: 5.1.1
   zod: 4.6.7
 
 # Supply-chain guardrails for registry dependencies.
 minimumReleaseAge: 1440
 minimumReleaseAgeStrict: true
 trustPolicy: no-downgrade
+# tsrs switched from staged publish to a trusted publisher in 7.1.0-beta.*. Both
+# are the same oxc maintainer, but pnpm treats the switch as a trust downgrade.
+trustPolicyExclude:
+  - tsrs
 blockExoticSubdeps: true
 
 # monaco-editor@0.57.0 pins dompurify to exactly 3.4.15, which is affected by

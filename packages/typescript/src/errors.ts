@@ -1,4 +1,5 @@
-import { type ParsedJSONSchemaObject, Meta } from '@utilize/json-schema';
+import { Meta } from '@utilize/json-schema';
+import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 export class UnresolvedReferenceError extends Error {
 	constructor(ref: string) {
@@ -26,7 +27,7 @@ export class UnsupportedCircularTypeError extends Error {
  * Describes where a schema sits in the parsed input, e.g.
  * `definitions/CycleB.json#/properties/a` or `#/$defs/Tree`.
  */
-export function schemaLocation(schema: ParsedJSONSchemaObject): string {
+function schemaLocation(schema: ParsedJSONSchemaObject): string {
 	const meta = schema[Meta];
 	const pointer = meta.path.length > 0 ? `#/${meta.path.join('/')}` : '#';
 

@@ -1,60 +1,33 @@
-import { Meta, type ParsedJSONSchemaObject } from '@utilize/json-schema';
+import { Meta } from '@utilize/json-schema';
+import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 import { describe, expect, it } from 'vitest';
 
 import { resolveName } from '../src/resolveName';
 
 import { withMeta } from './test-utils';
 
+// The shared naming rules are tested in @utilize/json-schema. These tests cover
+// what the TypeScript generator adds on top.
+function stripSchemaSuffix(candidate: ParsedJSONSchemaObject) {
+	candidate[Meta].fileName = candidate[Meta].fileName.replace(/\.schema$/, '');
+}
+
+function rootResolver(candidate: ParsedJSONSchemaObject) {
+	return candidate[Meta].parent === null ? 'Root' : undefined;
+}
+
 describe('resolveName', () => {
-	it('prefers $id if present', () => {
-		const schema = withMeta({ $id: 'FooBar' });
-		expect(resolveName({ schema })).toBe('FooBar');
-	});
-
-	it('prefers title if $id is missing', () => {
-		const schema = withMeta({ title: 'My Schema' });
-		expect(resolveName({ schema })).toBe('MySchema');
-	});
-
-	it('uses $defs key from path', () => {
+	it('names a schema like the shared resolveName', () => {
+		const used = new Set(['MyDef']);
 		const schema = withMeta({}, { path: ['root', '$defs', 'MyDef'] });
-		expect(resolveName({ schema })).toBe('MyDef');
-	});
 
-	it('uses definitions key from path', () => {
-		const schema = withMeta({}, { path: ['root', 'definitions', 'OtherDef'] });
-		expect(resolveName({ schema })).toBe('OtherDef');
-	});
-
-	it('uses fileName from Meta for external schemas', () => {
-		const schema = withMeta({}, { parent: null, fileName: 'ExternalSchema' });
-		expect(resolveName({ schema })).toBe('ExternalSchema');
-	});
-
-	it('deduplicates names using usedNames', () => {
-		const used = new Set(['Foobar']);
-		const schema = withMeta({ $id: 'Foobar' });
-		expect(resolveName({ schema, usedNames: used })).toBe('Foobar1');
-	});
-
-	it('keeps looking for a free name when the first suffix is taken', () => {
-		const used = new Set(['Foobar', 'Foobar1', 'Foobar2']);
-		const schema = withMeta({ $id: 'Foobar' });
-		expect(resolveName({ schema, usedNames: used })).toBe('Foobar3');
-	});
-
-	it('falls back to Unknown if nothing else matches', () => {
-		const schema = withMeta({});
-		expect(resolveName({ schema })).toBe('Unknown');
+		expect(resolveName({ schema, usedNames: used })).toBe('MyDef1');
 	});
 
 	it('uses custom resolver if provided', () => {
 		const schema = withMeta({}, { parent: null, fileName: 'kebab-case.schema' });
-		const customResolver = (candidate: ParsedJSONSchemaObject) => {
-			candidate[Meta].fileName = candidate[Meta].fileName.replace(/\.schema$/, '');
-		};
 
-		expect(resolveName({ schema, customResolver })).toBe('KebabCase');
+		expect(resolveName({ schema, customResolver: stripSchemaSuffix })).toBe('KebabCase');
 	});
 
 	it('reserves a custom name so automatic names do not reuse it', () => {
@@ -62,10 +35,10 @@ describe('resolveName', () => {
 		const root = withMeta({}, { parent: null });
 		const definition = withMeta({}, { parent: root, path: ['$defs', 'Root'] });
 		// The conformance runner names only the root.
-		const customResolver = (schema: ParsedJSONSchemaObject) =>
-			schema[Meta].parent === null ? 'Root' : undefined;
 
-		expect(resolveName({ schema: root, usedNames: used, customResolver })).toBe('Root');
+		expect(resolveName({ schema: root, usedNames: used, customResolver: rootResolver })).toBe(
+			'Root'
+		);
 		expect(resolveName({ schema: definition, usedNames: used })).toBe('Root1');
 	});
 });

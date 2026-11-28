@@ -1,21 +1,19 @@
-import { describe, expect, test, vi } from 'vitest';
+import { assert, describe, expect, test, vi } from 'vitest';
 
 import {
-	type DialectIssue,
 	DialectError,
+	isParsedJSONSchemaObject,
 	Meta,
 	detectDialect,
-	detectSchemaVersion,
 	dialectOf,
-	type JSONSchema,
 	normalizeSchema,
 	parse,
-	type ParsedJSONSchemaObject,
 	prepareSchema,
 	readDialectCliOptions,
 	resolveDialect,
 	withSourceMeta,
 } from '../src';
+import type { DialectIssue, JSONSchema } from '../src';
 import { dialects } from '../src/dialect';
 
 const draft07 = 'http://json-schema.org/draft-07/schema#';
@@ -30,12 +28,6 @@ describe('detectDialect', () => {
 		['https://json-schema.org/draft/2020-12/schema', '2020-12'],
 	] as const)('maps %s to %s', (uri, id) => {
 		expect(detectDialect({ $schema: uri })?.dialect.id).toBe(id);
-	});
-
-	test('keeps the deprecated version helper working', () => {
-		expect(detectSchemaVersion({ $schema: twentyTwentyTwelve })).toBe('2020-12');
-		expect(detectSchemaVersion({})).toBe('draft-07');
-		expect(detectSchemaVersion({}, '2019-09')).toBe('2019-09');
 	});
 
 	test('returns undefined for an unknown meta-schema', () => {
@@ -102,6 +94,49 @@ describe('prepareSchema', () => {
 			dialect: dialects['2020-12'],
 			source: 'declared',
 		});
+	});
+
+	test('visits a shared schema node only once', () => {
+		const shared = { type: 'array', prefixItems: [{ type: 'string' }] };
+		const schema = {
+			$schema: draft07,
+			properties: { first: shared, second: shared },
+		};
+		const issues: DialectIssue[] = [];
+
+		prepareSchema(schema, { onDialectIssue: (issue) => issues.push(issue) });
+
+		expect(issues).toHaveLength(1);
+		expect(issues[0]).toMatchObject({ keyword: 'prefixItems', path: ['properties', 'first'] });
+	});
+
+	test('visits tuple items and ignores annotation values', () => {
+		const item = { type: 'string' };
+		const schema = {
+			$schema: twentyTwentyTwelve,
+			prefixItems: [item],
+			default: { nested: { type: 'number' } },
+			examples: [{ type: 'boolean' }],
+		};
+		const map = prepareSchema(schema);
+
+		expect(map.get(item)).toEqual({
+			dialect: dialects['2020-12'],
+			source: 'declared',
+		});
+		expect(map.has(schema.default)).toBe(false);
+		expect(map.has(schema.examples)).toBe(false);
+	});
+
+	test('visits schema dependencies but not property dependency arrays', () => {
+		const dependency = { type: 'object', properties: { b: { type: 'string' } } };
+		const schema = {
+			$schema: draft07,
+			dependencies: { a: dependency, b: ['c'] },
+		};
+		const map = prepareSchema(schema);
+
+		expect(map.get(dependency)?.dialect.id).toBe('draft-07');
 	});
 
 	test('switches the dialect at an embedded resource', () => {
@@ -307,6 +342,46 @@ describe('prepareSchema', () => {
 		expect(issues.map((issue) => issue.keyword)).toEqual(['prefixItems', 'dependentRequired']);
 	});
 
+	test('preserves keyword issue ordering across validators', () => {
+		const issues: DialectIssue[] = [];
+
+		prepareSchema(
+			{
+				$schema: twentyTwentyTwelve,
+				additionalItems: false,
+				dependencies: { a: ['b'] },
+				items: [{ type: 'string' }],
+				exclusiveMinimum: true,
+				exclusiveMaximum: false,
+			},
+			{ onDialectIssue: (issue) => issues.push(issue) }
+		);
+
+		expect(issues.map((issue) => issue.keyword)).toEqual([
+			'additionalItems',
+			'dependencies',
+			'items',
+			'exclusiveMinimum',
+			'exclusiveMaximum',
+		]);
+	});
+
+	test('reports ignored $ref siblings after the other keyword issues', () => {
+		const issues: DialectIssue[] = [];
+
+		prepareSchema(
+			{
+				$schema: draft07,
+				$ref: '#/$defs/target',
+				minimum: 0,
+				prefixItems: [{ type: 'string' }],
+			},
+			{ onDialectIssue: (issue) => issues.push(issue) }
+		);
+
+		expect(issues.map((issue) => issue.keyword)).toEqual(['prefixItems', 'minimum']);
+	});
+
 	test('keeps reporting other issues next to a best-effort unevaluated keyword', () => {
 		const issues: DialectIssue[] = [];
 
@@ -362,19 +437,22 @@ describe('prepareSchema', () => {
 
 describe('parse metadata', () => {
 	test('copies the dialect and its source into Meta', async () => {
-		const schema = { $schema: twentyTwentyTwelve, type: 'object' } as JSONSchema;
+		const schema: JSONSchema = { $schema: twentyTwentyTwelve, type: 'object' };
 		const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Root.json' });
-		const root = parsed.root as NonNullable<typeof parsed.root>;
+		const root = parsed.root;
 
-		expect(typeof root).toBe('object');
-		expect((root as { [Meta]: { dialect: string } })[Meta].dialect).toBe('2020-12');
-		expect((root as { [Meta]: { dialectSource: string } })[Meta].dialectSource).toBe('declared');
+		assert(isParsedJSONSchemaObject(root));
+		expect(root[Meta].dialect).toBe('2020-12');
+		expect(root[Meta].dialectSource).toBe('declared');
 	});
 
 	test('withSourceMeta keeps the dialect on a shallow copy', async () => {
-		const schema = { $schema: twentyTwentyTwelve, type: 'object' } as JSONSchema;
+		const schema: JSONSchema = { $schema: twentyTwentyTwelve, type: 'object' };
 		const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Root.json' });
-		const root = parsed.root as ParsedJSONSchemaObject;
+		const root = parsed.root;
+
+		assert(isParsedJSONSchemaObject(root));
+
 		const copy = withSourceMeta(root, { ...root, title: 'Copy' });
 
 		expect(dialectOf({ ...root }).id).toBe('draft-07');
@@ -383,33 +461,44 @@ describe('parse metadata', () => {
 	});
 
 	test('gives nodes outside the visited keywords the dialect of their parent', async () => {
-		const schema = {
+		const schema: JSONSchema = {
 			$schema: twentyTwentyTwelve,
 			type: 'object',
 			properties: { name: { type: 'string' } },
-		} as JSONSchema;
+		};
 		const parsed = await parse(schema, {
 			cwd: __dirname + '/',
 			fileName: 'Root.json',
 			dialect: '2019-09',
 		});
-		const properties = (parsed.root as unknown as { properties: { [Meta]: Meta } }).properties;
 
+		assert(isParsedJSONSchemaObject(parsed.root));
+
+		const properties = parsed.root.properties;
+
+		assert(isParsedJSONSchemaObject(properties));
 		expect(properties[Meta]).toMatchObject({ dialect: '2019-09', dialectSource: 'forced' });
 	});
 
 	test('resolves the dialect inside unevaluatedItems', async () => {
-		const schema = {
+		const unevaluatedItems = Object.assign<
+			JSONSchema,
+			{ dependentRequired: Record<string, string[]> }
+		>({ type: 'object' }, { dependentRequired: { a: ['b'] } });
+		const schema: JSONSchema = {
 			$schema: twentyTwentyTwelve,
 			type: 'array',
 			items: { type: 'string' },
-			unevaluatedItems: { type: 'object', dependentRequired: { a: ['b'] } },
-		} as JSONSchema;
+			unevaluatedItems,
+		};
 		const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Root.json' });
-		const unevaluated = (parsed.root as unknown as { unevaluatedItems: Record<string, unknown> })
-			.unevaluatedItems;
 
-		expect((unevaluated as { [Meta]: Meta })[Meta]).toMatchObject({
+		assert(isParsedJSONSchemaObject(parsed.root));
+
+		const unevaluated = parsed.root.unevaluatedItems;
+
+		assert(isParsedJSONSchemaObject(unevaluated));
+		expect(unevaluated[Meta]).toMatchObject({
 			dialect: '2020-12',
 			dialectSource: 'declared',
 		});
@@ -418,7 +507,7 @@ describe('parse metadata', () => {
 
 	test('returns dialect issues instead of writing to the console', async () => {
 		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-		const schema = { $schema: draft07, type: 'array', prefixItems: [{}] } as JSONSchema;
+		const schema: JSONSchema = { $schema: draft07, type: 'array', prefixItems: [{}] };
 
 		const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Root.json' });
 
@@ -428,44 +517,50 @@ describe('parse metadata', () => {
 	});
 
 	test('marks a schema without $schema as a fallback', async () => {
-		const parsed = await parse({ type: 'string' } as JSONSchema, {
-			cwd: __dirname + '/',
-			fileName: 'Root.json',
-		});
-		const root = parsed.root as NonNullable<typeof parsed.root>;
+		const parsed = await parse(
+			{ type: 'string' },
+			{
+				cwd: __dirname + '/',
+				fileName: 'Root.json',
+			}
+		);
+		const root = parsed.root;
 
-		expect((root as { [Meta]: { dialect: string } })[Meta].dialect).toBe('draft-07');
-		expect((root as { [Meta]: { dialectSource: string } })[Meta].dialectSource).toBe('fallback');
+		assert(isParsedJSONSchemaObject(root));
+		expect(root[Meta].dialect).toBe('draft-07');
+		expect(root[Meta].dialectSource).toBe('fallback');
 	});
 
 	test('keeps the dialect per embedded resource', async () => {
-		const parsed = await parse(
-			{
-				$schema: draft07,
-				$defs: {
-					nested: {
-						$id: 'https://example.com/nested',
-						$schema: twentyTwentyTwelve,
-						type: 'string',
-					},
+		const schema: JSONSchema = {
+			$schema: draft07,
+			$defs: {
+				nested: {
+					$id: 'https://example.com/nested',
+					$schema: twentyTwentyTwelve,
+					type: 'string',
 				},
-			} as unknown as JSONSchema,
-			{ cwd: __dirname + '/', fileName: 'Root.json' }
-		);
-		const root = parsed.root as NonNullable<typeof parsed.root>;
-		const nested = (root as { $defs: Record<string, { [Meta]: { dialect: string } } | undefined> })
-			.$defs.nested;
+			},
+		};
+		const parsed = await parse(schema, { cwd: __dirname + '/', fileName: 'Root.json' });
+		const root = parsed.root;
 
-		expect(nested?.[Meta].dialect).toBe('2020-12');
+		assert(isParsedJSONSchemaObject(root));
+
+		const nested = root.$defs?.nested;
+
+		assert(isParsedJSONSchemaObject(nested));
+		expect(nested[Meta].dialect).toBe('2020-12');
 	});
 
 	test('does not mutate the caller schema', async () => {
-		const schema = {
+		const schema: JSONSchema = {
 			$schema: 'http://json-schema.org/draft-04/schema#',
 			type: 'number',
 			minimum: 0,
-			exclusiveMinimum: true,
-		} as unknown as JSONSchema;
+		};
+
+		Object.assign(schema, { exclusiveMinimum: true });
 
 		await parse(schema, { cwd: __dirname + '/', fileName: 'Root.json' });
 		await parse(schema, { cwd: __dirname + '/', fileName: 'Root.json' });

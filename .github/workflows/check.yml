@@ -5,6 +5,7 @@ on:
     branches:
       - main
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -17,11 +18,13 @@ jobs:
   test:
     name: Run code quality tools and tests
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     steps:
       - name: Checkout code repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
@@ -64,8 +67,200 @@ jobs:
       - name: Check types
         run: pnpm run check:types
 
+      # The only test run in this workflow. Pages consumes these artifacts later
+      # instead of starting a second suite in a separate workflow.
       - name: Test
-        run: pnpm run ci:test
+        env:
+          TEST_REPORT_DIR: ${{ github.workspace }}/.fallow/reports/tests
+        run: |
+          mkdir -p .fallow/reports
+          pnpm run --recursive --aggregate-output --reporter-hide-prefix --if-present ci:test --coverage.enabled
+          pnpm test:scripts 2>&1 | tee .fallow/reports/script-tests.txt
+
+      - name: Check coverage badges
+        run: pnpm run check:coverage-badge
+
+      - name: Check conformance badges
+        run: pnpm run check:suite-badge
+
+      - name: Check Fallow health badge
+        run: pnpm run check:fallow-badge
+
+      # The combined run consults the TypeScript checker too: the config sets
+      # `typeAware.enabled`, so dead code, health and duplication are judged on
+      # the same semantic program and measured coverage. A type-aware run accepts
+      # only machine and human formats, so the run writes JSON, the gate reads the
+      # documented `gate_outcomes` field (a machine format never sets its exit
+      # code on findings), and the step summary is rendered from the same file.
+      #
+      # `--reuse-coverage` merges the coverage the test step just measured
+      # instead of running the whole suite a second time. `--score` keeps the
+      # health score in the JSON that the hosted report renders.
+      - name: Full Fallow run with measured coverage
+        run: |
+          pnpm fallow:coverage --reuse-coverage --score --format json --quiet --output-file .fallow/full.json
+
+      # Fallow omits `large_functions` when fewer than 3% of functions are long,
+      # so ask for that list once and reuse it for the summary and the Pages
+      # build. The zero threshold only enumerates every function; this is not a
+      # second dead-code, duplication or score run.
+      - name: Measure Fallow long functions
+        if: always() && hashFiles('.fallow/full.json') != ''
+        run: |
+          node scripts/fallow-health-report.mjs --write-long-functions .fallow/long-functions.json
+
+      # `--warn` makes a warning fail too: this repository treats a `warn` rule
+      # as something to fix, not as background noise.
+      - name: Gate the Fallow result
+        if: always() && hashFiles('.fallow/full.json') != ''
+        run: |
+          node scripts/fallow-gate.mjs --warn .fallow/full.json
+
+      - name: Render the Fallow step summary
+        if: always() && hashFiles('.fallow/full.json') != ''
+        run: |
+          pnpm exec fallow report --from .fallow/full.json --format github-summary >> "$GITHUB_STEP_SUMMARY"
+
+      # The rendered summary shows the score but not the measurement behind it.
+      # This step reads the same JSON and appends the penalty breakdown, the
+      # long functions and the most-imported files, so a score change is
+      # explained in the run itself.
+      - name: Explain the Fallow health score
+        if: always() && hashFiles('.fallow/full.json') != ''
+        run: |
+          node scripts/fallow-health-report.mjs \
+            --from .fallow/full.json \
+            --long-functions .fallow/long-functions.json \
+            --repository "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --commit "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+
+      # upload-pages-artifact@v5 uses upload-artifact@v7 internally. Mixing a
+      # v4 artifact action into the same run hides the github-pages artifact
+      # from deploy-pages, so both sides stay on the v7/v8 artifact API.
+      - name: Upload test report artifacts
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: test-reports
+          path: |
+            .fallow/reports
+            .fallow/full.json
+            .fallow/long-functions.json
+          retention-days: 1
+
+  fallow:
+    name: Fallow audit
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+      # The sticky PR comment needs `pull-requests: write`, the Fallow Check Run
+      # needs `checks: write`. Both are scoped to this PR-only job.
+      pull-requests: write
+      checks: write
+
+    steps:
+      - name: Checkout code repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # Fallow reads the packages in `node_modules`. Without an install the run
+      # records `node-modules-missing` and degrades every analysis that depends
+      # on resolution, so the verdict is computed over less than the whole
+      # project and the comment understates the findings.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit introduced findings
+        uses: fallow-rs/fallow@b802ddc49a09ad9df4e9894cdd465f5b51b1b0c8 # v3.45.0
+        with:
+          command: audit
+          gate: new-only
+          fail-on-issues: true
+          fail-on-empty-analysis: true
+          comment: true
+          sarif: true
+          annotations: true
+
+      # The action treats an audit verdict of `warn` as a pass, by design: warn
+      # means "warn-tier findings only". This repository fails on those findings
+      # too, except the review-only diff-risk rules (`added-dependency` and
+      # `added-suppression`), which `fallow-gate.mjs` lets through. The step is
+      # skipped when the action stopped before writing the result; that run has
+      # already failed on its error findings.
+      - name: Fail on warning findings
+        if: always() && hashFiles('fallow-results.json') != ''
+        run: |
+          node scripts/fallow-gate.mjs --warn fallow-results.json
+
+  security-fallow:
+    name: Fallow security gate
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # Same reason as the audit job: without an install the security gate is
+      # computed over a degraded, partially resolved project.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # A change can add a candidate on an added line (`new`) and can also make
+      # an existing candidate reachable from an entry point
+      # (`newly-reachable`). Neither implies the other, so both gates run; only
+      # the second one uploads SARIF so code scanning gets one result set.
+      - name: Gate new security candidates
+        uses: fallow-rs/fallow@b802ddc49a09ad9df4e9894cdd465f5b51b1b0c8 # v3.45.0
+        with:
+          command: security
+          security-gate: new
+          fail-on-issues: true
+          fail-on-empty-analysis: true
+          annotations: true
+
+      # Existing low candidates are reviewed in the test-only evaluator. The
+      # gate only fails when a change makes a candidate newly runtime-reachable.
+      # Annotations stay on the `new` gate only: its findings sit on the lines
+      # the change adds, while this gate reports pre-existing lines that the same
+      # annotations would duplicate.
+      - name: Gate newly reachable security candidates
+        uses: fallow-rs/fallow@b802ddc49a09ad9df4e9894cdd465f5b51b1b0c8 # v3.45.0
+        with:
+          command: security
+          security-gate: newly-reachable
+          fail-on-issues: true
+          fail-on-empty-analysis: true
+          sarif: true
+          annotations: false
 
   # Dependency audits run weekly in audit.yml. Keeping them out of the pull
   # request workflow means an advisory without a published fix cannot block
@@ -100,8 +295,63 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Review dependency changes
-        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        uses: actions/dependency-review-action@bbc44d14a204704ccc493733616cd1e93a0321ec # v5.0.1
         with:
           fail-on-severity: high
           comment-summary-in-pr: never
           show-openssf-scorecard: false
+
+  pages:
+    name: Build and deploy Pages
+    needs: [test, security]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download completed test reports
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: test-reports
+          path: .fallow
+
+      - name: Build playground
+        run: pnpm --filter playground build
+
+      - name: Build reports without rerunning tests
+        run: pnpm reports:render
+
+      - name: Configure Pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: playground/dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

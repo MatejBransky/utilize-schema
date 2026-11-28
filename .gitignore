@@ -18,3 +18,8 @@ packages/zod/test/snapshots/*.generated.ts
 # preview release manifest. The bot commits with `git add -A`.
 /triage/
 /preview-release.json
+
+coverage/
+.fallow/
+fallow-results.sarif
+fallow-results.json

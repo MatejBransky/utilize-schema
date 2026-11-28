@@ -5,7 +5,9 @@ import { pathToFileURL } from 'node:url';
 
 import { afterEach, describe, expect, test } from 'vitest';
 
-import { type CliIo, isEntrypoint, run } from '../src/cli';
+import { isEntrypoint, run } from '../src/cli';
+import type { CliIo } from '../src/cli';
+import { compileSchema } from '../src';
 
 const temporaryDirectories: string[] = [];
 
@@ -36,6 +38,12 @@ afterEach(async () => {
 });
 
 describe('CLI', () => {
+	test('compiles a boolean schema document', async () => {
+		await expect(
+			compileSchema(true, { cwd: join(tmpdir(), 'utilize-effect-boolean'), fileName: 'Root.json' })
+		).resolves.toContain('export const Root = Schema.Json;');
+	});
+
 	test('reads a schema from stdin and writes to stdout', async () => {
 		const { io, stdout } = createIo(JSON.stringify({ type: 'string' }));
 
@@ -196,6 +204,16 @@ describe('CLI path handling', () => {
 		expect(exitCode).toBe(0);
 		expect(stderr()).toContain('"prefixItems" is not part of draft-07');
 		expect(stdout()).toContain('export const Root');
+	});
+
+	test('--validate rejects a schema that does not match its dialect', async () => {
+		const { io, stdout, stderr } = createIo(JSON.stringify({ title: 'Thing', type: 'nonsense' }));
+
+		const exitCode = await run(['--no-banner', '--validate'], io);
+
+		expect(exitCode).toBe(1);
+		expect(stdout()).toBe('');
+		expect(stderr()).toContain('Root.json is not a valid draft-07 JSON Schema');
 	});
 
 	test('detects the entrypoint through a symlink', async () => {

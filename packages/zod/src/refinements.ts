@@ -1,23 +1,24 @@
+import type { InferableType } from './inferTypes';
 import {
 	containsBounds,
 	isKeywordApplicable,
+	isParsedJSONSchemaObject,
 	narrowUntypedSchema,
-	type ParsedJSONSchema,
-	type ParsedJSONSchemaObject,
 	withSourceMeta,
 } from '@utilize/json-schema';
+import type { ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import type { GeneratorContext } from './generators/types';
 import { inferTypeKeywords } from './inferTypes';
 import { ts } from './utils';
 
-type Generate = (schema: ParsedJSONSchema, context: GeneratorContext) => string;
+export type GenerateSubschema = (schema: ParsedJSONSchema, context: GeneratorContext) => string;
 
 /**
  * Guards for the types `inferTypeKeywords` can infer. Keywords on an untyped
  * schema must not reject values of other types.
  */
-const typeGuards: Record<string, string> = {
+const typeGuards: Record<InferableType, string> = {
 	object: `typeof value === 'object' && value !== null && !Array.isArray(value)`,
 	array: 'Array.isArray(value)',
 	string: `typeof value === 'string'`,
@@ -37,11 +38,33 @@ export function applyRefinements(
 	expression: string,
 	schema: ParsedJSONSchemaObject,
 	context: GeneratorContext,
-	generate: Generate
+	generate: GenerateSubschema
 ): string {
 	const checks: string[] = [];
 	const contextType = typeof schema.type === 'string' ? schema.type : undefined;
 
+	appendImplicitTypeChecks(checks, schema, context, generate);
+	appendNotAndConditionalChecks(checks, schema, contextType, context, generate);
+	appendContainsCheck(checks, schema, context, generate);
+	appendSizeChecks(checks, schema);
+	appendPropertyNamesCheck(checks, schema, context, generate);
+	appendDependencyChecks(checks, schema, context, generate);
+
+	if (checks.length === 0) {
+		return expression;
+	}
+
+	return ts`z.any().superRefine((value, ctx) => {
+    ${checks.join('\n')}
+  }).pipe(${expression})`;
+}
+
+function appendImplicitTypeChecks(
+	checks: string[],
+	schema: ParsedJSONSchemaObject,
+	context: GeneratorContext,
+	generate: GenerateSubschema
+): void {
 	// Keywords on a schema without `type` only apply to their own type, so each
 	// constrained type gets a separate guarded check. A schema can constrain
 	// more than one type, e.g. `{ minLength: 2, minimum: 5 }`.
@@ -66,7 +89,7 @@ export function applyRefinements(
 			minProperties: undefined,
 			maxProperties: undefined,
 			uniqueItems: undefined,
-		} as ParsedJSONSchemaObject);
+		});
 
 		checks.push(ts`{
       if (${typeGuards[implicitType]}) {
@@ -74,7 +97,15 @@ export function applyRefinements(
       }
     }`);
 	}
+}
 
+function appendNotAndConditionalChecks(
+	checks: string[],
+	schema: ParsedJSONSchemaObject,
+	contextType: Parameters<typeof narrowUntypedSchema>[1],
+	context: GeneratorContext,
+	generate: GenerateSubschema
+): void {
 	if (schema.not !== undefined) {
 		const not = generate(narrowUntypedSchema(schema.not, contextType, context.dialect), context);
 
@@ -91,13 +122,15 @@ export function applyRefinements(
     }`);
 	}
 
-	if (schema.if !== undefined && isKeywordApplicable(context.dialect, 'if')) {
+	const conditionSchema = parsedSubschema(schema.if);
+
+	if (conditionSchema !== undefined && isKeywordApplicable(context.dialect, 'if')) {
 		const condition = generate(
-			narrowUntypedSchema(schema.if as unknown as ParsedJSONSchema, contextType, context.dialect),
+			narrowUntypedSchema(conditionSchema, contextType, context.dialect),
 			context
 		);
-		const thenSchema = schema.then as unknown as ParsedJSONSchema | undefined;
-		const elseSchema = schema.else as unknown as ParsedJSONSchema | undefined;
+		const thenSchema = parsedSubschema(schema.then);
+		const elseSchema = parsedSubschema(schema.else);
 		const thenBlock =
 			thenSchema !== undefined
 				? checkBlock(
@@ -119,7 +152,22 @@ export function applyRefinements(
       }
     }`);
 	}
+}
 
+function parsedSubschema(value: unknown): ParsedJSONSchema | undefined {
+	if (typeof value === 'boolean') {
+		return value;
+	}
+
+	return isParsedJSONSchemaObject(value) ? value : undefined;
+}
+
+function appendContainsCheck(
+	checks: string[],
+	schema: ParsedJSONSchemaObject,
+	context: GeneratorContext,
+	generate: GenerateSubschema
+): void {
 	if (schema.contains !== undefined && isKeywordApplicable(context.dialect, 'contains')) {
 		const contains = generate(schema.contains, context);
 		const bounds = containsBounds(schema, context.dialect);
@@ -155,7 +203,9 @@ export function applyRefinements(
     }`);
 		}
 	}
+}
 
+function appendSizeChecks(checks: string[], schema: ParsedJSONSchemaObject): void {
 	if (schema.uniqueItems === true) {
 		checks.push(ts`{
       if (Array.isArray(value)) {
@@ -215,7 +265,14 @@ export function applyRefinements(
       }
     }`);
 	}
+}
 
+function appendPropertyNamesCheck(
+	checks: string[],
+	schema: ParsedJSONSchemaObject,
+	context: GeneratorContext,
+	generate: GenerateSubschema
+): void {
 	if (schema.propertyNames !== undefined && isKeywordApplicable(context.dialect, 'propertyNames')) {
 		const propertyNames = generate(
 			narrowUntypedSchema(schema.propertyNames, 'string', context.dialect),
@@ -228,13 +285,20 @@ export function applyRefinements(
           const result = ${propertyNames}.safeParse(key);
 
           if (!result.success) {
-            ${issueBlock('result', 'key')}
+            ${issueBlock('key')}
           }
         }
       }
     }`);
 	}
+}
 
+function appendDependencyChecks(
+	checks: string[],
+	schema: ParsedJSONSchemaObject,
+	context: GeneratorContext,
+	generate: GenerateSubschema
+): void {
 	// `dependencies` is either native to the dialect or merged from
 	// `dependentRequired` / `dependentSchemas` by the normalizer. A foreign
 	// `dependencies` keyword was already dropped by the parser.
@@ -258,7 +322,7 @@ export function applyRefinements(
 			}
 
 			const dependencySchema = generate(
-				narrowUntypedSchema(dependency as ParsedJSONSchema, 'object', context.dialect),
+				narrowUntypedSchema(dependency, 'object', context.dialect),
 				context
 			);
 
@@ -273,21 +337,13 @@ export function applyRefinements(
       }
     }`);
 	}
-
-	if (checks.length === 0) {
-		return expression;
-	}
-
-	return ts`z.any().superRefine((value, ctx) => {
-    ${checks.join('\n')}
-  }).pipe(${expression})`;
 }
 
-function checkBlock(expression: string, pathPrefix?: string): string {
+function checkBlock(expression: string): string {
 	return ts`const result = ${expression}.safeParse(value);
 
         if (!result.success) {
-          ${issueBlock('result', pathPrefix)}
+          ${issueBlock()}
         }`;
 }
 
@@ -295,10 +351,10 @@ function checkBlock(expression: string, pathPrefix?: string): string {
  * Emits the loop that copies Zod issues into the surrounding `superRefine`
  * context. `pathPrefix` narrows issues to a nested key.
  */
-function issueBlock(resultName: string, pathPrefix?: string): string {
+function issueBlock(pathPrefix?: string): string {
 	const path = pathPrefix ? `[${pathPrefix}, ...issue.path]` : '[...issue.path]';
 
-	return ts`for (const issue of ${resultName}.error.issues) {
+	return ts`for (const issue of result.error.issues) {
       ctx.addIssue({
         code: 'custom',
         message: issue.message,

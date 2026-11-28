@@ -1,5 +1,11 @@
-blank_issues_enabled: true
+blank_issues_enabled: false
 contact_links:
+  - name: Question
+    url: https://github.com/MatejBransky/utilize-schema/discussions
+    about: Ask about usage or the codebase in Discussions.
+  - name: Security vulnerability
+    url: https://github.com/MatejBransky/utilize-schema/security/advisories/new
+    about: Report vulnerabilities privately, never in a public issue.
   - name: Dialect and keyword support
     url: https://github.com/MatejBransky/utilize-schema/blob/main/docs/dialects.md
     about: Check which keywords are supported per dialect before filing a bug.

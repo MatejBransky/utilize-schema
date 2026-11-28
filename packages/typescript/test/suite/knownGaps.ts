@@ -10,16 +10,10 @@
  * those cases are counted as type gaps instead.
  */
 
-const parserId =
-	'$id/$anchor based $ref resolution is not implemented in the shared parser (same gap as @utilize/zod)';
-
 const inference =
 	'object and array keywords give an untyped schema its inferred type, so valid instances of other JSON types are rejected';
 
-export const knownGaps: Record<string, string> = {
-	// Shared parser: $id/$anchor and URN resolution.
-	'id-legacy.json :: URN ref with nested pointer ref': parserId,
-
+export const knownGaps = {
 	// Untyped schemas: object and array keywords infer an object or an array.
 	'additionalProperties.json :: additionalProperties being false does not allow other properties':
 		inference,
@@ -35,4 +29,4 @@ export const knownGaps: Record<string, string> = {
 	'required.json :: required validation': inference,
 	'required.json :: required properties whose names are Javascript object property names':
 		inference,
-};
+} satisfies Record<string, string>;

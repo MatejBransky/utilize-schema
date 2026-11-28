@@ -2,20 +2,59 @@
 
 [![npm version](https://img.shields.io/npm/v/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
 [![npm weekly downloads](https://img.shields.io/npm/dw/@utilize/json-schema)](https://www.npmjs.com/package/@utilize/json-schema)
+[![Unit test coverage](https://raw.githubusercontent.com/MatejBransky/utilize-schema/main/.github/badges/coverage-json-schema.svg)](https://github.com/MatejBransky/utilize-schema/blob/main/CONTRIBUTING.md#coverage-badge)
 
-Generator-agnostic JSON Schema parser and linker. Resolves local and external
-`$ref`s and prepares the schema graph for code generators by annotating each
-node with metadata.
+The shared foundation behind `@utilize/zod`, `@utilize/effect` and
+`@utilize/typescript`. It resolves `$ref`s, annotates every node with the metadata
+a generator needs, and exports the target-neutral format validators both runtime
+generators import. It never emits a target schema.
 
-## Features
+- **Every reference shape.** Local, external, `$id`/`$anchor`, boolean targets
+  and recursive graphs.
+- **Linked, not expanded.** Cyclic schemas stay a graph, so traversal never
+  blows up.
+- **Metadata per node.** Parent, referenced schema, file name and dialect, under
+  a `Meta` symbol that never serializes.
+- **Shared generator plumbing.** `collectStandaloneSchemas`, the format
+  metadata and the `@utilize/json-schema/node` entry — CLI runner, flags,
+  JSON/YAML and file/glob input, `compilePaths` — are what the three generator
+  packages build on.
+- **Runtime validators.** `@utilize/json-schema/formats` exports the structural
+  format checks (`formatEmail`, `formatUri`, `formatDateTime`, …) that generated
+  Zod and Effect schemas import instead of inlining them.
+- **Opt-in validation.** Pass any `SchemaValidator` to `parse` or `compile`, or
+  use the included Ajv adapter to check every resolved document against its
+  dialect's meta-schema.
+- **90% line coverage.**
 
-- Resolves local, external, `$id` and `$anchor` based `$ref` references, including
-  `$ref` to boolean schemas
-- Serves external documents from memory by retrieval URI (`externalSchemas`)
-  instead of reading them from disk or the network
-- Links recursive graphs without expanding them infinitely
-- Annotates every schema node with metadata for downstream generators
-- No code generation – just robust schema preparation
+```sh
+pnpm add @utilize/json-schema
+```
+
+Generated schemas import `@utilize/json-schema/formats` at runtime, so that
+package is a runtime dependency of the code they produce. Use `pnpm add -D`
+only when the project calls the parser or CLI at build time and does not run
+generated schemas. Bundlers can tree-shake unused validators; target-native
+helpers such as `z.url()` remain native.
+
+```ts
+import { Meta, parse } from '@utilize/json-schema';
+
+const { root } = await parse(schema, { cwd: '/', fileName: 'schema.json' });
+root[Meta]; // parent, reference, fileName, dialect, …
+```
+
+<details>
+<summary>Table of contents</summary>
+
+- [Metadata](#metadata)
+- [Usage](#usage)
+- [External schemas by URI](#external-schemas-by-uri)
+- [Dialects](#dialects)
+- [Schema validation](#schema-validation)
+- [Benchmarks](#benchmarks)
+
+</details>
 
 ## Metadata
 
@@ -63,8 +102,8 @@ include the root document. `get('#')` is unchanged: for a local pointer root
 import { parse, Meta } from '@utilize/json-schema';
 
 const { root } = await parse(schema, {
-	cwd: process.cwd(),
-	fileName: 'schema.json',
+  cwd: process.cwd(),
+  fileName: 'schema.json',
 });
 console.log(root[Meta]);
 ```
@@ -78,15 +117,15 @@ External documents are normally read from disk or fetched over HTTP. Pass
 import { parse } from '@utilize/json-schema';
 
 const { root } = await parse(schema, {
-	cwd: process.cwd(),
-	fileName: 'schema.json',
-	externalSchemas: {
-		'https://example.com/address.json': {
-			type: 'object',
-			properties: { city: { type: 'string' } },
-			required: ['city'],
-		},
-	},
+  cwd: process.cwd(),
+  fileName: 'schema.json',
+  externalSchemas: {
+    'https://example.com/address.json': {
+      type: 'object',
+      properties: { city: { type: 'string' } },
+      required: ['city'],
+    },
+  },
 });
 ```
 
@@ -108,18 +147,52 @@ report them. The library never writes to the console: issues go to
 import { formatIssue, parse } from '@utilize/json-schema';
 
 await parse(schema, {
-	cwd: process.cwd(),
-	fileName: 'schema.json',
-	// dialect: '2020-12',              // force one dialect
-	fallbackDialect: 'draft-07', // used when `$schema` is missing
-	unknownDialect: 'fallback', // or 'error'
-	keywordPolicy: 'warn', // or 'error' / 'ignore'
-	onDialectIssue: (issue) => console.warn(formatIssue(issue)),
+  cwd: process.cwd(),
+  fileName: 'schema.json',
+  // dialect: '2020-12',              // force one dialect
+  fallbackDialect: 'draft-07', // used when `$schema` is missing
+  unknownDialect: 'fallback', // or 'error'
+  keywordPolicy: 'warn', // or 'error' / 'ignore'
+  onDialectIssue: (issue) => console.warn(formatIssue(issue)),
 });
 // parse() also returns the reported issues as `issues`.
 ```
 
 See [docs/dialects.md](../../docs/dialects.md) for the keyword matrix.
+
+## Schema validation
+
+The parser checks keywords against the dialect, but it does not reject values
+with the wrong shape. Pass a validator to check every resolved document before
+generation. It receives the dialect the parser resolved, so an adapter can
+dispatch to the right meta-schema:
+
+```ts
+import { parse } from '@utilize/json-schema';
+
+await parse(schema, {
+  cwd: process.cwd(),
+  fileName: 'schema.json',
+  validateSchema: (document, { dialect, filePath }) => myValidator(document, dialect, filePath),
+});
+```
+
+Return every `SchemaValidationFinding` (`pointer`, `message`, optional
+`keyword`). Any finding throws `SchemaValidationError`, which carries one
+report per document. The callback runs on the root, every `$ref` target and
+every provided external schema the document reaches, before normalization.
+
+An Ajv adapter is included behind the optional `ajv` peer dependency:
+
+```ts
+import { ajvValidator } from '@utilize/json-schema/validate/ajv';
+```
+
+It dispatches per dialect: draft-04, draft-06, draft-07, 2019-09 and 2020-12.
+The CLIs use it for `--validate`; `--validator <module>` replaces it. Draft-04
+schemas also need the optional `ajv-draft-04` package, imported only then. See
+[docs/dialects.md](../../docs/dialects.md#schema-validation) for the CLI and
+the module contract.
 
 ## Benchmarks
 
@@ -133,8 +206,3 @@ It runs 20 timed iterations after two warm-ups and prints median, p95, min and
 max. On an Apple Silicon laptop the recorded medians were ~7.5 ms for the
 60-file template and ~13.4 ms for the 140-resource bundle. Treat the numbers as
 a relative baseline on your machine, not a budget.
-
-## When to use
-
-Use this package if you need to preprocess JSON Schema for code generation,
-validation, or analysis, and require robust `$ref` resolution and metadata.

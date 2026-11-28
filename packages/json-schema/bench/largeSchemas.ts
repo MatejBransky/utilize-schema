@@ -1,4 +1,4 @@
-import { readFile, mkdtemp, rm } from 'node:fs/promises';
+import { readFile, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
@@ -10,11 +10,11 @@ import {
 	writeAzureTemplate,
 } from './fixtures.ts';
 
-import { parse } from '../dist/index.mjs';
+import { assert, isJSONSchema, parse } from '../dist/index.mjs';
 
 const iterations = Number(process.env.BENCH_ITERATIONS ?? 20);
 
-async function measure(label: string, run: () => Promise<unknown>) {
+async function measure(label: string, run: () => Promise<object>) {
 	for (let index = 0; index < 2; index += 1) {
 		await run();
 	}
@@ -29,33 +29,52 @@ async function measure(label: string, run: () => Promise<unknown>) {
 
 	times.sort((left, right) => left - right);
 
-	const median = times[Math.floor(times.length / 2)]!;
-	const p95 = times[Math.min(times.length - 1, Math.floor(times.length * 0.95))]!;
+	const max = times.at(-1);
 
-	return { label, median, p95, min: times[0]!, max: times.at(-1)! };
+	if (max === undefined) {
+		throw new Error('Expected at least one measurement');
+	}
+
+	const median = times[Math.floor(times.length / 2)];
+	const p95 = times[Math.min(times.length - 1, Math.floor(times.length * 0.95))];
+
+	return { label, median, p95, min: times[0], max };
 }
 
 const directory = await mkdtemp(join(tmpdir(), 'utilize-schema-bench-'));
 
 try {
 	await writeAzureTemplate(directory);
-	const azureRoot = JSON.parse(await readFile(join(directory, 'azure.json'), 'utf8')) as unknown;
+	const azureRoot: unknown = JSON.parse(await readFile(join(directory, 'azure.json'), 'utf8'));
 	const fhirSchema = createFhirSchema();
+
+	assert(isJSONSchema(azureRoot), 'Expected the Azure fixture to be a schema.');
+	assert(isJSONSchema(fhirSchema), 'Expected the FHIR fixture to be a schema.');
 
 	const results = [
 		await measure(`Azure-like template (${AZURE_RESOURCE_COUNT} linked files)`, () =>
-			parse(structuredClone(azureRoot) as never, {
+			parse(structuredClone(azureRoot), {
 				cwd: directory + '/',
 				fileName: 'azure.json',
 			})
 		),
 		await measure(`FHIR-like bundle (${FHIR_RESOURCE_COUNT} resources)`, () =>
-			parse(structuredClone(fhirSchema) as never, {
+			parse(structuredClone(fhirSchema), {
 				cwd: '/',
 				fileName: 'fhir.json',
 			})
 		),
 	];
+
+	const outputFile = process.env.BENCH_OUTPUT;
+
+	if (outputFile) {
+		await writeFile(
+			outputFile,
+			`${JSON.stringify({ iterations, unit: 'milliseconds', results }, null, 2)}\n`,
+			'utf8'
+		);
+	}
 
 	console.log(`\n${iterations} iterations, milliseconds\n`);
 	console.log(

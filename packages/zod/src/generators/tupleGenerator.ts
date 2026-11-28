@@ -1,49 +1,37 @@
-import type { Dialect, ParsedJSONSchemaObject } from '@utilize/json-schema';
+import { expectDefined } from '@utilize/json-schema';
+import type { Dialect, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
-import { generateSchema } from './generateSchema';
+import type { ExpressionGenerator } from './createGenerator';
+import type { Recursion } from './createGenerator';
+import type { GeneratorContext } from './types';
 
 import { NEWLINE, ts } from '../utils';
 
-export const generator = createGenerator(
-	(schema, dialect) => {
+export type TupleSchema = ParsedJSONSchemaObject & { type: 'array' };
+
+export const tupleGenerator: ExpressionGenerator = createGenerator<TupleSchema>(
+	(schema, dialect): schema is TupleSchema => {
 		if (schema.type !== 'array') {
 			return false;
 		}
 
 		return tupleItems(schema, dialect) !== undefined;
 	},
-	(schema, context) => {
-		const items = tupleItems(schema, context.dialect)!;
+	(schema, context, { generateSchema }) => {
+		const items = expectDefined(tupleItems(schema, context.dialect));
 		const minItems = schema.minItems ?? 0;
 		const rest = tupleRest(schema, context.dialect);
 		// The tuple's own maximum is `items.length` when there is no rest schema.
 		const noRest =
 			rest === false || (schema.maxItems !== undefined && schema.maxItems === items.length);
-
-		// An item is required when the minimum length reaches it; the rest stay
-		// optional, which keeps `z.infer` precise for fixed-length tuples.
-		const itemsPart = items.map((item, index) =>
-			index < minItems
-				? generateSchema(item, context)
-				: ts`${generateSchema(item, context)}.optional()`
-		);
-		const restPart = noRest
-			? ''
-			: ts`.rest(${rest === undefined || rest === true ? ts`z.unknown()` : generateSchema(rest, context)})`;
+		const itemsPart = renderTupleItems(items, minItems, context, generateSchema);
+		const restPart = renderTupleRest(rest, noRest, context, generateSchema);
 		let expression = ts`z.tuple([
     ${itemsPart.join(`,${NEWLINE}`)}
   ])${restPart}`;
-		const checks: string[] = [];
+		const checks = tupleLengthChecks(schema, items, noRest, minItems);
 
-		// Required items already enforce a minimum up to `items.length`.
-		if (minItems > items.length) {
-			checks.push(`value.length >= ${minItems}`);
-		}
-		// Without a rest schema the tuple itself caps the length at `items.length`.
-		if (schema.maxItems !== undefined && (noRest ? schema.maxItems < items.length : true)) {
-			checks.push(`value.length <= ${schema.maxItems}`);
-		}
 		if (checks.length > 0) {
 			expression = ts`${expression}.refine((value) => ${checks.join(' && ')}, { message: 'Array length is out of bounds.' })`;
 		}
@@ -51,6 +39,54 @@ export const generator = createGenerator(
 		return expression;
 	}
 );
+
+function renderTupleItems(
+	items: ParsedJSONSchemaObject[],
+	minItems: number,
+	context: GeneratorContext,
+	generateSchema: Recursion['generateSchema']
+): string[] {
+	// An item is required when the minimum length reaches it; the rest stay
+	// optional, which keeps `z.infer` precise for fixed-length tuples.
+	return items.map((item, index) =>
+		index < minItems
+			? generateSchema(item, context)
+			: ts`${generateSchema(item, context)}.optional()`
+	);
+}
+
+function renderTupleRest(
+	rest: ParsedJSONSchema | boolean | undefined,
+	noRest: boolean,
+	context: GeneratorContext,
+	generateSchema: Recursion['generateSchema']
+): string {
+	if (noRest) {
+		return '';
+	}
+
+	return ts`.rest(${rest === undefined || rest === true ? ts`z.unknown()` : generateSchema(rest, context)})`;
+}
+
+function tupleLengthChecks(
+	schema: ParsedJSONSchemaObject,
+	items: ParsedJSONSchemaObject[],
+	noRest: boolean,
+	minItems: number
+): string[] {
+	const checks: string[] = [];
+
+	// Required items already enforce a minimum up to `items.length`.
+	if (minItems > items.length) {
+		checks.push(`value.length >= ${minItems}`);
+	}
+	// Without a rest schema the tuple itself caps the length at `items.length`.
+	if (schema.maxItems !== undefined && (noRest ? schema.maxItems < items.length : true)) {
+		checks.push(`value.length <= ${schema.maxItems}`);
+	}
+
+	return checks;
+}
 
 export function tupleItems(
 	schema: ParsedJSONSchemaObject,

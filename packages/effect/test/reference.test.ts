@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
-import { compile, compileModule, compileToSchema, decode, type TestSchema, ts } from './test-utils';
+import { compile, compileModule, compileToSchema, decode, ts } from './test-utils';
+import type { TestSchema } from './test-utils';
 
 describe('references', () => {
 	test('emits a definition per referenced schema and suspends every $ref', async () => {
@@ -90,6 +91,31 @@ describe('references', () => {
 		expect(result).toContain('Schema.suspend(() => DataType)');
 	});
 
+	test('resolves a URN resource with a nested pointer reference', async () => {
+		const Root = await compileToSchema({
+			allOf: [{ $ref: 'urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed' }],
+			definitions: {
+				foo: {
+					$id: 'urn:uuid:deadbeef-4321-ffff-ffff-1234feebdaed',
+					definitions: { bar: { type: 'string' } },
+					allOf: [{ $ref: '#/definitions/bar' }],
+				},
+			},
+		});
+
+		expect(decode(Root, 'bar')).toBe('bar');
+		expect(decode(Root, 12)).toBeUndefined();
+	});
+
+	test('resolves a pointer reference into tuple items without a declared type', async () => {
+		const Root = await compileToSchema({
+			items: [{ type: 'integer' }, { $ref: '#/items/0' }],
+		});
+
+		expect(decode(Root, [1, 2])).toEqual([1, 2]);
+		expect(decode(Root, [1, 'foo'])).toBeUndefined();
+	});
+
 	test('parses a tree three levels deep and rejects an invalid node', async () => {
 		const Root = await compileToSchema({
 			type: 'object',
@@ -134,17 +160,16 @@ describe('references', () => {
 
 describe('boolean references', () => {
 	test('$ref to true and false schemas', async () => {
-		const Root = await compileToSchema({
+		const schema: TestSchema = {
 			type: 'object',
 			properties: {
 				allowed: { $ref: '#/definitions/allowed' },
 				denied: { $ref: '#/definitions/denied' },
 			},
-			definitions: {
-				allowed: true,
-				denied: false,
-			},
-		} as unknown as TestSchema);
+		};
+		Object.assign(schema, { definitions: { allowed: true, denied: false } });
+
+		const Root = await compileToSchema(schema);
 
 		expect(decode(Root, { allowed: 'anything' })).toEqual({ allowed: 'anything' });
 		expect(decode(Root, { denied: 'anything' })).toBeUndefined();

@@ -29,7 +29,7 @@ function ColorModeIcon({ mode }: { mode: ColorMode }) {
 	}
 }
 
-interface HeaderProps {
+export interface HeaderProps {
 	colorMode: ColorMode;
 	onColorModeChange: (mode: ColorMode) => void;
 	onShare: () => void;
@@ -64,6 +64,18 @@ export function Header({ colorMode, onColorModeChange, onShare, shared, children
 				</Button>
 
 				<Button onClick={onShare}>{shared ? 'Link copied' : 'Share'}</Button>
+
+				<Button
+					render={
+						<a
+							href="https://matejbransky.github.io/utilize-schema/reports/"
+							target="_blank"
+							rel="noreferrer"
+						/>
+					}
+				>
+					Reports
+				</Button>
 
 				<Button
 					className={styles.iconButton}

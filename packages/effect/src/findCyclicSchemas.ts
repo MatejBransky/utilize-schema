@@ -1,6 +1,5 @@
-import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
-
-import type { SchemaEdge } from './collectStandaloneSchemas';
+import { reachesThrough } from '@utilize/json-schema';
+import type { ParsedJSONSchemaObject, SchemaEdge } from '@utilize/json-schema';
 
 /**
  * Returns the standalone schemas that take part in a reference cycle. Their
@@ -35,22 +34,5 @@ function reaches(
 	start: ParsedJSONSchemaObject,
 	target: ParsedJSONSchemaObject
 ): boolean {
-	const seen = new Set<ParsedJSONSchemaObject>();
-	const stack = [...(adjacency.get(start) ?? [])];
-
-	while (stack.length > 0) {
-		const node = stack.pop() as ParsedJSONSchemaObject;
-
-		if (node === target) {
-			return true;
-		}
-		if (seen.has(node)) {
-			continue;
-		}
-
-		seen.add(node);
-		stack.push(...(adjacency.get(node) ?? []));
-	}
-
-	return false;
+	return reachesThrough(start, target, (node) => adjacency.get(node) ?? []);
 }

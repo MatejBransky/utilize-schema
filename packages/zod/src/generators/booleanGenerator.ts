@@ -1,9 +1,11 @@
+import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
+
 import { createGenerator } from './createGenerator';
 
 import { ts } from '../utils';
 
-export const generator = createGenerator(
-	(schema) => {
+export const booleanGenerator = createGenerator(
+	(schema): schema is ParsedJSONSchemaObject => {
 		if ('enum' in schema) {
 			return false;
 		}

@@ -1,9 +1,10 @@
 import {
-	isPlainObject,
+	isJSONSchemaObject,
+	isParsedJSONSchemaObject,
 	Meta,
-	type ParsedJSONSchema,
-	type ParsedJSONSchemaObject,
+	reachesThrough,
 } from '@utilize/json-schema';
+import type { JSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 /**
  * Schemas that take part in a `$ref` cycle which TypeScript cannot express.
@@ -16,8 +17,18 @@ import {
 export function findUnsupportedCycles(
 	schemas: ParsedJSONSchemaObject[]
 ): ParsedJSONSchemaObject[][] {
-	return schemas.filter((schema) => reachesTransparently(schema, schema)).map((schema) => [schema]);
+	const cycles: ParsedJSONSchemaObject[][] = [];
+
+	for (const schema of schemas) {
+		if (reachesTransparently(schema, schema)) {
+			cycles.push([schema]);
+		}
+	}
+
+	return cycles;
 }
+
+type CycleNode = JSONSchema | ParsedJSONSchemaObject;
 
 /**
  * Follows the positions whose rendered type is transparent: `$ref` targets and
@@ -28,34 +39,17 @@ function reachesTransparently(
 	start: ParsedJSONSchemaObject,
 	target: ParsedJSONSchemaObject
 ): boolean {
-	const seen = new Set<ParsedJSONSchemaObject>();
-	const stack = transparentChildren(start);
-
-	while (stack.length > 0) {
-		const node = stack.pop()!;
-
-		if (node === target) {
-			return true;
-		}
-		if (seen.has(node)) {
-			continue;
-		}
-
-		seen.add(node);
-		stack.push(...transparentChildren(node));
-	}
-
-	return false;
+	return reachesThrough<CycleNode>(start, target, transparentChildren);
 }
 
-function transparentChildren(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject[] {
-	const children: ParsedJSONSchemaObject[] = [];
+function transparentChildren(schema: CycleNode): CycleNode[] {
+	const children: CycleNode[] = [];
 
-	if (typeof schema.$ref === 'string') {
+	if (isParsedJSONSchemaObject(schema) && typeof schema.$ref === 'string') {
 		const referenced = schema[Meta]?.reference;
 
-		if (isPlainObject(referenced)) {
-			children.push(referenced as ParsedJSONSchemaObject);
+		if (isJSONSchemaObject(referenced)) {
+			children.push(referenced);
 		}
 	}
 
@@ -63,11 +57,7 @@ function transparentChildren(schema: ParsedJSONSchemaObject): ParsedJSONSchemaOb
 		const members = schema[keyword];
 
 		if (Array.isArray(members)) {
-			children.push(
-				...(members as unknown as ParsedJSONSchema[]).filter(
-					(member): member is ParsedJSONSchemaObject => isPlainObject(member)
-				)
-			);
+			children.push(...members.filter(isJSONSchemaObject));
 		}
 	}
 

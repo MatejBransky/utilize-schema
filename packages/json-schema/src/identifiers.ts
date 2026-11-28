@@ -1,4 +1,7 @@
-import { type Dialect, dialects } from './dialect';
+import { dialects } from './dialect';
+import type { Dialect } from './dialect';
+import { SCHEMA_ARRAY_KEYWORDS, SCHEMA_MAP_KEYWORDS, SINGLE_SCHEMA_KEYWORDS } from './keywords';
+import { isJSONSchema, isJSONSchemaObject } from './model';
 import type { JSONSchema } from './model';
 import type { DialectMap } from './normalize';
 import { isPlainObject } from './utils';
@@ -26,20 +29,35 @@ export interface SchemaIndex {
 	resolve(ref: string, baseUri: string): JSONSchema | boolean | undefined;
 }
 
+function identifierOf(
+	node: JSONSchema,
+	dialect: Dialect,
+	ignoresSiblings: boolean
+): string | undefined {
+	const rawId = dialect.keywords.has('$id') ? node.$id : node.id;
+
+	return !ignoresSiblings && typeof rawId === 'string' && rawId.length > 0 ? rawId : undefined;
+}
+
 export function createSchemaIndex(): SchemaIndex & {
 	/**
 	 * Indexes a document. `nodeDialects` comes from `prepareSchema`; without it
 	 * every node is read as draft-07.
 	 */
-	addDocument(retrievalUri: string, root: JSONSchema, nodeDialects?: DialectMap): void;
+	addDocument(retrievalUri: string, root: JSONSchema | boolean, nodeDialects?: DialectMap): void;
 } {
 	const resources = new Map<string, JSONSchema | boolean>();
 	const anchors = new Map<string, JSONSchema | boolean>();
 	const bases = new WeakMap<object, string>();
 
-	function addDocument(retrievalUri: string, root: JSONSchema, nodeDialects?: DialectMap) {
+	function addDocument(
+		retrievalUri: string,
+		root: JSONSchema | boolean,
+		nodeDialects?: DialectMap
+	) {
+		resources.set(retrievalUri, root);
+
 		if (typeof root === 'object' && root !== null) {
-			resources.set(retrievalUri, root);
 			bases.set(root, retrievalUri);
 		}
 
@@ -59,37 +77,24 @@ export function createSchemaIndex(): SchemaIndex & {
 			return;
 		}
 
-		if (!isPlainObject(node)) {
-			return;
+		if (isJSONSchemaObject(node)) {
+			indexNode(node, baseUri, inheritedDialect, nodeDialects);
 		}
+	}
 
+	function indexNode(
+		node: JSONSchema,
+		baseUri: string,
+		inheritedDialect: Dialect,
+		nodeDialects: DialectMap | undefined
+	) {
 		const dialect = nodeDialects?.get(node)?.dialect ?? inheritedDialect;
-		let nextBase = baseUri;
 		// In draft-07 and older `$ref` replaces the rest of the schema, including
 		// a sibling `$id` or `$anchor`, so it must not change the base URI that the
 		// reference itself is resolved against. 2019-09 and newer apply them.
 		const ignoresSiblings = typeof node.$ref === 'string' && dialect.refSiblings === 'ignore';
-		const rawId = node[idKeyword(dialect)];
-		const id =
-			!ignoresSiblings && typeof rawId === 'string' && rawId.length > 0 ? rawId : undefined;
-
-		if (id) {
-			const hashIndex = id.indexOf('#');
-			const resourcePart = hashIndex === -1 ? id : id.slice(0, hashIndex);
-			const fragment = hashIndex === -1 ? '' : id.slice(hashIndex + 1);
-
-			if (resourcePart) {
-				nextBase = stripHash(resolveUri(baseUri, resourcePart));
-				resources.set(nextBase, node);
-			}
-
-			// A non-empty fragment in `$id` (`id` in draft-04) is the draft-07 way
-			// to declare a location-independent identifier; `$anchor` is the
-			// 2019-09+ form.
-			if (fragment) {
-				anchors.set(`${nextBase}#${fragment}`, node);
-			}
-		}
+		const id = identifierOf(node, dialect, ignoresSiblings);
+		const nextBase = indexIdentifier(node, id, baseUri);
 
 		if (!ignoresSiblings && typeof node.$anchor === 'string' && node.$anchor.length > 0) {
 			anchors.set(`${nextBase}#${node.$anchor}`, node);
@@ -100,6 +105,31 @@ export function createSchemaIndex(): SchemaIndex & {
 		for (const child of schemaChildren(node)) {
 			walk(child, nextBase, dialect, nodeDialects);
 		}
+	}
+
+	function indexIdentifier(node: JSONSchema, id: string | undefined, baseUri: string): string {
+		if (!id) {
+			return baseUri;
+		}
+
+		const hashIndex = id.indexOf('#');
+		const resourcePart = hashIndex === -1 ? id : id.slice(0, hashIndex);
+		const fragment = hashIndex === -1 ? '' : id.slice(hashIndex + 1);
+		let nextBase = baseUri;
+
+		if (resourcePart) {
+			nextBase = stripHash(resolveUri(baseUri, resourcePart));
+			resources.set(nextBase, node);
+		}
+
+		// A non-empty fragment in `$id` (`id` in draft-04) is the draft-07 way
+		// to declare a location-independent identifier; `$anchor` is the
+		// 2019-09+ form.
+		if (fragment) {
+			anchors.set(`${nextBase}#${fragment}`, node);
+		}
+
+		return nextBase;
 	}
 
 	function resolve(ref: string, baseUri: string): JSONSchema | boolean | undefined {
@@ -140,51 +170,18 @@ export function createSchemaIndex(): SchemaIndex & {
 	};
 }
 
-/** draft-04 names the identifier `id`; draft-06 renamed it to `$id`. */
-function idKeyword(dialect: Dialect): 'id' | '$id' {
-	return dialect.keywords.has('$id') ? '$id' : 'id';
-}
-
-const MAP_KEYWORDS = new Set([
-	'$defs',
-	'definitions',
-	'properties',
-	'patternProperties',
-	'dependentSchemas',
-]);
-
-const SINGLE_SCHEMA_KEYWORDS = new Set([
-	'additionalProperties',
-	'additionalItems',
-	'contains',
-	'propertyNames',
-	'if',
-	'then',
-	'else',
-	'not',
-	'unevaluatedProperties',
-	'unevaluatedItems',
-	'contentSchema',
-]);
-
-const ARRAY_SCHEMA_KEYWORDS = new Set(['allOf', 'anyOf', 'oneOf', 'prefixItems']);
-
 /**
  * Yields only schema-bearing children, so `$id` in `default` or `examples` is
  * ignored. Exported so every indexer walks the same keywords.
  */
-export function* schemaChildren(node: Record<string, unknown>): Generator<unknown> {
+export function* schemaChildren(node: JSONSchema): Generator<unknown> {
 	for (const [keyword, value] of Object.entries(node)) {
 		if (keyword === 'items') {
-			if (Array.isArray(value)) {
-				yield* value;
-			} else {
-				yield value;
-			}
+			yield* itemsChildren(value);
 			continue;
 		}
 
-		if (MAP_KEYWORDS.has(keyword) && isPlainObject(value)) {
+		if (SCHEMA_MAP_KEYWORDS.has(keyword) && isPlainObject(value)) {
 			yield* Object.values(value);
 			continue;
 		}
@@ -194,17 +191,29 @@ export function* schemaChildren(node: Record<string, unknown>): Generator<unknow
 			continue;
 		}
 
-		if (ARRAY_SCHEMA_KEYWORDS.has(keyword) && Array.isArray(value)) {
+		if (SCHEMA_ARRAY_KEYWORDS.has(keyword) && Array.isArray(value)) {
 			yield* value;
 			continue;
 		}
 
 		if (keyword === 'dependencies' && isPlainObject(value)) {
-			for (const dependency of Object.values(value)) {
-				if (!Array.isArray(dependency)) {
-					yield dependency;
-				}
-			}
+			yield* dependencyChildren(value);
+		}
+	}
+}
+
+function* itemsChildren(value: unknown): Generator<unknown> {
+	if (Array.isArray(value)) {
+		yield* value;
+	} else {
+		yield value;
+	}
+}
+
+function* dependencyChildren(value: Record<string, unknown>): Generator<unknown> {
+	for (const dependency of Object.values(value)) {
+		if (!Array.isArray(dependency)) {
+			yield dependency;
 		}
 	}
 }
@@ -225,22 +234,34 @@ function resolvePointer(root: JSONSchema | boolean, pointer: string) {
 			token = rawToken;
 		}
 
-		token = token.replace(/~1/g, '/').replace(/~0/g, '~');
+		token = token.replaceAll('~1', '/').replaceAll('~0', '~');
 
-		if (typeof current !== 'object' || current === null || !Object.hasOwn(current, token)) {
-			return undefined;
+		if (Array.isArray(current)) {
+			const index = Number(token);
+
+			if (!Number.isInteger(index) || !Object.hasOwn(current, index)) {
+				return undefined;
+			}
+
+			current = current[index];
+			continue;
 		}
 
-		current = (current as Record<string, unknown>)[token];
+		if (isPlainObject(current) && Object.hasOwn(current, token)) {
+			current = current[token];
+			continue;
+		}
+
+		return undefined;
 	}
 
-	return current as JSONSchema | boolean | undefined;
+	return isJSONSchema(current) ? current : undefined;
 }
 
 const PLACEHOLDER_ORIGIN = 'https://utilize.invalid';
 
 /** Resolves `ref` against `base` the way a browser resolves a link. */
-export function resolveUri(base: string, ref: string): string {
+function resolveUri(base: string, ref: string): string {
 	// A URN or another opaque scheme is not a valid URL base for relative
 	// references, but a fragment still resolves against it in JSON Schema.
 	if (ref.startsWith('#') && !/^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(base)) {
@@ -274,5 +295,5 @@ function stripHash(uri: string) {
 
 function normalizePath(value: string) {
 	// A Windows drive path would otherwise read `c:` as a URL scheme.
-	return /^[a-zA-Z]:[\\/]/.test(value) ? value.replace(/\\/g, '/') : value.replace(/\\/g, '/');
+	return /^[a-zA-Z]:[\\/]/.test(value) ? value.replaceAll('\\', '/') : value.replaceAll('\\', '/');
 }

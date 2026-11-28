@@ -1,32 +1,39 @@
-import { type JSONSchema, Meta } from '@utilize/json-schema';
+import { Meta } from '@utilize/json-schema';
+import type { JSONSchema } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
-import { compile, compileToZod, ts } from './test-utils';
+import { generateCode, compileToZod, ts } from './test-utils';
+
+const tag = (value: string, valueType: 'integer' | 'string'): JSONSchema => ({
+	type: 'object',
+	properties: { type: { type: 'string', const: value }, value: { type: valueType } },
+	required: ['type', 'value'],
+});
 
 describe('const and enum next to a type they already satisfy', () => {
 	test('a string const with "type": "string" is only a literal', async () => {
-		await expect(compile({ type: 'string', const: 'circle' })).toMatchCode(ts`
+		await expect(generateCode({ type: 'string', const: 'circle' })).toMatchCode(ts`
 			export const Root = z.literal('circle');
 			export type Root = z.infer<typeof Root>;
 		`);
 	});
 
 	test('a string enum with "type": "string" is only an enum', async () => {
-		await expect(compile({ type: 'string', enum: ['mm', 'cm'] })).toMatchCode(ts`
+		await expect(generateCode({ type: 'string', enum: ['mm', 'cm'] })).toMatchCode(ts`
 			export const Root = z.enum(['mm', 'cm']);
 			export type Root = z.infer<typeof Root>;
 		`);
 	});
 
 	test('an enum with a nullable type array is only an enum', async () => {
-		await expect(compile({ type: ['string', 'null'], enum: ['mm', null] })).toMatchCode(ts`
+		await expect(generateCode({ type: ['string', 'null'], enum: ['mm', null] })).toMatchCode(ts`
 			export const Root = z.literal(['mm', null]);
 			export type Root = z.infer<typeof Root>;
 		`);
 	});
 
 	test('an integer const with "type": "integer" is only a literal', async () => {
-		await expect(compile({ type: 'integer', const: 3 })).toMatchCode(ts`
+		await expect(generateCode({ type: 'integer', const: 3 })).toMatchCode(ts`
 			export const Root = z.literal(3);
 			export type Root = z.infer<typeof Root>;
 		`);
@@ -75,7 +82,7 @@ describe('const and enum next to a type they already satisfy', () => {
 describe('a type array with annotations', () => {
 	test('puts the annotations on the union only, not on every type', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'object',
 				properties: {
 					label: {
@@ -99,7 +106,7 @@ describe('a type array with annotations', () => {
 
 	test('puts .readonly() on the union only', async () => {
 		await expect(
-			compile(
+			generateCode(
 				{ type: ['array', 'null'], items: { type: 'string' }, readOnly: true },
 				{ readOnlyKeyword: true }
 			)
@@ -128,7 +135,7 @@ describe('an anyOf with a branch that accepts every value', () => {
 
 	test('generates no code for the anyOf', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'object',
 				properties: { label: { type: 'string' } },
 				required: ['label'],
@@ -147,8 +154,8 @@ describe('an anyOf with a branch that accepts every value', () => {
 	] as const)(
 		'generates the same code as without the anyOf when a branch is %s',
 		async (_, branch) => {
-			await expect(compile({ minLength: 2, anyOf: [{ type: 'string' }, branch] })).toMatchCode(
-				compile({ minLength: 2 })
+			await expect(generateCode({ minLength: 2, anyOf: [{ type: 'string' }, branch] })).toMatchCode(
+				generateCode({ minLength: 2 })
 			);
 		}
 	);
@@ -167,15 +174,9 @@ describe('an anyOf with a branch that accepts every value', () => {
 });
 
 describe('a oneOf whose branches cannot match the same value', () => {
-	const tag = (value: string, valueType: 'integer' | 'string'): JSONSchema => ({
-		type: 'object',
-		properties: { type: { type: 'string', const: value }, value: { type: valueType } },
-		required: ['type', 'value'],
-	});
-
 	test('different consts become a plain union', async () => {
 		await expect(
-			compile({
+			generateCode({
 				description: 'The kind of shape',
 				oneOf: [
 					{ description: 'A circle', type: 'string', const: 'circle' },
@@ -194,7 +195,8 @@ describe('a oneOf whose branches cannot match the same value', () => {
 	});
 
 	test('objects with a different const on the same required property become a plain union', async () => {
-		await expect(compile({ oneOf: [tag('int', 'integer'), tag('text', 'string')] })).toMatchCode(ts`
+		await expect(generateCode({ oneOf: [tag('int', 'integer'), tag('text', 'string')] }))
+			.toMatchCode(ts`
 			export const Root = z.union([
 				z.object({ type: z.literal('int'), value: z.int() }),
 				z.object({ type: z.literal('text'), value: z.string() }),
@@ -204,8 +206,9 @@ describe('a oneOf whose branches cannot match the same value', () => {
 	});
 
 	test('branches of different types become a plain union', async () => {
-		await expect(compile({ oneOf: [{ type: 'string' }, { type: 'boolean' }, { enum: [1, 2] }] }))
-			.toMatchCode(ts`
+		await expect(
+			generateCode({ oneOf: [{ type: 'string' }, { type: 'boolean' }, { enum: [1, 2] }] })
+		).toMatchCode(ts`
 			export const Root = z.union([z.string(), z.boolean(), z.literal([1, 2])]);
 			export type Root = z.infer<typeof Root>;
 		`);
@@ -213,7 +216,7 @@ describe('a oneOf whose branches cannot match the same value', () => {
 
 	test('follows a $ref to tell the branches apart', async () => {
 		await expect(
-			compile({
+			generateCode({
 				oneOf: [{ $ref: '#/definitions/Int' }, { $ref: '#/definitions/Text' }],
 				definitions: { Int: tag('int', 'integer'), Text: tag('text', 'string') },
 			})
@@ -249,7 +252,7 @@ describe('a oneOf whose branches cannot match the same value', () => {
 		],
 		['a branch has no constraint', [{ const: 'a' }, {}]],
 	])('keeps the exactly-one check when %s', async (_, oneOf) => {
-		expect(await compile({ oneOf })).toContain('oneOfSchema([');
+		expect(await generateCode({ oneOf })).toContain('oneOfSchema([');
 	});
 
 	test('the union accepts and rejects the same values as oneOf', async () => {
@@ -272,13 +275,13 @@ describe('an inline subschema identical to a named schema', () => {
 
 	test('generates the same code as a $ref to the named schema', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'object',
 				properties: { value: { $ref: '#/definitions/Value' }, inline: structuredClone(value) },
 				definitions: { Value: value },
 			})
 		).toMatchCode(
-			compile({
+			generateCode({
 				type: 'object',
 				properties: {
 					value: { $ref: '#/definitions/Value' },
@@ -290,7 +293,7 @@ describe('an inline subschema identical to a named schema', () => {
 	});
 
 	test('keeps a copy that differs in an annotation', async () => {
-		const code = await compile({
+		const code = await generateCode({
 			type: 'object',
 			properties: { inline: { ...structuredClone(value), description: 'Not quite the same' } },
 			definitions: { Value: value },
@@ -301,7 +304,7 @@ describe('an inline subschema identical to a named schema', () => {
 
 	test('keeps a single keyword such as a type inline', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'object',
 				properties: { name: { type: 'string' } },
 				definitions: { Name: { type: 'string' } },
@@ -320,7 +323,7 @@ describe('an inline subschema identical to a named schema', () => {
 		['the named schema', ['definitions', 'Def', 'properties', 'n']],
 	])('keeps a copy when customSchemaResolver replaces a node inside %s', async (_, path) => {
 		const def: JSONSchema = { type: 'object', properties: { n: { type: 'number' } } };
-		const code = await compile(
+		const code = await generateCode(
 			{
 				type: 'object',
 				properties: { inline: structuredClone(def) },
@@ -364,7 +367,7 @@ describe('an inline subschema repeated without a named schema', () => {
 
 	test('is declared once and referenced where it appears', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'object',
 				properties: { start: structuredClone(point), end: structuredClone(point) },
 			})
@@ -390,7 +393,7 @@ describe('an inline subschema repeated without a named schema', () => {
 
 	test('is shared between named schemas', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'object',
 				properties: { a: { $ref: '#/definitions/A' }, b: { $ref: '#/definitions/B' } },
 				definitions: {
@@ -415,7 +418,7 @@ describe('an inline subschema repeated without a named schema', () => {
 
 	test('is named after its title', async () => {
 		const titled = { ...structuredClone(point), title: 'Point' };
-		const code = await compile({
+		const code = await generateCode({
 			type: 'object',
 			properties: { start: titled, end: structuredClone(titled) },
 		});
@@ -425,7 +428,7 @@ describe('an inline subschema repeated without a named schema', () => {
 	});
 
 	test('is named after array items and map values', async () => {
-		const code = await compile({
+		const code = await generateCode({
 			type: 'object',
 			properties: {
 				tags: { type: 'array', items: structuredClone(point) },
@@ -440,7 +443,7 @@ describe('an inline subschema repeated without a named schema', () => {
 
 	test('takes a free name next to a named schema', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'object',
 				properties: {
 					start: structuredClone(point),
@@ -466,7 +469,7 @@ describe('an inline subschema repeated without a named schema', () => {
 	});
 
 	test('passes the hoisted name through schemaName and typeName', async () => {
-		const code = await compile(
+		const code = await generateCode(
 			{
 				type: 'object',
 				properties: { start: structuredClone(point), end: structuredClone(point) },
@@ -486,7 +489,7 @@ describe('an inline subschema repeated without a named schema', () => {
 		};
 
 		await expect(
-			compile({
+			generateCode({
 				type: 'object',
 				properties: { first: structuredClone(line), second: structuredClone(line) },
 			})
@@ -506,7 +509,7 @@ describe('an inline subschema repeated without a named schema', () => {
 		const line: JSONSchema = { type: 'object', properties: { from: structuredClone(point) } };
 
 		await expect(
-			compile({
+			generateCode({
 				type: 'object',
 				properties: {
 					first: structuredClone(line),
@@ -532,7 +535,7 @@ describe('an inline subschema repeated without a named schema', () => {
 
 	test('keeps a single keyword such as a type inline', async () => {
 		await expect(
-			compile({
+			generateCode({
 				type: 'object',
 				properties: { a: { type: 'string' }, b: { type: 'string' } },
 			})
@@ -543,7 +546,7 @@ describe('an inline subschema repeated without a named schema', () => {
 	});
 
 	test('keeps the copies when customSchemaResolver replaces a node inside one', async () => {
-		const code = await compile(
+		const code = await generateCode(
 			{
 				type: 'object',
 				properties: { start: structuredClone(point), end: structuredClone(point) },
@@ -562,7 +565,7 @@ describe('an inline subschema repeated without a named schema', () => {
 
 	test('declares no copy inside a node customSchemaResolver replaces', async () => {
 		await expect(
-			compile(
+			generateCode(
 				{
 					type: 'object',
 					properties: {
@@ -587,7 +590,7 @@ describe('an inline subschema repeated without a named schema', () => {
 		const anything: JSONSchema = { anyOf: [structuredClone(point), {}] };
 
 		await expect(
-			compile({
+			generateCode({
 				type: 'object',
 				properties: { a: structuredClone(anything), b: structuredClone(anything) },
 			})
@@ -604,7 +607,7 @@ describe('an inline subschema repeated without a named schema', () => {
 		};
 
 		await expect(
-			compile({
+			generateCode({
 				type: 'object',
 				properties: {
 					a: structuredClone(reference),

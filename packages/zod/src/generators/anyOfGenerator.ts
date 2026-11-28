@@ -1,17 +1,17 @@
 import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
-import { generateSchema } from './generateSchema';
+import type { ExpressionGenerator } from './createGenerator';
 
 import { ts } from '../utils';
 
-export const generator = createGenerator<
-	ParsedJSONSchemaObject & {
-		anyOf: ParsedJSONSchemaObject[];
-	}
->(
-	(schema) => Array.isArray(schema.anyOf),
-	(schema, context) => {
+export type AnyOfSchema = ParsedJSONSchemaObject & {
+	anyOf: ParsedJSONSchemaObject[];
+};
+
+export const anyOfGenerator: ExpressionGenerator = createGenerator<AnyOfSchema>(
+	(schema): schema is AnyOfSchema => Array.isArray(schema.anyOf),
+	(schema, context, { generateSchema }) => {
 		const subschemas = schema.anyOf.map((subschema) => generateSchema(subschema, context));
 
 		return ts`z.union([${subschemas.join(', ')}])`;

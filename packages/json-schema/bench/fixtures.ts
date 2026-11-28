@@ -50,6 +50,35 @@ export async function writeAzureTemplate(directory: string) {
 		const name = `resource-${index}.json`;
 		resourceRefs[`resource${index}`] = { $ref: `./resources/${name}` };
 
+		const baseProperties = {
+			id: { type: 'string' },
+			name: { type: 'string' },
+			kind: {
+				type: 'string',
+				enum: ['compute', 'storage', 'network', 'database'],
+			},
+			location: { $ref: '../common/types.json#/definitions/location' },
+			tags: {
+				type: 'array',
+				items: { $ref: '../common/types.json#/definitions/tag' },
+			},
+			properties: {
+				type: 'object',
+				additionalProperties: { type: 'string' },
+			},
+		};
+
+		const resourceProperties =
+			index === 0
+				? baseProperties
+				: {
+						...baseProperties,
+						dependsOn: {
+							type: 'array',
+							items: { $ref: './resource-0.json' },
+						},
+					};
+
 		await writeFile(
 			join(directory, 'resources', name),
 			JSON.stringify(
@@ -58,31 +87,7 @@ export async function writeAzureTemplate(directory: string) {
 					$id: name,
 					title: `Resource${index}`,
 					type: 'object',
-					properties: {
-						id: { type: 'string' },
-						name: { type: 'string' },
-						kind: {
-							type: 'string',
-							enum: ['compute', 'storage', 'network', 'database'],
-						},
-						location: { $ref: '../common/types.json#/definitions/location' },
-						tags: {
-							type: 'array',
-							items: { $ref: '../common/types.json#/definitions/tag' },
-						},
-						properties: {
-							type: 'object',
-							additionalProperties: { type: 'string' },
-						},
-						...(index === 0
-							? {}
-							: {
-									dependsOn: {
-										type: 'array',
-										items: { $ref: './resource-0.json' },
-									},
-								}),
-					},
+					properties: resourceProperties,
 					required: ['id', 'name', 'kind', 'location'],
 				},
 				null,

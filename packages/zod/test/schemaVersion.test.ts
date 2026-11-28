@@ -1,52 +1,60 @@
-import { type JSONSchema } from '@utilize/json-schema';
+import type { JSONSchema } from '@utilize/json-schema';
 import { describe, expect, test } from 'vitest';
 
-import { compile, compileToZod } from './test-utils';
+import { compileToZod, generateCode, schemaWithExtensions } from './test-utils';
 
 const prefixItemsSchema = {
 	$schema: 'https://json-schema.org/draft/2020-12/schema',
 	type: 'array',
 	prefixItems: [{ type: 'string' }],
 	items: { type: 'number' },
-} as unknown as JSONSchema;
+} satisfies JSONSchema;
 
-const dependentRequiredSchema = {
-	$schema: 'https://json-schema.org/draft/2020-12/schema',
-	type: 'object',
-	properties: {
-		a: { type: 'string' },
-		b: { type: 'string' },
+const dependentRequiredSchema = schemaWithExtensions(
+	{
+		$schema: 'https://json-schema.org/draft/2020-12/schema',
+		type: 'object',
+		properties: {
+			a: { type: 'string' },
+			b: { type: 'string' },
+		},
 	},
-	dependentRequired: { a: ['b'] },
-} as unknown as JSONSchema;
+	{ dependentRequired: { a: ['b'] } }
+);
 
-const dependentSchemasSchema = {
-	$schema: 'https://json-schema.org/draft/2020-12/schema',
-	type: 'object',
-	properties: {
-		a: { type: 'string' },
-		b: { type: 'string' },
+const dependentSchemasSchema = schemaWithExtensions(
+	{
+		$schema: 'https://json-schema.org/draft/2020-12/schema',
+		type: 'object',
+		properties: {
+			a: { type: 'string' },
+			b: { type: 'string' },
+		},
 	},
-	dependentSchemas: { a: { required: ['b'] } },
-} as unknown as JSONSchema;
+	{ dependentSchemas: { a: { required: ['b'] } } }
+);
 
-const draft04ExclusiveSchema = {
-	$schema: 'http://json-schema.org/draft-04/schema#',
-	type: 'number',
-	minimum: 0,
-	exclusiveMinimum: true,
-} as unknown as JSONSchema;
+const draft04ExclusiveSchema = schemaWithExtensions(
+	{
+		$schema: 'http://json-schema.org/draft-04/schema#',
+		type: 'number',
+		minimum: 0,
+	},
+	{ exclusiveMinimum: true }
+);
 
 const customVersionSchema = {
 	$schema: 'https://example.com/custom-meta-schema',
 	type: 'string',
-} as unknown as JSONSchema;
+} satisfies JSONSchema;
 
 const unsupportedFeatureSchema = {
 	$schema: 'https://json-schema.org/draft/2020-12/schema',
 	type: 'object',
-	properties: { value: { $dynamicRef: '#meta' } },
-} as unknown as JSONSchema;
+	properties: {
+		value: schemaWithExtensions({}, { $dynamicRef: '#meta' }),
+	},
+} satisfies JSONSchema;
 
 describe('$schema versions', () => {
 	test('2020-12 prefixItems and items', async () => {
@@ -106,19 +114,19 @@ describe('$schema versions', () => {
 	});
 
 	test('unknown $schema falls back to draft-07 by default', async () => {
-		await expect(compile(customVersionSchema)).resolves.toContain(
+		await expect(generateCode(customVersionSchema)).resolves.toContain(
 			'export const Root = z.string();'
 		);
 	});
 
 	test('unknown $schema can fail with unknownDialect error', async () => {
-		await expect(compile(customVersionSchema, { unknownDialect: 'error' })).rejects.toThrow(
+		await expect(generateCode(customVersionSchema, { unknownDialect: 'error' })).rejects.toThrow(
 			/Unknown dialect/
 		);
 	});
 
 	test('unsupported 2020-12 features fail loudly', async () => {
-		await expect(compile(unsupportedFeatureSchema)).rejects.toThrow(
+		await expect(generateCode(unsupportedFeatureSchema)).rejects.toThrow(
 			/"\$dynamicRef" is not supported/
 		);
 	});

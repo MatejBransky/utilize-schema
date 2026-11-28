@@ -1,18 +1,16 @@
 import * as monaco from 'monaco-editor';
-// oxlint-disable-next-line import/default -- Vite worker imports have a default export.
 import editorWorker from 'monaco-editor/editor/editor.worker.js?worker';
-// oxlint-disable-next-line import/default -- Vite worker imports have a default export.
 import jsonWorker from 'monaco-editor/languages/features/json/json.worker.js?worker';
-// oxlint-disable-next-line import/default -- Vite worker imports have a default export.
 import tsWorker from 'monaco-editor/languages/features/typescript/ts.worker.js?worker';
 
+import jsonSchemaFormatsTypes from 'virtual:json-schema-formats-types';
 import zodTypes from 'virtual:zod-types';
 
 interface MonacoEnvironment {
 	getWorker(moduleId: string, label: string): Worker;
 }
 
-(self as { MonacoEnvironment?: MonacoEnvironment }).MonacoEnvironment = {
+self.MonacoEnvironment = {
 	getWorker(_moduleId, label) {
 		if (label === 'json') {
 			return new jsonWorker();
@@ -40,6 +38,8 @@ typescript.typescriptDefaults.setCompilerOptions({
 	module: typescript.ModuleKind.ESNext,
 	moduleResolution: typescript.ModuleResolutionKind.NodeJs,
 	strict: true,
+	// Editor models do not emit. The dedicated transpile operation temporarily
+	// overrides this option only while it asks the worker for JavaScript.
 	noEmit: true,
 	skipLibCheck: true,
 	allowNonTsExtensions: true,
@@ -51,6 +51,11 @@ typescript.typescriptDefaults.setEagerModelSync(true);
 for (const [file, content] of Object.entries(zodTypes)) {
 	typescript.typescriptDefaults.addExtraLib(content, `file:///node_modules/zod/${file}`);
 }
+
+typescript.typescriptDefaults.addExtraLib(
+	jsonSchemaFormatsTypes,
+	'file:///node_modules/@utilize/json-schema/formats.d.ts'
+);
 
 let effectTypesPromise: Promise<void> | undefined;
 
@@ -105,6 +110,7 @@ export { monaco };
 
 declare global {
 	interface Window {
+		MonacoEnvironment?: MonacoEnvironment;
 		monaco: typeof monaco;
 	}
 }

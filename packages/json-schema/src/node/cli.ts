@@ -1,0 +1,565 @@
+import { existsSync, globSync, mkdirSync, realpathSync, statSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { parseArgs } from 'node:util';
+import type { ParseArgsOptionDescriptor, ParseArgsOptionsConfig } from 'node:util';
+
+import { dialectCliOptions, readDialectCliOptions } from '../cliOptions';
+import { formatIssue } from '../dialect';
+import type { DialectIssue, DialectOptions } from '../dialect';
+import type { JSONSchema } from '../model';
+import { expectDefined } from '../utils';
+import { SchemaValidationError } from '../validation';
+import type { SchemaValidationReport, SchemaValidator } from '../validation';
+import { parseSchemaSource } from './compile';
+
+export interface Writable {
+	write(chunk: string): void;
+}
+
+export interface CliIo {
+	stdout: Writable;
+	stderr: Writable;
+	/** Source used when no input file is given. Defaults to the process stdin. */
+	stdin?: string;
+}
+
+/** Help lines for the shared `--validate` and `--validator` flags. */
+export const validationCliHelp = `  --validate            validate each schema against its dialect's meta-schema
+  --validator <module>  import a custom validator instead of the built-in Ajv
+                        (implies --validate)`;
+
+/** The flags every generator CLI accepts, next to its own. */
+const commonFlags = {
+	input: { type: 'string', short: 'i' },
+	output: { type: 'string', short: 'o' },
+	cwd: { type: 'string' },
+	'no-banner': { type: 'boolean', default: false },
+	validate: { type: 'boolean', default: false },
+	validator: { type: 'string' },
+	help: { type: 'boolean', short: 'h', default: false },
+} as const;
+
+export type FlagValue<Option extends ParseArgsOptionDescriptor> = Option['type'] extends 'string'
+	? string
+	: Option['type'] extends 'boolean'
+		? boolean
+		: string | boolean;
+
+export type OptionValue<Option extends ParseArgsOptionDescriptor> = Option extends {
+	multiple: true;
+}
+	? FlagValue<Option>[]
+	: FlagValue<Option>;
+
+/** The values `parseArgs` returns for `Flags`. */
+export type CliFlagValues<Flags extends ParseArgsOptionsConfig> = {
+	[K in keyof Flags]?: OptionValue<Flags[K]>;
+} & {
+	[K in keyof Flags as undefined extends Flags[K]['default'] ? never : K]: OptionValue<Flags[K]>;
+};
+
+type RawFlagValue = string | boolean | (string | boolean)[] | undefined;
+type RawFlagValues = Record<string, RawFlagValue>;
+
+function pickFlagValues<Flags extends ParseArgsOptionsConfig>(
+	values: CliFlagValues<typeof commonFlags>,
+	flags: Flags
+): CliFlagValues<Flags> {
+	const source: RawFlagValues = Object.fromEntries(Object.entries(values));
+	const picked: RawFlagValues = {};
+
+	for (const flag of Object.keys(flags)) {
+		if (Object.hasOwn(source, flag)) {
+			picked[flag] = source[flag];
+		}
+	}
+
+	if (!isCliFlagValues<Flags>(picked)) {
+		throw new TypeError('Parsed CLI flags do not match the declared options');
+	}
+
+	return picked;
+}
+
+function isCliFlagValues<Flags extends ParseArgsOptionsConfig>(
+	value: RawFlagValues
+): value is CliFlagValues<Flags> {
+	return Object.values(value).every(isRawFlagValue);
+}
+
+function isRawFlagValue(value: unknown): value is RawFlagValue {
+	return (
+		value === undefined ||
+		typeof value === 'string' ||
+		typeof value === 'boolean' ||
+		(Array.isArray(value) &&
+			value.every((item) => typeof item === 'string' || typeof item === 'boolean'))
+	);
+}
+
+/** Compile options read from the flags, or the message to print when a flag is invalid. */
+export type CliOptionsResult<Options> =
+	| { ok: true; options: Options }
+	| { ok: false; error: string };
+
+/** What a generator plugs into `runGeneratorCli`. */
+export interface GeneratorCli<Flags extends ParseArgsOptionsConfig, Options> {
+	/** Printed for `--help`. */
+	help: string;
+	/** The generator's own `parseArgs` options. The shared flags, including `--validate`, are added. */
+	parseOptions: Flags;
+	/** Turns the parsed options into compile options. */
+	readOptions(values: CliFlagValues<Flags>, io: CliIo): CliOptionsResult<Options>;
+	/** Compiles schema text read from stdin. */
+	compileSchema(
+		schema: JSONSchema | boolean,
+		options: Options & { cwd: string; fileName: string }
+	): Promise<string>;
+	/** Compiles one schema file. */
+	compileFile(filePath: string, options: Options): Promise<string>;
+	/** Adds the generator's banner, or leaves it out for `false`. */
+	withBanner(code: string, bannerComment?: false): string;
+}
+
+/**
+ * Runs a generator CLI: reads the schema from stdin, a file, a directory or a
+ * glob, and writes the generated code to stdout, a file or a directory.
+ * Returns the exit code.
+ */
+export async function runGeneratorCli<Flags extends ParseArgsOptionsConfig, Options>(
+	argv: string[],
+	io: CliIo,
+	cli: GeneratorCli<Flags, Options>
+): Promise<number> {
+	const parseOptions = { ...commonFlags, ...cli.parseOptions };
+	let parsed;
+
+	try {
+		parsed = parseArgs<{
+			args: string[];
+			allowPositionals: true;
+			options: typeof commonFlags;
+		}>({ args: argv, allowPositionals: true, options: parseOptions });
+	} catch (error) {
+		return fail(io, errorMessage(error));
+	}
+
+	const { positionals, values } = parsed;
+
+	if (values.help) {
+		io.stdout.write(cli.help);
+		return 0;
+	}
+
+	const options = cli.readOptions(pickFlagValues(values, cli.parseOptions), io);
+
+	if (!options.ok) {
+		return fail(io, options.error);
+	}
+
+	const cwd = path.resolve(values.cwd ?? process.cwd());
+	let validateSchema: SchemaValidator | undefined;
+
+	try {
+		validateSchema = await validationFromFlags(values, cwd);
+	} catch (error) {
+		return fail(io, errorMessage(error));
+	}
+
+	const run: CliRun<Options> = {
+		cwd,
+		input: values.input ?? positionals[0],
+		output: values.output ?? positionals[1],
+		banner: values['no-banner'] ? false : undefined,
+		options: withValidator(options.options, validateSchema),
+	};
+
+	try {
+		return run.input
+			? await compileInputFiles(run.input, run, cli, io)
+			: await compileStdin(run, cli, io);
+	} catch (error) {
+		return fail(io, errorMessage(error));
+	}
+}
+
+function errorMessage(error: unknown): string {
+	if (typeof error === 'object' && error !== null && 'message' in error) {
+		return typeof error.message === 'string' ? error.message : String(error);
+	}
+
+	return String(error);
+}
+
+/** The validated outcome of `--validate` and `--validator`. */
+interface ValidationFlags {
+	validate?: boolean;
+	validator?: string;
+}
+
+const missingAjvMessage =
+	'The --validate flag needs the optional "ajv" package. Install it, or pass --validator <module>.';
+
+async function validationFromFlags(
+	{ validate, validator }: ValidationFlags,
+	cwd: string
+): Promise<SchemaValidator | undefined> {
+	if (validator !== undefined) {
+		return loadValidator(validator, cwd);
+	}
+
+	if (!validate) {
+		return undefined;
+	}
+
+	try {
+		const { ajvValidator } = await import('../validate/ajv');
+
+		return ajvValidator;
+	} catch (error) {
+		throw new Error(`${missingAjvMessage}\n${errorMessage(error)}`, { cause: error });
+	}
+}
+
+/** Adds the validator to a generator's own compile options without widening them. */
+function withValidator<Options>(options: Options, validator: SchemaValidator | undefined): Options {
+	return validator ? { ...options, validateSchema: validator } : options;
+}
+
+/** Imports a validator module: a path resolved against `cwd`, or a package specifier. */
+async function loadValidator(specifier: string, cwd: string): Promise<SchemaValidator> {
+	const target = isModulePath(specifier)
+		? pathToFileURL(path.resolve(cwd, specifier)).href
+		: specifier;
+	let loaded: unknown;
+
+	try {
+		loaded = await import(target);
+	} catch (error) {
+		throw new Error(`Could not load the validator "${specifier}": ${errorMessage(error)}`, {
+			cause: error,
+		});
+	}
+
+	const validator = validatorExport(loaded);
+
+	if (!validator) {
+		throw new TypeError(
+			`The validator "${specifier}" must export a function as its default export or as "validateSchema".`
+		);
+	}
+
+	return validator;
+}
+
+function isModulePath(specifier: string): boolean {
+	return specifier.startsWith('.') || path.isAbsolute(specifier);
+}
+
+function validatorExport(loaded: unknown): SchemaValidator | undefined {
+	if (typeof loaded !== 'object' || loaded === null) {
+		return undefined;
+	}
+
+	const candidate: unknown = 'default' in loaded ? loaded.default : undefined;
+
+	if (isSchemaValidator(candidate)) {
+		return candidate;
+	}
+
+	const named: unknown = 'validateSchema' in loaded ? loaded.validateSchema : undefined;
+
+	return isSchemaValidator(named) ? named : undefined;
+}
+
+function isSchemaValidator(value: unknown): value is SchemaValidator {
+	return typeof value === 'function';
+}
+
+/** What one CLI run compiles, read from its flags and arguments. */
+interface CliRun<Options> {
+	cwd: string;
+	input: string | undefined;
+	output: string | undefined;
+	banner: false | undefined;
+	options: Options;
+}
+
+/** Prints `message` to stderr and returns the failure exit code. */
+function fail(io: CliIo, message: string): number {
+	io.stderr.write(`${message}\n`);
+	return 1;
+}
+
+async function compileStdin<Flags extends ParseArgsOptionsConfig, Options>(
+	run: CliRun<Options>,
+	cli: GeneratorCli<Flags, Options>,
+	io: CliIo
+): Promise<number> {
+	const source = io.stdin ?? (await readStdin());
+	const code = await cli.compileSchema(parseSchemaSource(source), {
+		cwd: run.cwd,
+		fileName: 'Root.json',
+		...run.options,
+	});
+	const content = cli.withBanner(code, run.banner);
+
+	if (run.output) {
+		writeFile(path.resolve(run.cwd, run.output), content);
+	} else {
+		io.stdout.write(content);
+	}
+
+	return 0;
+}
+
+async function compileInputFiles<Flags extends ParseArgsOptionsConfig, Options>(
+	input: string,
+	run: CliRun<Options>,
+	cli: GeneratorCli<Flags, Options>,
+	io: CliIo
+): Promise<number> {
+	const { cwd, output } = run;
+	const files = discover(input, cwd);
+
+	if (files.length === 0) {
+		return fail(io, `No schema files found for "${input}"`);
+	}
+
+	if (!output) {
+		return await compileToStdout(cli, run, files, io);
+	}
+
+	const targets = outputTargets(files, output, cwd);
+	const duplicate = targets.find((target, index) => targets.indexOf(target) !== index);
+
+	if (duplicate) {
+		return fail(
+			io,
+			`Refusing to overwrite ${duplicate}; several inputs map to the same output file.`
+		);
+	}
+
+	const compiled: CompiledOutput[] = [];
+	const reports: SchemaValidationReport[] = [];
+
+	for (const [index, file] of files.entries()) {
+		const target = expectDefined(targets[index]);
+		const content = await captureValidation(
+			async () => await cli.compileFile(file.path, run.options),
+			reports
+		);
+
+		if (content !== undefined) {
+			compiled.push({ source: file.path, target, content: cli.withBanner(content, run.banner) });
+		}
+	}
+
+	if (reports.length > 0) {
+		throw new SchemaValidationError(reports);
+	}
+
+	// Compile every input before writing any, so a schema that fails validation
+	// or generation does not leave a half-updated output directory.
+	for (const { source, target, content } of compiled) {
+		writeFile(target, content);
+		io.stderr.write(`${source} -> ${target}\n`);
+	}
+
+	return 0;
+}
+
+/** Compiles one file to stdout; several inputs need an output directory. */
+async function compileToStdout<Flags extends ParseArgsOptionsConfig, Options>(
+	cli: GeneratorCli<Flags, Options>,
+	run: CliRun<Options>,
+	files: InputFile[],
+	io: CliIo
+): Promise<number> {
+	if (files.length > 1) {
+		return fail(io, 'An output directory is required when compiling several files.');
+	}
+
+	io.stdout.write(
+		cli.withBanner(await cli.compileFile(expectDefined(files[0]).path, run.options), run.banner)
+	);
+
+	return 0;
+}
+
+/**
+ * Runs one compile, collecting validation findings instead of stopping at the
+ * first invalid document so a whole run reports them all. Any other error
+ * still stops the run.
+ */
+async function captureValidation(
+	compile: () => Promise<string>,
+	reports: SchemaValidationReport[]
+): Promise<string | undefined> {
+	try {
+		return await compile();
+	} catch (error) {
+		if (!(error instanceof SchemaValidationError)) {
+			throw error;
+		}
+
+		reports.push(...error.reports);
+
+		return undefined;
+	}
+}
+
+/** One compiled module waiting to be written. */
+interface CompiledOutput {
+	source: string;
+	target: string;
+	content: string;
+}
+
+/**
+ * The flags of generators that validate `format` and read every dialect:
+ * `--format-mode` plus the dialect flags (`dialectCliOptions`).
+ */
+export const formatAndDialectFlags = {
+	'format-mode': { type: 'string', default: 'assert' },
+	...dialectCliOptions,
+} as const;
+
+export interface FormatAndDialectOptions extends DialectOptions {
+	formatMode: 'annotate' | 'assert';
+}
+
+/**
+ * Reads `formatAndDialectFlags` into compile options. Dialect issues found
+ * while parsing are printed to stderr.
+ */
+export function readFormatAndDialectFlags(
+	values: CliFlagValues<typeof formatAndDialectFlags>,
+	io: CliIo
+): CliOptionsResult<FormatAndDialectOptions> {
+	const dialect = readDialectCliOptions(values);
+
+	if (!dialect.ok) {
+		return dialect;
+	}
+
+	const formatMode = values['format-mode'];
+
+	if (formatMode !== 'annotate' && formatMode !== 'assert') {
+		return {
+			ok: false,
+			error: `Unknown format mode "${formatMode}"; expected "annotate" or "assert".`,
+		};
+	}
+
+	return {
+		ok: true,
+		options: {
+			formatMode,
+			...dialect.options,
+			onDialectIssue: (issue: DialectIssue) => io.stderr.write(`${formatIssue(issue)}\n`),
+		},
+	};
+}
+
+/** True when `entry` (usually `process.argv[1]`) is the module at `moduleUrl`, also through a symlink. */
+export function isEntrypoint(entry: string | undefined, moduleUrl: string): boolean {
+	if (!entry) {
+		return false;
+	}
+
+	try {
+		return realpathSync(fileURLToPath(moduleUrl)) === realpathSync(entry);
+	} catch {
+		return false;
+	}
+}
+
+interface InputFile {
+	path: string;
+	/** Path used to name the output file, relative to the input root. */
+	relative: string;
+}
+
+function discover(input: string, cwd: string): InputFile[] {
+	const resolved = path.resolve(cwd, input);
+
+	if (existsSync(resolved) && statSync(resolved).isDirectory()) {
+		const matches = globSync('**/*.{json,yaml,yml}', { cwd: resolved }).sort();
+
+		return matches.map((file) => ({ path: path.join(resolved, file), relative: file }));
+	}
+
+	if (/[*?[\]{}]/.test(input)) {
+		const matches = globSync(input, { cwd }).sort();
+		const base = path.resolve(cwd, globRoot(input));
+
+		return matches.map((file) => {
+			const absolute = path.resolve(cwd, file);
+
+			return { path: absolute, relative: path.relative(base, absolute) };
+		});
+	}
+
+	return [{ path: resolved, relative: path.basename(resolved) }];
+}
+
+/**
+ * The non-magic prefix of a glob, used to keep the input's directory structure
+ * in the output. `schemas/**\/*.json` roots at `schemas`.
+ */
+function globRoot(pattern: string) {
+	const magic = pattern.search(/[*?[\]{}]/);
+	const prefix = magic === -1 ? pattern : pattern.slice(0, magic);
+	const endsWithSeparator = prefix.endsWith('/') || prefix.endsWith(path.sep);
+	const root = endsWithSeparator ? prefix.slice(0, -1) : path.dirname(prefix);
+
+	return root === '.' ? '' : root;
+}
+
+/** One output file per input: inside `output` when it is a directory, else `output` itself. */
+function outputTargets(files: InputFile[], output: string, cwd: string): string[] {
+	const outputDirectory = isOutputDirectory(output, cwd, files.length);
+
+	return files.map((file) =>
+		outputDirectory
+			? path.resolve(cwd, output, outputName(file.relative))
+			: path.resolve(cwd, output)
+	);
+}
+
+function isOutputDirectory(output: string, cwd: string, count: number): boolean {
+	if (count > 1 || /[\\/]$/.test(output)) {
+		return true;
+	}
+
+	const resolved = path.resolve(cwd, output);
+
+	return existsSync(resolved) && statSync(resolved).isDirectory();
+}
+
+function outputName(relative: string) {
+	return `${relative.replace(/\.(json|ya?ml)$/i, '')}.generated.ts`;
+}
+
+function writeFile(target: string, content: string) {
+	mkdirSync(path.dirname(target), { recursive: true });
+	writeFileSync(target, content, 'utf8');
+}
+
+async function readStdin() {
+	const chunks: Buffer[] = [];
+
+	for await (const chunk of process.stdin) {
+		if (Buffer.isBuffer(chunk)) {
+			chunks.push(chunk);
+		} else if (typeof chunk === 'string') {
+			chunks.push(Buffer.from(chunk));
+		} else {
+			throw new TypeError('Expected the process stdin to emit bytes');
+		}
+	}
+
+	return Buffer.concat(chunks).toString('utf8');
+}

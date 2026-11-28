@@ -1,10 +1,47 @@
 import {
+	assert,
 	formatIssue,
+	isJSONSchema,
 	isPlainObject,
-	type KeywordPolicy,
 	prepareSchema,
 	resolveDialect,
+	SCHEMA_ARRAY_KEYWORDS,
+	SCHEMA_MAP_KEYWORDS,
+	SINGLE_SCHEMA_KEYWORDS,
 } from '@utilize/json-schema';
+import type { DialectId, JSONSchema, KeywordPolicy } from '@utilize/json-schema';
+
+/** A JSON value before schema parsing; the bundler rewrites it without validating it. */
+type UnparsedJson =
+	| null
+	| boolean
+	| number
+	| string
+	| UnparsedJson[]
+	| { [key: string]: UnparsedJson };
+
+function isUnparsedJson(value: unknown): value is UnparsedJson {
+	if (
+		value === null ||
+		typeof value === 'boolean' ||
+		typeof value === 'number' ||
+		typeof value === 'string'
+	) {
+		return true;
+	}
+
+	if (Array.isArray(value)) {
+		return value.every(isUnparsedJson);
+	}
+
+	return isPlainObject(value) && Object.values(value).every(isUnparsedJson);
+}
+
+function toUnparsedJson(value: unknown): UnparsedJson {
+	assert(isUnparsedJson(value), 'Expected a JSON value.');
+
+	return value;
+}
 
 export interface SchemaFile {
 	id: string;
@@ -27,7 +64,7 @@ export interface ParsedFile {
 }
 
 export interface BundleResult {
-	root: unknown;
+	root: JSONSchema | boolean | null;
 	rootFileName: string;
 	problems: Problem[];
 	keyByFile: Map<string, string>;
@@ -90,6 +127,53 @@ export function buildBundle(
 		unknownDialect: 'fallback',
 	}).dialect.id;
 
+	validateParsedSchemas(parsedFiles, rootParsed, rootDialect, keywordPolicy, problems);
+
+	const { keyByFile, definitionsKey } = allocateDefinitionKeys(rootParsed, parsedFiles);
+	const byName = indexFilesByName(parsedFiles, problems);
+	const rewritten = new Map<string, UnparsedJson>();
+	const context: RewriteContext = {
+		rootId: rootParsed.file.id,
+		keyByFile,
+		definitionsKey,
+		byName,
+		parsedById: new Map(parsedFiles.map((parsed) => [parsed.file.id, parsed])),
+		problems,
+	};
+
+	for (const parsed of parsedFiles) {
+		if (parsed.schema !== undefined) {
+			rewritten.set(parsed.file.id, rewrite(parsed.schema, parsed.file, context));
+		}
+	}
+
+	const rootValue = attachDefinitions({
+		root: rewritten.get(rootParsed.file.id),
+		parsedFiles,
+		rewritten,
+		keyByFile,
+		definitionsKey,
+		rootFileId: rootParsed.file.id,
+		problems,
+	});
+
+	const root = isJSONSchema(rootValue) ? rootValue : null;
+
+	return {
+		root,
+		rootFileName: rootParsed.file.name,
+		problems,
+		keyByFile,
+	};
+}
+
+function validateParsedSchemas(
+	parsedFiles: ParsedFile[],
+	rootParsed: ParsedFile,
+	rootDialect: DialectId,
+	keywordPolicy: KeywordPolicy,
+	problems: Problem[]
+): void {
 	for (const parsed of parsedFiles) {
 		if (parsed.schema === undefined) {
 			continue;
@@ -119,44 +203,67 @@ export function buildBundle(
 			});
 		}
 	}
+}
 
+function definitionsKeyFor(schema: unknown): '$defs' | 'definitions' {
+	if (!isPlainObject(schema)) {
+		return '$defs';
+	}
+
+	if (isPlainObject(schema.$defs)) {
+		return '$defs';
+	}
+
+	return isPlainObject(schema.definitions) ? 'definitions' : '$defs';
+}
+
+interface DefinitionKeys {
+	keyByFile: Map<string, string>;
+	definitionsKey: '$defs' | 'definitions';
+}
+
+function allocateDefinitionKeys(rootParsed: ParsedFile, parsedFiles: ParsedFile[]): DefinitionKeys {
 	const keyByFile = new Map<string, string>();
 	const usedKeys = new Set<string>();
-	const rootSchema = rootParsed.schema;
-	const definitionsKey =
-		isPlainObject(rootSchema) && isPlainObject(rootSchema.$defs)
-			? '$defs'
-			: isPlainObject(rootSchema) && isPlainObject(rootSchema.definitions)
-				? 'definitions'
-				: '$defs';
+	const definitionsKey = definitionsKeyFor(rootParsed.schema);
 
-	if (isPlainObject(rootParsed.schema)) {
-		for (const key of Object.keys(rootParsed.schema.$defs ?? {})) {
-			usedKeys.add(key);
-		}
-		for (const key of Object.keys(rootParsed.schema.definitions ?? {})) {
-			usedKeys.add(key);
-		}
-	}
+	collectUsedDefinitionKeys(rootParsed.schema, usedKeys);
 
 	for (const parsed of parsedFiles) {
 		if (parsed.file.id === rootParsed.file.id || parsed.schema === undefined) {
 			continue;
 		}
 
-		let key = schemaKey(parsed.file.name);
+		const baseKey = schemaKey(parsed.file.name);
+		let key = baseKey;
 		let suffix = 2;
 
 		while (usedKeys.has(key)) {
-			key = `${schemaKey(parsed.file.name)}_${suffix++}`;
+			key = `${baseKey}_${suffix++}`;
 		}
 
 		usedKeys.add(key);
 		keyByFile.set(parsed.file.id, key);
 	}
 
+	return { keyByFile, definitionsKey };
+}
+
+function collectUsedDefinitionKeys(schema: unknown, usedKeys: Set<string>): void {
+	if (!isPlainObject(schema)) {
+		return;
+	}
+
+	for (const key of Object.keys(schema.$defs ?? {})) {
+		usedKeys.add(key);
+	}
+	for (const key of Object.keys(schema.definitions ?? {})) {
+		usedKeys.add(key);
+	}
+}
+
+function indexFilesByName(parsedFiles: ParsedFile[], problems: Problem[]): Map<string, ParsedFile> {
 	const byName = new Map<string, ParsedFile>();
-	const parsedById = new Map(parsedFiles.map((parsed) => [parsed.file.id, parsed]));
 
 	for (const parsed of parsedFiles) {
 		const name = normalizeName(parsed.file.name);
@@ -171,54 +278,61 @@ export function buildBundle(
 			byName.set(name, parsed);
 		}
 	}
-	const rewritten = new Map<string, unknown>();
-	const context: RewriteContext = {
-		rootId: rootParsed.file.id,
-		keyByFile,
-		definitionsKey,
-		byName,
-		parsedById,
-		problems,
-	};
+
+	return byName;
+}
+
+interface DefinitionAssembly {
+	root: unknown;
+	parsedFiles: ParsedFile[];
+	rewritten: Map<string, UnparsedJson>;
+	keyByFile: Map<string, string>;
+	definitionsKey: '$defs' | 'definitions';
+	rootFileId: string;
+	problems: Problem[];
+}
+
+function attachDefinitions({
+	root,
+	parsedFiles,
+	rewritten,
+	keyByFile,
+	definitionsKey,
+	rootFileId,
+	problems,
+}: DefinitionAssembly): UnparsedJson {
+	if (!isPlainObject(root)) {
+		if (keyByFile.size > 0) {
+			problems.push({
+				fileId: rootFileId,
+				severity: 'warning',
+				message: 'The root schema must be an object to include references to other files.',
+			});
+		}
+
+		return toUnparsedJson(root);
+	}
+
+	const definitions = new Map<string, UnparsedJson>();
+	const existing = root[definitionsKey];
+
+	if (isPlainObject(existing)) {
+		for (const [name, value] of Object.entries(existing)) {
+			definitions.set(name, toUnparsedJson(value));
+		}
+	}
 
 	for (const parsed of parsedFiles) {
-		if (parsed.schema === undefined) {
-			continue;
-		}
+		const key = keyByFile.get(parsed.file.id);
 
-		rewritten.set(parsed.file.id, rewrite(parsed.schema, parsed.file, context));
+		const value = key ? rewritten.get(parsed.file.id) : undefined;
+
+		if (key && value !== undefined) {
+			definitions.set(key, value);
+		}
 	}
 
-	let root = rewritten.get(rootParsed.file.id);
-
-	if (isPlainObject(root)) {
-		const definitions: Record<string, unknown> = {
-			...(root[definitionsKey] as Record<string, unknown> | undefined),
-		};
-
-		for (const parsed of parsedFiles) {
-			const key = keyByFile.get(parsed.file.id);
-
-			if (key) {
-				definitions[key] = rewritten.get(parsed.file.id);
-			}
-		}
-
-		root = { ...root, [definitionsKey]: definitions };
-	} else if (keyByFile.size > 0) {
-		problems.push({
-			fileId: rootParsed.file.id,
-			severity: 'warning',
-			message: 'The root schema must be an object to include references to other files.',
-		});
-	}
-
-	return {
-		root,
-		rootFileName: rootParsed.file.name,
-		problems,
-		keyByFile,
-	};
+	return toUnparsedJson({ ...root, [definitionsKey]: Object.fromEntries(definitions) });
 }
 
 const ROOT_FILE_NAMES = new Set(['index.json', 'schema.json', 'root.json']);
@@ -260,7 +374,7 @@ export function detectRootId(files: SchemaFile[]): string | null {
 
 	return candidates
 		.map((file) => ({ file, score: rootScore(file, schemas, outgoing) }))
-		.toSorted((a, b) => b.score - a.score)[0]!.file.id;
+		.toSorted((a, b) => b.score - a.score)[0].file.id;
 }
 
 function rootScore(
@@ -329,87 +443,106 @@ interface RewriteContext {
 	problems: Problem[];
 }
 
-const MAP_KEYWORDS = new Set([
-	'properties',
-	'patternProperties',
-	'$defs',
-	'definitions',
-	'dependentSchemas',
-]);
-const SINGLE_SCHEMA_KEYWORDS = new Set([
-	'additionalProperties',
-	'additionalItems',
-	'unevaluatedProperties',
-	'unevaluatedItems',
-	'contentSchema',
-	'contains',
-	'propertyNames',
-	'if',
-	'then',
-	'else',
-	'not',
-]);
-const ARRAY_SCHEMA_KEYWORDS = new Set(['allOf', 'anyOf', 'oneOf', 'prefixItems']);
-
-function rewrite(value: unknown, file: SchemaFile, context: RewriteContext): unknown {
+function rewrite(value: unknown, file: SchemaFile, context: RewriteContext): UnparsedJson {
 	if (!isPlainObject(value)) {
-		return value;
+		return toUnparsedJson(value);
 	}
 
-	const copy: Record<string, unknown> = {};
+	const copy: Record<string, UnparsedJson> = {};
 
 	for (const [key, child] of Object.entries(value)) {
-		if (key === '$ref' && typeof child === 'string') {
-			copy[key] = rewriteRef(child, file, context);
-		} else if (MAP_KEYWORDS.has(key) && isPlainObject(child)) {
-			const map: Record<string, unknown> = {};
-
-			for (const [name, subschema] of Object.entries(child)) {
-				map[name] = rewrite(subschema, file, context);
-			}
-			copy[key] = map;
-		} else if (key === 'items' && Array.isArray(child)) {
-			copy[key] = child.map((item) => rewrite(item, file, context));
-		} else if (SINGLE_SCHEMA_KEYWORDS.has(key) || key === 'items') {
-			copy[key] = rewrite(child, file, context);
-		} else if (ARRAY_SCHEMA_KEYWORDS.has(key) && Array.isArray(child)) {
-			copy[key] = child.map((item) => rewrite(item, file, context));
-		} else if (key === 'dependencies' && isPlainObject(child)) {
-			const dependencies: Record<string, unknown> = {};
-
-			for (const [name, dependency] of Object.entries(child)) {
-				dependencies[name] = Array.isArray(dependency)
-					? dependency
-					: rewrite(dependency, file, context);
-			}
-			copy[key] = dependencies;
-		} else {
-			copy[key] = child;
-		}
+		copy[key] = rewriteProperty(key, child, file, context);
 	}
 
 	return copy;
 }
 
-function rewriteRef(ref: string, file: SchemaFile, context: RewriteContext): string {
+function rewriteProperty(
+	key: string,
+	child: unknown,
+	file: SchemaFile,
+	context: RewriteContext
+): UnparsedJson {
+	if (key === '$ref') {
+		return rewriteRef(child, file, context);
+	}
+
+	if (SCHEMA_MAP_KEYWORDS.has(key)) {
+		return rewriteMap(child, file, context);
+	}
+
+	if (key === 'items') {
+		return rewriteItems(child, file, context);
+	}
+
+	if (SINGLE_SCHEMA_KEYWORDS.has(key)) {
+		return rewrite(child, file, context);
+	}
+
+	if (SCHEMA_ARRAY_KEYWORDS.has(key)) {
+		return rewriteArray(child, file, context);
+	}
+
+	if (key === 'dependencies') {
+		return rewriteDependencies(child, file, context);
+	}
+
+	return toUnparsedJson(child);
+}
+
+function rewriteItems(child: unknown, file: SchemaFile, context: RewriteContext): UnparsedJson {
+	return Array.isArray(child) ? rewriteArray(child, file, context) : rewrite(child, file, context);
+}
+
+function rewriteMap(value: unknown, file: SchemaFile, context: RewriteContext): UnparsedJson {
+	if (!isPlainObject(value)) {
+		return toUnparsedJson(value);
+	}
+
+	const map: Record<string, UnparsedJson> = {};
+
+	for (const [name, subschema] of Object.entries(value)) {
+		map[name] = rewrite(subschema, file, context);
+	}
+
+	return map;
+}
+
+function rewriteArray(value: unknown, file: SchemaFile, context: RewriteContext): UnparsedJson {
+	if (!Array.isArray(value)) {
+		return toUnparsedJson(value);
+	}
+
+	return value.map((item) => rewrite(item, file, context));
+}
+
+function rewriteDependencies(
+	value: unknown,
+	file: SchemaFile,
+	context: RewriteContext
+): UnparsedJson {
+	if (!isPlainObject(value)) {
+		return toUnparsedJson(value);
+	}
+
+	const dependencies: Record<string, UnparsedJson> = {};
+
+	for (const [name, dependency] of Object.entries(value)) {
+		dependencies[name] = Array.isArray(dependency)
+			? toUnparsedJson(dependency)
+			: rewrite(dependency, file, context);
+	}
+
+	return dependencies;
+}
+
+function rewriteRef(ref: unknown, file: SchemaFile, context: RewriteContext): UnparsedJson {
+	if (typeof ref !== 'string') {
+		return toUnparsedJson(ref);
+	}
+
 	if (ref.startsWith('#')) {
-		const parsed = context.parsedById.get(file.id);
-
-		if (parsed && !pointerExists(parsed, ref.slice(1))) {
-			context.problems.push({
-				fileId: file.id,
-				severity: 'error',
-				message: `Unresolved $ref "${ref}".`,
-			});
-		}
-
-		if (file.id === context.rootId) {
-			return ref;
-		}
-
-		const key = context.keyByFile.get(file.id);
-
-		return key ? `#/$defs/${escapePointer(key)}${ref.slice(1)}` : ref;
+		return rewriteLocalRef(ref, file, context);
 	}
 
 	// Remote refs are fetched by the parser when the schema is generated.
@@ -417,6 +550,30 @@ function rewriteRef(ref: string, file: SchemaFile, context: RewriteContext): str
 		return ref;
 	}
 
+	return rewriteExternalRef(ref, file, context);
+}
+
+function rewriteLocalRef(ref: string, file: SchemaFile, context: RewriteContext): string {
+	const parsed = context.parsedById.get(file.id);
+
+	if (parsed && !pointerExists(parsed, ref.slice(1))) {
+		context.problems.push({
+			fileId: file.id,
+			severity: 'error',
+			message: `Unresolved $ref "${ref}".`,
+		});
+	}
+
+	if (file.id === context.rootId) {
+		return ref;
+	}
+
+	const key = context.keyByFile.get(file.id);
+
+	return key ? `#/$defs/${escapePointer(key)}${ref.slice(1)}` : ref;
+}
+
+function rewriteExternalRef(ref: string, file: SchemaFile, context: RewriteContext): string {
 	const hashIndex = ref.indexOf('#');
 	const path = hashIndex === -1 ? ref : ref.slice(0, hashIndex);
 	const fragment = hashIndex === -1 ? '' : ref.slice(hashIndex + 1);
@@ -458,33 +615,35 @@ function pointerExists(parsed: ParsedFile, fragment: string): boolean {
 		return true;
 	}
 
-	let decoded: string;
+	const decoded = decodeFragment(fragment);
 
-	try {
-		decoded = decodeURIComponent(fragment);
-	} catch {
-		return false;
-	}
-
-	if (parsed.schema === undefined) {
+	if (decoded === null || parsed.schema === undefined) {
 		return false;
 	}
 
 	// A fragment that does not start with `/` is an identifier (`$id` or
 	// `$anchor`), not a JSON pointer. The parser validates it after bundling.
-	if (!decoded.startsWith('/')) {
-		return true;
+	return !decoded.startsWith('/') || pointerTargetExists(parsed.schema, decoded);
+}
+
+function decodeFragment(fragment: string): string | null {
+	try {
+		return decodeURIComponent(fragment);
+	} catch {
+		return null;
 	}
+}
 
-	let current: unknown = parsed.schema;
+function pointerTargetExists(root: unknown, pointer: string): boolean {
+	let current: unknown = root;
 
-	for (const segment of decoded.slice(1).split('/')) {
-		const key = segment.replace(/~1/g, '/').replace(/~0/g, '~');
+	for (const segment of pointer.slice(1).split('/')) {
+		const key = segment.replaceAll('~1', '/').replaceAll('~0', '~');
 
 		if (Array.isArray(current)) {
-			const index = Number(key);
+			const index = pointerArrayIndex(current, key);
 
-			if (!Number.isInteger(index) || index < 0 || index >= current.length) {
+			if (index === null) {
 				return false;
 			}
 			current = current[index];
@@ -498,6 +657,12 @@ function pointerExists(parsed: ParsedFile, fragment: string): boolean {
 	return true;
 }
 
+function pointerArrayIndex(values: unknown[], key: string): number | null {
+	const index = Number(key);
+
+	return Number.isInteger(index) && index >= 0 && index < values.length ? index : null;
+}
+
 function resolveRefPath(currentName: string, path: string): string {
 	try {
 		const url = new URL(path, `file:///${currentName}`);
@@ -509,9 +674,9 @@ function resolveRefPath(currentName: string, path: string): string {
 
 export function normalizeName(name: string): string {
 	return name
-		.replace(/\\/g, '/')
+		.replaceAll('\\', '/')
 		.replace(/^(\.\/)+/, '')
-		.replace(/\/+/g, '/')
+		.replaceAll(/\/+/g, '/')
 		.replace(/^\/+/, '')
 		.trim();
 }
@@ -522,11 +687,11 @@ function schemaKey(name: string): string {
 			.split('/')
 			.at(-1)
 			?.replace(/\.json$/i, '')
-			.replace(/[^A-Za-z0-9_$-]+/g, '_') || 'file';
+			.replaceAll(/[^A-Za-z0-9_$-]+/g, '_') || 'file';
 
 	return /^[A-Za-z_$]/.test(base) ? base : `f_${base}`;
 }
 
 function escapePointer(key: string): string {
-	return key.replace(/~/g, '~0').replace(/\//g, '~1');
+	return key.replaceAll('~', '~0').replaceAll('/', '~1');
 }

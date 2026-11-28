@@ -12,7 +12,7 @@ export type FormatMap = Record<string, string>;
 /**
  * What `format` becomes in the generated code. `annotate` keeps it as
  * `.meta({ format })`, which is the JSON Schema default and the default here.
- * `assert` turns known formats into validation (`.email()`, `.uuid()`, …).
+ * `assert` turns known formats into validation (`.iso.date()`, `url` patterns, …).
  */
 export type FormatMode = 'annotate' | 'assert';
 
@@ -47,4 +47,9 @@ export type GeneratorContext = {
 	formatMode?: FormatMode;
 	/** Emits a caller-provided expression before the built-in generator runs. */
 	customSchemaResolver?: CustomSchemaResolver;
+	/**
+	 * Local name of the imported validator for a format. Registered on first
+	 * use, so one format yields one import per file.
+	 */
+	formatOf(format: string): string;
 };

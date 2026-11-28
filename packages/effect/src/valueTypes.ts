@@ -1,16 +1,19 @@
 import {
-	type Dialect,
 	dialectOf,
+	expectDefined,
 	isKeywordApplicable,
+	isParsedJSONSchemaObject,
 	isPlainObject,
 	Meta,
-	type ParsedJSONSchema,
-	type ParsedJSONSchemaObject,
+	schemaRecord,
+	withSourceMeta,
 } from '@utilize/json-schema';
+import type { Dialect, ParsedJSONSchema, ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { typedAlternatives } from './alternatives';
-import type { CustomSchemaResolver } from './generator';
+import type { CustomSchemaResolver } from './context';
 import { planReferenceSiblings } from './refSiblings';
+import { arrayRest, itemsOf, objectKeys, parentSchema, prefixItemsOf } from './schemaParts';
 
 export interface ValueTypeContext {
 	/**
@@ -26,6 +29,19 @@ export interface ValueTypeContext {
 	/** Nodes it replaces hold caller code of an unknown type, so they render as `unknown`. */
 	customSchemaResolver?: CustomSchemaResolver;
 }
+
+const VALUE_TYPE_GENERATORS = new Map<
+	string,
+	(schema: ParsedJSONSchemaObject, context: ValueTypeContext, self: string | undefined) => string
+>([
+	['string', () => 'string'],
+	['number', () => 'number'],
+	['integer', () => 'number'],
+	['boolean', () => 'boolean'],
+	['null', () => 'null'],
+	['array', renderArray],
+	['object', renderObject],
+]);
 
 /**
  * Renders the TypeScript type of a schema that takes part in a reference cycle.
@@ -65,16 +81,7 @@ function renderRecordInterface(
 	context: ValueTypeContext,
 	self: string
 ): string | undefined {
-	if (
-		schema.$ref !== undefined ||
-		Object.hasOwn(schema, 'const') ||
-		Array.isArray(schema.enum) ||
-		Array.isArray(schema.allOf) ||
-		Array.isArray(schema.anyOf) ||
-		Array.isArray(schema.oneOf) ||
-		Array.isArray(schema.type) ||
-		(schema.type !== undefined && schema.type !== 'object')
-	) {
+	if (!isRecordCandidate(schema)) {
 		return undefined;
 	}
 
@@ -85,16 +92,41 @@ function renderRecordInterface(
 		return undefined;
 	}
 
-	const additional = schema.additionalProperties;
-	const value = hasPatternProperties(schema)
-		? 'Schema.Json'
-		: additional === false
-			? 'never'
-			: isPlainObject(additional)
-				? renderValueType(additional, context, self, true)
-				: 'Schema.Json';
+	return `{\n\t[key: string]: ${recordValueType(schema, context, self)};\n}`;
+}
 
-	return `{\n\t[key: string]: ${value};\n}`;
+function isRecordCandidate(schema: ParsedJSONSchemaObject): boolean {
+	return !hasLiteralOrReference(schema) && !hasComposition(schema) && !hasNonObjectType(schema);
+}
+
+function hasLiteralOrReference(schema: ParsedJSONSchemaObject): boolean {
+	return schema.$ref !== undefined || Object.hasOwn(schema, 'const') || Array.isArray(schema.enum);
+}
+
+function hasComposition(schema: ParsedJSONSchemaObject): boolean {
+	return Array.isArray(schema.allOf) || Array.isArray(schema.anyOf) || Array.isArray(schema.oneOf);
+}
+
+function hasNonObjectType(schema: ParsedJSONSchemaObject): boolean {
+	return schema.type !== undefined && schema.type !== 'object';
+}
+
+function recordValueType(
+	schema: ParsedJSONSchemaObject,
+	context: ValueTypeContext,
+	self: string
+): string {
+	if (hasPatternProperties(schema)) {
+		return 'Schema.Json';
+	}
+
+	if (schema.additionalProperties === false) {
+		return 'never';
+	}
+
+	return isPlainObject(schema.additionalProperties)
+		? renderValueType(schema.additionalProperties, context, self, true)
+		: 'Schema.Json';
 }
 
 /**
@@ -102,12 +134,41 @@ function renderRecordInterface(
  * elements, index signatures), where a recursive alias is allowed. A direct
  * self reference would be circular, so it degrades to `Schema.Json`.
  */
-export function renderValueType(
+function renderValueType(
 	schema: ParsedJSONSchema,
 	context: ValueTypeContext,
 	self?: string,
 	deferred = true
 ): string {
+	const simple = simpleValueType(schema);
+
+	if (simple !== undefined) {
+		return simple;
+	}
+
+	if (!isParsedJSONSchemaObject(schema)) {
+		return 'Schema.Json';
+	}
+
+	const object = schema;
+
+	if (isResolvedByCaller(object, context)) {
+		return 'unknown';
+	}
+
+	const dialect = dialectOf(object, context.dialect);
+	const structured = renderStructuredValueType(object, context, self, deferred, dialect);
+
+	if (structured !== undefined) {
+		return structured;
+	}
+
+	const type = typeof object.type === 'string' ? object.type : undefined;
+
+	return VALUE_TYPE_GENERATORS.get(type ?? '')?.(object, context, self) ?? 'Schema.Json';
+}
+
+function simpleValueType(schema: ParsedJSONSchema): string | undefined {
 	if (schema === undefined || schema === null || schema === true) {
 		return 'Schema.Json';
 	}
@@ -116,58 +177,103 @@ export function renderValueType(
 		return 'never';
 	}
 
-	if (!isPlainObject(schema)) {
+	return isPlainObject(schema) ? undefined : 'Schema.Json';
+}
+
+function renderStructuredValueType(
+	schema: ParsedJSONSchemaObject,
+	context: ValueTypeContext,
+	self: string | undefined,
+	deferred: boolean,
+	dialect: Dialect
+): string | undefined {
+	return (
+		renderReferenceValueType(schema, context, self, deferred, dialect) ??
+		renderLiteralValueType(schema, dialect) ??
+		renderCombinatorValueType(schema, context, self, deferred) ??
+		renderTypeArrayValueType(schema, context)
+	);
+}
+
+function renderReferenceValueType(
+	schema: ParsedJSONSchemaObject,
+	context: ValueTypeContext,
+	self: string | undefined,
+	deferred: boolean,
+	dialect: Dialect
+): string | undefined {
+	if (typeof schema.$ref !== 'string') {
+		return undefined;
+	}
+
+	return renderResolvedReference(schema[Meta]?.reference, schema, context, self, deferred, dialect);
+}
+
+function renderResolvedReference(
+	reference: ParsedJSONSchema | null | undefined,
+	schema: ParsedJSONSchemaObject,
+	context: ValueTypeContext,
+	self: string | undefined,
+	deferred: boolean,
+	dialect: Dialect
+): string {
+	if (reference === undefined || reference === null) {
 		return 'Schema.Json';
 	}
 
-	if (isResolvedByCaller(schema, context)) {
-		return 'unknown';
+	if (typeof reference === 'boolean') {
+		return reference ? 'Schema.Json' : 'never';
 	}
 
-	const dialect = dialectOf(schema, context.dialect);
+	const referenceType = renderReferenceTarget(reference, context, self, deferred);
+	const siblings = planReferenceSiblings(
+		schema,
+		dialect,
+		(target) => context.aliasFor(target) !== undefined
+	);
 
-	if (typeof schema.$ref === 'string') {
-		const reference = schema[Meta]?.reference;
-
-		if (reference === undefined || reference === null) {
-			return 'Schema.Json';
-		}
-
-		if (typeof reference === 'boolean') {
-			return reference ? 'Schema.Json' : 'never';
-		}
-
-		const alias = context.aliasFor(reference);
-		const referenceType =
-			alias === undefined
-				? context.typeNameFor(reference)
-				: alias === self && !deferred
-					? 'Schema.Json'
-					: alias;
-		const siblings = planReferenceSiblings(
-			schema,
-			dialect,
-			(target) => context.aliasFor(target) !== undefined
-		);
-
-		// A `merge` generates the merged object, so its value type is rendered from
-		// the same schema. A `check` keeps the reference's type: a filter does not
-		// change it.
-		if (siblings.kind === 'merge') {
-			return renderValueType(siblings.merged, context, self, deferred);
-		}
-
-		return referenceType;
+	// A `merge` generates the merged object, so its value type is rendered from
+	// the same schema. A `check` keeps the reference's type: a filter does not
+	// change it.
+	if (siblings.kind === 'merge') {
+		return renderValueType(siblings.merged, context, self, deferred);
 	}
 
+	return referenceType;
+}
+
+function renderReferenceTarget(
+	reference: ParsedJSONSchemaObject,
+	context: ValueTypeContext,
+	self: string | undefined,
+	deferred: boolean
+): string {
+	const alias = context.aliasFor(reference);
+
+	if (alias === undefined) {
+		return context.typeNameFor(reference);
+	}
+
+	return alias === self && !deferred ? 'Schema.Json' : alias;
+}
+
+function renderLiteralValueType(
+	schema: ParsedJSONSchemaObject,
+	dialect: Dialect
+): string | undefined {
 	if (Object.hasOwn(schema, 'const') && isKeywordApplicable(dialect, 'const')) {
 		return literalType(schema.const);
 	}
 
-	if (Array.isArray(schema.enum)) {
-		return union(schema.enum.map(literalType));
-	}
+	return Array.isArray(schema.enum) ? union(schema.enum.map(literalType)) : undefined;
+}
 
+function renderCombinatorValueType(
+	schema: ParsedJSONSchemaObject,
+	context: ValueTypeContext,
+	self: string | undefined,
+	deferred: boolean
+): string | undefined {
 	if (Array.isArray(schema.allOf)) {
 		return intersection([
 			renderValueType(parentSchema(schema), context, self, deferred),
@@ -175,39 +281,36 @@ export function renderValueType(
 		]);
 	}
 
-	const alternatives = Array.isArray(schema.anyOf)
-		? schema.anyOf
-		: Array.isArray(schema.oneOf)
-			? schema.oneOf
-			: undefined;
+	const keyword = valueTypeAlternativeKeyword(schema);
 
-	if (alternatives) {
-		const { members } = typedAlternatives(schema, alternatives);
-
-		return union(members.map((subschema) => renderValueType(subschema, context)));
+	if (keyword === undefined) {
+		return undefined;
 	}
 
-	if (Array.isArray(schema.type)) {
-		return union(schema.type.map((type) => renderValueType(schemaWithType(schema, type), context)));
+	const { members } = typedAlternatives(schema, expectDefined(schema[keyword]));
+
+	return union(members.map((subschema) => renderValueType(subschema, context)));
+}
+
+function valueTypeAlternativeKeyword(
+	schema: ParsedJSONSchemaObject
+): 'anyOf' | 'oneOf' | undefined {
+	if (Array.isArray(schema.anyOf)) {
+		return 'anyOf';
 	}
 
-	switch (schema.type) {
-		case 'string':
-			return 'string';
-		case 'number':
-		case 'integer':
-			return 'number';
-		case 'boolean':
-			return 'boolean';
-		case 'null':
-			return 'null';
-		case 'array':
-			return renderArray(schema, context, self);
-		case 'object':
-			return renderObject(schema, context, self);
-		default:
-			return 'Schema.Json';
+	return Array.isArray(schema.oneOf) ? 'oneOf' : undefined;
+}
+
+function renderTypeArrayValueType(
+	schema: ParsedJSONSchemaObject,
+	context: ValueTypeContext
+): string | undefined {
+	if (!Array.isArray(schema.type)) {
+		return undefined;
 	}
+
+	return union(schema.type.map((type) => renderValueType(schemaWithType(schema, type), context)));
 }
 
 function renderArray(
@@ -216,16 +319,8 @@ function renderArray(
 	self: string | undefined
 ): string {
 	const dialect = dialectOf(schema, context.dialect);
-	const items = schema.items as unknown as ParsedJSONSchema | ParsedJSONSchema[] | undefined;
-	const prefixItems =
-		dialect.tuple === 'prefixItems'
-			? Array.isArray(schema.prefixItems)
-				? (schema.prefixItems as ParsedJSONSchema[])
-				: undefined
-			: Array.isArray(items)
-				? items
-				: undefined;
-
+	const items = itemsOf(schema);
+	const prefixItems = prefixItemsOf(schema, dialect);
 	const singleItem = Array.isArray(items) ? undefined : items;
 
 	if (prefixItems === undefined) {
@@ -252,38 +347,12 @@ function renderArray(
 	return `readonly [${[...elements, `...${parenthesize(renderValueType(rest, context, self, true))}[]`].join(', ')}]`;
 }
 
-function arrayRest(
-	schema: ParsedJSONSchemaObject,
-	items: ParsedJSONSchema | ParsedJSONSchema[] | undefined,
-	dialect: Dialect
-): ParsedJSONSchema {
-	if (dialect.tuple === 'prefixItems') {
-		if (items === false) {
-			return false;
-		}
-
-		return Array.isArray(items) ? true : (items ?? true);
-	}
-
-	if (schema.additionalItems === false) {
-		return false;
-	}
-
-	return (schema.additionalItems as unknown as ParsedJSONSchema | undefined) ?? true;
-}
-
 function renderObject(
 	schema: ParsedJSONSchemaObject,
 	context: ValueTypeContext,
 	self: string | undefined
 ): string {
-	const properties = isPlainObject(schema.properties) ? schema.properties : {};
-	const required = new Set(
-		Array.isArray(schema.required)
-			? schema.required.filter((key): key is string => typeof key === 'string')
-			: []
-	);
-	const keys = [...new Set([...Object.keys(properties), ...required])];
+	const { properties, required, keys } = objectKeys(schema);
 	const additional = schema.additionalProperties;
 	const hasPatterns = hasPatternProperties(schema);
 
@@ -328,23 +397,11 @@ function hasPatternProperties(schema: ParsedJSONSchemaObject): boolean {
 	);
 }
 
-/** Mirrors the generator, which merges `allOf` into one object schema. */
-function parentSchema(schema: ParsedJSONSchemaObject): ParsedJSONSchemaObject {
-	return {
-		...schema,
-		allOf: undefined,
-		not: undefined,
-		if: undefined,
-		then: undefined,
-		else: undefined,
-	};
-}
-
 function schemaWithType(
 	schema: ParsedJSONSchemaObject,
 	type: ParsedJSONSchemaObject['type']
 ): ParsedJSONSchemaObject {
-	return { ...schema, type };
+	return withSourceMeta(schema, { ...schema, type });
 }
 
 export function literalType(value: unknown): string {
@@ -358,7 +415,7 @@ export function literalType(value: unknown): string {
 		return `readonly [${value.map((entry) => parenthesize(literalType(entry))).join(', ')}]`;
 	}
 	if (typeof value === 'object') {
-		const members = Object.entries(value as Record<string, unknown>).map(
+		const members = Object.entries(schemaRecord(value)).map(
 			([key, entry]) => `${propertyKey(key)}: ${literalType(entry)}`
 		);
 

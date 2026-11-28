@@ -1,22 +1,17 @@
 import type { ParsedJSONSchemaObject } from '@utilize/json-schema';
 
 import { createGenerator } from './createGenerator';
+import type { ExpressionGenerator } from './createGenerator';
 import { renderLiteral } from './renderLiteral';
 
 import { NEWLINE, ts } from '../utils';
 
-export const generator = createGenerator<
-	ParsedJSONSchemaObject & {
-		enum: unknown[];
-	}
->(
-	(schema) => {
-		if ('enum' in schema) {
-			return true;
-		}
+export type EnumSchema = ParsedJSONSchemaObject & {
+	enum: unknown[];
+};
 
-		return false;
-	},
+export const enumGenerator: ExpressionGenerator = createGenerator<EnumSchema>(
+	(schema): schema is EnumSchema => Array.isArray(schema.enum),
 	(schema) => {
 		if (schema.enum.length === 0) {
 			return ts`z.never()`;

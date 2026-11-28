@@ -12,7 +12,7 @@ import { z } from 'zod';
 export function oneOfSchema<T extends z.ZodType>(
 	options: readonly T[]
 ): z.ZodType<z.output<T>, z.input<T>> {
-	return z.any().transform((value, ctx) => {
+	function matchingResults(value: unknown): z.output<T>[] {
 		const matches: z.output<T>[] = [];
 
 		for (const option of options) {
@@ -27,7 +27,14 @@ export function oneOfSchema<T extends z.ZodType>(
 			}
 		}
 
-		if (matches.length !== 1) {
+		return matches;
+	}
+
+	return z.any().transform((value, ctx) => {
+		const matches = matchingResults(value);
+		const [match] = matches;
+
+		if (matches.length !== 1 || match === undefined) {
 			ctx.addIssue({
 				code: 'custom',
 				message: 'Value must match exactly one "oneOf" schema.',
@@ -36,6 +43,6 @@ export function oneOfSchema<T extends z.ZodType>(
 			return z.NEVER;
 		}
 
-		return matches[0]!;
+		return match;
 	}) as z.ZodType<z.output<T>, z.input<T>>;
 }

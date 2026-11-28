@@ -1,13 +1,14 @@
-import { dialectOf, type ParsedJSONSchemaObject } from '@utilize/json-schema';
+import { dialectOf, expectDefined } from '@utilize/json-schema';
+import type { ParsedJSONSchemaObject, SchemaEdge } from '@utilize/json-schema';
 
-import type { SchemaEdge } from './collectStandaloneSchemas';
 import { withoutAlwaysValidAnyOf } from './generators/alwaysValidAnyOf';
-import { generator as arrayGenerator } from './generators/arrayGenerator';
-import { generator as multipleTypeGenerator } from './generators/multipleTypeGenerator';
-import { generator as objectGenerator } from './generators/objectGenerator';
-import { generator as recordGenerator } from './generators/recordGenerator';
+import { arrayGenerator } from './generators/arrayGenerator';
+import { multipleTypeGenerator } from './generators/multipleTypeGenerator';
+import { objectGenerator } from './generators/objectGenerator';
+import { recordGenerator } from './generators/recordGenerator';
 import { selectGenerator } from './generators/selectGenerator';
-import { generator as tupleGenerator } from './generators/tupleGenerator';
+import { tupleGenerator } from './generators/tupleGenerator';
+import { inferTypeKeywords } from './inferTypes';
 
 type SchemaNode = SchemaEdge[0];
 
@@ -52,32 +53,44 @@ export function findCyclicSchemas(
 
 /**
  * True when the schema itself produces an object, array, tuple or record.
- * Subschema branches do not count: a structural constructor in a sibling
- * `anyOf` branch does not anchor a cycle that bypasses it.
+ * Typed and keyword-only structural constraints both count: the refinement
+ * pipeline validates the latter behind a type guard. Subschema branches do not
+ * count: a structural constructor in a sibling `anyOf` branch does not anchor a
+ * cycle that bypasses it.
  */
 function isStructuralNode(schema: SchemaNode): boolean {
 	if (typeof schema !== 'object' || schema === null) {
 		return false;
 	}
 
-	const generator = selectGenerator(withoutAlwaysValidAnyOf(schema), dialectOf(schema));
+	const candidate = withoutAlwaysValidAnyOf(schema);
+	const dialect = dialectOf(schema);
 
-	if (
-		generator === objectGenerator ||
-		generator === recordGenerator ||
-		generator === arrayGenerator ||
-		generator === tupleGenerator
-	) {
+	if (hasStructuralType(inferTypeKeywords(candidate, dialect))) {
 		return true;
 	}
 
-	if (generator === multipleTypeGenerator) {
-		return (schema.type as unknown as string[]).some(
-			(type) => type === 'object' || type === 'array'
-		);
+	const generator = selectGenerator(candidate, dialect);
+
+	if (STRUCTURAL_GENERATORS.has(generator)) {
+		return true;
 	}
 
-	return false;
+	return (
+		generator === multipleTypeGenerator &&
+		hasStructuralType(Array.isArray(schema.type) ? schema.type : [schema.type])
+	);
+}
+
+const STRUCTURAL_GENERATORS = new Set([
+	objectGenerator,
+	recordGenerator,
+	arrayGenerator,
+	tupleGenerator,
+]);
+
+function hasStructuralType(types: readonly (string | undefined)[]): boolean {
+	return types.some((type) => type === 'object' || type === 'array');
 }
 
 function findCyclicNodes(edges: SchemaEdge[]): Set<SchemaNode>[] {
@@ -110,9 +123,15 @@ function findCyclicNodes(edges: SchemaEdge[]): Set<SchemaNode>[] {
 		for (const target of adjacency.get(node) ?? []) {
 			if (!indices.has(target)) {
 				connect(target);
-				lowLinks.set(node, Math.min(lowLinks.get(node)!, lowLinks.get(target)!));
+				lowLinks.set(
+					node,
+					Math.min(expectDefined(lowLinks.get(node)), expectDefined(lowLinks.get(target)))
+				);
 			} else if (onStack.has(target)) {
-				lowLinks.set(node, Math.min(lowLinks.get(node)!, indices.get(target)!));
+				lowLinks.set(
+					node,
+					Math.min(expectDefined(lowLinks.get(node)), expectDefined(indices.get(target)))
+				);
 			}
 		}
 
@@ -120,15 +139,7 @@ function findCyclicNodes(edges: SchemaEdge[]): Set<SchemaNode>[] {
 			return;
 		}
 
-		const component = new Set<SchemaNode>();
-		let member: SchemaNode;
-
-		do {
-			member = stack.pop()!;
-			onStack.delete(member);
-			component.add(member);
-		} while (member !== node);
-
+		const component = popComponent(node, stack, onStack);
 		const hasSelfLoop = (adjacency.get(node) ?? []).includes(node);
 
 		if (component.size > 1 || hasSelfLoop) {
@@ -143,4 +154,25 @@ function findCyclicNodes(edges: SchemaEdge[]): Set<SchemaNode>[] {
 	}
 
 	return components;
+}
+
+function popComponent(
+	node: SchemaNode,
+	stack: SchemaNode[],
+	onStack: Set<SchemaNode>
+): Set<SchemaNode> {
+	const component = new Set<SchemaNode>();
+	let member: SchemaNode;
+
+	do {
+		const popped = stack.pop();
+		if (popped === undefined) {
+			throw new Error('Cyclic component stack underflow');
+		}
+		member = popped;
+		onStack.delete(member);
+		component.add(member);
+	} while (member !== node);
+
+	return component;
 }
